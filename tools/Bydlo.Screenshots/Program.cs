@@ -102,5 +102,8 @@ foreach (var page in new[] { "connections", "tools", "routing", "statistics", "s
 
 shell.Navigate("home");
 Shoot("mobile-home", 400, 860);
+Shoot("home-minimum", 380, 700);
+Shoot("home-narrow-desktop", 900, 780);
+Shoot("home-navigation-breakpoint", MainView.CompactWidth, 780);
 Wait(services.Connections.StopAllAsync());
 Console.WriteLine("done: " + output);

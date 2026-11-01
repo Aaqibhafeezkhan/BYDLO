@@ -5,14 +5,18 @@
              x:Class="Bydlo.App.Views.MainView"
              x:DataType="vm:MainViewModel"
              Background="{DynamicResource BackdropBrush}">
-  <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*" ClipToBounds="True">
+    <Panel Grid.RowSpan="3" Grid.ColumnSpan="2" IsHitTestVisible="False" ClipToBounds="True">
+      <Ellipse Width="800" Height="800" Fill="{DynamicResource GlowBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-350,-240,0" Opacity="0.6" />
+      <Ellipse Width="680" Height="680" Fill="{DynamicResource GlowBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="100,0,0,-380" Opacity="0.4" />
+    </Panel>
 
     <!-- Desktop sidebar -->
-    <Border Grid.RowSpan="3" Width="232" IsVisible="{Binding !IsCompact}"
-            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
-      <DockPanel Margin="16,22,16,16">
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="8,0,0,26">
-          <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource PrimaryGradientBrush}">
+    <Border Grid.RowSpan="3" Width="224" Margin="16,16,0,16" CornerRadius="28" BoxShadow="{DynamicResource GlassShadow}" IsVisible="{Binding !IsCompact}"
+            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource GlassEdgeBrush}" BorderThickness="1">
+      <DockPanel Margin="12,24,12,20">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="10,0,6,34">
+          <Border Width="38" Height="38" CornerRadius="14" Background="{DynamicResource PrimaryGradientBrush}">
             <PathIcon Data="{StaticResource IconShield}" Foreground="White" Width="18" Height="18" />
           </Border>
           <StackPanel VerticalAlignment="Center">
@@ -34,7 +38,7 @@
         <ItemsControl ItemsSource="{Binding NavItems}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:NavItem">
-              <RadioButton Classes="nav" GroupName="nav" Margin="0,0,0,4"
+              <RadioButton Classes="nav" GroupName="nav" Margin="0,0,0,7"
                            IsChecked="{Binding IsSelected, Mode=OneWay}"
                            Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NavigateCommand}"
                            CommandParameter="{Binding Key}">
@@ -71,7 +75,8 @@
 
     <!-- Compact bottom navigation -->
     <Border Grid.Row="2" Grid.Column="1" IsVisible="{Binding IsCompact}"
-            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="6,6,6,10">
+            Margin="10,4,10,10" CornerRadius="24" BoxShadow="{DynamicResource GlassShadow}"
+            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource GlassEdgeBrush}" BorderThickness="1" Padding="5,6">
       <ItemsControl ItemsSource="{Binding NavItems}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
