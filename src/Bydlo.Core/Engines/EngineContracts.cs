@@ -31,13 +31,17 @@ public enum AvailabilityStatus
 
 public sealed record EngineAvailability(AvailabilityStatus Status, string Message, string? ExecutablePath = null)
 {
+    public string? LocalizationKey { get; init; }
+
     public bool IsReady => Status == AvailabilityStatus.Ready;
 
     public static EngineAvailability Ready(string path) => new(AvailabilityStatus.Ready, "Ready", path);
 
-    public static EngineAvailability NotImplemented(string message) => new(AvailabilityStatus.NotImplemented, message);
+    public static EngineAvailability NotImplemented(string message, string? localizationKey = null) =>
+        new(AvailabilityStatus.NotImplemented, message) { LocalizationKey = localizationKey };
 
-    public static EngineAvailability Unsupported(string message) => new(AvailabilityStatus.Unsupported, message);
+    public static EngineAvailability Unsupported(string message, string? localizationKey = null) =>
+        new(AvailabilityStatus.Unsupported, message) { LocalizationKey = localizationKey };
 }
 
 /// <summary>Per-platform implementation state; used by the UI and by the compatibility matrix.</summary>
@@ -114,7 +118,10 @@ public interface IEngine : IAsyncDisposable
     Task StopAsync(CancellationToken ct = default);
 }
 
-public sealed class EngineException(string message, Exception? inner = null) : Exception(message, inner);
+public sealed class EngineException(string message, Exception? inner = null, string? localizationKey = null) : Exception(message, inner)
+{
+    public string? LocalizationKey { get; } = localizationKey;
+}
 
 /// <summary>Restarts transport without releasing a retained TUN.</summary>
 public interface IReconnectableEngine

@@ -84,7 +84,7 @@ public sealed class TunnelServiceEngine : IEngine
     {
         if (Descriptor.SupportOn(_locator.Platform.Os) != SupportLevel.Implemented)
         {
-            return Task.FromResult(EngineAvailability.NotImplemented($"{Descriptor.DisplayName} on this platform is planned."));
+            return Task.FromResult(EngineAvailability.NotImplemented($"{Descriptor.DisplayName} on this platform is planned.", "error.engine.tunnel.platform"));
         }
 
         var exe = _locator.Locate(Descriptor.Kind, settings);
@@ -93,12 +93,12 @@ public sealed class TunnelServiceEngine : IEngine
             var hint = Descriptor.Kind == EngineKind.AmneziaWG
                 ? "Install AmneziaWG (amneziawg-windows / amneziawg-tools)."
                 : "Install WireGuard (wireguard.com/install) or use the sing-box engine.";
-            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, hint));
+            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, hint) { LocalizationKey = Descriptor.Kind == EngineKind.AmneziaWG ? "error.engine.amnezia.missing" : "error.engine.wireguard.missing" });
         }
 
         return Task.FromResult(_privileges.IsElevated
             ? EngineAvailability.Ready(exe)
-            : new EngineAvailability(AvailabilityStatus.NeedsElevation, "Creating a tunnel needs administrator rights.", exe));
+            : new EngineAvailability(AvailabilityStatus.NeedsElevation, "Creating a tunnel needs administrator rights.", exe) { LocalizationKey = "error.engine.tunnel.admin" });
     }
 
     public async Task StartAsync(EngineStartRequest request, CancellationToken ct = default)
@@ -109,7 +109,7 @@ public sealed class TunnelServiceEngine : IEngine
             var availability = await CheckAvailabilityAsync(request.Settings, ct).ConfigureAwait(false);
             if (!availability.IsReady)
             {
-                throw new EngineException(availability.Message);
+                throw new EngineException(availability.Message, localizationKey: availability.LocalizationKey);
             }
 
             var raw = request.Secrets[Keys.RawConfig] ?? throw new EngineException("Profile has no stored configuration.");

@@ -58,6 +58,13 @@ public sealed partial class ToolsViewModel : PageViewModel
         _tgCustomExe = s.TgWsProxy.CustomExecutable ?? "";
         _pythonPath = OperatingSystem.IsWindows() ? "python" : "python3";
         shell.PropertyChanged += OnShellChanged;
+        L.PropertyChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(ZapretError));
+            OnPropertyChanged(nameof(TgError));
+            RefreshZapret();
+            _ = RefreshTgAsync();
+        };
         Services.Log.EntryAdded += (_, e) => Dispatcher.UIThread.Post(() => OnLog(e));
     }
 
@@ -108,7 +115,7 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public string ZapretStatus => StatusOf(Shell.Zapret);
 
-    public string? ZapretError => Shell.Zapret.Status == ConnectionStatus.Error ? Shell.Zapret.Error : null;
+    public string? ZapretError => Shell.Zapret.Status == ConnectionStatus.Error ? Loc.Error(Shell.Zapret.Error ?? "", Shell.Zapret.ErrorLocalizationKey) : null;
 
     // ---------- TgWsProxy ----------
 
@@ -146,7 +153,7 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public string TgStatus => StatusOf(Shell.Tg);
 
-    public string? TgError => Shell.Tg.Status == ConnectionStatus.Error ? Shell.Tg.Error : null;
+    public string? TgError => Shell.Tg.Status == ConnectionStatus.Error ? Loc.Error(Shell.Tg.Error ?? "", Shell.Tg.ErrorLocalizationKey) : null;
 
     public override void OnShown()
     {
@@ -375,7 +382,7 @@ public sealed partial class ToolsViewModel : PageViewModel
         var t = Services.Settings.TgWsProxy;
         TgLink = TgLinkBuilder.Build(t.Host, t.Port, secret, t.FakeTlsDomain);
         var availability = await Services.Registry.Create(EngineKind.TgWsProxy, new AppSettings { TgWsProxy = t }).CheckAvailabilityAsync(Services.Settings);
-        TgRuntimeInfo = availability.IsReady ? Loc.T("tools.tg.runtime.ok", availability.ExecutablePath ?? "") : availability.Message;
+        TgRuntimeInfo = availability.IsReady ? Loc.T("tools.tg.runtime.ok", availability.ExecutablePath ?? "") : Loc.Error(availability.Message, availability.LocalizationKey);
     }
 
     // ---------- Engines ----------

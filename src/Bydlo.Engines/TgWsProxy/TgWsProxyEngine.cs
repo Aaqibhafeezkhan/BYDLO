@@ -63,7 +63,7 @@ public sealed class TgWsProxyEngine(IProcessRunner runner, LogRedactor redactor,
     {
         if (Info.SupportOn(locator.Platform.Os) != SupportLevel.Implemented)
         {
-            return Task.FromResult(EngineAvailability.Unsupported("TgWsProxy needs a Python runtime, which BYDLO does not provide on this platform."));
+            return Task.FromResult(EngineAvailability.Unsupported("TgWsProxy needs a Python runtime, which BYDLO does not provide on this platform.", "error.engine.tg.platform"));
         }
 
         var custom = settings.TgWsProxy.CustomExecutable;
@@ -71,13 +71,13 @@ public sealed class TgWsProxyEngine(IProcessRunner runner, LogRedactor redactor,
         {
             return Task.FromResult(File.Exists(custom)
                 ? EngineAvailability.Ready(custom)
-                : new EngineAvailability(AvailabilityStatus.NotInstalled, "The configured tg-ws-proxy executable was not found."));
+                : new EngineAvailability(AvailabilityStatus.NotInstalled, "The configured tg-ws-proxy executable was not found.") { LocalizationKey = "error.engine.tg.custom" });
         }
 
         var managed = runtime.Executable;
         return Task.FromResult(managed is not null
             ? EngineAvailability.Ready(managed)
-            : new EngineAvailability(AvailabilityStatus.NotInstalled, "TgWsProxy runtime is not installed. Install it in Tools → TgWsProxy (needs Python 3.9+)."));
+            : new EngineAvailability(AvailabilityStatus.NotInstalled, "TgWsProxy runtime is not installed. Install it in Tools → TgWsProxy (needs Python 3.9+).") { LocalizationKey = "error.engine.tg.missing" });
     }
 
     public static IReadOnlyList<string> BuildArguments(TgWsProxySettings s, string secret, string? logFile)

@@ -80,7 +80,7 @@ public sealed partial class HomeViewModel : PageViewModel
         }
     }
 
-    public string? Error => IsError && Shell.Primary.Error is { } error ? L[error] : null;
+    public string? Error => IsError && Shell.Primary.Error is { } error ? Loc.Error(error, Shell.Primary.ErrorLocalizationKey) : null;
 
     public string Elapsed => IsConnected && Shell.Primary.ConnectedSince is { } since ? Format.Duration(DateTimeOffset.Now - since) : "00:00";
 

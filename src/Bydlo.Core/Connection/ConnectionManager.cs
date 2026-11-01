@@ -28,7 +28,10 @@ public sealed record SessionSnapshot(
     string? Error,
     TrafficSample? LastTraffic,
     ConnectionMode Mode = ConnectionMode.LocalProxy,
-    int LocalProxyPort = 0);
+    int LocalProxyPort = 0)
+{
+    public string? ErrorLocalizationKey { get; init; }
+}
 
 /// <summary>
 /// The single entry point for starting and stopping anything that carries traffic.
@@ -231,6 +234,7 @@ public sealed class ConnectionManager : IAsyncDisposable
 
         session.Status = ConnectionStatus.Connecting;
         session.Error = null;
+        session.ErrorLocalizationKey = null;
         Publish(session);
         _log.Info(session.Key, $"Starting {session.Engine.Descriptor.DisplayName}{(session.Profile is null ? "" : $" for '{session.Profile.Name}'")}");
 
@@ -252,6 +256,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         {
             session.Status = ConnectionStatus.Error;
             session.Error = _log.Redactor.Redact(ex.Message);
+            session.ErrorLocalizationKey = (ex as EngineException)?.LocalizationKey;
             _log.Error(session.Key, session.Error);
             Publish(session);
             await session.Engine.DisposeAsync().ConfigureAwait(false);
@@ -310,6 +315,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         }
 
         session.Error = e.Error;
+        session.ErrorLocalizationKey = null;
         _log.Error(session.Key, e.Error ?? "Engine failed");
         if (session.Settings.AutoReconnect && session.ReconnectAttempts < MaxReconnectAttempts)
         {
@@ -359,6 +365,7 @@ public sealed class ConnectionManager : IAsyncDisposable
             }
             session.Status = ConnectionStatus.Connected;
             session.Error = null;
+            session.ErrorLocalizationKey = null;
             session.ConnectedSince = DateTimeOffset.Now;
             session.ReconnectAttempts = 0;
             Publish(session);
@@ -367,6 +374,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         catch (Exception ex)
         {
             session.Error = _log.Redactor.Redact(ex.Message);
+            session.ErrorLocalizationKey = (ex as EngineException)?.LocalizationKey;
             if (session.ReconnectAttempts < MaxReconnectAttempts && session.Settings.AutoReconnect)
             {
                 _ = ReconnectAsync(session);
@@ -414,6 +422,8 @@ public sealed class ConnectionManager : IAsyncDisposable
 
         public string? Error { get; set; }
 
+        public string? ErrorLocalizationKey { get; set; }
+
         public DateTimeOffset? ConnectedSince { get; set; }
 
         public TrafficSample? LastTraffic { get; set; }
@@ -425,6 +435,6 @@ public sealed class ConnectionManager : IAsyncDisposable
         public bool SystemProxySet { get; set; }
 
         public SessionSnapshot ToSnapshot() =>
-            new(Key, Status, Profile, Engine.Descriptor.Kind, IsMock, ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort);
+            new(Key, Status, Profile, Engine.Descriptor.Kind, IsMock, ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort) { ErrorLocalizationKey = ErrorLocalizationKey };
     }
 }

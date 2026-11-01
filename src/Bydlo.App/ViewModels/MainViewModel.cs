@@ -46,10 +46,18 @@ public sealed partial class MainViewModel : ViewModelBase
 {
     private const int HistoryLength = 60;
     private int _toastVersion;
+    private string? _toastLocalizationKey;
 
     public MainViewModel(AppServices services)
     {
         Services = services;
+        L.PropertyChanged += (_, _) =>
+        {
+            if (Toast is not null && _toastLocalizationKey is not null)
+            {
+                Toast = Loc.Error(Toast, _toastLocalizationKey);
+            }
+        };
         ReloadProfiles();
 
         Home = new HomeViewModel(this);
@@ -181,9 +189,10 @@ public sealed partial class MainViewModel : ViewModelBase
         IsMock = Services.IsMock;
     }
 
-    public void ShowToast(string message, bool isError = false)
+    public void ShowToast(string message, bool isError = false, string? localizationKey = null)
     {
-        message = Loc.Instance[message];
+        _toastLocalizationKey = localizationKey;
+        message = Loc.Error(message, localizationKey);
         var version = ++_toastVersion;
         Toast = message;
         ToastIsError = isError;
@@ -206,7 +215,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is EngineException or InvalidOperationException or IOException or HttpRequestException or NotSupportedException or UnauthorizedAccessException or FormatException or TimeoutException or PlatformNotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
         {
-            ShowToast(ex.Message, isError: true);
+            ShowToast(ex.Message, isError: true, localizationKey: (ex as EngineException)?.LocalizationKey);
             return false;
         }
     }
