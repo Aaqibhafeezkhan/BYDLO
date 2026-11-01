@@ -33,6 +33,18 @@
         </StackPanel>
       </Border>
 
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h3" Text="{l:T import.title}" />
+          <ToggleSwitch Content="{l:T settings.clipboard}" IsChecked="{Binding SuggestClipboardLinks}" />
+          <TextBlock Classes="faint" Text="{l:T settings.associations.hint}" TextWrapping="Wrap" />
+          <WrapPanel IsEnabled="{Binding CanRegisterAssociations}">
+            <Button Content="{l:T settings.associations.register}" Command="{Binding RegisterAssociationsCommand}" Margin="0,0,8,8" />
+            <Button Content="{l:T settings.associations.remove}" Command="{Binding RemoveAssociationsCommand}" Margin="0,0,0,8" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
       <!-- Connection -->
       <Border Classes="card">
         <StackPanel Spacing="14">

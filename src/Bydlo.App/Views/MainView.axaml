@@ -118,5 +118,38 @@
         <TextBlock Text="{Binding Toast}" TextWrapping="Wrap" MaxWidth="500" />
       </StackPanel>
     </Border>
+    <Border Grid.Row="1" Grid.Column="1" Classes="banner" VerticalAlignment="Top" Margin="16,12"
+            IsVisible="{Binding ClipboardOffer, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <StackPanel Spacing="10">
+        <TextBlock Text="{Binding ClipboardOffer}" TextWrapping="Wrap" />
+        <WrapPanel>
+          <Button Content="{l:T import.preview}" Command="{Binding AcceptClipboardOfferCommand}" Margin="0,0,8,0" />
+          <Button Content="{l:T import.dismiss}" Command="{Binding DismissClipboardOfferCommand}" />
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" Margin="8" CornerRadius="24" Padding="24"
+            IsVisible="{Binding IsDragOver}" IsHitTestVisible="False" BorderThickness="3"
+            BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource Surface2Brush}" Opacity="0.94">
+      <TextBlock Text="{l:T import.drop}" FontSize="24" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Border>
+    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" Background="{DynamicResource BackdropBrush}" IsVisible="{Binding HasImportPreview}">
+      <Border Classes="card" MaxWidth="620" Margin="24" VerticalAlignment="Center" MaxHeight="650">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <TextBlock Classes="h2" Text="{l:T import.preview}" Margin="0,0,0,16" />
+          <ScrollViewer Grid.Row="1" MaxHeight="420">
+            <ItemsControl ItemsSource="{Binding ImportPreviewItems}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,4" /></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <WrapPanel Grid.Row="2" Margin="0,16,0,0" IsEnabled="{Binding !IsImportBusy}">
+            <Button Classes="primary" Content="{l:T import.add}" Command="{Binding ConfirmImportCommand}" IsEnabled="{Binding CanConfirmImport}" Margin="0,0,8,0" />
+            <Button Content="{l:T import.dismiss}" Command="{Binding CancelImportCommand}" />
+          </WrapPanel>
+        </Grid>
+      </Border>
+    </Border>
   </Grid>
 </UserControl>

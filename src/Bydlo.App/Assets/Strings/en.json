@@ -242,5 +242,16 @@
   "settings.killswitch.recovery": "Could not stop the old TUN. Restart BYDLO with the same administrator/root rights and try again.",
   "error.killswitch.active": "A kill switch TUN is already active. Disconnect first.",
   "error.killswitch.tun": "The kill switch TUN stopped. Protection may be unavailable. Disconnect before connecting again.",
-  "error.killswitch.engine": "Kill switch requires sing-box in TUN mode. Disable it in Settings to use this engine."
+  "error.killswitch.engine": "Kill switch requires sing-box in TUN mode. Disable it in Settings to use this engine.",
+  "import.clipboard.offer": "Clipboard contains a {0} link — add it?",
+  "import.subscription": "Subscription",
+  "import.preview": "Review import",
+  "import.dismiss": "Cancel",
+  "import.drop": "Drop configs or QR images to review import",
+  "settings.clipboard": "Suggest links from clipboard",
+  "settings.associations.hint": "Windows only, off by default. Register BYDLO for .conf/.ovpn Open with and protocol links. File defaults are preserved. Click Register to consent. Move the app first to its permanent location. Linux/macOS registration is planned.",
+  "settings.associations.register": "Register",
+  "settings.associations.remove": "Remove registration",
+  "settings.associations.registered": "Associations registered for this user.",
+  "settings.associations.removed": "BYDLO associations removed."
 }

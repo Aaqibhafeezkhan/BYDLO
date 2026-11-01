@@ -36,6 +36,12 @@ var services = app.Services!;
 Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
 
 var shell = new MainViewModel(services);
+if (args.Contains("--verify-import", StringComparer.Ordinal))
+{
+    ImportVerification.Run(shell, output);
+    return;
+}
+
 // The UI thread is this thread: never block on a task, pump the dispatcher until it completes.
 void Wait(Task task)
 {

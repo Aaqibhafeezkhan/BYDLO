@@ -28,6 +28,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _autoReconnect = s.AutoReconnect;
         _killSwitch = s.KillSwitch;
         _showAdvanced = s.ShowAdvanced;
+        _suggestClipboardLinks = s.SuggestClipboardLinks;
     }
 
     public static IReadOnlyList<string> Languages { get; } = ["auto", "en", "ru"];
@@ -127,6 +128,53 @@ public sealed partial class SettingsViewModel : PageViewModel
             await Services.SaveSettingsAsync();
         }
         catch (Exception ex) { Shell.ShowToast(ex.Message, isError: true); }
+    }
+
+    [ObservableProperty]
+    private bool _suggestClipboardLinks;
+
+    public bool CanRegisterAssociations => OperatingSystem.IsWindows() &&
+        Environment.ProcessPath is { } path && !Path.GetFileNameWithoutExtension(path).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
+
+    partial void OnSuggestClipboardLinksChanged(bool value)
+    {
+        Services.Settings.SuggestClipboardLinks = value;
+        if (!value)
+        {
+            Shell.DismissClipboardOffer();
+        }
+
+        Persist();
+    }
+
+    [RelayCommand]
+    private async Task RegisterAssociations()
+    {
+        await Shell.Guard(() =>
+        {
+            if (OperatingSystem.IsWindows() && CanRegisterAssociations)
+            {
+                Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!);
+                Shell.ShowToast(L["settings.associations.registered"]);
+            }
+
+            return Task.CompletedTask;
+        });
+    }
+
+    [RelayCommand]
+    private async Task RemoveAssociations()
+    {
+        await Shell.Guard(() =>
+        {
+            if (OperatingSystem.IsWindows() && CanRegisterAssociations)
+            {
+                Bydlo.Platform.WindowsImportAssociations.Unregister(Environment.ProcessPath!);
+                Shell.ShowToast(L["settings.associations.removed"]);
+            }
+
+            return Task.CompletedTask;
+        });
     }
 
     public bool ThemePurple { get => Theme == ThemePreference.Purple; set { if (value) { Theme = ThemePreference.Purple; } } }
