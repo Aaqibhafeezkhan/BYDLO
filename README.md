@@ -1,79 +1,81 @@
-<p align="center"><img src="src/Bydlo.App/Assets/bydlo-256.png" width="96" alt="BYDLO logo"></p>
+<p align="center"><img src="src/Bydlo.App/Assets/bydlo-256.png" width="96" alt="Логотип BYDLO"></p>
 
 <h1 align="center">BYDLO</h1>
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
 <i>One app. Every protocol. Zero bullshit.</i></p>
 
-<p align="center"><img src="docs/images/home-connected.png" width="760" alt="BYDLO home screen"></p>
+<p align="center"><img src="docs/images/home-connected.png" width="760" alt="Главный экран BYDLO"></p>
 
-BYDLO is a free, open-source GUI launcher for VPNs, proxies and censorship-bypass tools.
-Import a link, a config file, a QR code or a subscription — and connect with one button.
-BYDLO does not reinvent protocols: it drives proven upstream engines (sing-box, Xray-core, WireGuard,
-AmneziaWG, OpenVPN) and Flowseal's [Zapret](https://github.com/Flowseal/zapret-discord-youtube) and
-[tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) behind one clean interface.
+BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов обхода блокировок.
+Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
+BYDLO не изобретает протоколы заново: он управляет проверенными движками (sing-box, Xray-core, WireGuard,
+AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-discord-youtube) и
+[tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) от Flowseal — через один понятный интерфейс.
 
-> **Status: v0.1 — first public version.** The application builds, its logic is covered by isolated unit tests
-> and the UI can be tried in Mock Mode. Real tunnels have **not** been verified by the authors on every platform yet —
-> see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) and [docs/TESTING.md](docs/TESTING.md).
+> **Статус: v0.1 — первая публичная версия.** Приложение собирается, его логика покрыта изолированными тестами,
+> а интерфейс можно опробовать в Mock-режиме. Реальные туннели авторы **ещё не проверили** на всех платформах —
+> см. [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) и [docs/TESTING.md](docs/TESTING.md).
 
-## Features
+## Возможности
 
-- **One-button connect** with a big, animated connect control, live speed and session timer.
-- **Protocols:** VLESS (incl. REALITY, XHTTP via Xray), VMess, Trojan, Shadowsocks, Hysteria 2, TUIC, SOCKS5, HTTP(S),
+- **Подключение одной кнопкой**: большая анимированная кнопка, скорость в реальном времени и таймер сеанса.
+- **Протоколы:** VLESS (включая REALITY и XHTTP через Xray), VMess, Trojan, Shadowsocks, Hysteria 2, TUIC, SOCKS5, HTTP(S),
   WireGuard, AmneziaWG, OpenVPN.
-- **Import:** share links (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`, `tuic://`, `socks5://`, `wireguard://`…),
-  base64 subscriptions, `.conf` (WireGuard / AmneziaWG), `.ovpn`, QR images.
-- **Zapret (Windows):** uses Flowseal strategies unchanged, runs `winws.exe` headless, strategy picker, game filter,
-  user lists editor, logs, pinned + SHA-256-verified downloads.
-- **TgWsProxy:** headless Flowseal tg-ws-proxy, one-click `tg://proxy` link, secret management, port-conflict checks.
-- **Routing:** local proxy or full-device TUN, split tunneling, DNS, direct / tunnel / block lists, mesh-VPN ranges kept direct.
-- **Safety:** secrets encrypted at rest (DPAPI on Windows), credentials scrubbed from logs, crash recovery for orphaned engines,
-  verified engine downloads, privileged operations isolated and off by default.
-- **Design:** purple (default), light, OLED-black and system themes; English and Russian; adaptive layout from phone width to desktop.
-- **Mock Mode:** a clearly labelled simulation of connect / traffic / errors for UI testing without any network engine.
+- **Импорт:** ссылки (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`, `tuic://`, `socks5://`, `wireguard://`…),
+  base64-подписки, `.conf` (WireGuard / AmneziaWG), `.ovpn`, изображения с QR-кодом.
+- **Zapret (Windows):** стратегии Flowseal используются без изменений, `winws.exe` запускается без окна консоли;
+  выбор стратегии, игровой фильтр, редактор пользовательских списков, логи, загрузка закреплённой версии с проверкой SHA-256.
+- **TgWsProxy:** tg-ws-proxy от Flowseal без окна и трея, ссылка `tg://proxy` в один клик, управление секретом, контроль занятых портов.
+- **Маршрутизация:** локальный прокси или режим всего устройства (TUN), раздельное туннелирование, DNS,
+  списки «напрямую / через туннель / блокировать», диапазоны mesh-VPN остаются вне туннеля.
+- **Безопасность:** секреты хранятся зашифрованными (DPAPI на Windows), учётные данные вырезаются из логов,
+  восстановление после сбоев, проверка целостности загружаемых движков, привилегированные операции изолированы и выключены по умолчанию.
+- **Дизайн:** фиолетовая (по умолчанию), светлая, чёрная OLED и системная темы; русский и английский языки;
+  адаптивная раскладка от ширины телефона до десктопа.
+- **Mock-режим:** явно помеченная имитация подключения, трафика и ошибок для проверки интерфейса без запуска сетевых движков.
 
 | | | |
 |---|---|---|
-| ![Light](docs/images/home-light.png) | ![OLED](docs/images/home-oled.png) | ![Tools](docs/images/tools.png) |
-| ![Connections](docs/images/connections.png) | ![Statistics](docs/images/statistics.png) | ![Settings](docs/images/settings.png) |
+| ![Светлая тема](docs/images/home-light.png) | ![OLED](docs/images/home-oled.png) | ![Инструменты](docs/images/tools.png) |
+| ![Подключения](docs/images/connections.png) | ![Статистика](docs/images/statistics.png) | ![Настройки](docs/images/settings.png) |
 
-## Platforms
+## Платформы
 
-| Platform | v0.1 |
+| Платформа | v0.1 |
 |---|---|
-| Windows 10/11 x64, ARM64 | Builds in CI; main development target |
-| Linux x64, ARM64 | Builds in CI; Zapret not yet |
-| macOS Intel, Apple Silicon | Builds in CI (unsigned); Zapret not yet |
-| Android ARM64 | Planned (see [roadmap](docs/ROADMAP.md)) |
+| Windows 10/11 x64, ARM64 | Собирается в CI; основная платформа разработки |
+| Linux x64, ARM64 | Собирается в CI; Zapret пока нет |
+| macOS Intel, Apple Silicon | Собирается в CI (без подписи); Zapret пока нет |
+| Android ARM64 | Запланирован (см. [roadmap](docs/ROADMAP.md)) |
 
-Details per protocol and platform: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+Подробно по протоколам и платформам: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
-## Quick start (from source)
+## Быстрый старт (из исходников)
 
 ```bash
 git clone https://github.com/endercodezz/BYDLO.git
 cd BYDLO
 source scripts/env.sh          # PowerShell: . ./scripts/env.ps1
-dotnet run --project src/Bydlo.Desktop -- --mock   # UI in Mock Mode
+dotnet run --project src/Bydlo.Desktop -- --mock   # интерфейс в Mock-режиме
 ```
 
-`scripts/env.*` keep all caches inside the checkout and enable the development safety lock (`BYDLO_SAFE_DEV=1`),
-so real engines refuse to start. To use BYDLO for real, run it from a normal shell without that variable, or use a
-build from CI / Releases. More in [docs/BUILD.md](docs/BUILD.md).
+Скрипты `scripts/env.*` держат все кэши внутри репозитория и включают блокировку разработки (`BYDLO_SAFE_DEV=1`),
+поэтому реальные движки отказываются запускаться. Чтобы пользоваться BYDLO по-настоящему, запустите его из обычной
+оболочки без этой переменной или возьмите сборку из CI / Releases. Подробнее — в [docs/BUILD.md](docs/BUILD.md).
 
-## Documentation
+## Документация
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Build instructions](docs/BUILD.md)
-- [Protocol × platform compatibility](docs/COMPATIBILITY.md)
-- [Manual testing guide](docs/TESTING.md)
+- [Архитектура](docs/ARCHITECTURE.md)
+- [Сборка](docs/BUILD.md)
+- [Совместимость протоколов и платформ](docs/COMPATIBILITY.md)
+- [Руководство по ручному тестированию](docs/TESTING.md)
 - [Roadmap](docs/ROADMAP.md)
-- [Third-party notices and licenses](THIRD_PARTY_NOTICES.md)
-- [Contributor / agent rules](CLAUDE.md)
+- [Сторонние компоненты и лицензии](THIRD_PARTY_NOTICES.md)
+- [Правила для участников и агентов](CLAUDE.md) (на английском)
 
-## Credits
+## Благодарности
 
-BYDLO stands on the shoulders of:
+BYDLO построен на работе этих проектов:
 [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube),
 [bol-van/zapret](https://github.com/bol-van/zapret),
 [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy),
@@ -82,12 +84,12 @@ BYDLO stands on the shoulders of:
 [WireGuard](https://www.wireguard.com),
 [AmneziaWG](https://github.com/amnezia-vpn),
 [OpenVPN](https://github.com/OpenVPN/openvpn),
-[Avalonia UI](https://github.com/AvaloniaUI/Avalonia) and others listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-Thank you.
+[Avalonia UI](https://github.com/AvaloniaUI/Avalonia) и других, перечисленных в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Спасибо им.
 
-## License
+## Лицензия
 
-BYDLO is licensed under the [GNU General Public License v3.0 or later](LICENSE).
-Third-party components keep their own licenses — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+BYDLO распространяется по [GNU General Public License v3.0 или более поздней](LICENSE).
+Сторонние компоненты сохраняют свои лицензии — см. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Use BYDLO in accordance with the laws of your country. It is a client for networks and servers you are authorized to use.
+Используйте BYDLO в соответствии с законодательством вашей страны. Это клиент для сетей и серверов, которыми вы вправе пользоваться.

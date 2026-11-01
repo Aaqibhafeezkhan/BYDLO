@@ -1,70 +1,73 @@
-# Manual testing guide
+# Руководство по ручному тестированию
 
-Automated tests in this repository are **isolated**: they never start an engine, open a tunnel or change system
-networking. Everything below must be checked by a human on a machine where losing connectivity is acceptable
-(ideally a VM or a spare device). **Do not run these steps on a machine whose remote access depends on its current
-network setup.**
+Автоматические тесты в репозитории **изолированы**: они никогда не запускают движки, не открывают туннели и не меняют
+системные сетевые настройки. Всё, что описано ниже, должен проверить человек на машине, где потеря связи допустима
+(лучше всего на виртуальной машине или отдельном устройстве). **Не выполняйте эти шаги на машине, удалённый доступ к
+которой зависит от её текущих сетевых настроек.**
 
-Run BYDLO from a shell **without** `BYDLO_SAFE_DEV` (or from a CI build). Keep `logs/bydlo.log` (Settings → Advanced
-shows the data folder) for bug reports — it is already scrubbed of credentials, but double-check before sharing.
+Запускайте BYDLO из оболочки **без** `BYDLO_SAFE_DEV` (или используйте сборку из CI). Для отчётов об ошибках сохраняйте
+`logs/bydlo.log` (путь к каталогу данных показан в Настройки → Дополнительно). Учётные данные из лога уже вырезаны, но
+перед отправкой всё равно проверьте его.
 
-## 0. Mock Mode (safe everywhere)
+## 0. Mock-режим (безопасно где угодно)
 
 1. `dotnet run --project src/Bydlo.Desktop -- --mock`.
-2. Connections → *Add demo servers (mock)*. Home → Connect: status goes Connecting → Connected, timer and speed update.
-3. Settings → Advanced → Mock scenario = *Fail while connecting*: an error banner appears.
-4. Scenario = *Crash after ~20 s*: status becomes Reconnecting, then Connected again (auto-reconnect).
-5. Toggle Zapret / TgWsProxy on Home: both show Running independently of the tunnel.
-6. Switch themes (Purple / Light / OLED / System) and language (EN / RU); resize the window below 760 px → bottom navigation.
+2. Подключения → *Демо-серверы (mock)*. Главная → Подключить: статус меняется «Подключение…» → «Подключено», таймер и скорость обновляются.
+3. Настройки → Дополнительно → сценарий Mock = *Ошибка при подключении*: появляется баннер с ошибкой.
+4. Сценарий = *Сбой через ~20 с*: статус становится «Переподключение…», затем снова «Подключено» (автопереподключение).
+5. Включите Zapret / TgWsProxy на главной: оба показывают «Работает» независимо от туннеля.
+6. Переключите темы (фиолетовая / светлая / OLED / системная) и язык (RU / EN); сузьте окно до ширины меньше 760 px — появится нижняя навигация.
 
-## 1. Engines
+## 1. Движки
 
-- Tools → Engines: install sing-box and Xray. Expect "Ready". Tamper test: edit a digest in `engines/engines.lock.json`,
-  rebuild, install → must fail with an integrity error and leave nothing installed.
+- Инструменты → Движки: установите sing-box и Xray, ожидается статус «Готов».
+  Проверка подмены: измените хеш в `engines/engines.lock.json`, пересоберите и установите — установка должна завершиться
+  ошибкой целостности и ничего не оставить.
 
-## 2. Local proxy mode (no admin)
+## 2. Режим локального прокси (без прав администратора)
 
-For each protocol you have a server for (VLESS/REALITY, VLESS XHTTP, VMess, Trojan, SS, Hysteria 2, TUIC, SOCKS, WireGuard via sing-box):
+Для каждого протокола, для которого у вас есть сервер (VLESS/REALITY, VLESS XHTTP, VMess, Trojan, SS, Hysteria 2, TUIC, SOCKS, WireGuard через sing-box):
 
-1. Import via clipboard, file and QR image.
-2. Connect. Configure a browser to SOCKS5 `127.0.0.1:2080`; open an IP-check site; IP must be the server's.
-3. Statistics shows live speed (sing-box) or the "no live stats" note (Xray).
-4. Disconnect → port 2080 is closed. Kill the engine process manually while connected → reconnect attempts appear.
-5. Occupy port 2080 with another program → Connect must refuse with a clear message.
+1. Импортируйте через буфер обмена, файл и изображение с QR-кодом.
+2. Подключитесь. Настройте браузер на SOCKS5 `127.0.0.1:2080`, откройте сайт проверки IP — IP должен быть адресом сервера.
+3. В «Статистике» видна скорость в реальном времени (sing-box) или пометка «движок пока не сообщает трафик» (Xray).
+4. Отключитесь — порт 2080 закрыт. Завершите процесс движка вручную во время подключения — появятся попытки переподключения.
+5. Займите порт 2080 другой программой — подключение должно быть отклонено с понятным сообщением.
 
-## 3. TUN mode (admin/root)
+## 3. Режим TUN (администратор/root)
 
-1. Settings → Restart as administrator (Windows) or run with sudo (Linux/macOS).
-2. Home → enable TUN, connect. All apps go through the tunnel; LAN printer / router still reachable (bypass LAN on).
-3. With "Keep mesh VPN ranges direct" on, an existing mesh VPN (e.g. Tailscale, ZeroTier, NetBird) keeps working.
-4. Disconnect → default route and DNS are back to normal.
+1. Настройки → Перезапустить от администратора (Windows) или запустите через sudo (Linux/macOS).
+2. Главная → включите TUN, подключитесь. Все приложения идут через туннель; роутер и принтер в локальной сети доступны (если включён обход локальных сетей).
+3. При включённом «Mesh-VPN диапазоны — напрямую» уже работающая mesh-VPN (например, Tailscale, ZeroTier, NetBird) продолжает работать.
+4. Отключитесь — маршрут по умолчанию и DNS возвращаются в исходное состояние.
 
-## 4. Native WireGuard / AmneziaWG / OpenVPN
+## 4. Нативные WireGuard / AmneziaWG / OpenVPN
 
-1. Install the official client. Import `.conf` / `.ovpn`. Connect as admin.
-2. Windows: a tunnel service `WireGuardTunnel$bydlo-wg` (or AmneziaWG equivalent) appears while connected and is removed on disconnect.
-3. OpenVPN profiles with `auth-user-pass` without stored credentials must show a clear error (credential editor is on the roadmap).
+1. Установите официальный клиент. Импортируйте `.conf` / `.ovpn`. Подключитесь с правами администратора.
+2. Windows: во время подключения существует служба туннеля `WireGuardTunnel$bydlo-wg` (или аналог AmneziaWG), после отключения она удаляется.
+3. Профили OpenVPN с `auth-user-pass` без сохранённых учётных данных должны показывать понятную ошибку (редактор учётных данных — в roadmap).
 
-## 5. Zapret (Windows, admin)
+## 5. Zapret (Windows, администратор)
 
-1. Tools → Zapret → *Download pinned release* (or choose an extracted Flowseal folder). Strategies list appears.
-2. Make sure no other `winws.exe` / GoodbyeDPI runs (BYDLO refuses to start otherwise).
-3. Pick `general`, Start. Logs show winws output; status Running. Check Discord / YouTube.
-4. Edit user lists, Save, restart Zapret. Try other strategies and the game filter.
-5. Stop → `winws.exe` is gone. Close BYDLO while running → on next start BYDLO offers to stop the leftover process.
+1. Инструменты → Zapret → *Скачать закреплённый релиз* (или выберите папку с распакованным релизом Flowseal). Появляется список стратегий.
+2. Убедитесь, что не запущены другие `winws.exe` или GoodbyeDPI (иначе BYDLO откажется стартовать).
+3. Выберите `general`, нажмите «Запустить». В логах вывод winws, статус «Работает». Проверьте Discord / YouTube.
+4. Отредактируйте пользовательские списки, сохраните, перезапустите Zapret. Попробуйте другие стратегии и игровой фильтр.
+5. Остановите — `winws.exe` завершён. Закройте BYDLO во время работы — при следующем запуске BYDLO предложит остановить оставшийся процесс.
 
 ## 6. TgWsProxy
 
-1. Tools → TgWsProxy → Install runtime (Python 3.9+ on PATH) or point to an existing `tg-ws-proxy` executable.
-2. Start; *Open in Telegram* or copy the link into Telegram Desktop; Telegram connects through the proxy.
-3. Regenerate secret → link changes; restart required message shown.
-4. Occupy port 1443 → Start must refuse with a port-conflict message.
+1. Инструменты → TgWsProxy → «Установить среду» (Python 3.9+ в PATH) или укажите готовый исполняемый файл `tg-ws-proxy`.
+2. Запустите; нажмите *Открыть в Telegram* или скопируйте ссылку в Telegram Desktop — Telegram подключается через прокси.
+3. «Новый секрет» — ссылка меняется, появляется сообщение о необходимости перезапуска.
+4. Займите порт 1443 — запуск должен быть отклонён с сообщением о конфликте порта.
 
-## 7. System proxy (Windows)
+## 7. Системный прокси (Windows)
 
-Enable Settings → Advanced → *Set system proxy*, connect in local proxy mode: Windows proxy settings point to 127.0.0.1:2080.
-Disconnect (and also close BYDLO while connected) → previous proxy settings are restored.
+Включите Настройки → Дополнительно → *Включать системный прокси при подключении*, подключитесь в режиме локального прокси:
+настройки прокси Windows указывают на 127.0.0.1:2080. Отключитесь (а также закройте BYDLO во время подключения) — прежние
+настройки прокси восстанавливаются.
 
-## Reporting
+## Отчёт об ошибке
 
-Include OS + version, BYDLO version, engine and version, protocol, mode (proxy/TUN), and the scrubbed log.
+Укажите ОС и её версию, версию BYDLO, движок и его версию, протокол, режим (прокси/TUN) и очищенный лог.

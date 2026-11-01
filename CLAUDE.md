@@ -95,6 +95,13 @@ Android is not part of v0.1 (planned; see docs/ROADMAP.md).
 - All user-visible strings go through localization (`Assets/Strings/en.json`, `ru.json`). Add both languages.
 - Desktop: sidebar navigation; narrow windows (and the future Android head): bottom navigation. Same visual language everywhere.
 
+## 5a. Documentation language
+
+- User-facing documentation is written in **Russian**: `README.md`, `THIRD_PARTY_NOTICES.md`, everything in `docs/`,
+  and README files inside the repository. Keep names of tools, protocols, commands and code identifiers as they are.
+- This file (`CLAUDE.md`) and `.claude/` stay in English (agent configuration). Code comments and commit messages stay in English.
+- Screenshots in `docs/images` are rendered with the Russian UI: `dotnet run --project tools/Bydlo.Screenshots -- <dir> ru`.
+
 ## 6. Git
 
 - Default branch: `main` for this repository; for future automation never hardcode the branch name or remote URL — detect them.
