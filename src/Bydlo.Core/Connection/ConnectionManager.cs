@@ -25,7 +25,9 @@ public sealed record SessionSnapshot(
     bool IsMock,
     DateTimeOffset? ConnectedSince,
     string? Error,
-    TrafficSample? LastTraffic);
+    TrafficSample? LastTraffic,
+    ConnectionMode Mode = ConnectionMode.LocalProxy,
+    int LocalProxyPort = 0);
 
 /// <summary>
 /// The single entry point for starting and stopping anything that carries traffic.
@@ -210,6 +212,8 @@ public sealed class ConnectionManager : IAsyncDisposable
 
     private async Task StartSessionUnsafeAsync(Session session, CancellationToken ct)
     {
+        session.Mode = session.Settings.Mode;
+        session.LocalProxyPort = session.Settings.LocalProxyPort;
         lock (_sessions)
         {
             _sessions[session.Key] = session;
@@ -333,6 +337,8 @@ public sealed class ConnectionManager : IAsyncDisposable
             }
 
             await session.Engine.StopAsync().ConfigureAwait(false);
+            session.Mode = session.Settings.Mode;
+            session.LocalProxyPort = session.Settings.LocalProxyPort;
             await session.Engine.StartAsync(new EngineStartRequest
             {
                 Profile = session.Profile,
@@ -386,6 +392,11 @@ public sealed class ConnectionManager : IAsyncDisposable
 
         public AppSettings Settings { get; } = settings;
 
+        /// <summary>Mode and port captured when the engine was actually started.</summary>
+        public ConnectionMode Mode { get; set; } = settings.Mode;
+
+        public int LocalProxyPort { get; set; } = settings.LocalProxyPort;
+
         public bool IsMock => Engine.Descriptor.Kind == EngineKind.Mock;
 
         public ConnectionStatus Status { get; set; }
@@ -403,6 +414,6 @@ public sealed class ConnectionManager : IAsyncDisposable
         public bool SystemProxySet { get; set; }
 
         public SessionSnapshot ToSnapshot() =>
-            new(Key, Status, Profile, Engine.Descriptor.Kind, IsMock, ConnectedSince, Error, LastTraffic);
+            new(Key, Status, Profile, Engine.Descriptor.Kind, IsMock, ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort);
     }
 }

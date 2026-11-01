@@ -51,6 +51,24 @@ public class ConnectionManagerTests
     }
 
     [Fact]
+    public async Task Snapshot_captures_mode_and_port_when_engine_starts()
+    {
+        var (m, _) = Create();
+        var settings = new AppSettings { MockMode = true, Mode = ConnectionMode.LocalProxy, LocalProxyPort = 2345 };
+
+        await m.ConnectAsync(Demo(), settings);
+        Assert.Equal(ConnectionMode.LocalProxy, m.Primary.Mode);
+        Assert.Equal(2345, m.Primary.LocalProxyPort);
+
+        settings.Mode = ConnectionMode.Tun;
+        settings.LocalProxyPort = 3456;
+
+        Assert.Equal(ConnectionMode.LocalProxy, m.Primary.Mode);
+        Assert.Equal(2345, m.Primary.LocalProxyPort);
+        await m.DisconnectAsync();
+    }
+
+    [Fact]
     public async Task Mock_failure_is_reported_as_error()
     {
         var (m, _) = Create();

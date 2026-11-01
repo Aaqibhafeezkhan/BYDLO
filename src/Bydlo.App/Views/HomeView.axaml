@@ -67,6 +67,35 @@
                 <TextBlock Classes="muted" Text="{Binding Hint}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460" Margin="8,0" />
               </StackPanel>
 
+              <!-- Explicit connection check: only when connected, never automatic. -->
+              <StackPanel IsVisible="{Binding IsConnected}" Spacing="10" Margin="0,12,0,0" HorizontalAlignment="Stretch">
+                <Button Classes="ghost" HorizontalAlignment="Center" Command="{Binding CheckConnectionCommand}" IsEnabled="{Binding CanRunCheck}"
+                        AutomationProperties.Name="{Binding CheckButtonText}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource IconCheck}" Width="15" Height="15" />
+                    <TextBlock Text="{Binding CheckButtonText}" />
+                  </StackPanel>
+                </Button>
+                <TextBlock Classes="faint" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                           Text="{Binding CheckDisabledReason}" IsVisible="{Binding CheckDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Border Classes="tile" IsVisible="{Binding HasCheckResult}" HorizontalAlignment="Stretch" MaxWidth="460">
+                  <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                    <TextBlock Classes="caps" Text="{l:T home.check.ip}" />
+                    <TextBlock Classes="caps" Grid.Column="1" Text="{l:T home.check.country}" />
+                    <TextBlock Classes="caps" Grid.Column="2" Text="{l:T home.check.latency}" />
+                    <SelectableTextBlock Grid.Row="1" Text="{Binding CheckIp}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CheckCountry}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding CheckLatency}" FontWeight="SemiBold" />
+                  </Grid>
+                </Border>
+                <Border Classes="banner bad" IsVisible="{Binding HasCheckError}">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource DangerBrush}" />
+                    <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding CheckError}" TextWrapping="Wrap" />
+                  </Grid>
+                </Border>
+              </StackPanel>
+
               <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,10,0,0">
                 <Grid ColumnDefinitions="Auto,*">
                   <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource DangerBrush}" />

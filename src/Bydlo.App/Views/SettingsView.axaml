@@ -46,6 +46,19 @@
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
+              <TextBlock Text="{l:T settings.check.service}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T settings.check.service.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:SettingsViewModel.CheckProviders}" SelectedItem="{Binding IpCheckProvider}" MinWidth="180">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="m:IpCheckProvider">
+                  <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=check.provider.}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
               <TextBlock Text="{l:T settings.advanced.show}" FontWeight="Medium" />
               <TextBlock Classes="faint" Text="{l:T settings.advanced.hint}" TextWrapping="Wrap" />
             </StackPanel>

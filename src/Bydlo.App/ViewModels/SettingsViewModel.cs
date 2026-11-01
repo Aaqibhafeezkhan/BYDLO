@@ -1,4 +1,5 @@
 using Bydlo.App.Services;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,6 +23,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _mockMode = Services.IsMock;
         _mockScenario = s.MockScenario;
         _localPort = s.LocalProxyPort;
+        _ipCheckProvider = s.IpCheckProvider;
         _setSystemProxy = s.SetSystemProxy;
         _autoReconnect = s.AutoReconnect;
         _showAdvanced = s.ShowAdvanced;
@@ -30,6 +32,8 @@ public sealed partial class SettingsViewModel : PageViewModel
     public static IReadOnlyList<string> Languages { get; } = ["auto", "en", "ru"];
 
     public static IReadOnlyList<MockScenario> Scenarios { get; } = Enum.GetValues<MockScenario>();
+
+    public static IReadOnlyList<IpCheckProvider> CheckProviders { get; } = ConnectionCheckService.Providers;
 
     /// <summary>Upstream projects BYDLO builds on. Also listed in THIRD_PARTY_NOTICES.md.</summary>
     public static IReadOnlyList<Credit> Credits { get; } =
@@ -82,6 +86,9 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     private int _localPort;
+
+    [ObservableProperty]
+    private IpCheckProvider _ipCheckProvider;
 
     [ObservableProperty]
     private bool _setSystemProxy;
@@ -138,6 +145,13 @@ public sealed partial class SettingsViewModel : PageViewModel
             Services.Settings.LocalProxyPort = value;
             Persist();
         }
+    }
+
+    partial void OnIpCheckProviderChanged(IpCheckProvider value)
+    {
+        Services.Settings.IpCheckProvider = value;
+        Shell.Home.ResetConnectionCheck();
+        Persist();
     }
 
     partial void OnSetSystemProxyChanged(bool value)

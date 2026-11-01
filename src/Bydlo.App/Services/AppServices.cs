@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Bydlo.Core.Connection;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Engines.Mock;
 using Bydlo.Core.Import;
@@ -43,6 +44,7 @@ public sealed class AppServices
         Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, TgRuntime, () => new MockEngine(), ZapretFirewall);
         SystemProxy = SystemProxyFactory.Create();
         Connections = new ConnectionManager(Registry, Secrets, Paths, new ConflictDetector(new TcpPortChecker()), Log, SystemProxy);
+        ConnectionCheck = new ConnectionCheckService();
         Importer = new ProfileImporter();
         Subscriptions = new SubscriptionClient(Http, Importer);
         Zapret = new ZapretEngine(Runner, LogRedactor.Shared, Locator, Privileges, ZapretFirewall);
@@ -91,6 +93,9 @@ public sealed class AppServices
     public ISystemProxyService SystemProxy { get; }
 
     public ConnectionManager Connections { get; }
+
+    /// <summary>Explicit external-IP check used by Home. Never runs automatically.</summary>
+    public ConnectionCheckService ConnectionCheck { get; }
 
     public ProfileImporter Importer { get; }
 
