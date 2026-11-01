@@ -74,6 +74,70 @@ public sealed class SingBoxConfigBuilder
         return root;
     }
 
+    /// <summary>A retained TUN with no Internet-direct fallback. Transport lives in another process.</summary>
+    public JsonObject BuildKillSwitch(AppSettings settings, int backendPort)
+    {
+        if (settings.Mode != ConnectionMode.Tun || !settings.KillSwitch)
+        {
+            throw new InvalidOperationException("Kill switch requires TUN mode and explicit opt-in.");
+        }
+
+        // Only LAN and mesh exceptions survive. Split routing cannot silently weaken protection.
+        var routing = new RoutingSettings
+        {
+            BypassPrivateNetworks = settings.Routing.BypassPrivateNetworks,
+            PreserveMeshVpnRanges = settings.Routing.PreserveMeshVpnRanges,
+            RemoteDns = settings.Routing.RemoteDns,
+            BlockDomains = [.. settings.Routing.BlockDomains],
+        };
+        var tunSettings = new AppSettings { Mode = ConnectionMode.Tun, Routing = routing };
+        var inbound = BuildInbound(tunSettings);
+        var exclusions = inbound["route_exclude_address"]?.AsArray() ?? new JsonArray();
+        if (routing.BypassPrivateNetworks)
+        {
+            foreach (var cidr in PrivateNetworkRanges) { exclusions.Add(cidr); }
+        }
+        if (exclusions.Parent is null && exclusions.Count > 0) { inbound["route_exclude_address"] = exclusions; }
+
+        // ip_is_private includes ULA/CGNAT: use exact ranges so LAN and mesh remain independent.
+        var route = BuildRoute(routing, ConnectionMode.Tun);
+        foreach (var rule in route["rules"]!.AsArray().OfType<JsonObject>())
+        {
+            if (rule.Remove("ip_is_private")) { rule["ip_cidr"] = ToArray(PrivateNetworkRanges); }
+        }
+        return new JsonObject
+        {
+            ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
+            ["dns"] = BuildDns(routing),
+            ["inbounds"] = new JsonArray(inbound),
+            ["outbounds"] = new JsonArray(
+                new JsonObject { ["type"] = "socks", ["tag"] = ProxyTag, ["server"] = "127.0.0.1", ["server_port"] = backendPort, ["version"] = "5" },
+                new JsonObject { ["type"] = "direct", ["tag"] = "direct" }),
+            ["route"] = route,
+        };
+    }
+
+    // Deliberately exclude Tailscale ULA from the LAN exception.
+    public static readonly string[] PrivateNetworkRanges =
+        [
+            "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+            "169.254.0.0/16", "fe80::/10", "fc00::/8",
+            "fd80::/9", "fd00::/10", "fd40::/11",
+            "fd60::/12", "fd70::/13", "fd7c::/14",
+            "fd78::/15", "fd7b::/16", "fd7a:8000::/17",
+            "fd7a:4000::/18", "fd7a:2000::/19", "fd7a::/20",
+            "fd7a:1800::/21", "fd7a:1400::/22", "fd7a:1200::/23",
+            "fd7a:1000::/24", "fd7a:1180::/25", "fd7a:1100::/26",
+            "fd7a:1160::/27", "fd7a:1140::/28", "fd7a:1150::/29",
+            "fd7a:1158::/30", "fd7a:115e::/31", "fd7a:115d::/32",
+            "fd7a:115c::/33", "fd7a:115c:c000::/34", "fd7a:115c:8000::/35",
+            "fd7a:115c:b000::/36", "fd7a:115c:a800::/37", "fd7a:115c:a400::/38",
+            "fd7a:115c:a200::/39", "fd7a:115c:a000::/40", "fd7a:115c:a100::/41",
+            "fd7a:115c:a180::/42", "fd7a:115c:a1c0::/43", "fd7a:115c:a1f0::/44",
+            "fd7a:115c:a1e8::/45", "fd7a:115c:a1e4::/46", "fd7a:115c:a1e0::/47",
+            "fd7a:115c:a1e2::/48",
+        ];
+
     private static JsonObject BuildDns(RoutingSettings routing)
     {
         var servers = new JsonArray

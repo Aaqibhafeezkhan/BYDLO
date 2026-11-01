@@ -2,6 +2,7 @@
   <PropertyGroup>
     <RootNamespace>Bydlo.Core</RootNamespace>
     <AssemblyName>Bydlo.Core</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Bydlo.Tests" />

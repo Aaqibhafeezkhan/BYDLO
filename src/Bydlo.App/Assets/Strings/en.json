@@ -231,5 +231,16 @@
   "tools.zapret.native-disorder.macos": "TCP disorder",
   "about.zapret.native": "winws / nfqws / tpws: handling DPI filtering; MIT license included in the release.",
   "about.cygwin": "Windows runtime for winws. Linking Exception, license and corresponding source included in the release.",
-  "about.newlib": "Cygwin C library; additional license notices included in the release."
+  "about.newlib": "Cygwin C library; additional license notices included in the release.",
+  "settings.killswitch": "Block Internet if the VPN disconnects (TUN / sing-box)",
+  "settings.killswitch.warning": "Warning: Internet stays blocked during VPN failure and reconnection until you disconnect. LAN and mesh exceptions follow Routing settings; other direct/split rules are ignored. Requires a running TUN guard; a guard crash or forced termination can release protection. To restore access, use Disable kill switch and disconnect, or close BYDLO. After an app crash, restart BYDLO with the same privileges to release the old TUN.",
+  "settings.killswitch.ack": "I understand the warning and how to restore access",
+  "settings.killswitch.enable": "Enable kill switch",
+  "settings.killswitch.disable": "Disable kill switch and disconnect",
+  "settings.killswitch.active": "Enabled for the next TUN connection. Local proxy mode is unaffected.",
+  "settings.killswitch.next": "Kill switch will apply on the next TUN connection.",
+  "settings.killswitch.recovery": "Could not stop the old TUN. Restart BYDLO with the same administrator/root rights and try again.",
+  "error.killswitch.active": "A kill switch TUN is already active. Disconnect first.",
+  "error.killswitch.tun": "The kill switch TUN stopped. Protection may be unavailable. Disconnect before connecting again.",
+  "error.killswitch.engine": "Kill switch requires sing-box in TUN mode. Disable it in Settings to use this engine."
 }

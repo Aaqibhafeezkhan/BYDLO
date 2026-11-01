@@ -137,6 +137,12 @@ public sealed class AppServices
             catch (Exception ex) { s.Log.Error("zapret", "Firewall recovery failed: " + ex.Message); }
         }
 
+        if (!s.IsMock && !NetworkSafetyGuard.IsLocked)
+        {
+            // A retained TUN may outlive a crashed UI. Release only BYDLO's journaled guard.
+            try { s.Journal.KillOrphans(RetainedTunEngine.GuardProcessName); }
+            catch (Exception ex) { s.Log.Error("kill-switch", "Crash recovery failed: " + ex.Message); }
+        }
         s.Orphans = s.Journal.FindOrphans();
         s.Log.Info("app", $"BYDLO started. Data: {s.Paths.DataDirectory}. Mock mode: {s.IsMock}. Safety lock: {NetworkSafetyGuard.IsLocked}.");
         return s;
@@ -155,6 +161,16 @@ public sealed class AppServices
         Settings.MockMode = persisted;
     }
 
+    public void CleanupKillSwitch()
+    {
+        if (IsMock || NetworkSafetyGuard.IsLocked) { return; }
+        Journal.KillOrphans(RetainedTunEngine.GuardProcessName);
+        if (Journal.FindOrphans().Any(e => e.DisplayName == RetainedTunEngine.GuardProcessName))
+        {
+            throw new InvalidOperationException(Loc.Instance["settings.killswitch.recovery"]);
+        }
+    }
+
     public int CleanupOrphans()
     {
         var n = Journal.KillOrphans();
@@ -163,9 +179,17 @@ public sealed class AppServices
         return n;
     }
 
-    public async Task ShutdownAsync()
+    private readonly object _shutdownGate = new();
+    private Task? _shutdownTask;
+
+    public Task ShutdownAsync()
     {
-        await Connections.StopAllAsync().ConfigureAwait(false);
-        Http.Dispose();
+        lock (_shutdownGate) { return _shutdownTask ??= ShutdownCoreAsync(); }
+    }
+
+    private async Task ShutdownCoreAsync()
+    {
+        try { await Connections.StopAllAsync().ConfigureAwait(false); }
+        finally { Http.Dispose(); }
     }
 }

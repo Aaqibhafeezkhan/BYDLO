@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Logging;
 using Bydlo.Core.Models;
@@ -97,6 +98,7 @@ public sealed class ConnectionManager : IAsyncDisposable
     /// <summary>Connects the primary tunnel. Disconnects a previous primary first.</summary>
     public async Task ConnectAsync(Profile profile, AppSettings settings, CancellationToken ct = default)
     {
+        settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
         var blocking = PreviewConflicts(profile, settings).Where(i => i.Severity == ConflictSeverity.Blocking).ToList();
         if (blocking.Count > 0)
         {
@@ -288,7 +290,8 @@ public sealed class ConnectionManager : IAsyncDisposable
         }
         finally
         {
-            await session.Engine.DisposeAsync().ConfigureAwait(false);
+            try { await session.Engine.DisposeAsync().ConfigureAwait(false); }
+            catch (Exception ex) { _log.Warn(key, $"Dispose reported: {ex.Message}"); }
             lock (_sessions)
             {
                 _sessions.Remove(key);
@@ -336,16 +339,24 @@ public sealed class ConnectionManager : IAsyncDisposable
                 return;
             }
 
-            await session.Engine.StopAsync().ConfigureAwait(false);
             session.Mode = session.Settings.Mode;
             session.LocalProxyPort = session.Settings.LocalProxyPort;
-            await session.Engine.StartAsync(new EngineStartRequest
+            var request = new EngineStartRequest
             {
                 Profile = session.Profile,
                 Secrets = session.Secrets,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
-            }).ConfigureAwait(false);
+            };
+            if (session.Engine is IReconnectableEngine retained)
+            {
+                await retained.ReconnectAsync(request).ConfigureAwait(false);
+            }
+            else
+            {
+                await session.Engine.StopAsync().ConfigureAwait(false);
+                await session.Engine.StartAsync(request).ConfigureAwait(false);
+            }
             session.Status = ConnectionStatus.Connected;
             session.Error = null;
             session.ConnectedSince = DateTimeOffset.Now;

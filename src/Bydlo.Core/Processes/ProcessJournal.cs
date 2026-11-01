@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Bydlo.Core.Security;
 
 namespace Bydlo.Core.Processes;
 
-public sealed record JournalEntry(string DisplayName, int Pid, string ImageName, DateTimeOffset StartedAt);
+public sealed record JournalEntry(string DisplayName, int Pid, string ImageName, DateTimeOffset StartedAt,
+    int OwnerPid = 0, DateTimeOffset? OwnerStartedAt = null, bool GracefulTermination = false);
 
 /// <summary>
 /// Persists PIDs of engine processes so that, after a BYDLO crash, orphaned engines can be found and stopped
@@ -15,6 +17,8 @@ public sealed class ProcessJournal(string filePath)
 
     public void Record(JournalEntry entry)
     {
+        using var owner = Process.GetCurrentProcess();
+        entry = entry with { OwnerPid = Environment.ProcessId, OwnerStartedAt = new DateTimeOffset(owner.StartTime) };
         lock (_gate)
         {
             var list = ReadUnsafe();
@@ -50,6 +54,7 @@ public sealed class ProcessJournal(string filePath)
         var alive = new List<JournalEntry>();
         foreach (var e in Entries())
         {
+            if (HasOtherLiveOwner(e)) { continue; }
             try
             {
                 using var p = Process.GetProcessById(e.Pid);
@@ -83,25 +88,56 @@ public sealed class ProcessJournal(string filePath)
     }
 
     /// <summary>Kills orphaned engines left after a crash.</summary>
-    public int KillOrphans()
+    public int KillOrphans(string? displayName = null)
     {
+        NetworkSafetyGuard.EnsureAllowed("clean up orphaned network engines");
         var killed = 0;
         foreach (var e in FindOrphans())
         {
+            if (displayName is not null && !string.Equals(e.DisplayName, displayName, StringComparison.Ordinal)) { continue; }
             try
             {
                 using var p = Process.GetProcessById(e.Pid);
-                p.Kill(entireProcessTree: true);
-                killed++;
+                // Recheck on the handle used for termination, in case the PID was recycled.
+                if (!p.ProcessName.Equals(Path.GetFileNameWithoutExtension(e.ImageName), StringComparison.OrdinalIgnoreCase)
+                    || Math.Abs((new DateTimeOffset(p.StartTime) - e.StartedAt).TotalSeconds) >= 10)
+                {
+                    Remove(e.Pid);
+                    continue;
+                }
+                if (!e.GracefulTermination || !ProcessTermination.RequestGracefulExit(p) || !p.WaitForExit(5000))
+                {
+                    p.Kill(entireProcessTree: true);
+                }
+                if (p.WaitForExit(5000))
+                {
+                    killed++;
+                    Remove(e.Pid);
+                }
             }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
+                Remove(e.Pid);
             }
-
-            Remove(e.Pid);
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // Preserve failed cleanup for a later elevated recovery attempt.
+            }
         }
 
         return killed;
+    }
+
+    private static bool HasOtherLiveOwner(JournalEntry entry)
+    {
+        if (entry.OwnerPid == 0 || entry.OwnerPid == Environment.ProcessId || entry.OwnerStartedAt is null) { return false; }
+        try
+        {
+            using var owner = Process.GetProcessById(entry.OwnerPid);
+            return !owner.HasExited && Math.Abs((new DateTimeOffset(owner.StartTime) - entry.OwnerStartedAt.Value).TotalSeconds) < 1;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { return false; }
+        catch (System.ComponentModel.Win32Exception) { return true; } // Access denied: leave a potentially live owner alone.
     }
 
     private List<JournalEntry> ReadUnsafe()

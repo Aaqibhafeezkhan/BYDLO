@@ -15,6 +15,9 @@ public sealed record ProcessSpec
 
     /// <summary>True for processes that touch the network (subject to <see cref="Security.NetworkSafetyGuard"/>).</summary>
     public bool AffectsNetwork { get; init; } = true;
+
+    /// <summary>Request SIGTERM on Unix before falling back to forced termination.</summary>
+    public bool GracefulTermination { get; init; }
 }
 
 /// <summary>A started child process.</summary>

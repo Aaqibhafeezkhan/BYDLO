@@ -26,7 +26,8 @@ public static class EngineRegistryFactory
     {
         var registry = new EngineRegistry(mockFactory ?? (() => new MockEngine()));
         registry
-            .Register(SingBoxEngine.Info, () => new SingBoxEngine(runner, redactor, locator, privileges), priority: 10)
+            .Register(SingBoxEngine.Info, () => new RetainedTunEngine(new SingBoxEngine(runner, redactor, locator, privileges),
+                () => new SingBoxTunGuard(runner, redactor, locator, privileges)), priority: 10)
             .Register(XrayEngine.Info, () => new XrayEngine(runner, redactor, locator), priority: 20)
             .Register(TunnelServiceEngine.WireGuardInfo, () => new TunnelServiceEngine(false, runner, redactor, locator, privileges), priority: 30)
             .Register(TunnelServiceEngine.AmneziaInfo, () => new TunnelServiceEngine(true, runner, redactor, locator, privileges), priority: 10)
