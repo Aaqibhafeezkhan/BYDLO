@@ -1,0 +1,14 @@
+{
+  "windows-x64": [
+    {
+      "fileName": "WinDivert-2.2.2-source.tar.gz",
+      "url": "https://github.com/basil00/WinDivert/archive/refs/tags/v2.2.2.tar.gz",
+      "sha256": "300c1b14e08652e0f8647bf06e9b212f924af76cb2459bd0f88da481c9b08336"
+    },
+    {
+      "fileName": "cygwin-3.4.10-1-src.tar.xz",
+      "url": "https://ftp.cvut.cz/mirrors/cygwin.com/x86_64/release/cygwin/cygwin-3.4.10-1-src.tar.xz",
+      "sha256": "ac70af0d4e644732f74946f55f7bafe010bab9b9da39a9327c3f0367f1fa43a2"
+    }
+  ]
+}

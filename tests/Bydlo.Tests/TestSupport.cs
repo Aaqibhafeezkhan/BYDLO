@@ -18,6 +18,8 @@ public sealed class FakeProcessRunner : IProcessRunner
 
     public int CompletionExitCode { get; set; }
 
+    public Func<ProcessSpec, (int ExitCode, string Output)>? OnCompletion { get; set; }
+
     public FakeProcess? Last { get; private set; }
 
     public IManagedProcess Start(ProcessSpec spec)
@@ -39,7 +41,7 @@ public sealed class FakeProcessRunner : IProcessRunner
     public Task<(int ExitCode, string Output)> RunToCompletionAsync(ProcessSpec spec, TimeSpan timeout, CancellationToken ct = default)
     {
         Completed.Add(spec);
-        return Task.FromResult((CompletionExitCode, "ok"));
+        return Task.FromResult(OnCompletion?.Invoke(spec) ?? (CompletionExitCode, "ok"));
     }
 }
 

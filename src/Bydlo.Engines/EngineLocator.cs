@@ -7,11 +7,13 @@ namespace Bydlo.Engines;
 /// Finds engine executables: explicit path from settings → BYDLO-managed install → PATH → well-known install folders
 /// (resolved from environment variables, never hardcoded drives).
 /// </summary>
-public class EngineLocator(EngineInstaller installer, PlatformInfo platform)
+public class EngineLocator(EngineInstaller installer, PlatformInfo platform, string? bundleDirectory = null)
 {
     public PlatformInfo Platform => platform;
 
     public EngineInstaller Installer => installer;
+
+    public string? BundledExecutable(string id) => installer.BundledExecutable(id, platform, bundleDirectory);
 
     public virtual string? Locate(EngineKind kind, AppSettings settings)
     {

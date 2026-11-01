@@ -35,6 +35,14 @@ dotnet run --project tools/Bydlo.Screenshots -- .tmp/screenshots ru   # отри
 dotnet publish src/Bydlo.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
 ```
 
+Чтобы добавить встроенный Zapret в локальный релиз, после публикации выполните упаковщик (только скачивание, SHA-256 и извлечение; ничего не запускает):
+
+```bash
+dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/win-x64 .
+```
+
+Обычные `dotnet build` / `dotnet test` бинарники Zapret не скачивают. Не запускайте упаковщик на рабочей машине, если антивирус блокирует WinDivert: используйте CI. Для Linux/macOS извлекается только целевой nfqws/tpws, без Windows-драйверов из общего upstream-архива. Windows ARM64 получает `ZAPRET-UNAVAILABLE.txt` вместо несовместимого драйвера.
+
 Идентификаторы платформ: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64`.
 
 ## CI
@@ -42,7 +50,7 @@ dotnet publish src/Bydlo.Desktop -c Release -r win-x64 --self-contained -p:Publi
 `.github/workflows/ci.yml`:
 
 1. **test** — сборка и модульные тесты на Ubuntu, Windows и macOS (`BYDLO_SAFE_DEV=1`).
-2. **desktop** — самодостаточная публикация для всех шести платформ, артефакты загружаются вместе с `LICENSE` и сведениями о сторонних компонентах.
+2. **desktop** — самодостаточная публикация для всех шести платформ, упаковка закреплённого Zapret с проверкой SHA-256, лицензиями и соответствующими исходниками LGPL-компонентов; артефакты загружаются вместе с `LICENSE` и сведениями о сторонних компонентах.
 3. **release** — для тегов `v*` упаковывает артефакты в zip, создаёт `SHA256SUMS.txt` и **черновик** релиза на GitHub.
 
 ## Воспроизводимость

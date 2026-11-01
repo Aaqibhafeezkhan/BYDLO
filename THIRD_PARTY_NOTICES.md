@@ -10,8 +10,9 @@ SHA-256. Исходный код каждого движка доступен в
 | Компонент | Авторы | Лицензия | Исходники | Как использует BYDLO |
 |---|---|---|---|---|
 | zapret-discord-youtube | Flowseal; на основе zapret от bol-van | MIT | https://github.com/Flowseal/zapret-discord-youtube | Стратегии (`general*.bat`), списки и набор `bin/` используются без изменений; BYDLO разбирает стратегии и запускает `winws.exe` напрямую. |
-| zapret (winws, nfqws, tpws) | bol-van | MIT | https://github.com/bol-van/zapret | Движок обхода DPI, входит в релиз Flowseal. |
+| zapret (winws, nfqws, tpws) | bol-van | MIT | https://github.com/bol-van/zapret | Windows: внутри Flowseal; Linux/macOS: закреплённый upstream v72.13, nfqws/tpws как отдельные процессы. |
 | WinDivert | basil00 | LGPL-3.0 или GPL-2.0 | https://github.com/basil00/WinDivert | Драйвер перехвата пакетов, используемый `winws.exe` (входит в релиз Flowseal). |
+| Cygwin 3.4.10 / Newlib | Cygwin contributors / Red Hat и другие | LGPL-3.0-or-later с Cygwin Linking Exception; дополнительные permissive notices Newlib | https://cygwin.com/licensing.html | Неизменённый cygwin1.dll из Flowseal; динамическая библиотека winws. |
 | tg-ws-proxy | Flowseal | MIT | https://github.com/Flowseal/tg-ws-proxy | Консольная точка входа `tg-ws-proxy`; по запросу пользователя устанавливается из закреплённого тега в отдельное окружение Python. |
 | sing-box | SagerNet / nekohasekai | GPL-3.0-or-later (с дополнительными условиями об использовании названия) | https://github.com/SagerNet/sing-box | Основной движок для VLESS/VMess/Trojan/Shadowsocks/Hysteria 2/TUIC/SOCKS/HTTP/WireGuard; конфигурацию генерирует BYDLO. |
 | Xray-core | Project X (XTLS) | MPL-2.0 | https://github.com/XTLS/Xray-core | Движок для транспорта XHTTP и альтернативный движок для протоколов семейства V2Ray. |
@@ -53,3 +54,12 @@ SHA-256. Исходный код каждого движка доступен в
 
 Архивы релизов, которые собирает CI, содержат этот файл и `LICENSE`. Если вы распространяете BYDLO вместе с бинарниками
 движков, приложите также лицензию каждого движка и предложение предоставить исходный код, если этого требует его лицензия.
+
+## Встроенный Zapret
+
+- Flowseal 1.10.3: MIT, текст из закреплённого [LICENSE.txt](https://github.com/Flowseal/zapret-discord-youtube/blob/1.10.3/LICENSE.txt).
+- bol-van/zapret 72.13: MIT, подтверждён по [docs/LICENSE.txt](https://github.com/bol-van/zapret/blob/v72.13/docs/LICENSE.txt), включая copyright bol-van. Универсальный `binaries/mac64/tpws` содержит x86_64 и arm64.
+- WinDivert 2.2: выбираем LGPL-3.0; комплект содержит тексты LGPLv3/GPLv3/GPLv2 и закреплённые исходники v2.2.2. Исходный код: https://github.com/basil00/WinDivert/tree/v2.2.2.
+- Cygwin DLL 3.4.10: LGPLv3+ и Linking Exception, тексты `CYGWIN_LICENSE`, LGPLv3 и дополнительные notices Newlib включены. Архив `cygwin-3.4.10-1-src.tar.xz` содержит соответствующие исходники и cygport recipe; источник — зеркало дистрибутива Cygwin в ČVUT.
+
+Релизные архивы включают `engines/licenses/` и (для Windows x64) `engines/sources/` с исходниками WinDivert и Cygwin. Их URL и SHA-256 закреплены отдельно в `engines/zapret-sources.lock.json`; упаковка прекращается при несовпадении. GPLv3 находится в корневом `LICENSE`. Бинарники не изменяются; библиотеку Cygwin/WinDivert можно заменить совместимой версией. Нативные пресеты написаны для BYDLO, код/стратегии Sergeydigl3 и других проектов без лицензии не копируются.

@@ -45,7 +45,7 @@ public static partial class ZapretStrategyParser
             .Select(n => new ZapretStrategy(n, Path.GetFileNameWithoutExtension(n)))];
     }
 
-    public static ParsedStrategy Parse(string batchText, string installDir, GameFilterValues gameFilter)
+    public static ParsedStrategy Parse(string batchText, string installDir, GameFilterValues gameFilter, string? userListsDirectory = null)
     {
         var warnings = new List<string>();
         var root = Path.GetFullPath(installDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
@@ -84,6 +84,14 @@ public static partial class ZapretStrategyParser
             });
             if (value.Length > 0)
             {
+                if (userListsDirectory is not null)
+                {
+                    foreach (var name in new[] { "list-general-user.txt", "list-exclude-user.txt", "ipset-exclude-user.txt" })
+                    {
+                        value = value.Replace(Path.Combine(root, "lists", name), Path.Combine(userListsDirectory, name), StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+
                 args.Add(value);
             }
         }

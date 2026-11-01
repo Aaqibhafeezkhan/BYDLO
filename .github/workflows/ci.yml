@@ -67,6 +67,11 @@ jobs:
           dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }}
           --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish/BYDLO-${{ matrix.rid }}
+      - name: Bundle pinned Zapret (download, verify, extract only)
+        shell: bash
+        run: >
+          dotnet run --project tools/Bydlo.BundleEngines -c Release --
+          ${{ matrix.rid }} publish/BYDLO-${{ matrix.rid }} .
       - name: Add notices
         shell: bash
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-${{ matrix.rid }}/
@@ -90,7 +95,12 @@ jobs:
       - name: Package and checksum
         run: |
           cd dist
-          for d in BYDLO-*; do (cd "$d" && zip -qr "../$d.zip" .); done
+          for d in BYDLO-*; do
+            case "$d" in
+              *linux-*|*osx-*) find "$d" -type f \( -name BYDLO -o -name nfqws -o -name tpws \) -exec chmod 755 {} + ;;
+            esac
+            (cd "$d" && zip -qr "../$d.zip" .)
+          done
           sha256sum *.zip > SHA256SUMS.txt
       - name: Create draft release
         env:

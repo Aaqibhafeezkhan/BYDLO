@@ -140,7 +140,7 @@
                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                         <TextBlock Classes="faint" Text="{Binding Author}" VerticalAlignment="Center" />
                       </StackPanel>
-                      <TextBlock Classes="faint" Text="{Binding Role}" TextWrapping="Wrap" />
+                      <TextBlock Classes="faint" Text="{Binding LocalizedRole}" TextWrapping="Wrap" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                       <Border Classes="pill"><TextBlock Text="{Binding License}" /></Border>

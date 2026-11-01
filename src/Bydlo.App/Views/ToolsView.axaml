@@ -42,7 +42,7 @@
           <TextBlock Classes="muted" Text="{Binding ZapretInfo}" TextWrapping="Wrap" />
 
           <WrapPanel>
-            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding InstallZapretCommand}" IsEnabled="{Binding !IsInstalling}" IsVisible="{Binding IsWindows}">
+            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding InstallZapretCommand}" IsEnabled="{Binding !IsInstalling}" IsVisible="{Binding CanInstallZapret}">
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <PathIcon Data="{StaticResource IconDownload}" Width="16" Height="16" />
                 <TextBlock Text="{l:T tools.zapret.download}" />
@@ -65,8 +65,8 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.zapret.game}" Margin="0,0,0,6" />
-            <ComboBox Grid.Column="2" Grid.Row="1" ItemsSource="{x:Static vm:ToolsViewModel.GameFilterModes}" SelectedItem="{Binding GameFilter}" HorizontalAlignment="Stretch">
+            <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.zapret.game}" IsVisible="{Binding SupportsGameFilter}" Margin="0,0,0,6" />
+            <ComboBox Grid.Column="2" Grid.Row="1" IsVisible="{Binding SupportsGameFilter}" ItemsSource="{x:Static vm:ToolsViewModel.GameFilterModes}" SelectedItem="{Binding GameFilter}" HorizontalAlignment="Stretch">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
                   <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=game.}" />
@@ -74,7 +74,9 @@
               </ComboBox.ItemTemplate>
             </ComboBox>
           </Grid>
-          <TextBlock Classes="faint" Text="{l:T tools.zapret.tcpts}" TextWrapping="Wrap" />
+          <TextBlock Classes="faint" Text="{l:T tools.zapret.tcpts}" IsVisible="{Binding IsWindows}" TextWrapping="Wrap" />
+
+          <TextBlock Classes="faint" Text="{Binding ZapretPlatformNote}" TextWrapping="Wrap" />
 
           <Expander Header="{l:T tools.zapret.lists}" HorizontalAlignment="Stretch">
             <StackPanel Spacing="10">
