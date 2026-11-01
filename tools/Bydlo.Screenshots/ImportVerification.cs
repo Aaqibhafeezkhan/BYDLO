@@ -37,15 +37,29 @@ internal static class ImportVerification
                 Require(!secondary.IsPrimary, "Second launch forwards instead of starting another app");
                 secondary.Forward(["--mock", link, "ignored.exe"]);
             }));
+            WaitUntil(() => shell.HasImportPreview && shell.CanConfirmImport, "Forwarded arguments reach existing window");
             Capture("import-activation", 1180, 780);
             Require(shell.HasImportPreview && shell.CanConfirmImport, "Forwarded arguments reach existing window");
             Bydlo.App.App.PendingActivations.Enqueue([link + "queued"]);
             Capture("import-activation-queued", 1180, 780);
             Require(Bydlo.App.App.PendingActivations.Count == 1, "Active preview preserves queued requests");
             shell.CancelImportCommand.Execute(null);
+            WaitUntil(() => shell.HasImportPreview && Bydlo.App.App.PendingActivations.IsEmpty, "Queued request opens after cancel");
             Capture("import-activation-next", 1180, 780);
             Require(shell.HasImportPreview && Bydlo.App.App.PendingActivations.IsEmpty, "Queued request opens after cancel");
             shell.CancelImportCommand.Execute(null);
+            for (var i = 0; i < 20; i++)
+            {
+                Wait(Task.Run(() =>
+                {
+                    using var secondary = new Bydlo.Desktop.WindowsActivationBroker(scope);
+                    Require(!secondary.IsPrimary, "Primary remains active across repeated launches");
+                    secondary.Forward([link]);
+                }));
+                WaitUntil(() => shell.HasImportPreview && shell.CanConfirmImport, "Repeated activation is delivered");
+                Require(Bydlo.App.App.PendingActivations.IsEmpty, "Each activation is delivered exactly once");
+                shell.CancelImportCommand.Execute(null);
+            }
         }
 
         Wait(shell.PreviewExternalAsync([link]));
@@ -116,11 +130,8 @@ internal static class ImportVerification
         {
             window.Width = width;
             window.Height = height;
-            for (var i = 0; i < 20; i++)
-            {
-                Dispatcher.UIThread.RunJobs();
-                Thread.Sleep(15);
-            }
+            using var renderTime = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+            Dispatcher.UIThread.MainLoop(renderTime.Token);
 
             using var frame = window.CaptureRenderedFrame();
             frame?.Save(Path.Combine(output, name + ".png"));
@@ -143,13 +154,39 @@ internal static class ImportVerification
 
     private static void Wait(Task task)
     {
-        while (!task.IsCompleted)
+        WaitUntil(() => task.IsCompleted, "Async operation completes");
+        task.GetAwaiter().GetResult();
+    }
+
+    private static void WaitUntil(Func<bool> condition, string message)
+    {
+        if (condition())
         {
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(10);
+            return;
         }
 
-        task.GetAwaiter().GetResult();
+        // RunJobs deliberately ignores pending OS events, including the Windows dispatcher
+        // timer used by MainWindow to consume activations. Pump a real dispatcher frame.
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var poll = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        poll.Tick += (_, _) =>
+        {
+            if (condition())
+            {
+                timeout.Cancel();
+            }
+        };
+        poll.Start();
+        try
+        {
+            Dispatcher.UIThread.MainLoop(timeout.Token);
+        }
+        finally
+        {
+            poll.Stop();
+        }
+
+        Require(condition(), message + " (15s timeout)");
     }
 
     private static void Require(bool condition, string message)

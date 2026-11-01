@@ -15,7 +15,7 @@ internal static class Program
             {
                 activation.Forward(args);
             }
-            catch (Exception ex) when (ex is IOException or TimeoutException)
+            catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException)
             {
                 Environment.ExitCode = 1;
             }
