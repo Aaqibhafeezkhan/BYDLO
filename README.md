@@ -6,7 +6,7 @@
 
 <p align="center"><img src="docs/images/home-connected.png" width="760" alt="Главный экран BYDLO"></p>
 
-BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов обхода блокировок.
+BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
 BYDLO не изобретает протоколы заново: он управляет проверенными движками (sing-box, Xray-core, WireGuard,
 AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-discord-youtube) и

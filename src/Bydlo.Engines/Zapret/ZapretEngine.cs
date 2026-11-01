@@ -125,7 +125,7 @@ public sealed class ZapretEngine(IProcessRunner runner, LogRedactor redactor, En
         var running = names.SelectMany(SafeGetProcesses).Distinct().ToArray();
         if (running.Length > 0)
         {
-            throw new EngineException($"Another DPI bypass is already running ({string.Join(", ", running)}). Stop it before starting Zapret.");
+            throw new EngineException($"Another DPI tool is already running ({string.Join(", ", running)}). Stop it before starting Zapret.");
         }
 
         install.EnsureUserLists();
