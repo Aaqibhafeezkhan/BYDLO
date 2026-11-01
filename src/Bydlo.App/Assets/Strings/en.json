@@ -32,6 +32,8 @@
   "mock.dropafterconnect": "Crash after ~20 s",
   "mock.slowconnect": "Slow connect",
 
+  "home.overline": "YOUR CONNECTION",
+  "home.title": "Internet, unbound.",
   "home.connect": "Connect",
   "home.disconnect": "Disconnect",
   "home.hint.tap": "Tap the button to connect",

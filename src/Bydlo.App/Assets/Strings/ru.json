@@ -32,6 +32,8 @@
   "mock.dropafterconnect": "Сбой через ~20 с",
   "mock.slowconnect": "Медленное подключение",
 
+  "home.overline": "ВАШЕ ПОДКЛЮЧЕНИЕ",
+  "home.title": "Интернет без границ.",
   "home.connect": "Подключить",
   "home.disconnect": "Отключить",
   "home.hint.tap": "Нажмите кнопку, чтобы подключиться",

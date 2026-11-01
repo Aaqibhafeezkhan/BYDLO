@@ -6,8 +6,8 @@
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="TextBlock.h1">
-    <Setter Property="FontSize" Value="28" />
-    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontSize" Value="30" />
+    <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="LetterSpacing" Value="-0.4" />
   </Style>
   <Style Selector="TextBlock.h2">
@@ -39,14 +39,15 @@
   <!-- Cards -->
   <Style Selector="Border.card">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource GlassShadow}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassEdgeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="18" />
-    <Setter Property="Padding" Value="20" />
+    <Setter Property="CornerRadius" Value="26" />
+    <Setter Property="Padding" Value="22" />
   </Style>
   <Style Selector="Border.tile">
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
-    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="CornerRadius" Value="18" />
     <Setter Property="Padding" Value="14,12" />
   </Style>
   <Style Selector="Border.pill">
@@ -91,7 +92,7 @@
     <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
   </Style>
   <Style Selector="Border.banner">
-    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="CornerRadius" Value="18" />
     <Setter Property="Padding" Value="14,10" />
     <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
   </Style>
@@ -107,8 +108,9 @@
 
   <!-- Buttons -->
   <Style Selector="Button">
-    <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="Padding" Value="14,9" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="16,11" />
+    <Setter Property="Cursor" Value="Hand" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
   <Style Selector="Button.primary">
@@ -150,7 +152,7 @@
   <Style Selector="RadioButton.nav">
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Name="bg" CornerRadius="12" Padding="12,10" Background="Transparent">
+        <Border Name="bg" CornerRadius="17" Padding="14,13" Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
           <Border.Transitions>
             <Transitions>
               <BrushTransition Property="Background" Duration="0:0:0.18" />
@@ -167,8 +169,13 @@
   <Style Selector="RadioButton.nav:pointerover /template/ Border#bg">
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
   </Style>
+  <Style Selector="RadioButton.nav:focus-visible /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
   <Style Selector="RadioButton.nav:checked /template/ Border#bg">
-    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassEdgeBrush}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource GlassShadow}" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
   </Style>
   <Style Selector="RadioButton.nav TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
@@ -188,14 +195,14 @@
     <Setter Property="Padding" Value="2,7" />
   </Style>
   <Style Selector="Expander">
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="16" />
   </Style>
 
   <!-- Segmented choice (theme, mode) -->
   <Style Selector="RadioButton.segment">
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Name="bg" CornerRadius="10" Padding="14,8" Background="Transparent">
+        <Border Name="bg" CornerRadius="14" Padding="14,10" Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
           <Border.Transitions>
             <Transitions>
               <BrushTransition Property="Background" Duration="0:0:0.15" />
@@ -208,7 +215,11 @@
     <Setter Property="Cursor" Value="Hand" />
   </Style>
   <Style Selector="RadioButton.segment:checked /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassEdgeBrush}" />
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+  </Style>
+  <Style Selector="RadioButton.segment:focus-visible /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
   </Style>
   <Style Selector="RadioButton.segment TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
@@ -220,11 +231,17 @@
 
   <!-- Inputs -->
   <Style Selector="TextBox">
-    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="CornerRadius" Value="14" />
     <Setter Property="Padding" Value="10,8" />
   </Style>
   <Style Selector="ComboBox">
-    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="CornerRadius" Value="14" />
   </Style>
   <Style Selector="ToggleSwitch">
     <Setter Property="OnContent" Value="" />
@@ -257,7 +274,7 @@
     <Setter Property="CornerRadius" Value="95" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassEdgeBrush}" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="RenderTransform" Value="scale(1)" />

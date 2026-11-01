@@ -6,7 +6,7 @@
              x:Class="Bydlo.App.Views.ToolsView"
              x:DataType="vm:ToolsViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="980" Margin="20,28,20,32" Spacing="18">
+    <StackPanel MaxWidth="980" Margin="24,28,24,32" Spacing="18">
       <StackPanel Spacing="4">
         <TextBlock Classes="h1" Text="{l:T nav.tools}" />
         <TextBlock Classes="muted" Text="{l:T tools.subtitle}" TextWrapping="Wrap" />
