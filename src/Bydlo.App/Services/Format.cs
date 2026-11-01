@@ -23,4 +23,7 @@ public static class Format
 
     public static string Duration(TimeSpan t) =>
         t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" : $"{t.Minutes:00}:{t.Seconds:00}";
+
+    public static string Latency(TimeSpan t) =>
+        t <= TimeSpan.Zero ? "<1 ms" : $"{Math.Max(1, (int)Math.Round(t.TotalMilliseconds))} ms";
 }

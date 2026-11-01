@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Models;
 
 namespace Bydlo.Core.Config;
@@ -27,7 +28,15 @@ public sealed class XrayConfigBuilder
 
         var settings = ctx.Settings;
         var routing = settings.Routing;
-        var rules = new JsonArray();
+        var rules = new JsonArray
+        {
+            new JsonObject
+            {
+                ["type"] = "field",
+                ["domain"] = Arr(ConnectionCheckService.ProviderDomains.Select(d => "domain:" + d)),
+                ["outboundTag"] = "proxy",
+            },
+        };
         if (routing.BypassPrivateNetworks)
         {
             rules.Add(new JsonObject { ["type"] = "field", ["ip"] = new JsonArray("geoip:private"), ["outboundTag"] = "direct" });

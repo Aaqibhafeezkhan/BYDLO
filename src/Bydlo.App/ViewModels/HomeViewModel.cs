@@ -1,8 +1,11 @@
 using System.ComponentModel;
+using System.Globalization;
 using Avalonia.Threading;
 using Bydlo.App.Services;
 using Bydlo.Core.Connection;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Models;
+using Bydlo.Core.Security;
 using Bydlo.Engines.TgWsProxy;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,6 +15,8 @@ namespace Bydlo.App.ViewModels;
 public sealed partial class HomeViewModel : PageViewModel
 {
     private readonly DispatcherTimer _clock;
+    private CancellationTokenSource? _checkCts;
+    private int _checkVersion;
 
     public HomeViewModel(MainViewModel shell)
         : base(shell)
@@ -30,6 +35,16 @@ public sealed partial class HomeViewModel : PageViewModel
 
     public bool IsError => Status == ConnectionStatus.Error;
 
+    public bool CanCheckConnection => IsConnected && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
+
+    public bool CanRunCheck => CanCheckConnection && !IsChecking;
+
+    public string? CheckDisabledReason => !IsConnected
+        ? null
+        : Services.IsMock
+            ? L["home.check.mock"]
+            : NetworkSafetyGuard.IsLocked ? L["home.check.locked"] : null;
+
     public string StatusText => Status switch
     {
         ConnectionStatus.Connected => L["status.connected"],
@@ -42,11 +57,28 @@ public sealed partial class HomeViewModel : PageViewModel
 
     public string ButtonText => IsConnected || IsBusy ? L["home.disconnect"] : L["home.connect"];
 
-    public string Hint => IsConnected
-        ? (Services.Settings.Mode == ConnectionMode.LocalProxy && !Shell.Primary.IsMock
-            ? Loc.T("home.hint.proxy", Services.Settings.LocalProxyPort)
-            : L["home.hint.connected"])
-        : Shell.SelectedProfile is null ? L["home.hint.noprofile"] : L["home.hint.tap"];
+    public string Hint
+    {
+        get
+        {
+            if (!IsConnected)
+            {
+                return Shell.SelectedProfile is null ? L["home.hint.noprofile"] : L["home.hint.tap"];
+            }
+
+            if (Shell.Primary.Mode == ConnectionMode.Tun || Shell.Primary.IsMock)
+            {
+                return L["home.hint.connected"];
+            }
+
+            return Shell.Primary.Engine switch
+            {
+                EngineKind.SingBox => Loc.T("home.hint.proxy", Shell.Primary.LocalProxyPort),
+                EngineKind.Xray => Loc.T("home.hint.proxy.xray", Shell.Primary.LocalProxyPort, Shell.Primary.LocalProxyPort + 1),
+                _ => L["home.hint.connected"],
+            };
+        }
+    }
 
     public string? Error => IsError ? Shell.Primary.Error : null;
 
@@ -68,6 +100,77 @@ public sealed partial class HomeViewModel : PageViewModel
             OnPropertyChanged();
             OnPropertyChanged(nameof(Hint));
         }
+    }
+
+    [ObservableProperty]
+    private bool _isChecking;
+
+    [ObservableProperty]
+    private bool _checkFailed;
+
+    [ObservableProperty]
+    private IpCheckResult? _checkResult;
+
+    public bool HasCheckResult => CheckResult is not null;
+
+    public bool HasCheckError => CheckFailed;
+
+    public string? CheckError => CheckFailed ? L["home.check.error"] : null;
+
+    public string CheckIp => CheckResult?.Ip ?? "—";
+
+    public string CheckCountry
+    {
+        get
+        {
+            var result = CheckResult;
+            if (result is null)
+            {
+                return "—";
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.CountryCode))
+            {
+                try
+                {
+                    var localized = new RegionInfo(result.CountryCode).DisplayName;
+                    if (!string.IsNullOrWhiteSpace(localized))
+                    {
+                        return localized;
+                    }
+                }
+                catch (ArgumentException)
+                {
+                    // Some providers return non-ISO codes; fall back to the provider name below.
+                }
+            }
+
+            return !string.IsNullOrWhiteSpace(result.CountryName) ? result.CountryName : L["home.check.unknown"];
+        }
+    }
+
+    public string CheckLatency => CheckResult is null ? "—" : Format.Latency(CheckResult.Latency);
+
+    public string CheckButtonText => IsChecking ? L["home.check.checking"] : L["home.check"];
+
+    partial void OnIsCheckingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanRunCheck));
+        OnPropertyChanged(nameof(CheckButtonText));
+    }
+
+    partial void OnCheckFailedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CheckError));
+        OnPropertyChanged(nameof(HasCheckError));
+    }
+
+    partial void OnCheckResultChanged(IpCheckResult? value)
+    {
+        OnPropertyChanged(nameof(HasCheckResult));
+        OnPropertyChanged(nameof(CheckIp));
+        OnPropertyChanged(nameof(CheckCountry));
+        OnPropertyChanged(nameof(CheckLatency));
     }
 
     public bool ZapretOn => Shell.Zapret.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
@@ -103,6 +206,59 @@ public sealed partial class HomeViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private async Task CheckConnection()
+    {
+        if (!CanCheckConnection || IsChecking)
+        {
+            return;
+        }
+
+        ResetCheck();
+        var version = _checkVersion;
+        var provider = Services.Settings.IpCheckProvider;
+        using var cts = new CancellationTokenSource();
+        _checkCts = cts;
+        IsChecking = true;
+        try
+        {
+            var result = await Services.ConnectionCheck.CheckAsync(
+                provider,
+                ConnectionCheckService.ResolveProxyPort(Shell.Primary.Engine, Shell.Primary.Mode, Shell.Primary.LocalProxyPort),
+                cts.Token);
+
+            if (version != _checkVersion || cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            CheckResult = result;
+            CheckFailed = false;
+            Services.Log.Info("check", $"External IP check via {provider} succeeded in {(int)result.Latency.TotalMilliseconds} ms.");
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (version != _checkVersion || cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            Services.Log.Warn("check", $"External IP check failed: {ex.Message}");
+            CheckFailed = true;
+        }
+        finally
+        {
+            if (ReferenceEquals(_checkCts, cts))
+            {
+                _checkCts = null;
+                IsChecking = false;
+            }
+        }
+    }
+
+    [RelayCommand]
     private Task ToggleZapret() => Shell.Tools.ToggleZapretCommand.ExecuteAsync(null);
 
     [RelayCommand]
@@ -131,7 +287,13 @@ public sealed partial class HomeViewModel : PageViewModel
 
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.Primary) or nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.Zapret) or nameof(MainViewModel.Tg))
+        if (e.PropertyName is nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.IsMock))
+        {
+            ResetCheck();
+        }
+
+        if (e.PropertyName is nameof(MainViewModel.Primary) or nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.IsMock)
+            or nameof(MainViewModel.Zapret) or nameof(MainViewModel.Tg))
         {
             RefreshAll();
         }
@@ -139,14 +301,33 @@ public sealed partial class HomeViewModel : PageViewModel
 
     private void RefreshAll()
     {
+        if (!IsConnected)
+        {
+            ResetCheck();
+        }
+
         foreach (var name in new[]
                  {
                      nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(StatusText), nameof(ButtonText), nameof(Hint), nameof(Error),
                      nameof(Elapsed), nameof(DownSpeed), nameof(UpSpeed), nameof(EngineLabel), nameof(ZapretOn), nameof(ZapretState), nameof(TgOn), nameof(TgState),
-                     nameof(IsTun),
+                     nameof(IsTun), nameof(CanCheckConnection), nameof(CanRunCheck), nameof(CheckDisabledReason), nameof(CheckButtonText),
+                     nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult),
                  })
         {
             OnPropertyChanged(name);
         }
+    }
+
+    /// <summary>Clears the card when Settings changes the provider. Safe to call from the UI thread.</summary>
+    public void ResetConnectionCheck() => ResetCheck();
+
+    private void ResetCheck()
+    {
+        _checkVersion++;
+        _checkCts?.Cancel();
+        _checkCts = null;
+        IsChecking = false;
+        CheckResult = null;
+        CheckFailed = false;
     }
 }

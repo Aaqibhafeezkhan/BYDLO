@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Import.Parsers;
 using Bydlo.Core.Models;
 
@@ -142,6 +143,7 @@ public sealed class SingBoxConfigBuilder
         {
             new JsonObject { ["action"] = "sniff" },
             new JsonObject { ["protocol"] = "dns", ["action"] = "hijack-dns" },
+            new JsonObject { ["domain_suffix"] = ToArray(ConnectionCheckService.ProviderDomains), ["outbound"] = ProxyTag },
         };
         if (routing.BypassPrivateNetworks)
         {

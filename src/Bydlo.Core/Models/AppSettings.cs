@@ -8,6 +8,14 @@ public enum ThemePreference
     Oled,
 }
 
+/// <summary>External IP lookup service used by the "Check connection" action on Home.</summary>
+public enum IpCheckProvider
+{
+    IpWhoIs,
+    IpApiCo,
+    IpInfo,
+}
+
 public enum MockScenario
 {
     /// <summary>Connects after a short delay and produces synthetic traffic.</summary>
@@ -40,6 +48,9 @@ public sealed class AppSettings
 
     /// <summary>Port of the local mixed (SOCKS5 + HTTP) inbound.</summary>
     public int LocalProxyPort { get; set; } = 2080;
+
+    /// <summary>Service used by the explicit "Check connection" action. The request always goes through the tunnel.</summary>
+    public IpCheckProvider IpCheckProvider { get; set; } = IpCheckProvider.IpWhoIs;
 
     /// <summary>Sets the OS proxy to the local inbound while connected. Off by default.</summary>
     public bool SetSystemProxy { get; set; }

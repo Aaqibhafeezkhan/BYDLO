@@ -100,4 +100,46 @@ public class ConfigBuilderTests
         var p = Import("vless://id@x.example.com:443?security=tls&type=xhttp");
         Assert.Throws<NotSupportedException>(() => SingBox(p));
     }
+
+    [Fact]
+    public void SingBox_forces_ip_check_domains_through_proxy()
+    {
+        var settings = new AppSettings
+        {
+            Routing =
+            {
+                DirectDomains = ["ipwho.is"],
+                ProxyOnlyListed = true,
+                ProxyDomains = ["example.com"],
+            },
+        };
+        var rules = SingBox(Import("trojan://pw@t.example.com:443"), settings)["route"]!["rules"]!.AsArray();
+
+        var forced = rules
+            .Select((rule, index) => (rule, index))
+            .First(x => x.rule!["domain_suffix"] is JsonArray d && d.Any(n => (string?)n == "ipwho.is") && (string?)x.rule["outbound"] == "proxy");
+        var direct = rules
+            .Select((rule, index) => (rule, index))
+            .First(x => x.rule!["domain_suffix"] is JsonArray d && d.Any(n => (string?)n == "ipwho.is") && (string?)x.rule["outbound"] == "direct");
+
+        Assert.True(forced.index < direct.index);
+    }
+
+    [Fact]
+    public void Xray_forces_ip_check_domains_through_proxy()
+    {
+        var settings = new AppSettings { Routing = { DirectDomains = ["ipwho.is"] } };
+        var p = Import("vless://id@x.example.com:443?security=tls&sni=x.example.com");
+        var rules = new XrayConfigBuilder()
+            .Build(p.Profile, p.Secrets, new BuildContext(settings))["routing"]!["rules"]!.AsArray();
+
+        var forced = rules
+            .Select((rule, index) => (rule, index))
+            .First(x => x.rule!["domain"] is JsonArray d && d.Any(n => (string?)n == "domain:ipwho.is") && (string?)x.rule["outboundTag"] == "proxy");
+        var direct = rules
+            .Select((rule, index) => (rule, index))
+            .First(x => x.rule!["domain"] is JsonArray d && d.Any(n => (string?)n == "domain:ipwho.is") && (string?)x.rule["outboundTag"] == "direct");
+
+        Assert.True(forced.index < direct.index);
+    }
 }
