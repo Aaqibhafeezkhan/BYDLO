@@ -1,0 +1,245 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:z="using:Bydlo.Engines.Zapret"
+             xmlns:l="using:Bydlo.App.Services"
+             x:Class="Bydlo.App.Views.ToolsView"
+             x:DataType="vm:ToolsViewModel">
+  <ScrollViewer>
+    <StackPanel MaxWidth="980" Margin="20,28,20,32" Spacing="18">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h1" Text="{l:T nav.tools}" />
+        <TextBlock Classes="muted" Text="{l:T tools.subtitle}" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <!-- Zapret -->
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Width="42" Height="42" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}">
+              <PathIcon Data="{StaticResource IconBolt}" Foreground="{DynamicResource AccentBrush}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+              <TextBlock Classes="h2" Text="Zapret" />
+              <TextBlock Classes="faint" Text="{l:T tools.zapret.desc}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Border Classes="pill" Classes.ok="{Binding ZapretRunning}">
+                <TextBlock Text="{Binding ZapretStatus}" />
+              </Border>
+              <Button Classes="primary" Command="{Binding ToggleZapretCommand}">
+                <Panel>
+                  <TextBlock Text="{l:T tools.start}" Foreground="White" IsVisible="{Binding !ZapretRunning}" />
+                  <TextBlock Text="{l:T tools.stop}" Foreground="White" IsVisible="{Binding ZapretRunning}" />
+                </Panel>
+              </Button>
+            </StackPanel>
+          </Grid>
+
+          <Border Classes="banner bad" IsVisible="{Binding ZapretError, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TextBlock Text="{Binding ZapretError}" TextWrapping="Wrap" />
+          </Border>
+          <TextBlock Classes="muted" Text="{Binding ZapretInfo}" TextWrapping="Wrap" />
+
+          <WrapPanel>
+            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding InstallZapretCommand}" IsEnabled="{Binding !IsInstalling}" IsVisible="{Binding IsWindows}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Data="{StaticResource IconDownload}" Width="16" Height="16" />
+                <TextBlock Text="{l:T tools.zapret.download}" />
+              </StackPanel>
+            </Button>
+            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding BrowseZapretCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Data="{StaticResource IconFolder}" Width="16" Height="16" />
+                <TextBlock Text="{l:T tools.zapret.choose}" />
+              </StackPanel>
+            </Button>
+          </WrapPanel>
+
+          <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
+            <TextBlock Classes="caps" Text="{l:T tools.zapret.strategy}" Margin="0,0,0,6" />
+            <ComboBox Grid.Row="1" ItemsSource="{Binding Strategies}" SelectedItem="{Binding SelectedStrategy}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="z:ZapretStrategy">
+                  <TextBlock Text="{Binding DisplayName}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.zapret.game}" Margin="0,0,0,6" />
+            <ComboBox Grid.Column="2" Grid.Row="1" ItemsSource="{x:Static vm:ToolsViewModel.GameFilterModes}" SelectedItem="{Binding GameFilter}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=game.}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <TextBlock Classes="faint" Text="{l:T tools.zapret.tcpts}" TextWrapping="Wrap" />
+
+          <Expander Header="{l:T tools.zapret.lists}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="10">
+              <ComboBox ItemsSource="{x:Static vm:ToolsViewModel.UserLists}" SelectedItem="{Binding SelectedList}" HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="z:ZapretUserList">
+                    <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=list.}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBox Text="{Binding ListText}" AcceptsReturn="True" MinHeight="140" MaxHeight="300"
+                       FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
+              <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T common.save}" Command="{Binding SaveListCommand}" />
+            </StackPanel>
+          </Expander>
+
+          <Expander Header="{l:T tools.logs}" HorizontalAlignment="Stretch">
+            <Border Classes="tile" MaxHeight="220">
+              <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding ZapretLog}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String"><SelectableTextBlock Classes="mono" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+          </Expander>
+        </StackPanel>
+      </Border>
+
+      <!-- TgWsProxy -->
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Width="42" Height="42" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}">
+              <PathIcon Data="{StaticResource IconSend}" Foreground="{DynamicResource AccentBrush}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+              <TextBlock Classes="h2" Text="TgWsProxy" />
+              <TextBlock Classes="faint" Text="{l:T tools.tg.desc}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Border Classes="pill" Classes.ok="{Binding TgRunning}">
+                <TextBlock Text="{Binding TgStatus}" />
+              </Border>
+              <Button Classes="primary" Command="{Binding ToggleTgCommand}">
+                <Panel>
+                  <TextBlock Text="{l:T tools.start}" Foreground="White" IsVisible="{Binding !TgRunning}" />
+                  <TextBlock Text="{l:T tools.stop}" Foreground="White" IsVisible="{Binding TgRunning}" />
+                </Panel>
+              </Button>
+            </StackPanel>
+          </Grid>
+
+          <Border Classes="banner bad" IsVisible="{Binding TgError, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TextBlock Text="{Binding TgError}" TextWrapping="Wrap" />
+          </Border>
+
+          <Border Classes="tile">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="mono" Text="{Binding TgLink}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}">
+                  <PathIcon Data="{StaticResource IconCopy}" Width="16" Height="16" />
+                </Button>
+                <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.open}" Command="{Binding OpenInTelegramCommand}">
+                  <PathIcon Data="{StaticResource IconSend}" Width="16" Height="16" />
+                </Button>
+                <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.regen}" Command="{Binding RegenerateSecretCommand}">
+                  <PathIcon Data="{StaticResource IconRefresh}" Width="16" Height="16" />
+                </Button>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Grid ColumnDefinitions="2*,12,*" RowDefinitions="Auto,Auto">
+            <TextBlock Classes="caps" Text="{l:T tools.tg.host}" Margin="0,0,0,6" />
+            <TextBox Grid.Row="1" Text="{Binding TgHost}" />
+            <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.tg.port}" Margin="0,0,0,6" />
+            <NumericUpDown Grid.Column="2" Grid.Row="1" Value="{Binding TgPort}" Minimum="1" Maximum="65535" FormatString="0" />
+          </Grid>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="muted" Text="{Binding TgRuntimeInfo}" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="12">
+              <StackPanel Spacing="6">
+                <TextBlock Classes="caps" Text="{l:T tools.tg.dcip}" />
+                <TextBox Text="{Binding TgDcIps}" AcceptsReturn="True" MinHeight="60" FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
+                <TextBlock Classes="faint" Text="{l:T tools.tg.dcip.hint}" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Spacing="6">
+                <TextBlock Classes="caps" Text="{l:T tools.tg.faketls}" />
+                <TextBox Text="{Binding TgFakeTls}" Watermark="example.com" />
+              </StackPanel>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{l:T tools.tg.cf}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding TgCfFallback}" />
+              </Grid>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{l:T tools.tg.verbose}" VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding TgVerbose}" />
+              </Grid>
+              <StackPanel Spacing="6">
+                <TextBlock Classes="caps" Text="{l:T tools.tg.runtime}" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBox Text="{Binding PythonPath}" Watermark="python" />
+                  <Button Grid.Column="1" Margin="8,0,0,0" Classes="ghost" Content="{l:T tools.tg.install}" Command="{Binding InstallTgRuntimeCommand}" IsEnabled="{Binding !IsInstalling}" />
+                </Grid>
+                <TextBlock Classes="faint" Text="{l:T tools.tg.runtime.hint}" TextWrapping="Wrap" />
+                <TextBox Text="{Binding TgCustomExe}" Watermark="{l:T tools.tg.custom}" />
+              </StackPanel>
+              <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T common.save}" Command="{Binding SaveTgCommand}" />
+            </StackPanel>
+          </Expander>
+
+          <Expander Header="{l:T tools.logs}" HorizontalAlignment="Stretch">
+            <Border Classes="tile" MaxHeight="220">
+              <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding TgLog}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String"><SelectableTextBlock Classes="mono" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+          </Expander>
+        </StackPanel>
+      </Border>
+
+      <!-- Engines -->
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h2" Text="{l:T tools.engines}" />
+          <TextBlock Classes="faint" Text="{l:T tools.engines.hint}" TextWrapping="Wrap" />
+          <ItemsControl ItemsSource="{Binding Engines}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:EngineRow">
+                <Border Classes="tile" Margin="0,0,0,6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="2">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                        <TextBlock Classes="faint" Text="{Binding Version}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <TextBlock Classes="faint" Text="{Binding License}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      <Border Classes="pill" Classes.ok="{Binding IsReady}">
+                        <TextBlock Text="{Binding Status}" />
+                      </Border>
+                      <Button Classes="ghost" Padding="10,6" IsVisible="{Binding CanInstall}"
+                              Command="{Binding $parent[UserControl].((vm:ToolsViewModel)DataContext).InstallEngineCommand}" CommandParameter="{Binding}">
+                        <PathIcon Data="{StaticResource IconDownload}" Width="15" Height="15" />
+                      </Button>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

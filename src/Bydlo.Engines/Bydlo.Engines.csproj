@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Bydlo.Engines</RootNamespace>
+    <AssemblyName>Bydlo.Engines</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Bydlo.Core\Bydlo.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\engines\engines.lock.json" LogicalName="engines.lock.json" />
+    <InternalsVisibleTo Include="Bydlo.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="using:Bydlo.App.Views"
+        xmlns:vm="using:Bydlo.App.ViewModels"
+        x:Class="Bydlo.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="BYDLO"
+        Width="1180" Height="780"
+        MinWidth="380" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BgBrush}"
+        Icon="avares://Bydlo.App/Assets/bydlo.ico">
+  <v:MainView />
+</Window>

@@ -1,0 +1,31 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:v="using:Bydlo.App.Views"
+             x:Class="Bydlo.App.App"
+             RequestedThemeVariant="Dark"
+             Name="BYDLO">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <!-- Index 0 is the active palette; ThemeService swaps it at runtime. -->
+        <ResourceInclude Source="avares://Bydlo.App/Themes/Purple.axaml" />
+        <ResourceInclude Source="avares://Bydlo.App/Themes/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:HomeViewModel"><v:HomeView /></DataTemplate>
+    <DataTemplate DataType="vm:ConnectionsViewModel"><v:ConnectionsView /></DataTemplate>
+    <DataTemplate DataType="vm:ToolsViewModel"><v:ToolsView /></DataTemplate>
+    <DataTemplate DataType="vm:RoutingViewModel"><v:RoutingView /></DataTemplate>
+    <DataTemplate DataType="vm:StatisticsViewModel"><v:StatisticsView /></DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel"><v:SettingsView /></DataTemplate>
+  </Application.DataTemplates>
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Bydlo.App/Themes/Styles.axaml" />
+  </Application.Styles>
+</Application>

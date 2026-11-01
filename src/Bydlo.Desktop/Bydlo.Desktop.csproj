@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Bydlo.Desktop</RootNamespace>
+    <AssemblyName>BYDLO</AssemblyName>
+    <ApplicationIcon>..\Bydlo.App\Assets\bydlo.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <!-- Self-contained single-file publishing is configured per RID in CI (see .github/workflows). -->
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Diagnostics" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Bydlo.App\Bydlo.App.csproj" />
+  </ItemGroup>
+</Project>

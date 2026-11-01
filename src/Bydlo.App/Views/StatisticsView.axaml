@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:c="using:Bydlo.App.Controls"
+             xmlns:l="using:Bydlo.App.Services"
+             x:Class="Bydlo.App.Views.StatisticsView"
+             x:DataType="vm:StatisticsViewModel">
+  <ScrollViewer>
+    <StackPanel MaxWidth="980" Margin="20,28,20,32" Spacing="18">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h1" Text="{l:T nav.statistics}" />
+        <TextBlock Classes="muted" Text="{l:T stats.subtitle}" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <WrapPanel>
+        <Border Classes="card" Width="220" Margin="0,0,12,12" Padding="16">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="caps" Text="{l:T stats.down}" />
+            <TextBlock Text="{Binding Down}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" />
+            <TextBlock Classes="faint" Text="{Binding TotalDown}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="card" Width="220" Margin="0,0,12,12" Padding="16">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="caps" Text="{l:T stats.up}" />
+            <TextBlock Text="{Binding Up}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock Classes="faint" Text="{Binding TotalUp}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="card" Width="220" Margin="0,0,12,12" Padding="16">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="caps" Text="{l:T stats.engine}" />
+            <TextBlock Text="{Binding Engine}" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Classes="faint" Text="{Binding Server}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Border>
+      </WrapPanel>
+
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="h3" Text="{l:T stats.chart}" />
+          <TextBlock Classes="faint" Text="{l:T stats.nostats}" IsVisible="{Binding NoStatsEngine}" TextWrapping="Wrap" />
+          <TextBlock Classes="caps" Text="{l:T stats.down}" />
+          <c:Sparkline Height="90" Values="{Binding Shell.DownHistory}" Stroke="{DynamicResource SuccessBrush}" />
+          <TextBlock Classes="caps" Text="{l:T stats.up}" />
+          <c:Sparkline Height="60" Values="{Binding Shell.UpHistory}" Stroke="{DynamicResource AccentBrush}" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="h3" Text="{l:T stats.log}" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+              <Button Classes="icon" ToolTip.Tip="{l:T stats.log.copy}" Command="{Binding CopyLogCommand}">
+                <PathIcon Data="{StaticResource IconCopy}" Width="16" Height="16" />
+              </Button>
+              <Button Classes="icon" ToolTip.Tip="{l:T stats.log.clear}" Command="{Binding ClearLogCommand}">
+                <PathIcon Data="{StaticResource IconDelete}" Width="16" Height="16" />
+              </Button>
+            </StackPanel>
+          </Grid>
+          <TextBlock Classes="faint" Text="{l:T stats.log.hint}" TextWrapping="Wrap" />
+          <Border Classes="tile" Height="300">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding Log}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String"><SelectableTextBlock Classes="mono" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

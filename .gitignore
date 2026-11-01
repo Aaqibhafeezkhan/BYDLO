@@ -1,0 +1,24 @@
+# Local temp, caches and research checkouts
+.tmp/
+artifacts/
+TestResults/
+
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+*.DotSettings.user
+
+# Runtime data accidentally created in repo
+*.log
+/engines/cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings
+.claude/settings.local.json

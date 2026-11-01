@@ -1,0 +1,158 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:l="using:Bydlo.App.Services"
+             x:Class="Bydlo.App.Views.HomeView"
+             x:DataType="vm:HomeViewModel">
+  <ScrollViewer>
+    <StackPanel MaxWidth="980" Margin="20,28,20,32" Spacing="22" HorizontalAlignment="Center">
+
+      <!-- Status -->
+      <StackPanel HorizontalAlignment="Center" Spacing="6">
+        <Border HorizontalAlignment="Center" Classes="pill"
+                Classes.ok="{Binding IsConnected}" Classes.bad="{Binding IsError}" Classes.warn="{Binding IsBusy}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Ellipse Classes="dot" Width="7" Height="7" />
+            <TextBlock Text="{Binding StatusText}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <!-- Connect hero -->
+      <Grid Width="300" Height="300" HorizontalAlignment="Center">
+        <Ellipse Width="300" Height="300" Fill="{DynamicResource GlowBrush}" Opacity="{Binding !IsConnected, Converter={x:Static l:BoolToOpacityConverter.Instance}}">
+          <Ellipse.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.5" /></Transitions></Ellipse.Transitions>
+        </Ellipse>
+        <Ellipse Width="300" Height="300" Fill="{DynamicResource GlowOnBrush}" Opacity="{Binding IsConnected, Converter={x:Static l:BoolToOpacityConverter.Instance}}">
+          <Ellipse.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.5" /></Transitions></Ellipse.Transitions>
+        </Ellipse>
+        <Ellipse Classes="ring" Classes.active="{Binding IsBusy}" Width="196" Height="196"
+                 Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" RenderTransformOrigin="50%,50%">
+          <Ellipse.RenderTransform><ScaleTransform /></Ellipse.RenderTransform>
+        </Ellipse>
+
+        <Button Classes="connect" Command="{Binding ToggleConnectionCommand}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                AutomationProperties.Name="{Binding ButtonText}">
+          <Grid Width="188" Height="188">
+            <Ellipse Fill="{DynamicResource ConnectIdleBrush}" />
+            <Ellipse Fill="{DynamicResource ConnectOnBrush}" Opacity="{Binding IsConnected, Converter={x:Static l:BoolToOpacityConverter.Instance}}">
+              <Ellipse.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.35" /></Transitions></Ellipse.Transitions>
+            </Ellipse>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+              <PathIcon Data="{StaticResource IconPower}" Width="52" Height="52" HorizontalAlignment="Center"
+                        Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding !IsConnected}" />
+              <PathIcon Data="{StaticResource IconPower}" Width="52" Height="52" HorizontalAlignment="Center"
+                        Foreground="White" IsVisible="{Binding IsConnected}" />
+              <TextBlock Text="{Binding ButtonText}" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="15" />
+            </StackPanel>
+          </Grid>
+        </Button>
+      </Grid>
+
+      <StackPanel HorizontalAlignment="Center" Spacing="4">
+        <TextBlock Text="{Binding Elapsed}" FontSize="30" FontWeight="Light" HorizontalAlignment="Center" FontFeatures="tnum" />
+        <TextBlock Classes="muted" Text="{Binding Hint}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460" />
+      </StackPanel>
+
+      <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" HorizontalAlignment="Center" MaxWidth="560">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource DangerBrush}" />
+          <TextBlock Text="{Binding Error}" TextWrapping="Wrap" MaxWidth="480" />
+        </StackPanel>
+      </Border>
+
+      <!-- Server + mode -->
+      <Border Classes="card" MaxWidth="560" Padding="16">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="caps" Text="{l:T home.server}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="icon" Command="{Binding Shell.NavigateCommand}" CommandParameter="connections"
+                    ToolTip.Tip="{l:T home.manage}">
+              <PathIcon Data="{StaticResource IconPlus}" Width="16" Height="16" />
+            </Button>
+          </Grid>
+          <ComboBox ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}"
+                    HorizontalAlignment="Stretch" PlaceholderText="{l:T home.noprofiles}" IsEnabled="{Binding !IsBusy}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProfileItem">
+                <StackPanel Spacing="2" Margin="0,2">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="faint" Text="{Binding Details}" />
+                </StackPanel>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{l:T home.tun}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T home.tun.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsTun}" IsEnabled="{Binding !IsBusy}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- Quick cards -->
+      <WrapPanel HorizontalAlignment="Center">
+        <Border Classes="card" Width="270" Padding="16" Margin="6">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="caps" Text="{l:T home.speed}" />
+            <Grid ColumnDefinitions="*,*">
+              <StackPanel Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <PathIcon Data="{StaticResource IconDown}" Width="13" Height="13" Foreground="{DynamicResource SuccessBrush}" />
+                  <TextBlock Classes="faint" Text="{l:T stats.down}" />
+                </StackPanel>
+                <TextBlock Text="{Binding DownSpeed}" FontSize="17" FontWeight="SemiBold" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <PathIcon Data="{StaticResource IconUp}" Width="13" Height="13" Foreground="{DynamicResource AccentBrush}" />
+                  <TextBlock Classes="faint" Text="{l:T stats.up}" />
+                </StackPanel>
+                <TextBlock Text="{Binding UpSpeed}" FontSize="17" FontWeight="SemiBold" />
+              </StackPanel>
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <TextBlock Classes="faint" Text="{l:T stats.engine}" />
+              <TextBlock Classes="faint" Text="{Binding EngineLabel}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Width="270" Padding="16" Margin="6">
+          <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*,Auto">
+            <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource AccentSoftBrush}">
+              <PathIcon Data="{StaticResource IconBolt}" Foreground="{DynamicResource AccentBrush}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+              <TextBlock Text="Zapret" FontWeight="SemiBold" />
+              <TextBlock Classes="faint" Text="{Binding ZapretState}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="2" IsChecked="{Binding ZapretOn, Mode=OneWay}" Command="{Binding ToggleZapretCommand}" />
+            <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Classes="faint" Margin="0,10,0,0" Text="{l:T home.zapret.hint}" TextWrapping="Wrap" />
+          </Grid>
+        </Border>
+
+        <Border Classes="card" Width="270" Padding="16" Margin="6">
+          <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*,Auto">
+            <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource AccentSoftBrush}">
+              <PathIcon Data="{StaticResource IconSend}" Foreground="{DynamicResource AccentBrush}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+              <TextBlock Text="TgWsProxy" FontWeight="SemiBold" />
+              <TextBlock Classes="faint" Text="{Binding TgState}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="2" IsChecked="{Binding TgOn, Mode=OneWay}" Command="{Binding ToggleTgCommand}" />
+            <Button Grid.Row="2" Grid.ColumnSpan="3" Classes="ghost" Margin="0,10,0,0" HorizontalAlignment="Stretch" Command="{Binding CopyTgLinkCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <PathIcon Data="{StaticResource IconLink}" Width="15" Height="15" />
+                <TextBlock Text="{l:T tools.tg.copy}" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Border>
+      </WrapPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

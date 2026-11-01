@@ -1,0 +1,87 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:l="using:Bydlo.App.Services"
+             x:Class="Bydlo.App.Views.RoutingView"
+             x:DataType="vm:RoutingViewModel">
+  <UserControl.Styles>
+    <Style Selector="TextBox.list">
+      <Setter Property="AcceptsReturn" Value="True" />
+      <Setter Property="MinHeight" Value="90" />
+      <Setter Property="MaxHeight" Value="220" />
+      <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Menlo, monospace" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </UserControl.Styles>
+  <ScrollViewer>
+    <StackPanel MaxWidth="980" Margin="20,28,20,32" Spacing="18">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="h1" Text="{l:T nav.routing}" />
+          <TextBlock Classes="muted" Text="{l:T routing.subtitle}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="primary" VerticalAlignment="Center" Content="{l:T common.save}" Command="{Binding SaveCommand}" />
+      </Grid>
+
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{l:T routing.mesh}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T routing.mesh.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding PreserveMesh}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{l:T routing.private}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T routing.private.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding BypassPrivate}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{l:T routing.only}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T routing.only.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ProxyOnlyListed}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="h3" Text="DNS" />
+          <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
+            <TextBlock Classes="caps" Text="{l:T routing.dns.remote}" Margin="0,0,0,6" />
+            <TextBox Grid.Row="1" Text="{Binding RemoteDns}" Watermark="1.1.1.1" />
+            <TextBlock Grid.Column="2" Classes="caps" Text="{l:T routing.dns.direct}" Margin="0,0,0,6" />
+            <TextBox Grid.Column="2" Grid.Row="1" Text="{Binding DirectDns}" Watermark="local" />
+          </Grid>
+          <TextBlock Classes="faint" Text="{l:T routing.dns.hint}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h3" Text="{l:T routing.rules}" />
+          <TextBlock Classes="caps" Text="{l:T routing.direct}" />
+          <TextBox Classes="list" Text="{Binding DirectDomains}" Watermark="example.ru&#x0a;gosuslugi.ru" />
+          <TextBlock Classes="caps" Text="{l:T routing.proxy}" />
+          <TextBox Classes="list" Text="{Binding ProxyDomains}" Watermark="youtube.com" />
+          <TextBlock Classes="caps" Text="{l:T routing.block}" />
+          <TextBox Classes="list" Text="{Binding BlockDomains}" Watermark="ads.example.com" />
+          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="caps" Text="{l:T routing.cidr}" />
+              <TextBox Classes="list" Text="{Binding DirectCidrs}" Watermark="192.0.2.0/24" />
+              <TextBlock Classes="caps" Text="{l:T routing.process}" />
+              <TextBox Classes="list" Text="{Binding DirectProcesses}" Watermark="game.exe" />
+              <TextBlock Classes="faint" Text="{l:T routing.process.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Expander>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

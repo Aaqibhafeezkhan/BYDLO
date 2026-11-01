@@ -1,0 +1,117 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:l="using:Bydlo.App.Services"
+             x:Class="Bydlo.App.Views.MainView"
+             x:DataType="vm:MainViewModel"
+             Background="{DynamicResource BackdropBrush}">
+  <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*">
+
+    <!-- Desktop sidebar -->
+    <Border Grid.RowSpan="3" Width="232" IsVisible="{Binding !IsCompact}"
+            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="16,22,16,16">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="8,0,0,26">
+          <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource PrimaryGradientBrush}">
+            <PathIcon Data="{StaticResource IconShield}" Foreground="White" Width="18" Height="18" />
+          </Border>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="BYDLO" FontWeight="Black" FontSize="17" LetterSpacing="1.5" />
+            <TextBlock Classes="faint" Text="{l:T app.slogan}" FontSize="10.5" TextWrapping="Wrap" MaxWidth="150" />
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Spacing="8">
+          <Border Classes="pill warn" IsVisible="{Binding IsMock}" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{StaticResource IconFlask}" Width="12" Height="12" Foreground="{DynamicResource WarningBrush}" />
+              <TextBlock Text="{l:T mock.badge}" />
+            </StackPanel>
+          </Border>
+          <TextBlock Classes="faint" Text="v0.1.0 · GPL-3.0" Margin="4,0" />
+        </StackPanel>
+
+        <ItemsControl ItemsSource="{Binding NavItems}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:NavItem">
+              <RadioButton Classes="nav" GroupName="nav" Margin="0,0,0,4"
+                           IsChecked="{Binding IsSelected, Mode=OneWay}"
+                           Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NavigateCommand}"
+                           CommandParameter="{Binding Key}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <PathIcon Data="{Binding IconKey, Converter={x:Static l:IconConverter.Instance}}" />
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                </StackPanel>
+              </RadioButton>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </DockPanel>
+    </Border>
+
+    <!-- Compact header -->
+    <Grid Grid.Column="1" IsVisible="{Binding IsCompact}" ColumnDefinitions="Auto,*,Auto" Margin="16,14,16,0">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource PrimaryGradientBrush}">
+          <PathIcon Data="{StaticResource IconShield}" Foreground="White" Width="14" Height="14" />
+        </Border>
+        <TextBlock Text="BYDLO" FontWeight="Black" FontSize="16" LetterSpacing="1.5" VerticalAlignment="Center" />
+      </StackPanel>
+      <Border Grid.Column="2" Classes="pill warn" IsVisible="{Binding IsMock}">
+        <TextBlock Text="{l:T mock.badge}" />
+      </Border>
+    </Grid>
+
+    <!-- Content -->
+    <TransitioningContentControl Grid.Row="1" Grid.Column="1" Content="{Binding CurrentPage}">
+      <TransitioningContentControl.PageTransition>
+        <CrossFade Duration="0:0:0.18" />
+      </TransitioningContentControl.PageTransition>
+    </TransitioningContentControl>
+
+    <!-- Compact bottom navigation -->
+    <Border Grid.Row="2" Grid.Column="1" IsVisible="{Binding IsCompact}"
+            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="6,6,6,10">
+      <ItemsControl ItemsSource="{Binding NavItems}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:NavItem">
+            <RadioButton Classes="nav navbottom" GroupName="bottomnav" HorizontalContentAlignment="Center"
+                         IsChecked="{Binding IsSelected, Mode=OneWay}"
+                         Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NavigateCommand}"
+                         CommandParameter="{Binding Key}">
+              <StackPanel Spacing="3" HorizontalAlignment="Center">
+                <PathIcon Data="{Binding IconKey, Converter={x:Static l:IconConverter.Instance}}" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding ShortTitle}" FontSize="10" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </RadioButton>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <!-- Orphan engines banner -->
+    <Border Grid.Row="1" Grid.Column="1" Classes="banner" IsVisible="{Binding HasOrphans}"
+            VerticalAlignment="Top" HorizontalAlignment="Center" Margin="16,12">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
+        <TextBlock Text="{l:T orphans.text}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" />
+        <Button Classes="ghost" Content="{l:T orphans.stop}" Command="{Binding CleanupOrphansCommand}" />
+      </StackPanel>
+    </Border>
+
+    <!-- Toast -->
+    <Border Grid.Row="1" Grid.Column="1" IsVisible="{Binding Toast, Converter={x:Static ObjectConverters.IsNotNull}}"
+            VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16,0,16,22" MaxWidth="560"
+            CornerRadius="14" Padding="16,11" BoxShadow="0 8 30 0 #40000000"
+            Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding ToastIsError}" Width="16" Height="16" />
+        <PathIcon Data="{StaticResource IconInfo}" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding !ToastIsError}" Width="16" Height="16" />
+        <TextBlock Text="{Binding Toast}" TextWrapping="Wrap" MaxWidth="500" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

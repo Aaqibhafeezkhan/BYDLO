@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Bydlo.App</RootNamespace>
+    <AssemblyName>Bydlo.App</AssemblyName>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="ZXing.Net" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Bydlo.Core\Bydlo.Core.csproj" />
+    <ProjectReference Include="..\Bydlo.Engines\Bydlo.Engines.csproj" />
+    <ProjectReference Include="..\Bydlo.Platform\Bydlo.Platform.csproj" />
+  </ItemGroup>
+</Project>

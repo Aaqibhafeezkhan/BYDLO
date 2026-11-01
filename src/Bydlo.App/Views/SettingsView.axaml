@@ -1,0 +1,161 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:m="using:Bydlo.Core.Models"
+             xmlns:l="using:Bydlo.App.Services"
+             x:Class="Bydlo.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <ScrollViewer>
+    <StackPanel MaxWidth="980" Margin="20,28,20,32" Spacing="18">
+      <TextBlock Classes="h1" Text="{l:T nav.settings}" />
+
+      <!-- Appearance -->
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="h3" Text="{l:T settings.appearance}" />
+          <TextBlock Classes="caps" Text="{l:T settings.theme}" />
+          <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="4" HorizontalAlignment="Left">
+            <WrapPanel>
+              <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemePurple}"><TextBlock Text="{l:T theme.purple}" /></RadioButton>
+              <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeLight}"><TextBlock Text="{l:T theme.light}" /></RadioButton>
+              <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeOled}"><TextBlock Text="{l:T theme.oled}" /></RadioButton>
+              <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeSystem}"><TextBlock Text="{l:T theme.system}" /></RadioButton>
+            </WrapPanel>
+          </Border>
+          <TextBlock Classes="caps" Text="{l:T settings.language}" />
+          <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding Language}" MinWidth="220">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=lang.}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+      </Border>
+
+      <!-- Connection -->
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="h3" Text="{l:T settings.connection}" />
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{l:T settings.autoreconnect}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T settings.autoreconnect.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoReconnect}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{l:T settings.advanced.show}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T settings.advanced.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowAdvanced}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- Advanced -->
+      <Border Classes="card" IsVisible="{Binding ShowAdvanced}">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="h3" Text="{l:T common.advanced}" />
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{l:T settings.port}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T settings.port.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <NumericUpDown Grid.Column="1" Value="{Binding LocalPort}" Minimum="1024" Maximum="65535" FormatString="0" Width="140" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="{l:T settings.sysproxy}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T settings.sysproxy.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding SetSystemProxy}" IsEnabled="{Binding SystemProxySupported}" />
+          </Grid>
+
+          <Border Classes="tile">
+            <StackPanel Spacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Data="{StaticResource IconFlask}" Foreground="{DynamicResource WarningBrush}" />
+                <TextBlock Text="{l:T settings.mock}" FontWeight="SemiBold" />
+              </StackPanel>
+              <TextBlock Classes="faint" Text="{l:T settings.mock.hint}" TextWrapping="Wrap" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{l:T settings.mock.enable}" VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding MockMode}" IsEnabled="{Binding !MockForcedByFlag}" />
+              </Grid>
+              <TextBlock Classes="faint" Text="{l:T settings.mock.forced}" IsVisible="{Binding MockForcedByFlag}" />
+              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Scenarios}" SelectedItem="{Binding MockScenario}" MinWidth="220">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="m:MockScenario">
+                    <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=mock.}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="tile">
+            <StackPanel Spacing="6">
+              <TextBlock Text="{l:T settings.system}" FontWeight="SemiBold" />
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="muted" Text="{l:T settings.admin}" />
+                <TextBlock Text="{l:T common.yes}" IsVisible="{Binding IsElevated}" />
+                <TextBlock Text="{l:T common.no}" IsVisible="{Binding !IsElevated}" />
+              </StackPanel>
+              <Button Classes="ghost" HorizontalAlignment="Left" Content="{l:T settings.admin.restart}" Command="{Binding RestartElevatedCommand}" IsVisible="{Binding CanRestartElevated}" />
+              <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="muted" Text="{l:T settings.secrets}" />
+                <TextBlock Text="{Binding SecretProtection}" TextWrapping="Wrap" />
+              </StackPanel>
+              <SelectableTextBlock Classes="mono" Text="{Binding DataDirectory}" TextWrapping="Wrap" />
+              <TextBlock Classes="faint" Foreground="{DynamicResource WarningBrush}" Text="{l:T settings.safelock}" IsVisible="{Binding SafetyLock}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+
+      <!-- About & credits -->
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Border Width="38" Height="38" CornerRadius="11" Background="{DynamicResource PrimaryGradientBrush}">
+              <PathIcon Data="{StaticResource IconShield}" Foreground="White" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding Version, StringFormat='BYDLO {0}'}" FontWeight="Bold" />
+              <TextBlock Classes="faint" Text="{l:T app.full}" />
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Classes="muted" Text="{l:T about.text}" TextWrapping="Wrap" />
+          <TextBlock Classes="caps" Text="{l:T about.credits}" Margin="0,6,0,0" />
+          <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.Credits}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:Credit">
+                <Border Classes="tile" Margin="0,0,0,6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="1">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                        <TextBlock Classes="faint" Text="{Binding Author}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <TextBlock Classes="faint" Text="{Binding Role}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                      <Border Classes="pill"><TextBlock Text="{Binding License}" /></Border>
+                      <Button Classes="icon" ToolTip.Tip="{Binding Url}"
+                              Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenUrlCommand}" CommandParameter="{Binding Url}">
+                        <PathIcon Data="{StaticResource IconLink}" Width="15" Height="15" />
+                      </Button>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,119 @@
+namespace Bydlo.Core.Models;
+
+public enum ThemePreference
+{
+    System,
+    Purple,
+    Light,
+    Oled,
+}
+
+public enum MockScenario
+{
+    /// <summary>Connects after a short delay and produces synthetic traffic.</summary>
+    Success,
+
+    /// <summary>Fails while connecting (e.g. "handshake timeout").</summary>
+    FailOnConnect,
+
+    /// <summary>Connects, then the simulated process crashes after ~20 seconds.</summary>
+    DropAfterConnect,
+
+    /// <summary>Takes ~6 seconds to connect.</summary>
+    SlowConnect,
+}
+
+public sealed class AppSettings
+{
+    public ThemePreference Theme { get; set; } = ThemePreference.Purple;
+
+    /// <summary>"auto", "en" or "ru".</summary>
+    public string Language { get; set; } = "auto";
+
+    public bool MockMode { get; set; }
+
+    public MockScenario MockScenario { get; set; } = MockScenario.Success;
+
+    public Guid? LastProfileId { get; set; }
+
+    public ConnectionMode Mode { get; set; } = ConnectionMode.LocalProxy;
+
+    /// <summary>Port of the local mixed (SOCKS5 + HTTP) inbound.</summary>
+    public int LocalProxyPort { get; set; } = 2080;
+
+    /// <summary>Sets the OS proxy to the local inbound while connected. Off by default.</summary>
+    public bool SetSystemProxy { get; set; }
+
+    public bool AutoReconnect { get; set; } = true;
+
+    public bool ShowAdvanced { get; set; }
+
+    public RoutingSettings Routing { get; set; } = new();
+
+    public ZapretSettings Zapret { get; set; } = new();
+
+    public TgWsProxySettings TgWsProxy { get; set; } = new();
+
+    /// <summary>Explicit paths to engine executables, keyed by <see cref="EngineKind"/> name.</summary>
+    public Dictionary<string, string> EnginePaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+public sealed class RoutingSettings
+{
+    /// <summary>
+    /// Keep CGNAT / mesh-VPN address ranges (100.64.0.0/10, fd7a:115c:a1e3::/48) outside the tunnel,
+    /// so other VPN or mesh-network clients keep working while BYDLO is connected.
+    /// </summary>
+    public bool PreserveMeshVpnRanges { get; set; } = true;
+
+    public bool BypassPrivateNetworks { get; set; } = true;
+
+    /// <summary>DNS-over-HTTPS server used through the tunnel.</summary>
+    public string RemoteDns { get; set; } = "1.1.1.1";
+
+    public string DirectDns { get; set; } = "local";
+
+    public List<string> DirectDomains { get; set; } = [];
+
+    public List<string> ProxyDomains { get; set; } = [];
+
+    public List<string> BlockDomains { get; set; } = [];
+
+    public List<string> DirectCidrs { get; set; } = [];
+
+    /// <summary>When true only <see cref="ProxyDomains"/> go through the tunnel (split tunneling "include" mode).</summary>
+    public bool ProxyOnlyListed { get; set; }
+
+    /// <summary>Process names that bypass the tunnel (TUN mode, sing-box only).</summary>
+    public List<string> DirectProcesses { get; set; } = [];
+}
+
+public sealed class ZapretSettings
+{
+    /// <summary>Folder with an extracted Flowseal zapret-discord-youtube release.</summary>
+    public string? InstallPath { get; set; }
+
+    /// <summary>Strategy file name, e.g. <c>general (ALT).bat</c>.</summary>
+    public string? Strategy { get; set; }
+
+    /// <summary>Game filter: "disabled", "all", "tcp" or "udp".</summary>
+    public string GameFilter { get; set; } = "disabled";
+}
+
+public sealed class TgWsProxySettings
+{
+    public string Host { get; set; } = "127.0.0.1";
+
+    public int Port { get; set; } = 1443;
+
+    /// <summary>Custom command to run tg-ws-proxy (headless CLI). Empty = managed runtime.</summary>
+    public string? CustomExecutable { get; set; }
+
+    public List<string> DcIps { get; set; } = ["2:149.154.167.220", "4:149.154.167.220"];
+
+    public string FakeTlsDomain { get; set; } = "";
+
+    public bool Verbose { get; set; }
+
+    public bool CfProxyFallback { get; set; } = true;
+}

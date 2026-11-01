@@ -1,0 +1,51 @@
+using System.Globalization;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
+
+namespace Bydlo.App.Services;
+
+/// <summary>Resource key → icon geometry (used by navigation items).</summary>
+public sealed class IconConverter : IValueConverter
+{
+    public static IconConverter Instance { get; } = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is string key && Application.Current?.TryFindResource(key, out var res) == true ? res as Geometry : null;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>Localization key → text (for keys that come from view models). Re-evaluated when items are re-rendered.</summary>
+public sealed class LocConverter : IValueConverter
+{
+    public static LocConverter Instance { get; } = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is string key ? Loc.Instance[key] : value;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>Enum / string value → localized label using a key prefix given as parameter, e.g. "game.".</summary>
+public sealed class PrefixLocConverter : IValueConverter
+{
+    public static PrefixLocConverter Instance { get; } = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is null ? null : Loc.Instance[$"{parameter}{value.ToString()!.ToLowerInvariant()}"];
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>bool → opacity (1 / 0) so visibility changes can be animated with a DoubleTransition.</summary>
+public sealed class BoolToOpacityConverter : IValueConverter
+{
+    public static BoolToOpacityConverter Instance { get; } = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true ? 1.0 : 0.0;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}

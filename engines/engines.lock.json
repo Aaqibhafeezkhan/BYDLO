@@ -1,0 +1,51 @@
+{
+  "$comment": "Pinned third-party engines BYDLO can download. Digests are the SHA-256 values published by GitHub for each release asset. BYDLO refuses any download whose hash does not match.",
+  "engines": [
+    {
+      "id": "sing-box",
+      "version": "1.14.3",
+      "license": "GPL-3.0-or-later (with additional name-use terms)",
+      "upstream": "https://github.com/SagerNet/sing-box",
+      "assets": {
+        "windows-x64": { "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-windows-amd64.zip", "sha256": "d8b86ef58936dba9230ec6a57ffa4243933f3c14ef4809828b6c553440ed1518", "executable": "sing-box-1.14.3-windows-amd64/sing-box.exe" },
+        "windows-arm64": { "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-windows-arm64.zip", "sha256": "195b35424c6e3f5913954c7f08c5d8ba2d2199f6d18eb27a3972a5a29cdaa78c", "executable": "sing-box-1.14.3-windows-arm64/sing-box.exe" },
+        "linux-x64": { "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-amd64.tar.gz", "sha256": "e2bdf179c15a3652955dc44867e33ca0965c9c9b91b34267dcc5a5d639a5feee", "executable": "sing-box-1.14.3-linux-amd64/sing-box" },
+        "linux-arm64": { "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-arm64.tar.gz", "sha256": "29dae24d76bea3bc62d07dd3e60cfc12003de7debbd6b768df9be9c68360174e", "executable": "sing-box-1.14.3-linux-arm64/sing-box" },
+        "macos-x64": { "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-darwin-amd64.tar.gz", "sha256": "6d002b74d03b478547349cc10af89e007868596e5aa931816d45da9f544715a9", "executable": "sing-box-1.14.3-darwin-amd64/sing-box" },
+        "macos-arm64": { "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-darwin-arm64.tar.gz", "sha256": "0360ce634a04c26a6b4fd957517987bb4f6c8950f63435ce3c5af2fcae5860c5", "executable": "sing-box-1.14.3-darwin-arm64/sing-box" }
+      }
+    },
+    {
+      "id": "xray",
+      "version": "26.10.21",
+      "license": "MPL-2.0",
+      "upstream": "https://github.com/XTLS/Xray-core",
+      "assets": {
+        "windows-x64": { "url": "https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-windows-64.zip", "sha256": "fc58c39ee2f2717b4c54d28d374362389e5319b20ae44aea76ea45a5243ec827", "executable": "xray.exe" },
+        "windows-arm64": { "url": "https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-windows-arm64-v8a.zip", "sha256": "bb44af3380c9975f951ce7645c04d56ab600040e68f23974a2806e08e0a3f872", "executable": "xray.exe" },
+        "linux-x64": { "url": "https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-linux-64.zip", "sha256": "0eec3ed4163c273d8c8bf821f7d219e257921cf584aa3fb970715e458e631978", "executable": "xray" },
+        "linux-arm64": { "url": "https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-linux-arm64-v8a.zip", "sha256": "d1304946c486d98e6b886e9b931eaaaebb23835b30e217638037b7f2721d4e9c", "executable": "xray" },
+        "macos-x64": { "url": "https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-macos-64.zip", "sha256": "8e5169b429e76ce5f550c8294db465bc259f30c158ba900aa40802b76ad2f66e", "executable": "xray" },
+        "macos-arm64": { "url": "https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-macos-arm64-v8a.zip", "sha256": "926cc55fda2a8757dabe4f22dc98772f218ace025f101bd0b68aee232e59d5dc", "executable": "xray" }
+      }
+    },
+    {
+      "id": "zapret",
+      "version": "1.10.3",
+      "license": "MIT (Flowseal, bol-van); bundled WinDivert: LGPL-3.0 / GPL-2.0",
+      "upstream": "https://github.com/Flowseal/zapret-discord-youtube",
+      "assets": {
+        "windows-x64": { "url": "https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.10.3/zapret-discord-youtube-1.10.3.zip", "sha256": "244314ae1c24538a0d751601da8e0c925c843371eec4456eb15f14c4fd6b7058", "executable": "bin/winws.exe" }
+      }
+    },
+    {
+      "id": "tg-ws-proxy",
+      "version": "1.11.2",
+      "license": "MIT",
+      "upstream": "https://github.com/Flowseal/tg-ws-proxy",
+      "$comment": "BYDLO runs the headless CLI (python package entry point 'tg-ws-proxy'), installed into a private virtualenv with pip from the pinned tag. Release binaries are tray GUI apps and are not used.",
+      "pip": "tg-ws-proxy @ git+https://github.com/Flowseal/tg-ws-proxy@v1.11.2",
+      "assets": {}
+    }
+  ]
+}
