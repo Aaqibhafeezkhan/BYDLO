@@ -154,7 +154,15 @@ public sealed partial class SettingsViewModel : PageViewModel
         {
             if (OperatingSystem.IsWindows() && CanRegisterAssociations)
             {
-                Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!);
+                try
+                {
+                    Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    throw new InvalidOperationException(L["settings.associations.conflict"], ex);
+                }
+
                 Shell.ShowToast(L["settings.associations.registered"]);
             }
 

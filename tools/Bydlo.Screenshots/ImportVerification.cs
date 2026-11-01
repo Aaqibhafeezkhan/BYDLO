@@ -17,10 +17,36 @@ internal static class ImportVerification
     public static void Run(MainViewModel shell, string output)
     {
         const string link = "vless://11111111-2222-3333-4444-555555555555@example.invalid:443#Import%20test";
-        var window = new Window { Width = 1180, Height = 780, Content = new MainView { DataContext = shell } };
+        Bydlo.App.App.Args = ["--mock", link];
+        var window = new MainWindow { DataContext = shell };
         window.Show();
         Dispatcher.UIThread.RunJobs();
         var count = shell.Profiles.Count;
+        Require(shell.HasImportPreview && shell.CanConfirmImport, "Launch arguments open preview");
+        shell.CancelImportCommand.Execute(null);
+
+        if (OperatingSystem.IsWindows())
+        {
+            var scope = Path.Combine(output, "ipc-" + Guid.NewGuid().ToString("N"));
+            using var primary = new Bydlo.Desktop.WindowsActivationBroker(scope);
+            Require(primary.IsPrimary, "First activation owns the instance");
+            primary.Listen();
+            Wait(Task.Run(() =>
+            {
+                using var secondary = new Bydlo.Desktop.WindowsActivationBroker(scope);
+                Require(!secondary.IsPrimary, "Second launch forwards instead of starting another app");
+                secondary.Forward(["--mock", link, "ignored.exe"]);
+            }));
+            Capture("import-activation", 1180, 780);
+            Require(shell.HasImportPreview && shell.CanConfirmImport, "Forwarded arguments reach existing window");
+            Bydlo.App.App.PendingActivations.Enqueue([link + "queued"]);
+            Capture("import-activation-queued", 1180, 780);
+            Require(Bydlo.App.App.PendingActivations.Count == 1, "Active preview preserves queued requests");
+            shell.CancelImportCommand.Execute(null);
+            Capture("import-activation-next", 1180, 780);
+            Require(shell.HasImportPreview && Bydlo.App.App.PendingActivations.IsEmpty, "Queued request opens after cancel");
+            shell.CancelImportCommand.Execute(null);
+        }
 
         Wait(shell.PreviewExternalAsync([link]));
         Require(shell.HasImportPreview && shell.CanConfirmImport, "Share-link preview");

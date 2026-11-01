@@ -15,5 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Bydlo.App\Bydlo.App.csproj" />
+    <InternalsVisibleTo Include="Bydlo.Screenshots" />
   </ItemGroup>
 </Project>

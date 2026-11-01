@@ -253,5 +253,6 @@
   "settings.associations.register": "Register",
   "settings.associations.remove": "Remove registration",
   "settings.associations.registered": "Associations registered for this user.",
-  "settings.associations.removed": "BYDLO associations removed."
+  "settings.associations.removed": "BYDLO associations removed.",
+  "settings.associations.conflict": "Another application already handles one of these protocols. Remove its registration first."
 }

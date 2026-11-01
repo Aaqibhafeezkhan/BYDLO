@@ -14,7 +14,7 @@ Environment.SetEnvironmentVariable("BYDLO_SAFE_DEV", "1");
 var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "screenshots"));
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
-if (Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
+if (args.Contains("--verify-import", StringComparer.Ordinal) || Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
     Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
 }

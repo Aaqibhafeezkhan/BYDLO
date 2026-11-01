@@ -253,5 +253,6 @@
   "settings.associations.register": "Зарегистрировать",
   "settings.associations.remove": "Удалить регистрацию",
   "settings.associations.registered": "Ассоциации зарегистрированы для текущего пользователя.",
-  "settings.associations.removed": "Ассоциации BYDLO удалены."
+  "settings.associations.removed": "Ассоциации BYDLO удалены.",
+  "settings.associations.conflict": "Один из протоколов уже зарегистрирован другим приложением. Сначала удалите его регистрацию."
 }

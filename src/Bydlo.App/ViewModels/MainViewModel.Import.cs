@@ -18,6 +18,8 @@ public sealed partial class MainViewModel
 
     public ObservableCollection<string> ImportPreviewItems { get; } = [];
 
+    public bool CanReceiveActivation => !_preparingImport && !IsImportBusy && !HasImportPreview;
+
     [ObservableProperty] private bool _isDragOver;
     [ObservableProperty] private bool _hasImportPreview;
     [ObservableProperty] private bool _canConfirmImport;
@@ -35,6 +37,11 @@ public sealed partial class MainViewModel
         try
         {
             var text = Services.TopLevel()?.Clipboard is { } cb ? await cb.TryGetTextAsync() : null;
+            if (text?.Trim() != _clipboardLink)
+            {
+                DismissClipboardOffer();
+            }
+
             if (_clipboardHistory.TryOffer(text, Services.Settings.SuggestClipboardLinks))
             {
                 _clipboardLink = text!.Trim();
@@ -42,7 +49,7 @@ public sealed partial class MainViewModel
                 ClipboardOffer = Loc.T("import.clipboard.offer", kind == "subscription" ? Loc.Instance["import.subscription"] : kind!);
             }
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
         {
             // Clipboard may temporarily belong to another application. Retry on the next activation.
         }
@@ -115,8 +122,7 @@ public sealed partial class MainViewModel
         _preparingImport = true;
         try
         {
-
-            await Guard(async () =>
+            var prepared = await Guard(async () =>
             {
                 CancelImport();
                 var profiles = new List<Bydlo.Core.Models.ImportedProfile>();
@@ -178,6 +184,10 @@ public sealed partial class MainViewModel
                 CanConfirmImport = profiles.Count > 0 || _pendingSubscriptions.Count > 0;
                 HasImportPreview = true;
             });
+            if (!prepared)
+            {
+                CancelImport();
+            }
         }
         finally
         {

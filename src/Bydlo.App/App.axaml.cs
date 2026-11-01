@@ -10,6 +10,8 @@ namespace Bydlo.App;
 
 public sealed partial class App : Application
 {
+    public static System.Collections.Concurrent.ConcurrentQueue<string[]> PendingActivations { get; } = new();
+
     /// <summary>Command-line arguments, set by the platform head before start.</summary>
     public static string[] Args { get; set; } = [];
 
