@@ -205,6 +205,9 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             new(new Profile { Name = name, Protocol = kind, Host = host, Port = 443, Options = { ["demo"] = "true" } }, new ProfileSecrets());
     }
 
+    /// <summary>Used by the empty-state cards on Home.</summary>
+    public Task ImportTextAsync(string text) => ImportAsync(text, null);
+
     private async Task ImportAsync(string text, Guid? subscription)
     {
         if (ProfileImporter.LooksLikeSubscriptionUrl(text))

@@ -22,6 +22,15 @@ public sealed partial class HomeViewModel : PageViewModel
         : base(shell)
     {
         shell.PropertyChanged += OnShellChanged;
+        shell.Profiles.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(IsEmpty));
+            if (!IsEmpty)
+            {
+                IsLinkImportVisible = false;
+                LinkImportText = "";
+            }
+        };
         L.PropertyChanged += (_, _) => RefreshAll();
         _clock = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => OnPropertyChanged(nameof(Elapsed)));
         _clock.Start();
@@ -34,6 +43,8 @@ public sealed partial class HomeViewModel : PageViewModel
     public bool IsBusy => Status is ConnectionStatus.Connecting or ConnectionStatus.Disconnecting or ConnectionStatus.Reconnecting;
 
     public bool IsError => Status == ConnectionStatus.Error;
+
+    public bool IsEmpty => Shell.Profiles.Count == 0;
 
     public bool CanCheckConnection => IsConnected && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
 
@@ -101,6 +112,12 @@ public sealed partial class HomeViewModel : PageViewModel
             OnPropertyChanged(nameof(Hint));
         }
     }
+
+    [ObservableProperty]
+    private bool _isLinkImportVisible;
+
+    [ObservableProperty]
+    private string _linkImportText = "";
 
     [ObservableProperty]
     private bool _isChecking;
@@ -206,6 +223,33 @@ public sealed partial class HomeViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private void ShowLinkImport() => IsLinkImportVisible = true;
+
+    [RelayCommand]
+    private void HideLinkImport()
+    {
+        IsLinkImportVisible = false;
+        LinkImportText = "";
+    }
+
+    [RelayCommand]
+    private async Task ImportLink()
+    {
+        if (string.IsNullOrWhiteSpace(LinkImportText))
+        {
+            return;
+        }
+
+        var before = Shell.Profiles.Count;
+        await Shell.Connections.ImportTextAsync(LinkImportText);
+        if (Shell.Profiles.Count > before)
+        {
+            LinkImportText = "";
+            IsLinkImportVisible = false;
+        }
+    }
+
+    [RelayCommand]
     private async Task CheckConnection()
     {
         if (!CanCheckConnection || IsChecking)
@@ -308,7 +352,7 @@ public sealed partial class HomeViewModel : PageViewModel
 
         foreach (var name in new[]
                  {
-                     nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(StatusText), nameof(ButtonText), nameof(Hint), nameof(Error),
+                     nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(IsEmpty), nameof(StatusText), nameof(ButtonText), nameof(Hint), nameof(Error),
                      nameof(Elapsed), nameof(DownSpeed), nameof(UpSpeed), nameof(EngineLabel), nameof(ZapretOn), nameof(ZapretState), nameof(TgOn), nameof(TgState),
                      nameof(IsTun), nameof(CanCheckConnection), nameof(CanRunCheck), nameof(CheckDisabledReason), nameof(CheckButtonText),
                      nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult),

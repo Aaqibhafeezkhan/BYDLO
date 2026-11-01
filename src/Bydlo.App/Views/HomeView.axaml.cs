@@ -29,5 +29,16 @@ public sealed partial class HomeView : UserControl
             Grid.SetRow(cards[i], row);
             cards[i].Margin = new Thickness(0, 0, column < columns - 1 ? 12 : 0, row < (cards.Length - 1) / columns ? 12 : 0);
         }
+
+        EmptyCards.ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", columns)));
+        Border[] emptyCards = [EmptyLinkCard, EmptyFileCard, EmptyQrCard];
+        for (var i = 0; i < emptyCards.Length; i++)
+        {
+            var column = i % columns;
+            var row = i / columns;
+            Grid.SetColumn(emptyCards[i], column);
+            Grid.SetRow(emptyCards[i], row);
+            emptyCards[i].Margin = new Thickness(0, 0, column < columns - 1 ? 12 : 0, row < (emptyCards.Length - 1) / columns ? 12 : 0);
+        }
     }
 }

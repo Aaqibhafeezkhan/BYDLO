@@ -54,11 +54,6 @@ void Wait(Task task)
     task.GetAwaiter().GetResult();
 }
 
-if (shell.Profiles.Count == 0)
-{
-    Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
-}
-
 void Pump(int ms)
 {
     var until = DateTime.UtcNow.AddMilliseconds(ms);
@@ -78,6 +73,30 @@ void Shoot(string name, double width, double height)
     frame?.Save(Path.Combine(output, name + ".png"));
     window.Close();
     Console.WriteLine($"saved {name}.png");
+}
+
+if (shell.IsOnboardingVisible)
+{
+    Shoot("onboarding", 1180, 780);
+    Shoot("mobile-onboarding", 400, 860);
+    Shoot("mobile-onboarding-minimum", 380, 560);
+
+    // Verify that Settings picks up choices made during onboarding.
+    shell.OnboardingLanguage = "en";
+    shell.OnboardingTheme = ThemePreference.Oled;
+    shell.FinishOnboardingCommand.Execute(null);
+    shell.Navigate("settings");
+    Shoot("settings-after-onboarding", 1180, 900);
+    shell.OnboardingLanguage = lang;
+    shell.OnboardingTheme = ThemePreference.System;
+    shell.Navigate("home");
+}
+
+Shoot("home-empty", 1180, 780);
+Shoot("mobile-home-empty", 400, 860);
+if (shell.Profiles.Count == 0)
+{
+    Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
 }
 
 foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled })
