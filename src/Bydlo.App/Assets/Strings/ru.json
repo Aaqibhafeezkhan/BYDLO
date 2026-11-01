@@ -46,7 +46,7 @@
   "home.tun": "Режим всего устройства (TUN)",
   "home.tun.hint": "Через туннель идут все приложения. Нужны права администратора.",
   "home.speed": "Скорость",
-  "home.zapret.hint": "Обход DPI. Windows / Linux; macOS: только IPv4 TCP.",
+  "home.zapret.hint": "Помогает, если сайты и Discord открываются с перебоями. Windows / Linux; macOS: только IPv4 TCP.",
 
   "connections.subtitle": "Импорт ссылок, файлов конфигурации, QR-кодов и подписок. Секреты хранятся в зашифрованном виде.",
   "connections.profiles": "Серверы",
@@ -194,7 +194,7 @@
   "settings.secrets": "Хранилище секретов:",
   "settings.safelock": "Активна блокировка разработки (BYDLO_SAFE_DEV=1): реальные движки не запустятся.",
 
-  "about.text": "Свободный open-source лаунчер для VPN, прокси и инструментов обхода блокировок. BYDLO — это оболочка: настоящую работу делают проекты ниже. Огромное спасибо их авторам.",
+  "about.text": "Свободный open-source лаунчер для VPN, прокси и инструментов свободного доступа к интернету. BYDLO — это оболочка: настоящую работу делают проекты ниже. Огромное спасибо их авторам.",
   "about.credits": "Основано на",
 
   "orphans.text": "Движки из прошлого сеанса всё ещё запущены.",
@@ -214,7 +214,7 @@
   "tools.zapret.stopupdate": "Остановите Zapret перед обновлением файлов движка.",
   "tools.zapret.native-split.macos": "Разбиение TCP",
   "tools.zapret.native-disorder.macos": "Перестановка TCP",
-  "about.zapret.native": "Движки обхода DPI winws / nfqws / tpws; текст MIT включён в релиз.",
+  "about.zapret.native": "winws / nfqws / tpws: работа с DPI-фильтрацией; текст MIT включён в релиз.",
   "about.cygwin": "Среда Windows для winws. Linking Exception, лицензия и соответствующие исходники включены в релиз.",
   "about.newlib": "Библиотека C в составе Cygwin; дополнительные лицензионные уведомления включены в релиз."
 }

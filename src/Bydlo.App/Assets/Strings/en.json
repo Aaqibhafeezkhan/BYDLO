@@ -46,7 +46,7 @@
   "home.tun": "Full-device mode (TUN)",
   "home.tun.hint": "Routes all apps. Needs administrator rights.",
   "home.speed": "Speed",
-  "home.zapret.hint": "DPI bypass. Windows / Linux; macOS: IPv4 TCP only.",
+  "home.zapret.hint": "Helps when sites and Discord are unstable. Windows / Linux; macOS: IPv4 TCP only.",
 
   "connections.subtitle": "Import links, config files, QR codes or subscriptions. Secrets are stored encrypted.",
   "connections.profiles": "Servers",
@@ -194,7 +194,7 @@
   "settings.secrets": "Secret storage:",
   "settings.safelock": "Development safety lock is active (BYDLO_SAFE_DEV=1): real engines will refuse to start.",
 
-  "about.text": "Free and open-source launcher for VPNs, proxies and censorship-bypass tools. BYDLO is a front-end: the real work is done by the projects below. Huge thanks to their authors.",
+  "about.text": "Free and open-source launcher for VPNs, proxies and open-internet tools. BYDLO is a front-end: the real work is done by the projects below. Huge thanks to their authors.",
   "about.credits": "Built on",
 
   "orphans.text": "Engines from a previous session are still running.",
@@ -214,7 +214,7 @@
   "tools.zapret.stopupdate": "Stop Zapret before updating its managed files.",
   "tools.zapret.native-split.macos": "TCP split",
   "tools.zapret.native-disorder.macos": "TCP disorder",
-  "about.zapret.native": "winws / nfqws / tpws DPI bypass engines; MIT license included in the release.",
+  "about.zapret.native": "winws / nfqws / tpws: handling DPI filtering; MIT license included in the release.",
   "about.cygwin": "Windows runtime for winws. Linking Exception, license and corresponding source included in the release.",
   "about.newlib": "Cygwin C library; additional license notices included in the release."
 }
