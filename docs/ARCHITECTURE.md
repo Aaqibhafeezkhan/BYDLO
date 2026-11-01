@@ -1,16 +1,16 @@
-# Architecture
+# Архитектура
 
-BYDLO is a .NET 10 / Avalonia 11 application. The UI never touches processes or the network directly — everything
-goes through one `ConnectionManager` and pluggable engine adapters.
+BYDLO — приложение на .NET 10 и Avalonia 11. Интерфейс никогда не работает с процессами или сетью напрямую — всё
+проходит через единый `ConnectionManager` и подключаемые адаптеры движков.
 
 ```mermaid
 flowchart TD
-  UI["Bydlo.App<br/>Avalonia views + view models<br/>themes, localization"] --> CM["ConnectionManager<br/>primary tunnel + tools"]
-  UI --> IMP["ProfileImporter<br/>links, files, QR, subscriptions"]
+  UI["Bydlo.App<br/>представления Avalonia и view models<br/>темы, локализация"] --> CM["ConnectionManager<br/>основной туннель + инструменты"]
+  UI --> IMP["ProfileImporter<br/>ссылки, файлы, QR, подписки"]
   UI --> STORE["ProfileStore / SettingsStore"]
   CM --> REG["EngineRegistry"]
   CM --> CD["ConflictDetector"]
-  REG --> MOCK["MockEngine (testing)"]
+  REG --> MOCK["MockEngine (тестирование)"]
   REG --> SB["SingBoxEngine"]
   REG --> XR["XrayEngine"]
   REG --> WG["TunnelServiceEngine<br/>WireGuard / AmneziaWG"]
@@ -21,61 +21,63 @@ flowchart TD
   WG --> PR
   PR --> GUARD["NetworkSafetyGuard"]
   STORE --> SEC["ISecretStore<br/>DPAPI / AES-GCM"]
-  PLAT["Bydlo.Platform<br/>paths, privileges, system proxy"] --> SEC
+  PLAT["Bydlo.Platform<br/>пути, привилегии, системный прокси"] --> SEC
 ```
 
-## Projects
+## Проекты
 
-| Project | Responsibility |
+| Проект | Ответственность |
 |---|---|
-| `src/Bydlo.Core` | Models (`Profile`, `AppSettings`), import parsers, sing-box / Xray config builders, engine contracts, `ProcessEngineBase`, `MockEngine`, `ConnectionManager`, `ConflictDetector`, redacting `LogHub`, `NetworkSafetyGuard`, `IntegrityVerifier`, process runner + journal, JSON stores. No UI, no platform code. |
-| `src/Bydlo.Engines` | Real adapters, engine locator, pinned engine installer (`engines.lock.json`), Zapret strategy parser / installation / updater, TgWsProxy runtime + link builder. |
-| `src/Bydlo.Platform` | Data folders per OS, secret stores, administrator detection / elevation, Windows system proxy. |
-| `src/Bydlo.App` | Avalonia UI: shell, six pages, themes, icons, localization, QR decoding. Shared by every head. |
-| `src/Bydlo.Desktop` | Windows / Linux / macOS host executable. |
-| `tests/Bydlo.Tests` | Isolated unit tests (fake process runner, fake HTTP, temp dirs). |
-| `tools/Bydlo.Screenshots` | Headless renderer of all pages in Mock Mode (docs, visual review). |
+| `src/Bydlo.Core` | Модели (`Profile`, `AppSettings`), парсеры импорта, генераторы конфигураций sing-box / Xray, контракты движков, `ProcessEngineBase`, `MockEngine`, `ConnectionManager`, `ConflictDetector`, `LogHub` с очисткой секретов, `NetworkSafetyGuard`, `IntegrityVerifier`, запуск процессов и журнал процессов, JSON-хранилища. Без UI и без платформенного кода. |
+| `src/Bydlo.Engines` | Реальные адаптеры, поиск движков, установщик закреплённых версий (`engines.lock.json`), парсер стратегий Zapret, работа с установкой и обновлением Zapret, среда TgWsProxy и генератор ссылок. |
+| `src/Bydlo.Platform` | Каталоги данных для каждой ОС, хранилища секретов, определение прав администратора и повышение прав, системный прокси Windows. |
+| `src/Bydlo.App` | Интерфейс на Avalonia: оболочка, шесть страниц, темы, иконки, локализация, распознавание QR. Общий для всех хостов. |
+| `src/Bydlo.Desktop` | Исполняемый файл для Windows / Linux / macOS. |
+| `tests/Bydlo.Tests` | Изолированные модульные тесты (фейковый запуск процессов, фейковый HTTP, временные каталоги). |
+| `tools/Bydlo.Screenshots` | Отрисовка всех страниц в Mock-режиме без окна (для документации и визуальной проверки). |
 
-## Key concepts
+## Ключевые понятия
 
-**Profile and secrets.** A `Profile` stores only non-secret options (host, port, SNI, transport, REALITY public key…).
-UUIDs, passwords, private keys and raw WireGuard/OpenVPN configs go to `ISecretStore` under the profile id.
-Windows uses DPAPI (current user); other systems use AES-256-GCM with an owner-only key file (Keychain / libsecret
-are on the roadmap).
+**Профиль и секреты.** `Profile` хранит только несекретные параметры (хост, порт, SNI, транспорт, публичный ключ REALITY…).
+UUID, пароли, приватные ключи и исходные конфигурации WireGuard/OpenVPN попадают в `ISecretStore` под идентификатором профиля.
+На Windows используется DPAPI (текущий пользователь); на других системах — AES-256-GCM с ключевым файлом, доступным
+только владельцу (Keychain / libsecret — в roadmap).
 
-**Engines.** `IEngine` = availability check + start/stop + state, log and traffic events. Most adapters derive from
-`ProcessEngineBase`, which writes the generated config, launches the process through `IProcessRunner`, waits for a
-readiness line, maps fatal output to readable errors and reports unexpected exits. `EngineRegistry` picks the best engine
-for a profile (sing-box first; Xray for XHTTP; native clients for AmneziaWG / OpenVPN) and only offers engines whose
-`EngineDescriptor` marks the current OS as implemented.
+**Движки.** `IEngine` — это проверка доступности, запуск и остановка, а также события состояния, логов и трафика.
+Большинство адаптеров наследуют `ProcessEngineBase`: он записывает сгенерированную конфигурацию, запускает процесс через
+`IProcessRunner`, ждёт строку о готовности, превращает фатальный вывод в понятные ошибки и сообщает о неожиданном
+завершении. `EngineRegistry` выбирает лучший движок для профиля (сначала sing-box; Xray для XHTTP; нативные клиенты для
+AmneziaWG / OpenVPN) и предлагает только движки, у которых в `EngineDescriptor` текущая ОС отмечена как реализованная.
 
-**Connection manager.** One primary tunnel plus independent tool sessions (Zapret, TgWsProxy). Before starting it runs
-`ConflictDetector` (busy ports, TgWsProxy vs. local proxy port, Zapret + TUN, mesh-VPN ranges). It auto-reconnects up to
-three times with exponential back-off and restores the system proxy on disconnect.
+**Менеджер подключений.** Один основной туннель плюс независимые сеансы инструментов (Zapret, TgWsProxy). Перед запуском
+работает `ConflictDetector` (занятые порты, совпадение порта TgWsProxy и локального прокси, Zapret вместе с TUN,
+диапазоны mesh-VPN). При сбое выполняется до трёх попыток переподключения с экспоненциальной задержкой; при отключении
+восстанавливается системный прокси.
 
-**Crash recovery.** `ProcessJournal` records PIDs of started engines. On the next start BYDLO detects processes that
-still match the recorded image name and start time and offers to stop them.
+**Восстановление после сбоев.** `ProcessJournal` записывает PID запущенных движков. При следующем запуске BYDLO находит
+процессы, у которых совпадают имя образа и время запуска, и предлагает их остановить.
 
-**Privilege separation.** BYDLO runs as a normal user (`asInvoker`). Operations that change the system — TUN mode,
-WireGuard/AmneziaWG tunnel services, OpenVPN routes, WinDivert (Zapret), system proxy — require elevation that the user
-grants explicitly (Settings → Restart as administrator), are disabled by default and are refused while
-`BYDLO_SAFE_DEV=1` is set. BYDLO never modifies DNS, routes or firewall itself; engines do so only while connected.
+**Разделение привилегий.** BYDLO работает от обычного пользователя (`asInvoker`). Операции, меняющие систему, — режим TUN,
+туннельные службы WireGuard/AmneziaWG, маршруты OpenVPN, WinDivert (Zapret), системный прокси — требуют повышения прав,
+которое пользователь даёт явно (Настройки → Перезапустить от администратора), выключены по умолчанию и отклоняются, пока
+установлена `BYDLO_SAFE_DEV=1`. Сам BYDLO никогда не меняет DNS, маршруты и firewall; это делают движки и только на время подключения.
 
-**Zapret.** BYDLO does not rewrite Flowseal's strategies. `ZapretStrategyParser` reads a `general*.bat`, joins `^`
-continuations, extracts the `winws.exe` command line and substitutes `%BIN%`, `%LISTS%` and the game-filter variables
-exactly like `service.bat`. `winws.exe` is then started directly (no console window, output captured). User lists are
-created with Flowseal's defaults and preserved across updates. Flowseal's optional TCP-timestamps tweak (`netsh`) is shown
-as advice and never applied automatically.
+**Zapret.** BYDLO не переписывает стратегии Flowseal. `ZapretStrategyParser` читает `general*.bat`, склеивает строки с
+переносом `^`, извлекает командную строку `winws.exe` и подставляет `%BIN%`, `%LISTS%` и переменные игрового фильтра
+точно так же, как `service.bat`. Затем `winws.exe` запускается напрямую (без окна консоли, вывод перехватывается).
+Пользовательские списки создаются со значениями по умолчанию от Flowseal и сохраняются при обновлениях. Необязательная
+настройка TCP timestamps (`netsh`), которую рекомендует Flowseal, показывается как совет и никогда не применяется автоматически.
 
-**TgWsProxy.** Flowseal's release binaries are tray apps, so BYDLO runs the package's headless CLI (`tg-ws-proxy`)
-from a private virtualenv created from the pinned tag, or a user-provided executable. Links are built exactly like
-upstream (`dd` + secret, or `ee` + secret + hex(domain) for Fake TLS).
+**TgWsProxy.** Релизные бинарники Flowseal — это приложения для трея, поэтому BYDLO запускает консольную точку входа
+пакета (`tg-ws-proxy`) из отдельного окружения Python, созданного из закреплённого тега, либо указанный пользователем
+исполняемый файл. Ссылки строятся так же, как в оригинале (`dd` + секрет, или `ee` + секрет + hex(домен) для Fake TLS).
 
-**Mock Mode.** `MockEngine` simulates connect, traffic, connect failures, crashes and slow connects without starting any
-process. It is enabled by `--mock`, `BYDLO_MOCK=1` or Settings → Advanced, and the UI shows a "MOCK MODE" badge.
+**Mock-режим.** `MockEngine` имитирует подключение, трафик, ошибки подключения, сбои и медленное подключение, не запуская
+ни одного процесса. Включается флагом `--mock`, переменной `BYDLO_MOCK=1` или в Настройки → Дополнительно; интерфейс
+показывает значок «MOCK-РЕЖИМ».
 
-**Integrity.** `engines/engines.lock.json` pins versions and the SHA-256 digests published by GitHub for each asset.
-`EngineInstaller` verifies the hash before extraction and blocks path traversal in archives.
+**Целостность.** `engines/engines.lock.json` закрепляет версии и SHA-256, опубликованные GitHub для каждого файла релиза.
+`EngineInstaller` проверяет хеш до распаковки и блокирует выход путей за пределы каталога в архивах.
 
-**Logs.** All engine output passes through `LogRedactor` (URI credentials, `password=`, UUIDs, WireGuard keys,
-MTProto secrets, plus every secret of the active profile) before reaching the UI or `logs/bydlo.log`.
+**Логи.** Весь вывод движков проходит через `LogRedactor` (учётные данные в URI, `password=`, UUID, ключи WireGuard,
+секреты MTProto, а также все секреты активного профиля) до того, как попасть в интерфейс или `logs/bydlo.log`.

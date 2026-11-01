@@ -1,34 +1,34 @@
 # Roadmap
 
-## v0.1 — first public version (this release)
+## v0.1 — первая публичная версия (текущая)
 
-Desktop app (Windows / Linux / macOS), protocol import, sing-box / Xray / WireGuard / AmneziaWG / OpenVPN adapters,
-Flowseal Zapret and TgWsProxy integration, themes, EN/RU, Mock Mode, CI builds. Real-network verification is pending
-(see [TESTING.md](TESTING.md)).
+Десктопное приложение (Windows / Linux / macOS), импорт протоколов, адаптеры sing-box / Xray / WireGuard / AmneziaWG / OpenVPN,
+интеграция Zapret и TgWsProxy от Flowseal, темы, RU/EN, Mock-режим, сборки в CI. Проверка в реальной сети ещё предстоит
+(см. [TESTING.md](TESTING.md)).
 
-## v0.2 — verification and polish
+## v0.2 — проверка и доработка
 
-- Complete the manual test matrix on all desktop platforms; fix findings.
-- Profile editor (rename, edit options, OpenVPN credentials, per-profile engine choice).
-- Latency test / server ping list (user-triggered).
-- Xray live statistics (gRPC StatsService).
-- Localized engine error messages.
-- Tray icon, start minimized, connect on startup.
-- Automatic subscription refresh on a schedule.
+- Пройти матрицу ручного тестирования на всех десктопных платформах и исправить найденное.
+- Редактор профилей (переименование, параметры, учётные данные OpenVPN, выбор движка для профиля).
+- Проверка задержки и список серверов с пингом (по запросу пользователя).
+- Статистика трафика для Xray (gRPC StatsService).
+- Локализованные сообщения об ошибках движков.
+- Иконка в трее, запуск свёрнутым, подключение при старте.
+- Автоматическое обновление подписок по расписанию.
 
-## v0.3 — platform depth
+## v0.3 — глубже в платформы
 
-- Android ARM64 head: `VpnService` + sing-box (libbox) integration, mobile navigation, QR camera scanning.
-- Linux: native zapret (nfqws) integration; system proxy via GNOME / KDE settings.
-- macOS: zapret (tpws), system proxy via `networksetup`, AmneziaWG; signed and notarized builds.
-- Keychain (macOS), libsecret (Linux), Android Keystore secret stores.
-- Optional privileged helper service instead of running the whole app elevated.
+- Android ARM64: `VpnService` + интеграция sing-box (libbox), мобильная навигация, сканирование QR камерой.
+- Linux: интеграция нативного zapret (nfqws); системный прокси через настройки GNOME / KDE.
+- macOS: zapret (tpws), системный прокси через `networksetup`, AmneziaWG; подписанные и нотаризованные сборки.
+- Хранилища секретов Keychain (macOS), libsecret (Linux), Android Keystore.
+- Необязательная привилегированная служба-помощник вместо запуска всего приложения с повышенными правами.
 
-## Later
+## Позже
 
-- Cloudflare WARP registration (after license / ToS review).
-- Import of full sing-box / Xray JSON configs.
-- Rule sets (geosite / geoip) management with verified downloads.
-- Auto-update of BYDLO itself with signature verification.
-- Avalonia 12 migration.
-- More languages (community translations).
+- Регистрация Cloudflare WARP (после проверки лицензии и условий использования).
+- Импорт полных JSON-конфигураций sing-box / Xray.
+- Управление наборами правил (geosite / geoip) с проверкой загрузок.
+- Автообновление самого BYDLO с проверкой подписи.
+- Переход на Avalonia 12.
+- Другие языки (переводы от сообщества).
