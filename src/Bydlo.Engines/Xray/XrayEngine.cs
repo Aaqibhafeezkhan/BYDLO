@@ -40,17 +40,17 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
     {
         if (Info.SupportOn(locator.Platform.Os) != SupportLevel.Implemented)
         {
-            return Task.FromResult(EngineAvailability.NotImplemented("Xray on this platform is planned."));
+            return Task.FromResult(EngineAvailability.NotImplemented("Xray on this platform is planned.", "error.engine.xray.platform"));
         }
 
         if (settings.Mode == ConnectionMode.Tun)
         {
-            return Task.FromResult(EngineAvailability.NotImplemented("TUN mode with Xray is not implemented. Use Local proxy mode or the sing-box engine."));
+            return Task.FromResult(EngineAvailability.NotImplemented("TUN mode with Xray is not implemented. Use Local proxy mode or the sing-box engine.", "error.engine.xray.tun"));
         }
 
         var exe = locator.Locate(EngineKind.Xray, settings);
         return Task.FromResult(exe is null
-            ? new EngineAvailability(AvailabilityStatus.NotInstalled, "Xray-core is not installed. Install it from Tools → Engines.")
+            ? new EngineAvailability(AvailabilityStatus.NotInstalled, "Xray-core is not installed. Install it from Tools → Engines.") { LocalizationKey = "error.engine.xray.missing" }
             : EngineAvailability.Ready(exe));
     }
 

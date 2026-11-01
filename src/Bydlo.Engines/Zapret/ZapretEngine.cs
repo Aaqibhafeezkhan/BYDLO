@@ -88,33 +88,33 @@ public sealed class ZapretEngine(IProcessRunner runner, LogRedactor redactor, En
         var os = locator.Platform.Os;
         if (os == OsFamily.Android)
         {
-            return Task.FromResult(EngineAvailability.Unsupported("Android Zapret requires a separate root / VpnService implementation."));
+            return Task.FromResult(EngineAvailability.Unsupported("Android Zapret requires a separate root / VpnService implementation.", "error.engine.zapret.android"));
         }
 
         if (os == OsFamily.Unknown || locator.Platform.Arch == CpuArch.Other || (os == OsFamily.Windows && locator.Platform.Arch != CpuArch.X64))
         {
-            return Task.FromResult(EngineAvailability.NotImplemented("No compatible pinned Zapret build / WinDivert driver for this architecture."));
+            return Task.FromResult(EngineAvailability.NotImplemented("No compatible pinned Zapret build / WinDivert driver for this architecture.", "error.engine.zapret.arch"));
         }
 
         if (os != OsFamily.Windows && firewall is null)
         {
-            return Task.FromResult(EngineAvailability.NotImplemented("Native Zapret needs the privileged firewall service."));
+            return Task.FromResult(EngineAvailability.NotImplemented("Native Zapret needs the privileged firewall service.", "error.engine.zapret.firewall"));
         }
 
         var install = ResolveInstallation(settings);
         if (install is null || !install.IsValid)
         {
             return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled,
-                "Zapret is missing or quarantined. Restore the official BYDLO release or download the pinned engine in Tools. See docs/TESTING.md."));
+                "Zapret is missing or quarantined. Restore the official BYDLO release or download the pinned engine in Tools. See docs/TESTING.md.") { LocalizationKey = "error.engine.zapret.missing" });
         }
 
         if (Strategy(settings, install) is null)
         {
-            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "No supported Zapret strategies were found.", install.ExecutablePath));
+            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "No supported Zapret strategies were found.", install.ExecutablePath) { LocalizationKey = "error.engine.zapret.strategies" });
         }
 
         return Task.FromResult(!privileges.IsElevated
-            ? new EngineAvailability(AvailabilityStatus.NeedsElevation, "Zapret needs administrator / root rights.", install.ExecutablePath)
+            ? new EngineAvailability(AvailabilityStatus.NeedsElevation, "Zapret needs administrator / root rights.", install.ExecutablePath) { LocalizationKey = "error.engine.zapret.admin" }
             : EngineAvailability.Ready(install.ExecutablePath));
     }
 

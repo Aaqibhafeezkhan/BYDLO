@@ -44,18 +44,18 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
     {
         if (Info.SupportOn(locator.Platform.Os) != SupportLevel.Implemented)
         {
-            return Task.FromResult(EngineAvailability.NotImplemented("sing-box on this platform is planned (VpnService integration)."));
+            return Task.FromResult(EngineAvailability.NotImplemented("sing-box on this platform is planned (VpnService integration).", "error.engine.singbox.platform"));
         }
 
         var exe = locator.Locate(EngineKind.SingBox, settings);
         if (exe is null)
         {
-            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "sing-box is not installed. Install it from Tools → Engines."));
+            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "sing-box is not installed. Install it from Tools → Engines.") { LocalizationKey = "error.engine.singbox.missing" });
         }
 
         if (settings.Mode == ConnectionMode.Tun && !privileges.IsElevated)
         {
-            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NeedsElevation, "TUN mode needs administrator rights. Restart BYDLO as administrator or use Local proxy mode.", exe));
+            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NeedsElevation, "TUN mode needs administrator rights. Restart BYDLO as administrator or use Local proxy mode.", exe) { LocalizationKey = "error.engine.tun.admin" });
         }
 
         return Task.FromResult(EngineAvailability.Ready(exe));

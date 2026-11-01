@@ -69,7 +69,7 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             var availability = await CheckAvailabilityAsync(request.Settings, ct).ConfigureAwait(false);
             if (!availability.IsReady)
             {
-                throw new EngineException(availability.Message);
+                throw new EngineException(availability.Message, localizationKey: availability.LocalizationKey);
             }
 
             foreach (var secret in request.Secrets.Values.Values)

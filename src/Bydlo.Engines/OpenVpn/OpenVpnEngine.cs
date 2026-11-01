@@ -42,18 +42,18 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
     {
         if (Info.SupportOn(locator.Platform.Os) != SupportLevel.Implemented)
         {
-            return Task.FromResult(EngineAvailability.NotImplemented("OpenVPN on this platform is planned."));
+            return Task.FromResult(EngineAvailability.NotImplemented("OpenVPN on this platform is planned.", "error.engine.openvpn.platform"));
         }
 
         var exe = locator.Locate(EngineKind.OpenVpn, settings);
         if (exe is null)
         {
-            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "OpenVPN is not installed (openvpn.net/community-downloads)."));
+            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "OpenVPN is not installed (openvpn.net/community-downloads).") { LocalizationKey = "error.engine.openvpn.missing" });
         }
 
         return Task.FromResult(privileges.IsElevated
             ? EngineAvailability.Ready(exe)
-            : new EngineAvailability(AvailabilityStatus.NeedsElevation, "OpenVPN needs administrator rights.", exe));
+            : new EngineAvailability(AvailabilityStatus.NeedsElevation, "OpenVPN needs administrator rights.", exe) { LocalizationKey = "error.engine.openvpn.admin" });
     }
 
     protected override async Task<ProcessSpec> PrepareAsync(EngineStartRequest request, EngineAvailability availability, CancellationToken ct)
