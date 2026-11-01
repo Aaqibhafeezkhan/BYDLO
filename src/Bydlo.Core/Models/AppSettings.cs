@@ -55,6 +55,9 @@ public sealed class AppSettings
     /// <summary>Sets the OS proxy to the local inbound while connected. Off by default.</summary>
     public bool SetSystemProxy { get; set; }
 
+    /// <summary>Retain a separate strict TUN while the sing-box backend reconnects. Off by default.</summary>
+    public bool KillSwitch { get; set; }
+
     public bool AutoReconnect { get; set; } = true;
 
     public bool ShowAdvanced { get; set; }

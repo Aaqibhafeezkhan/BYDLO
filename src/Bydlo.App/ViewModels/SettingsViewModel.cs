@@ -26,6 +26,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _ipCheckProvider = s.IpCheckProvider;
         _setSystemProxy = s.SetSystemProxy;
         _autoReconnect = s.AutoReconnect;
+        _killSwitch = s.KillSwitch;
         _showAdvanced = s.ShowAdvanced;
     }
 
@@ -98,6 +99,35 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     private bool _showAdvanced;
+
+    [ObservableProperty]
+    private bool _killSwitch;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(EnableKillSwitchCommand))]
+    private bool _killSwitchAcknowledged;
+
+    [RelayCommand(CanExecute = nameof(KillSwitchAcknowledged))]
+    private void EnableKillSwitch()
+    {
+        KillSwitch = Services.Settings.KillSwitch = true;
+        Persist();
+        Shell.ShowToast(Loc.Instance["settings.killswitch.next"]);
+    }
+
+    [RelayCommand]
+    private async Task DisableKillSwitch()
+    {
+        try
+        {
+            await Services.Connections.DisconnectAsync();
+            Services.CleanupKillSwitch();
+            KillSwitch = Services.Settings.KillSwitch = false;
+            KillSwitchAcknowledged = false;
+            await Services.SaveSettingsAsync();
+        }
+        catch (Exception ex) { Shell.ShowToast(ex.Message, isError: true); }
+    }
 
     public bool ThemePurple { get => Theme == ThemePreference.Purple; set { if (value) { Theme = ThemePreference.Purple; } } }
 

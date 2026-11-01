@@ -47,6 +47,11 @@ public sealed class EngineRegistry
         var kind = profile.PreferredEngine is { } preferred && candidates.Contains(preferred)
             ? preferred
             : candidates.Count > 0 ? candidates[0] : throw new EngineException($"No engine supports {profile.Protocol} on {os}.");
+        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
+        {
+            throw new EngineException("error.killswitch.engine");
+        }
+
         return Create(kind, settings);
     }
 

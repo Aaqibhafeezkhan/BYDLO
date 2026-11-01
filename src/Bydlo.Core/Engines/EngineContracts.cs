@@ -115,3 +115,9 @@ public interface IEngine : IAsyncDisposable
 }
 
 public sealed class EngineException(string message, Exception? inner = null) : Exception(message, inner);
+
+/// <summary>Restarts transport without releasing a retained TUN.</summary>
+public interface IReconnectableEngine
+{
+    Task ReconnectAsync(EngineStartRequest request, CancellationToken ct = default);
+}

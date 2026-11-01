@@ -183,6 +183,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public void ShowToast(string message, bool isError = false)
     {
+        message = Loc.Instance[message];
         var version = ++_toastVersion;
         Toast = message;
         ToastIsError = isError;

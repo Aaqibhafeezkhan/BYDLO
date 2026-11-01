@@ -44,6 +44,7 @@
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoReconnect}" />
           </Grid>
+          <Button Content="{l:T settings.killswitch.disable}" Command="{Binding DisableKillSwitchCommand}" HorizontalAlignment="Left" />
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Text="{l:T settings.check.service}" FontWeight="Medium" />
@@ -71,6 +72,17 @@
       <Border Classes="card" IsVisible="{Binding ShowAdvanced}">
         <StackPanel Spacing="14">
           <TextBlock Classes="h3" Text="{l:T common.advanced}" />
+          <Border Classes="tile">
+            <StackPanel Spacing="10">
+              <TextBlock Text="{l:T settings.killswitch}" FontWeight="SemiBold" />
+              <TextBlock Text="{l:T settings.killswitch.warning}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
+              <TextBlock Text="{l:T settings.killswitch.active}" IsVisible="{Binding KillSwitch}" TextWrapping="Wrap" />
+              <StackPanel IsVisible="{Binding !KillSwitch}" Spacing="8">
+                <CheckBox IsChecked="{Binding KillSwitchAcknowledged}" Content="{l:T settings.killswitch.ack}" />
+                <Button Content="{l:T settings.killswitch.enable}" Command="{Binding EnableKillSwitchCommand}" HorizontalAlignment="Left" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Text="{l:T settings.port}" FontWeight="Medium" />

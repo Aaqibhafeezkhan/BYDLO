@@ -30,6 +30,8 @@ public sealed partial class App : Application
         {
             var window = new MainWindow { DataContext = shell };
             desktop.MainWindow = window;
+            window.Closing += (_, _) => Services.ShutdownAsync().GetAwaiter().GetResult();
+            desktop.Exit += (_, _) => Services.ShutdownAsync().GetAwaiter().GetResult();
             desktop.ShutdownRequested += (_, _) => Services.ShutdownAsync().GetAwaiter().GetResult();
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime single)
