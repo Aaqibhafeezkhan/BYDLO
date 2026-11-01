@@ -8,6 +8,22 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        using var activation = OperatingSystem.IsWindows() ? new WindowsActivationBroker(Bydlo.Platform.AppPathsFactory.Create().DataDirectory) : null;
+        if (activation is { IsPrimary: false })
+        {
+            try
+            {
+                activation.Forward(args);
+            }
+            catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException)
+            {
+                Environment.ExitCode = 1;
+            }
+
+            return;
+        }
+
+        activation?.Listen();
         Bydlo.App.App.Args = args;
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

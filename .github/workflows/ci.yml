@@ -36,6 +36,8 @@ jobs:
         run: dotnet build BYDLO.slnx -c Release -warnaserror
       - name: Test
         run: dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
+      - name: Verify import flows (headless, no engines or network)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/import-verification en --verify-import
       - uses: actions/upload-artifact@v4
         if: always()
         with:

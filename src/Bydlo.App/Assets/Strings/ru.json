@@ -242,5 +242,17 @@
   "settings.killswitch.recovery": "Не удалось завершить старый TUN. Перезапустите BYDLO с прежними правами администратора/root и повторите.",
   "error.killswitch.active": "TUN с kill switch уже запущен. Сначала отключитесь.",
   "error.killswitch.tun": "TUN с kill switch остановился. Защита может быть недоступна. Отключитесь перед повторным подключением.",
-  "error.killswitch.engine": "Kill switch требует sing-box в режиме TUN. Выключите его в настройках для использования этого движка."
+  "error.killswitch.engine": "Kill switch требует sing-box в режиме TUN. Выключите его в настройках для использования этого движка.",
+  "import.clipboard.offer": "В буфере ссылка {0} — добавить?",
+  "import.subscription": "Подписка",
+  "import.preview": "Предпросмотр импорта",
+  "import.dismiss": "Отмена",
+  "import.drop": "Перетащите конфиги или изображения QR для предпросмотра",
+  "settings.clipboard": "Предлагать ссылки из буфера обмена",
+  "settings.associations.hint": "Только Windows, по умолчанию выключено. Регистрация BYDLO для «Открыть с помощью» .conf/.ovpn и ссылок протоколов. Приложение для файлов по умолчанию сохраняется. Нажатие «Зарегистрировать» означает согласие. Сначала поместите приложение в постоянную папку. Linux/macOS — в планах.",
+  "settings.associations.register": "Зарегистрировать",
+  "settings.associations.remove": "Удалить регистрацию",
+  "settings.associations.registered": "Ассоциации зарегистрированы для текущего пользователя.",
+  "settings.associations.removed": "Ассоциации BYDLO удалены.",
+  "settings.associations.conflict": "Один из протоколов уже зарегистрирован другим приложением. Сначала удалите его регистрацию."
 }

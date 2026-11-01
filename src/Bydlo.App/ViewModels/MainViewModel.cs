@@ -204,7 +204,7 @@ public sealed partial class MainViewModel : ViewModelBase
             await action();
             return true;
         }
-        catch (Exception ex) when (ex is EngineException or InvalidOperationException or IOException or HttpRequestException or NotSupportedException or UnauthorizedAccessException or FormatException or TimeoutException or PlatformNotSupportedException)
+        catch (Exception ex) when (ex is EngineException or InvalidOperationException or IOException or HttpRequestException or NotSupportedException or UnauthorizedAccessException or FormatException or TimeoutException or PlatformNotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
         {
             ShowToast(ex.Message, isError: true);
             return false;

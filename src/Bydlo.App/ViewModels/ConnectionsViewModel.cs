@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
 using Bydlo.App.Services;
 using Bydlo.Core.Import;
@@ -37,14 +36,24 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     [RelayCommand]
     private async Task PasteFromClipboard()
     {
-        var text = Services.TopLevel()?.Clipboard is { } cb ? await cb.TryGetTextAsync() : null;
-        if (string.IsNullOrWhiteSpace(text))
+        await Shell.PasteImportCommand.ExecuteAsync(null);
+    }
+
+    public Task AddImportedAsync(ImportResult result) => AddAsync(result, null);
+
+    public async Task ImportExternalSubscriptionAsync(string url)
+    {
+        var result = await Services.Subscriptions.FetchAsync(url);
+        if (result.IsEmpty)
         {
-            Shell.ShowToast(L["import.clipboard.empty"], isError: true);
-            return;
+            throw new InvalidOperationException(L["import.none"]);
         }
 
-        await ImportAsync(text, null);
+        var sub = await Services.Profiles.AddSubscriptionAsync(new Uri(url).Host, url);
+        await Services.Profiles.ReplaceSubscriptionProfilesAsync(sub.Id, result.Profiles);
+        Shell.ReloadProfiles();
+        Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, result.Profiles.Count));
+        OnShown();
     }
 
     [RelayCommand]
@@ -69,14 +78,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
                 FilePickerFileTypes.All,
             ],
         });
-        foreach (var f in files)
-        {
-            if (f.TryGetLocalPath() is { } path)
-            {
-                var result = await Services.Importer.ImportFileAsync(path);
-                await AddAsync(result, null);
-            }
-        }
+        await Shell.PreviewExternalAsync(files.Select(f => f.TryGetLocalPath()).OfType<string>());
     }
 
     [RelayCommand]
@@ -98,19 +100,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             return;
         }
 
-        string? payload = null;
-        await Shell.Guard(() =>
-        {
-            payload = QrDecoder.DecodeFile(path);
-            return Task.CompletedTask;
-        });
-        if (payload is null)
-        {
-            Shell.ShowToast(L["import.qr.none"], isError: true);
-            return;
-        }
-
-        await ImportAsync(payload, null);
+        await Shell.PreviewExternalAsync([path]);
     }
 
     [RelayCommand]

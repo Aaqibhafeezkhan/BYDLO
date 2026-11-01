@@ -9,6 +9,6 @@
     <PackageReference Include="Avalonia.Skia" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Bydlo.App\Bydlo.App.csproj" />
+    <ProjectReference Include="..\..\src\Bydlo.Desktop\Bydlo.Desktop.csproj" />
   </ItemGroup>
 </Project>

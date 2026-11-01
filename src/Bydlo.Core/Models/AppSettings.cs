@@ -33,6 +33,8 @@ public enum MockScenario
 
 public sealed class AppSettings
 {
+    public bool SuggestClipboardLinks { get; set; } = true;
+
     public ThemePreference Theme { get; set; } = ThemePreference.Purple;
 
     /// <summary>"auto", "en" or "ru".</summary>

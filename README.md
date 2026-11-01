@@ -66,6 +66,7 @@ dotnet run --project src/Bydlo.Desktop -- --mock   # интерфейс в Mock-
 
 ## Документация
 
+- [Импорт, буфер обмена и «Открыть с помощью»](docs/IMPORT.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Сборка](docs/BUILD.md)
 - [Совместимость протоколов и платформ](docs/COMPATIBILITY.md)
