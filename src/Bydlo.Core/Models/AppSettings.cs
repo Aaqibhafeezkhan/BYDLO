@@ -90,10 +90,10 @@ public sealed class RoutingSettings
 
 public sealed class ZapretSettings
 {
-    /// <summary>Folder with an extracted Flowseal zapret-discord-youtube release.</summary>
+    /// <summary>Fallback folder with an extracted Flowseal release or a native nfqws/tpws executable.</summary>
     public string? InstallPath { get; set; }
 
-    /// <summary>Strategy file name, e.g. <c>general (ALT).bat</c>.</summary>
+    /// <summary>Flowseal batch file name or native preset id. Empty selects the platform default.</summary>
     public string? Strategy { get; set; }
 
     /// <summary>Game filter: "disabled", "all", "tcp" or "udp".</summary>

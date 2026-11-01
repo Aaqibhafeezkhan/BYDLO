@@ -26,7 +26,7 @@ public sealed partial class EngineRow(EngineDescriptor descriptor) : ObservableO
 
     public string Upstream => Descriptor.Upstream;
 
-    public string? LockId => EngineLocator.LockId(Descriptor.Kind);
+    public string? LockId => Descriptor.Kind == EngineKind.Zapret && PlatformInfo.Current.Os != OsFamily.Windows ? "zapret-native" : EngineLocator.LockId(Descriptor.Kind);
 
     [ObservableProperty]
     private string _status = "";
@@ -74,6 +74,12 @@ public sealed partial class ToolsViewModel : PageViewModel
     public ObservableCollection<string> TgLog { get; } = [];
 
     public bool IsWindows => PlatformInfo.Current.Os == OsFamily.Windows;
+
+    public bool CanInstallZapret => Services.Installer.HasAsset(IsWindows ? "zapret" : "zapret-native", PlatformInfo.Current);
+
+    public bool SupportsGameFilter => PlatformInfo.Current.Os is OsFamily.Windows or OsFamily.Linux;
+
+    public string ZapretPlatformNote => L[PlatformInfo.Current.Os == OsFamily.MacOS ? "tools.zapret.macos" : "tools.zapret.native"];
 
     // ---------- Zapret ----------
 
@@ -185,6 +191,12 @@ public sealed partial class ToolsViewModel : PageViewModel
     [RelayCommand]
     private async Task InstallZapret()
     {
+        if (ZapretRunning)
+        {
+            Shell.ShowToast(L["tools.zapret.stopupdate"], isError: true);
+            return;
+        }
+
         IsInstalling = true;
         try
         {
@@ -228,13 +240,14 @@ public sealed partial class ToolsViewModel : PageViewModel
         if (install is null || !install.IsValid)
         {
             Strategies.Clear();
-            ZapretInfo = IsWindows ? L["tools.zapret.missing"] : L["tools.zapret.platform"];
+            ZapretInfo = CanInstallZapret ? L["tools.zapret.missing"] : L["tools.zapret.platform"];
             return;
         }
 
         var current = Services.Settings.Zapret.Strategy;
-        Strategies.ReplaceWith(install.Strategies);
-        SelectedStrategy = Strategies.FirstOrDefault(s => s.FileName == current) ?? (Strategies.Count > 0 ? Strategies[0] : null);
+        Strategies.ReplaceWith(install.Strategies.Select(s => s.FileName.StartsWith("native-", StringComparison.Ordinal)
+            ? s with { DisplayName = L["tools.zapret." + s.FileName + (PlatformInfo.Current.Os == OsFamily.MacOS ? ".macos" : "")] } : s));
+        SelectedStrategy = Strategies.FirstOrDefault(s => s.FileName == current) ?? Strategies.FirstOrDefault(s => s.FileName == ZapretEngine.DefaultStrategy(install));
         ZapretInfo = Loc.T("tools.zapret.found", install.Version ?? "?", Strategies.Count, install.Root);
         LoadList();
     }

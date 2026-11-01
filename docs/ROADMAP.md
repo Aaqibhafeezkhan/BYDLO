@@ -19,8 +19,8 @@
 ## v0.3 — глубже в платформы
 
 - Android ARM64: `VpnService` + интеграция sing-box (libbox), мобильная навигация, сканирование QR камерой.
-- Linux: интеграция нативного zapret (nfqws); системный прокси через настройки GNOME / KDE.
-- macOS: zapret (tpws), системный прокси через `networksetup`, AmneziaWG; подписанные и нотаризованные сборки.
+- Linux: системный прокси через настройки GNOME / KDE.
+- macOS: расширение tpws за пределы IPv4 TCP; системный прокси через `networksetup`, AmneziaWG; подписанные и нотаризованные сборки.
 - Хранилища секретов Keychain (macOS), libsecret (Linux), Android Keystore.
 - Необязательная привилегированная служба-помощник вместо запуска всего приложения с повышенными правами.
 
@@ -32,3 +32,5 @@
 - Автообновление самого BYDLO с проверкой подписи.
 - Переход на Avalonia 12.
 - Другие языки (переводы от сообщества).
+
+Zapret для Android (root-first, исследование VpnService) отслеживается в [issue #21](https://github.com/endercodezz/BYDLO/issues/21). Windows ARM64 ожидает совместимый WinDivert driver.

@@ -35,7 +35,35 @@
       "license": "MIT (Flowseal, bol-van); bundled WinDivert: LGPL-3.0 / GPL-2.0",
       "upstream": "https://github.com/Flowseal/zapret-discord-youtube",
       "assets": {
-        "windows-x64": { "url": "https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.10.3/zapret-discord-youtube-1.10.3.zip", "sha256": "244314ae1c24538a0d751601da8e0c925c843371eec4456eb15f14c4fd6b7058", "executable": "bin/winws.exe" }
+        "windows-x64": { "url": "https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.10.3/zapret-discord-youtube-1.10.3.zip", "sha256": "244314ae1c24538a0d751601da8e0c925c843371eec4456eb15f14c4fd6b7058", "executable": "zapret-discord-youtube-1.10.3/bin/winws.exe" }
+      }
+    },
+    {
+      "id": "zapret-native",
+      "version": "72.13",
+      "license": "MIT",
+      "upstream": "https://github.com/bol-van/zapret",
+      "assets": {
+        "linux-x64": {
+          "url": "https://github.com/bol-van/zapret/releases/download/v72.13/zapret-v72.13.tar.gz",
+          "sha256": "25c74e6c5f48963fa244c2955e76694a07c39447245a0457e2efdc74b3317e68",
+          "executable": "zapret-v72.13/binaries/linux-x86_64/nfqws"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/bol-van/zapret/releases/download/v72.13/zapret-v72.13.tar.gz",
+          "sha256": "25c74e6c5f48963fa244c2955e76694a07c39447245a0457e2efdc74b3317e68",
+          "executable": "zapret-v72.13/binaries/linux-arm64/nfqws"
+        },
+        "macos-x64": {
+          "url": "https://github.com/bol-van/zapret/releases/download/v72.13/zapret-v72.13.tar.gz",
+          "sha256": "25c74e6c5f48963fa244c2955e76694a07c39447245a0457e2efdc74b3317e68",
+          "executable": "zapret-v72.13/binaries/mac64/tpws"
+        },
+        "macos-arm64": {
+          "url": "https://github.com/bol-van/zapret/releases/download/v72.13/zapret-v72.13.tar.gz",
+          "sha256": "25c74e6c5f48963fa244c2955e76694a07c39447245a0457e2efdc74b3317e68",
+          "executable": "zapret-v72.13/binaries/mac64/tpws"
+        }
       }
     },
     {

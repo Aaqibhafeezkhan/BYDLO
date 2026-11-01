@@ -6,7 +6,10 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Bydlo.App.ViewModels;
 
-public sealed record Credit(string Name, string Author, string License, string Url, string Role);
+public sealed record Credit(string Name, string Author, string License, string Url, string Role, string? RoleKey = null)
+{
+    public string LocalizedRole => RoleKey is null ? Role : Loc.Instance[RoleKey];
+}
 
 public sealed partial class SettingsViewModel : PageViewModel
 {
@@ -32,8 +35,10 @@ public sealed partial class SettingsViewModel : PageViewModel
     public static IReadOnlyList<Credit> Credits { get; } =
     [
         new("zapret-discord-youtube", "Flowseal", "MIT", "https://github.com/Flowseal/zapret-discord-youtube", "Zapret strategies, lists, winws bundle"),
-        new("zapret", "bol-van", "MIT", "https://github.com/bol-van/zapret", "winws / nfqws DPI bypass engine"),
+        new("zapret", "bol-van", "MIT", "https://github.com/bol-van/zapret", "", "about.zapret.native"),
         new("WinDivert", "basil00", "LGPL-3.0 / GPL-2.0", "https://github.com/basil00/WinDivert", "Packet interception driver used by winws"),
+        new("Cygwin 3.4.10", "Cygwin contributors / Red Hat", "LGPL-3.0+", "https://cygwin.com/licensing.html", "", "about.cygwin"),
+        new("Newlib", "Newlib contributors", "BSD / MIT", "https://sourceware.org/newlib/", "", "about.newlib"),
         new("tg-ws-proxy", "Flowseal", "MIT", "https://github.com/Flowseal/tg-ws-proxy", "Telegram WebSocket bridge proxy"),
         new("sing-box", "SagerNet (nekohasekai)", "GPL-3.0-or-later", "https://github.com/SagerNet/sing-box", "Universal proxy platform"),
         new("Xray-core", "Project X (XTLS)", "MPL-2.0", "https://github.com/XTLS/Xray-core", "VLESS / REALITY / XHTTP"),

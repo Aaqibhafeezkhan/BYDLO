@@ -13,10 +13,22 @@ public sealed record InstallProgress(string Stage, double? Fraction);
 /// </summary>
 public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, string enginesDirectory)
 {
+    public string? PinnedVersion(string id) => engineLock.Find(id)?.Version;
+
+    public string UserDataDirectory => Path.Combine(Path.GetDirectoryName(enginesDirectory)!, "zapret");
+
+    public string? BundledExecutable(string id, PlatformInfo platform, string? baseDirectory = null) =>
+        FindExecutable(id, platform, Path.Combine(baseDirectory ?? AppContext.BaseDirectory, "engines"));
+
     public string InstallDirectory(string id, string version) => Path.Combine(enginesDirectory, id, version);
 
     /// <summary>Path of the executable if this pinned version is already installed.</summary>
     public string? InstalledExecutable(string id, PlatformInfo platform)
+    {
+        return FindExecutable(id, platform, enginesDirectory);
+    }
+
+    private string? FindExecutable(string id, PlatformInfo platform, string root)
     {
         var entry = engineLock.Find(id);
         if (entry is null || !entry.Assets.TryGetValue(platform.Rid, out var asset))
@@ -24,16 +36,8 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
             return null;
         }
 
-        var dir = InstallDirectory(id, entry.Version);
-        var exe = Path.Combine(dir, asset.Executable.Replace('/', Path.DirectorySeparatorChar));
-        if (File.Exists(exe))
-        {
-            return exe;
-        }
-
-        return Directory.Exists(dir)
-            ? Directory.EnumerateFiles(dir, Path.GetFileName(exe), SearchOption.AllDirectories).FirstOrDefault()
-            : null;
+        var exe = Path.Combine(root, id, entry.Version, asset.Executable.Replace('/', Path.DirectorySeparatorChar));
+        return File.Exists(exe) ? exe : null;
     }
 
     public bool HasAsset(string id, PlatformInfo platform) =>
@@ -75,7 +79,12 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
         }
 
         Directory.CreateDirectory(staging);
-        await ExtractAsync(archive, staging, ct).ConfigureAwait(false);
+        await ExtractAsync(archive, staging, ct, id == "zapret-native" ? new HashSet<string>(StringComparer.Ordinal) { asset.Executable } : null).ConfigureAwait(false);
+        var stagedExe = Path.Combine(staging, asset.Executable.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(stagedExe))
+        {
+            throw new FileNotFoundException($"Archive did not contain {asset.Executable}; previous installation was kept.");
+        }
         if (Directory.Exists(target))
         {
             Directory.Delete(target, recursive: true);
@@ -85,13 +94,6 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
         File.Delete(archive);
 
         var exe = Path.Combine(target, asset.Executable.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(exe))
-        {
-            // Upstream archives sometimes add or drop a top-level folder between releases.
-            exe = Directory.EnumerateFiles(target, Path.GetFileName(exe), SearchOption.AllDirectories).FirstOrDefault()
-                ?? throw new FileNotFoundException($"Archive did not contain {asset.Executable}.");
-        }
-
         if (!OperatingSystem.IsWindows())
         {
             File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute);
@@ -122,7 +124,7 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
         }
     }
 
-    internal static async Task ExtractAsync(string archive, string destination, CancellationToken ct)
+    internal static async Task ExtractAsync(string archive, string destination, CancellationToken ct, IReadOnlySet<string>? selectedFiles = null)
     {
         var full = Path.GetFullPath(destination) + Path.DirectorySeparatorChar;
         if (archive.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
@@ -131,6 +133,7 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
             foreach (var e in zip.Entries)
             {
                 var path = SafeCombine(full, e.FullName);
+                if (selectedFiles is not null && !selectedFiles.Contains(e.FullName)) { continue; }
                 if (e.FullName.EndsWith('/'))
                 {
                     Directory.CreateDirectory(path);
@@ -152,6 +155,7 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
             while (await tar.GetNextEntryAsync(cancellationToken: ct).ConfigureAwait(false) is { } entry)
             {
                 var path = SafeCombine(full, entry.Name);
+                if (selectedFiles is not null && !selectedFiles.Contains(entry.Name)) { continue; }
                 if (entry.EntryType is TarEntryType.Directory)
                 {
                     Directory.CreateDirectory(path);

@@ -23,8 +23,8 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
   WireGuard, AmneziaWG, OpenVPN.
 - **Импорт:** ссылки (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`, `tuic://`, `socks5://`, `wireguard://`…),
   base64-подписки, `.conf` (WireGuard / AmneziaWG), `.ovpn`, изображения с QR-кодом.
-- **Zapret (Windows):** стратегии Flowseal используются без изменений, `winws.exe` запускается без окна консоли;
-  выбор стратегии, игровой фильтр, редактор пользовательских списков, логи, загрузка закреплённой версии с проверкой SHA-256.
+- **Zapret из коробки:** Windows x64 — Flowseal; Linux x64/ARM64 — nfqws + nftables; macOS — tpws + PF (IPv4 TCP 80/443). На Windows стратегии Flowseal используются без изменений, `winws.exe` запускается без окна консоли;
+  выбор стратегии, игровой фильтр, редактор пользовательских списков, логи, встроенная закреплённая версия с проверкой SHA-256 в CI; пользовательские списки переживают обновления.
 - **TgWsProxy:** tg-ws-proxy от Flowseal без окна и трея, ссылка `tg://proxy` в один клик, управление секретом, контроль занятых портов.
 - **Маршрутизация:** локальный прокси или режим всего устройства (TUN), раздельное туннелирование, DNS,
   списки «напрямую / через туннель / блокировать», диапазоны mesh-VPN остаются вне туннеля.
@@ -44,8 +44,8 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 | Платформа | v0.1 |
 |---|---|
 | Windows 10/11 x64, ARM64 | Собирается в CI; основная платформа разработки |
-| Linux x64, ARM64 | Собирается в CI; Zapret пока нет |
-| macOS Intel, Apple Silicon | Собирается в CI (без подписи); Zapret пока нет |
+| Linux x64, ARM64 | Собирается в CI; встроенный nfqws, нужен root + nftables |
+| macOS Intel, Apple Silicon | Собирается в CI (без подписи); встроенный tpws, только IPv4 TCP 80/443, нужен root |
 | Android ARM64 | Запланирован (см. [roadmap](docs/ROADMAP.md)) |
 
 Подробно по протоколам и платформам: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).

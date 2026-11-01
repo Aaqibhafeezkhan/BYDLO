@@ -37,14 +37,15 @@ public sealed class AppServices
         Lock = EngineLock.LoadEmbedded();
         Installer = new EngineInstaller(Http, Lock, Paths.EnginesDirectory);
         Locator = new EngineLocator(Installer, PlatformInfo.Current);
+        ZapretFirewall = new ZapretFirewall(Runner, Installer.UserDataDirectory);
         TgRuntime = new TgWsProxyRuntime(Paths.EnginesDirectory, Lock, Runner);
         TgSecrets = new TgWsProxySecrets(Secrets);
-        Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, TgRuntime, () => new MockEngine());
+        Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, TgRuntime, () => new MockEngine(), ZapretFirewall);
         SystemProxy = SystemProxyFactory.Create();
         Connections = new ConnectionManager(Registry, Secrets, Paths, new ConflictDetector(new TcpPortChecker()), Log, SystemProxy);
         Importer = new ProfileImporter();
         Subscriptions = new SubscriptionClient(Http, Importer);
-        Zapret = new ZapretEngine(Runner, LogRedactor.Shared, Locator, Privileges);
+        Zapret = new ZapretEngine(Runner, LogRedactor.Shared, Locator, Privileges, ZapretFirewall);
         ZapretUpdater = new ZapretUpdater(Installer, PlatformInfo.Current);
     }
 
@@ -78,6 +79,8 @@ public sealed class AppServices
     public EngineInstaller Installer { get; }
 
     public EngineLocator Locator { get; }
+
+    public ZapretFirewall ZapretFirewall { get; }
 
     public TgWsProxyRuntime TgRuntime { get; }
 
@@ -123,6 +126,12 @@ public sealed class AppServices
         var s = new AppServices(args);
         s.Settings = await s.SettingsStore.LoadAsync().ConfigureAwait(false);
         await s.Profiles.LoadAsync().ConfigureAwait(false);
+        if (!s.IsMock && !NetworkSafetyGuard.IsLocked && s.Privileges.IsElevated && s.ZapretFirewall.HasPendingRecovery)
+        {
+            try { await s.ZapretFirewall.RemoveAsync().ConfigureAwait(false); }
+            catch (Exception ex) { s.Log.Error("zapret", "Firewall recovery failed: " + ex.Message); }
+        }
+
         s.Orphans = s.Journal.FindOrphans();
         s.Log.Info("app", $"BYDLO started. Data: {s.Paths.DataDirectory}. Mock mode: {s.IsMock}. Safety lock: {NetworkSafetyGuard.IsLocked}.");
         return s;

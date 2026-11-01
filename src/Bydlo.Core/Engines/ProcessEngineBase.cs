@@ -112,6 +112,11 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             }
 
             await OnStartedAsync(request, ct).ConfigureAwait(false);
+            if (_process.HasExited)
+            {
+                throw new EngineException($"{Descriptor.DisplayName} exited during startup.");
+            }
+
             SetState(EngineState.Running);
         }
         catch (Exception ex)
@@ -126,6 +131,7 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
     {
         if (_process is null)
         {
+            await OnStoppingAsync().ConfigureAwait(false);
             SetState(EngineState.Stopped);
             return;
         }
@@ -153,11 +159,23 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             return;
         }
 
-        SetState(EngineState.Failed, fatal ?? $"{Descriptor.DisplayName} exited unexpectedly (code {code}).");
+        _ = CleanupAfterExitAsync(code, fatal);
+    }
+
+    private async Task CleanupAfterExitAsync(int code, string? fatal)
+    {
+        var message = fatal ?? $"{Descriptor.DisplayName} exited unexpectedly (code {code}).";
+        try { await OnStoppingAsync().ConfigureAwait(false); }
+        catch (Exception ex) { message += " Cleanup failed: " + ex.Message; }
+        if (!_stopping) { SetState(EngineState.Failed, message); }
     }
 
     private async Task KillQuietlyAsync()
     {
+        _stopping = true;
+        // Also needed when Prepare/Start failed before a process was assigned.
+        try { await OnStoppingAsync().ConfigureAwait(false); }
+        catch (Exception ex) { EmitLog("Cleanup failed; recovery is required: " + ex.Message); }
         if (_process is null)
         {
             return;

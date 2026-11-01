@@ -21,7 +21,8 @@ public static class EngineRegistryFactory
         EngineLocator locator,
         IPrivilegeService privileges,
         TgWsProxyRuntime tgRuntime,
-        Func<IEngine>? mockFactory = null)
+        Func<IEngine>? mockFactory = null,
+        IZapretFirewall? zapretFirewall = null)
     {
         var registry = new EngineRegistry(mockFactory ?? (() => new MockEngine()));
         registry
@@ -30,7 +31,7 @@ public static class EngineRegistryFactory
             .Register(TunnelServiceEngine.WireGuardInfo, () => new TunnelServiceEngine(false, runner, redactor, locator, privileges), priority: 30)
             .Register(TunnelServiceEngine.AmneziaInfo, () => new TunnelServiceEngine(true, runner, redactor, locator, privileges), priority: 10)
             .Register(OpenVpnEngine.Info, () => new OpenVpnEngine(runner, redactor, locator, privileges), priority: 10)
-            .Register(ZapretEngine.Info, () => new ZapretEngine(runner, redactor, locator, privileges))
+            .Register(ZapretEngine.Info, () => new ZapretEngine(runner, redactor, locator, privileges, zapretFirewall))
             .Register(TgWsProxyEngine.Info, () => new TgWsProxyEngine(runner, redactor, locator, tgRuntime));
         return registry;
     }
