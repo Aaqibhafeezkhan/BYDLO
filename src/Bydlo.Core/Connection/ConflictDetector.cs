@@ -61,6 +61,12 @@ public sealed class ConflictDetector(IPortChecker ports)
                 "LAN access is on but the proxy login is empty. Set it in Settings → Advanced."));
         }
 
+        if (settings.Mode == ConnectionMode.LocalProxy && settings.AllowLan && settings.SetSystemProxy)
+        {
+            issues.Add(new(ConflictSeverity.Blocking, "lan.sysproxy",
+                "Allow LAN and the system proxy cannot be on together: the system proxy has no credentials for the protected port. Turn one of them off in Settings → Advanced."));
+        }
+
         return issues;
     }
 

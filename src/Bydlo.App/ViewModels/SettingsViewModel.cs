@@ -63,6 +63,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         ConnectOnStartup = s.ConnectOnStartup;
         MinimizeToTray = s.MinimizeToTray;
         ShowNotifications = s.ShowNotifications;
+        OnPropertyChanged(nameof(LanSysProxyConflict));
     }
 
     public static IReadOnlyList<string> Languages { get; } = ["auto", "en", "ru"];
@@ -178,6 +179,9 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     /// <summary>In-app restart with elevated rights exists only on Windows; other systems need a manual restart (issue #34).</summary>
     public bool ShowElevationManualHint => !IsElevated && !CanRestartElevated;
+
+    /// <summary>The system proxy carries no credentials, so it cannot share the protected LAN port (issue #80).</summary>
+    public bool LanSysProxyConflict => AllowLan && Services.Settings.SetSystemProxy;
 
     [ObservableProperty]
     private IpCheckProvider _ipCheckProvider;
@@ -326,6 +330,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     partial void OnAllowLanChanged(bool value)
     {
+        OnPropertyChanged(nameof(LanSysProxyConflict));
         _ = Shell.Guard(() => ApplyAllowLanAsync(value));
     }
 
@@ -399,6 +404,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     partial void OnSetSystemProxyChanged(bool value)
     {
         Services.Settings.SetSystemProxy = value;
+        OnPropertyChanged(nameof(LanSysProxyConflict));
         Persist();
     }
 

@@ -179,6 +179,7 @@
                 <TextBlock Classes="faint" Text="{l:T settings.lan.saved}" IsVisible="{Binding HasLocalProxyPassword}" TextWrapping="Wrap" />
                 <TextBlock Classes="faint" Text="{l:T settings.lan.nopassword}" IsVisible="{Binding !HasLocalProxyPassword}" TextWrapping="Wrap" />
                 <TextBlock Classes="faint" Text="{l:T settings.lan.firewall}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:T settings.lan.sysproxy}" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding LanSysProxyConflict}" />
               </StackPanel>
             </StackPanel>
           </Border>

@@ -69,6 +69,8 @@ public sealed class XrayConfigBuilder
         var httpSettings = new JsonObject();
         if (lanAuth is not null)
         {
+            // Without "password" Xray falls back to NO_AUTH and ignores accounts.
+            socksSettings["auth"] = "password";
             var accounts = new JsonArray(new JsonObject { ["user"] = lanAuth.Username, ["pass"] = lanAuth.Password });
             socksSettings["accounts"] = accounts;
             httpSettings["accounts"] = accounts.DeepClone();

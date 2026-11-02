@@ -61,6 +61,8 @@ public sealed class LanProxyTests
         var (profile, secrets) = Vless();
         var ctx = new BuildContext(LanSettings(), LocalProxyAuth: new LocalProxyAuth("lan-user", "lan-pass"));
         var inbounds = new XrayConfigBuilder().Build(profile, secrets, ctx)["inbounds"]!.AsArray();
+        // SOCKS defaults to NO_AUTH; accounts alone would leave the port open.
+        Assert.Equal("password", (string?)inbounds[0]!["settings"]!["auth"]);
         foreach (var inbound in inbounds)
         {
             Assert.Equal("0.0.0.0", (string?)inbound!["listen"]);
@@ -92,6 +94,40 @@ public sealed class LanProxyTests
         var blocking = detector.CheckPrimary(profile, new AppSettings { AllowLan = true }, false, false)
             .Where(i => i.Severity == ConflictSeverity.Blocking).ToList();
         Assert.Contains(blocking, i => i.Code == "lan.login");
+    }
+
+    [Fact]
+    public void Conflicts_block_lan_together_with_system_proxy()
+    {
+        var detector = new ConflictDetector(new FakePorts());
+        var profile = new Profile { Name = "s", Protocol = ProtocolKind.Vless, Host = "h", Port = 443 };
+        var settings = new AppSettings
+        {
+            Mode = ConnectionMode.LocalProxy,
+            AllowLan = true,
+            LocalProxyUsername = "lan-user",
+            SetSystemProxy = true,
+        };
+        var blocking = detector.CheckPrimary(profile, settings, false, false)
+            .Where(i => i.Severity == ConflictSeverity.Blocking).ToList();
+        Assert.Contains(blocking, i => i.Code == "lan.sysproxy");
+    }
+
+    [Fact]
+    public void Conflicts_allow_lan_with_system_proxy_in_tun_mode()
+    {
+        var detector = new ConflictDetector(new FakePorts());
+        var profile = new Profile { Name = "s", Protocol = ProtocolKind.Vless, Host = "h", Port = 443 };
+        var settings = new AppSettings
+        {
+            Mode = ConnectionMode.Tun,
+            AllowLan = true,
+            LocalProxyUsername = "lan-user",
+            SetSystemProxy = true,
+        };
+        var blocking = detector.CheckPrimary(profile, settings, false, false)
+            .Where(i => i.Severity == ConflictSeverity.Blocking).ToList();
+        Assert.DoesNotContain(blocking, i => i.Code == "lan.sysproxy");
     }
 
     [Fact]

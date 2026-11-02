@@ -324,6 +324,7 @@
   "settings.lan.saved": "Password is saved on this device.",
   "settings.lan.nopassword": "No password saved yet — the option cannot be enabled without one.",
   "settings.lan.firewall": "BYDLO does not change firewall rules automatically; allow the port yourself if needed.",
+  "settings.lan.sysproxy": "Cannot be combined with the system proxy (it carries no credentials): turn one of them off.",
   "lan.auth.login.required": "LAN access is on but the proxy login is empty. Set it in Settings → Advanced.",
   "lan.auth.password.required": "LAN access is on but the proxy password is missing. Set it in Settings → Advanced.",
   "settings.mock": "Mock Mode (testing)",
