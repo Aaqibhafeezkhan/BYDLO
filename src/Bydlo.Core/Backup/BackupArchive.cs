@@ -128,6 +128,7 @@ public static class BackupArchive
             s.Routing.RemoteDns is null || s.Routing.DirectDns is null ||
             s.Zapret.TestTargets is null || s.Zapret.GameFilter is not ("disabled" or "all" or "tcp" or "udp") ||
             s.TgWsProxy.DcIps is null || s.TgWsProxy.CfProxyDomains is null || s.TgWsProxy.Host is null || s.TgWsProxy.FakeTlsDomain is null ||
+            s.LocalProxyUsername is null ||
             s.LocalProxyPort is < 1 or > 65535 || s.TgWsProxy.Port is < 1 or > 65535 ||
             !Enum.IsDefined(s.Theme) || !Enum.IsDefined(s.Mode) || !Enum.IsDefined(s.MockScenario) || !Enum.IsDefined(s.IpCheckProvider) ||
             s.Language is not ("auto" or "en" or "ru"))

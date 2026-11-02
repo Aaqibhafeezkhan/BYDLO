@@ -1,4 +1,5 @@
 using Bydlo.App.Services;
+using Bydlo.Core.Connection;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
@@ -27,6 +28,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         _setSystemProxy = s.SetSystemProxy;
         _autoReconnect = s.AutoReconnect;
         _killSwitch = s.KillSwitch;
+        _allowLan = s.AllowLan;
+        _localProxyUsername = s.LocalProxyUsername;
         _showAdvanced = s.ShowAdvanced;
         _suggestClipboardLinks = s.SuggestClipboardLinks;
         _startWithSystem = s.StartWithSystem;
@@ -49,6 +52,10 @@ public sealed partial class SettingsViewModel : PageViewModel
         AutoReconnect = s.AutoReconnect;
         ShowAdvanced = s.ShowAdvanced;
         KillSwitch = s.KillSwitch;
+        AllowLan = s.AllowLan;
+        LocalProxyUsername = s.LocalProxyUsername;
+        LocalProxyPassword = "";
+        _ = RefreshLanPasswordStatusAsync();
         SuggestClipboardLinks = s.SuggestClipboardLinks;
         _updatingAutostart = true;
         StartWithSystem = s.StartWithSystem;
@@ -155,6 +162,22 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     private int _localPort;
+
+    [ObservableProperty]
+    private bool _allowLan;
+
+    [ObservableProperty]
+    private string _localProxyUsername = "";
+
+    /// <summary>Transient entry field; the stored LAN password is never read back into the UI.</summary>
+    [ObservableProperty]
+    private string _localProxyPassword = "";
+
+    [ObservableProperty]
+    private bool _hasLocalProxyPassword;
+
+    /// <summary>In-app restart with elevated rights exists only on Windows; other systems need a manual restart (issue #34).</summary>
+    public bool ShowElevationManualHint => !IsElevated && !CanRestartElevated;
 
     [ObservableProperty]
     private IpCheckProvider _ipCheckProvider;
@@ -299,6 +322,71 @@ public sealed partial class SettingsViewModel : PageViewModel
             Services.Settings.LocalProxyPort = value;
             Persist();
         }
+    }
+
+    partial void OnAllowLanChanged(bool value)
+    {
+        _ = Shell.Guard(() => ApplyAllowLanAsync(value));
+    }
+
+    partial void OnLocalProxyUsernameChanged(string value)
+    {
+        Services.Settings.LocalProxyUsername = value;
+        Persist();
+        if (Services.Settings.AllowLan && string.IsNullOrWhiteSpace(value))
+        {
+            AllowLan = false;
+            Shell.ShowToast(L[LocalProxyAuthValidator.LoginRequiredKey], isError: true,
+                localizationKey: LocalProxyAuthValidator.LoginRequiredKey);
+        }
+    }
+
+    partial void OnLocalProxyPasswordChanged(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return;
+        }
+
+        _ = Shell.Guard(() => SaveLanPasswordAsync(value));
+    }
+
+    private async Task ApplyAllowLanAsync(bool value)
+    {
+        if (value)
+        {
+            if (!string.IsNullOrEmpty(LocalProxyPassword))
+            {
+                await SaveLanPasswordAsync(LocalProxyPassword);
+                LocalProxyPassword = "";
+            }
+
+            var key = LocalProxyAuthValidator.Validate(
+                new AppSettings { AllowLan = true, LocalProxyUsername = LocalProxyUsername },
+                HasLocalProxyPassword ? "present" : null);
+            if (key is not null)
+            {
+                AllowLan = false;
+                Shell.ShowToast(L[key], isError: true, localizationKey: key);
+                return;
+            }
+        }
+
+        Services.Settings.AllowLan = value;
+        Persist();
+    }
+
+    private async Task SaveLanPasswordAsync(string password)
+    {
+        await Services.Secrets.SaveAsync(ConnectionManager.LocalProxySecretId,
+            new ProfileSecrets { Values = { ["password"] = password } });
+        HasLocalProxyPassword = true;
+    }
+
+    private async Task RefreshLanPasswordStatusAsync()
+    {
+        var stored = await Services.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId);
+        HasLocalProxyPassword = stored["password"] is not null;
     }
 
     partial void OnIpCheckProviderChanged(IpCheckProvider value)

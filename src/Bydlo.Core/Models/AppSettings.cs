@@ -76,6 +76,16 @@ public sealed class AppSettings
     /// <summary>Port of the local mixed (SOCKS5 + HTTP) inbound.</summary>
     public int LocalProxyPort { get; set; } = 2080;
 
+    /// <summary>
+    /// Listen on all interfaces so other devices on the LAN can use the local proxy.
+    /// Off by default. Requires <see cref="LocalProxyUsername"/> and a password in the
+    /// secret store ("tool:localproxy"); the firewall is never changed automatically.
+    /// </summary>
+    public bool AllowLan { get; set; }
+
+    /// <summary>Login for LAN clients. The password lives in the secret store (never in settings JSON).</summary>
+    public string LocalProxyUsername { get; set; } = "";
+
     /// <summary>Service used by the explicit "Check connection" action. The request always goes through the tunnel.</summary>
     public IpCheckProvider IpCheckProvider { get; set; } = IpCheckProvider.IpWhoIs;
 

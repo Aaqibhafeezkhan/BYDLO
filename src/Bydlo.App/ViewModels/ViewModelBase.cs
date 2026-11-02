@@ -63,6 +63,37 @@ public sealed partial class ProfileItem(Profile profile) : ObservableObject
 
     [ObservableProperty]
     private bool _isActive;
+
+    /// <summary>Last measured TCP latency (issue #10). Null when not measured yet.</summary>
+    [ObservableProperty]
+    private TimeSpan? _latency;
+
+    /// <summary>True when the last latency probe failed to reach the server.</summary>
+    [ObservableProperty]
+    private bool _latencyFailed;
+
+    public bool HasLatency => Latency is not null || LatencyFailed;
+
+    public string LatencyText => LatencyFailed ? "✕" : Latency is { } t ? Format.Latency(t) : "—";
+
+    public bool LatencyOk => !LatencyFailed && Latency is { } ok && ok < TimeSpan.FromMilliseconds(200);
+
+    public bool LatencyWarn => !LatencyFailed && Latency is { } warn && warn >= TimeSpan.FromMilliseconds(200) && warn < TimeSpan.FromMilliseconds(800);
+
+    public bool LatencyBad => LatencyFailed || (Latency is { } bad && bad >= TimeSpan.FromMilliseconds(800));
+
+    partial void OnLatencyChanged(TimeSpan? value) => RefreshLatency();
+
+    partial void OnLatencyFailedChanged(bool value) => RefreshLatency();
+
+    private void RefreshLatency()
+    {
+        OnPropertyChanged(nameof(HasLatency));
+        OnPropertyChanged(nameof(LatencyText));
+        OnPropertyChanged(nameof(LatencyOk));
+        OnPropertyChanged(nameof(LatencyWarn));
+        OnPropertyChanged(nameof(LatencyBad));
+    }
 }
 
 public static class Labels

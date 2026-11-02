@@ -118,6 +118,8 @@ public sealed partial class HomeViewModel : PageViewModel
 
     public bool HasProfiles => Shell.Profiles.Count > 0;
 
+    public bool HasLatencyResults => Shell.HasLatencyResults;
+
     public bool IsProxy
     {
         get => !IsTun;
@@ -301,6 +303,31 @@ public sealed partial class HomeViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private async Task BestServer()
+    {
+        var best = BestServerPicker.PickBest(Shell.Profiles.Select(i => i.Profile), Shell.Latencies);
+        if (best is null)
+        {
+            Shell.ShowToast(L["connections.latency.none"], isError: true);
+            Shell.Navigate("connections");
+            return;
+        }
+
+        if (Shell.Profiles.FirstOrDefault(i => i.Id == best.Id) is { } item)
+        {
+            Shell.SelectedProfile = item;
+        }
+
+        if (!IsConnected && !IsBusy && !Shell.Primary.CleanupPending)
+        {
+            await ToggleConnectionCommand.ExecuteAsync(null);
+            return;
+        }
+
+        await Shell.Guard(() => Services.Connections.ConnectAsync(best, Services.EffectiveSettings));
+    }
+
+    [RelayCommand]
     private Task ToggleZapret() => Shell.Tools.ToggleZapretCommand.ExecuteAsync(null);
 
     [RelayCommand]
@@ -335,7 +362,7 @@ public sealed partial class HomeViewModel : PageViewModel
         }
 
         if (e.PropertyName is nameof(MainViewModel.Primary) or nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.IsMock)
-            or nameof(MainViewModel.Zapret) or nameof(MainViewModel.Tg))
+            or nameof(MainViewModel.Zapret) or nameof(MainViewModel.Tg) or nameof(MainViewModel.HasLatencyResults))
         {
             RefreshAll();
         }
@@ -353,7 +380,7 @@ public sealed partial class HomeViewModel : PageViewModel
                      nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(IsEmpty), nameof(StatusText), nameof(ButtonText), nameof(Hint), nameof(Error),
                      nameof(Elapsed), nameof(DownSpeed), nameof(UpSpeed), nameof(EngineLabel), nameof(ZapretOn), nameof(ZapretState), nameof(TgOn), nameof(TgState),
                      nameof(IsTun), nameof(IsProxy), nameof(IsWholeDevice), nameof(ModeHint), nameof(HasProfiles), nameof(CanCheckConnection), nameof(CanRunCheck), nameof(CheckDisabledReason), nameof(CheckButtonText),
-                     nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult),
+                     nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult), nameof(HasLatencyResults),
                  })
         {
             OnPropertyChanged(name);

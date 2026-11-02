@@ -49,6 +49,18 @@ public sealed class ConflictDetector(IPortChecker ports)
                 "TUN mode with 'Keep mesh VPN ranges direct' disabled may break other VPN / mesh-network clients."));
         }
 
+        if (settings.Mode == ConnectionMode.Tun && settings.AllowLan)
+        {
+            issues.Add(new(ConflictSeverity.Warning, "lan.tun",
+                "Allow LAN only affects Local proxy mode; TUN mode has no local proxy inbound to share."));
+        }
+
+        if (settings.AllowLan && string.IsNullOrWhiteSpace(settings.LocalProxyUsername))
+        {
+            issues.Add(new(ConflictSeverity.Blocking, "lan.login",
+                "LAN access is on but the proxy login is empty. Set it in Settings → Advanced."));
+        }
+
         return issues;
     }
 

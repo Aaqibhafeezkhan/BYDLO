@@ -11,7 +11,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var data = new BackupData { Settings = BackupArchive.Clone(settings), ToolSecrets = await secrets.LoadAsync(ConnectionManager.TgWsProxySecretId, ct).ConfigureAwait(false) };
+            var data = new BackupData { Settings = BackupArchive.Clone(settings), ToolSecrets = await CaptureToolSecretsAsync(ct).ConfigureAwait(false) };
             data.Settings.EnginePaths.Clear();
             data.Settings.Zapret.InstallPath = null;
             foreach (var profile in _doc.Profiles)
@@ -41,7 +41,7 @@ public sealed partial class ProfileStore
             foreach (var sub in data.Subscriptions)
             { writes.Add(SubscriptionSecretId(sub.Subscription.Id), new ProfileSecrets { Values = { ["url"] = sub.Url } }); }
             if (mode == BackupImportMode.Replace || data.ToolSecrets.Values.Count > 0)
-            { writes.Add(ConnectionManager.TgWsProxySecretId, data.ToolSecrets); }
+            { RestoreToolSecrets(writes, data.ToolSecrets); }
             var obsolete = mode == BackupImportMode.Replace
                 ? _doc.Profiles.Select(p => p.Id.ToString()).Concat(_doc.Subscriptions.Select(s => SubscriptionSecretId(s.Id))).Where(id => !writes.ContainsKey(id)).ToList()
                 : [];
@@ -67,5 +67,27 @@ public sealed partial class ProfileStore
             }
         }
         finally { _gate.Release(); }
+    }
+
+    /// <summary>Merges device-local tool secrets into the single backup bag without changing its format.</summary>
+    private async Task<ProfileSecrets> CaptureToolSecretsAsync(CancellationToken ct)
+    {
+        var bag = new ProfileSecrets();
+        var tg = await secrets.LoadAsync(ConnectionManager.TgWsProxySecretId, ct).ConfigureAwait(false);
+        if (tg["secret"] is { } secret) { bag.Values["secret"] = secret; }
+        var lan = await secrets.LoadAsync(ConnectionManager.LocalProxySecretId, ct).ConfigureAwait(false);
+        if (lan["password"] is { } password) { bag.Values["localproxy-password"] = password; }
+        return bag;
+    }
+
+    /// <summary>Splits the backup bag back into per-tool secret records.</summary>
+    private static void RestoreToolSecrets(Dictionary<string, ProfileSecrets> writes, ProfileSecrets bag)
+    {
+        var tg = new ProfileSecrets();
+        if (bag["secret"] is { } secret) { tg.Values["secret"] = secret; }
+        writes.Add(ConnectionManager.TgWsProxySecretId, tg);
+        var lan = new ProfileSecrets();
+        if (bag["localproxy-password"] is { } password) { lan.Values["password"] = password; }
+        writes.Add(ConnectionManager.LocalProxySecretId, lan);
     }
 }

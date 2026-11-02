@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bydlo.Core.Diagnostics;
+using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
 
 namespace Bydlo.Core.Config;
@@ -62,6 +63,17 @@ public sealed class XrayConfigBuilder
             rules.Add(new JsonObject { ["type"] = "field", ["ip"] = Arr(routing.DirectCidrs), ["outboundTag"] = "direct" });
         }
 
+        var lanAuth = ctx.LocalProxyAuth;
+        var listen = lanAuth is null ? "127.0.0.1" : "0.0.0.0";
+        var socksSettings = new JsonObject { ["udp"] = true };
+        var httpSettings = new JsonObject();
+        if (lanAuth is not null)
+        {
+            var accounts = new JsonArray(new JsonObject { ["user"] = lanAuth.Username, ["pass"] = lanAuth.Password });
+            socksSettings["accounts"] = accounts;
+            httpSettings["accounts"] = accounts.DeepClone();
+        }
+
         var root = new JsonObject
         {
             ["log"] = new JsonObject { ["loglevel"] = "warning" },
@@ -69,18 +81,19 @@ public sealed class XrayConfigBuilder
                 new JsonObject
                 {
                     ["tag"] = "socks-in",
-                    ["listen"] = "127.0.0.1",
+                    ["listen"] = listen,
                     ["port"] = settings.LocalProxyPort,
                     ["protocol"] = "socks",
-                    ["settings"] = new JsonObject { ["udp"] = true },
+                    ["settings"] = socksSettings,
                     ["sniffing"] = new JsonObject { ["enabled"] = true, ["destOverride"] = new JsonArray("http", "tls", "quic") },
                 },
                 new JsonObject
                 {
                     ["tag"] = "http-in",
-                    ["listen"] = "127.0.0.1",
+                    ["listen"] = listen,
                     ["port"] = settings.LocalProxyPort + 1,
                     ["protocol"] = "http",
+                    ["settings"] = httpSettings,
                 }),
             ["outbounds"] = new JsonArray(
                 BuildOutbound(p, s),

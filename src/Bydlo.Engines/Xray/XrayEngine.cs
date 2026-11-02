@@ -57,7 +57,12 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
     protected override async Task<ProcessSpec> PrepareAsync(EngineStartRequest request, EngineAvailability availability, CancellationToken ct)
     {
         var profile = request.Profile ?? throw new EngineException("No profile selected.");
-        var json = _builder.BuildJson(profile, request.Secrets, new BuildContext(request.Settings));
+        if (request.LocalProxyAuth is { } lan)
+        {
+            Redactor.RegisterSecret(lan.Password);
+        }
+
+        var json = _builder.BuildJson(profile, request.Secrets, new BuildContext(request.Settings, LocalProxyAuth: request.LocalProxyAuth));
         var configPath = Path.Combine(request.WorkDirectory, "xray.json");
         await SecureFile.WriteAsync(configPath, json, ct).ConfigureAwait(false);
         return new ProcessSpec
