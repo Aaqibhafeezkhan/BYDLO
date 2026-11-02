@@ -1,13 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bydlo.Core.Diagnostics;
+using Bydlo.Core.Engines;
 using Bydlo.Core.Import.Parsers;
 using Bydlo.Core.Models;
 
 namespace Bydlo.Core.Config;
 
 /// <summary>Options that are not part of the profile itself.</summary>
-public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null);
+public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null, LocalProxyAuth? LocalProxyAuth = null);
 
 /// <summary>
 /// Generates sing-box configuration (schema of sing-box 1.12+, verified against the 1.14 migration guide):
@@ -42,7 +43,7 @@ public sealed class SingBoxConfigBuilder
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
             ["dns"] = BuildDns(routing),
-            ["inbounds"] = new JsonArray(BuildInbound(settings)),
+            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth)),
         };
 
         var outbounds = new JsonArray();
@@ -157,7 +158,7 @@ public sealed class SingBoxConfigBuilder
         return new JsonObject { ["servers"] = servers, ["rules"] = rules, ["final"] = "remote" };
     }
 
-    private static JsonObject BuildInbound(AppSettings settings)
+    private static JsonObject BuildInbound(AppSettings settings, LocalProxyAuth? lanAuth = null)
     {
         if (settings.Mode == ConnectionMode.Tun)
         {
@@ -192,13 +193,19 @@ public sealed class SingBoxConfigBuilder
             return tun;
         }
 
-        return new JsonObject
+        var inbound = new JsonObject
         {
             ["type"] = "mixed",
             ["tag"] = "mixed-in",
-            ["listen"] = "127.0.0.1",
+            ["listen"] = lanAuth is null ? "127.0.0.1" : "0.0.0.0",
             ["listen_port"] = settings.LocalProxyPort,
         };
+        if (lanAuth is not null)
+        {
+            inbound["users"] = new JsonArray(new JsonObject { ["username"] = lanAuth.Username, ["password"] = lanAuth.Password });
+        }
+
+        return inbound;
     }
 
     private static JsonObject BuildRoute(RoutingSettings routing, ConnectionMode mode)

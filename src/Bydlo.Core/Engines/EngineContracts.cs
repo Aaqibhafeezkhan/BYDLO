@@ -74,11 +74,17 @@ public sealed record EngineDescriptor
 
 public sealed record TrafficSample(DateTimeOffset Time, long UploadBytesPerSecond, long DownloadBytesPerSecond, long TotalUpload, long TotalDownload);
 
+/// <summary>Credentials for LAN clients of the local proxy inbound. Never persisted in settings JSON.</summary>
+public sealed record LocalProxyAuth(string Username, string Password);
+
 public sealed record EngineStartRequest
 {
     public Profile? Profile { get; init; }
 
     public ProfileSecrets Secrets { get; init; } = ProfileSecrets.Empty;
+
+    /// <summary>LAN proxy credentials, set only when <see cref="AppSettings.AllowLan"/> is on.</summary>
+    public LocalProxyAuth? LocalProxyAuth { get; init; }
 
     public required AppSettings Settings { get; init; }
 

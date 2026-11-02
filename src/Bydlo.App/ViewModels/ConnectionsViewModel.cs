@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Bydlo.App.Services;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Import;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
@@ -17,6 +18,48 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     private bool _autoRefreshInProgress;
 
+    [ObservableProperty] private bool _isCheckingLatency;
+
+    /// <summary>User-initiated latency probe only; never runs in Mock Mode or under the safety lock.</summary>
+    public bool CanCheckLatency => !IsCheckingLatency && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
+
+    public string? CheckLatencyDisabledReason => IsCheckingLatency ? null
+        : Services.IsMock ? L["connections.latency.mock"]
+        : NetworkSafetyGuard.IsLocked ? L["connections.latency.locked"] : null;
+
+    partial void OnIsCheckingLatencyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanCheckLatency));
+        OnPropertyChanged(nameof(CheckLatencyDisabledReason));
+    }
+
+    [RelayCommand]
+    private async Task CheckLatency()
+    {
+        if (IsCheckingLatency || Services.IsMock || NetworkSafetyGuard.IsLocked)
+        {
+            return;
+        }
+
+        IsCheckingLatency = true;
+        try
+        {
+            IReadOnlyDictionary<Guid, ServerLatencyResult>? results = null;
+            await Shell.Guard(async () =>
+            {
+                results = await Services.ServerLatency.ProbeAsync(Services.Profiles.Profiles).ConfigureAwait(false);
+            });
+            if (results is not null)
+            {
+                Shell.SetLatencies(results);
+            }
+        }
+        finally
+        {
+            IsCheckingLatency = false;
+        }
+    }
+
     public bool IsEmpty => Shell.Profiles.Count == 0;
 
     public override void OnShown()
@@ -25,6 +68,8 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         RefreshCatalog();
         OnPropertyChanged(nameof(IsEmpty));
         _ = AutoRefreshIfDueAsync();
+        OnPropertyChanged(nameof(CanCheckLatency));
+        OnPropertyChanged(nameof(CheckLatencyDisabledReason));
     }
 
     public Task AddImportedAsync(ImportResult result) => AddAsync(result, null);

@@ -19,6 +19,10 @@
         </StackPanel>
       </Button>
       <Button Classes="ghost" Content="{l:T import.demo}" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}" HorizontalAlignment="Left" />
+      <Button Classes="ghost" Content="{l:T connections.latency.check}" Command="{Binding CheckLatencyCommand}" IsEnabled="{Binding CanCheckLatency}" HorizontalAlignment="Left" />
+      <TextBlock Classes="faint" Text="{Binding CheckLatencyDisabledReason}" IsVisible="{Binding CheckLatencyDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+      <CheckBox Content="{l:T connections.latency.sort}" IsChecked="{Binding Shell.SortByLatency}" IsVisible="{Binding !IsEmpty}" />
+      <TextBlock Classes="faint" Text="{l:T connections.latency.udp}" TextWrapping="Wrap" IsVisible="{Binding !IsEmpty}" />
       <!-- Profiles -->
       <StackPanel Spacing="10">
         <TextBlock Classes="caps" Text="{l:T connections.profiles}" />
@@ -45,7 +49,13 @@
                       </Border>
                     </StackPanel>
                     <TextBlock Classes="faint" Text="{Binding Details}" />
-                    <TextBlock Classes="faint" Text="{Binding Endpoint}" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Classes="faint" Text="{Binding Endpoint}" TextTrimming="CharacterEllipsis" />
+                      <Border Classes="pill" Classes.ok="{Binding LatencyOk}" Classes.warn="{Binding LatencyWarn}" Classes.bad="{Binding LatencyBad}"
+                              IsVisible="{Binding HasLatency}" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding LatencyText}" FontSize="10" />
+                      </Border>
+                    </StackPanel>
                   </StackPanel>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                     <Button Classes="icon" Content="⋯" AutomationProperties.Name="{l:T share.title}" ToolTip.Tip="{l:T share.title}">

@@ -45,6 +45,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     public const string ZapretKey = "zapret";
     public const string TgWsProxyKey = "tgwsproxy";
     public const string TgWsProxySecretId = "tool:tgwsproxy";
+    public const string LocalProxySecretId = "tool:localproxy";
 
     private const int MaxReconnectAttempts = 3;
 
@@ -110,13 +111,15 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             throw new EngineException(blocking[0].Message);
         }
 
+        var lanAuth = await LoadLocalProxyAuthAsync(settings, profile, ct).ConfigureAwait(false);
+
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false);
             var engine = _registry.CreateFor(profile, settings, _os);
             var secrets = await _secrets.LoadAsync(profile.Id.ToString(), ct).ConfigureAwait(false);
-            var session = new Session(PrimaryKey, engine, profile, secrets, settings);
+            var session = new Session(PrimaryKey, engine, profile, secrets, settings, lanAuth);
             await StartSessionUnsafeAsync(session, ct).ConfigureAwait(false);
 
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
@@ -143,6 +146,27 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         {
             _gate.Release();
         }
+    }
+
+    private async Task<LocalProxyAuth?> LoadLocalProxyAuthAsync(AppSettings settings, Profile profile, CancellationToken ct)
+    {
+        if (!settings.AllowLan || settings.MockMode)
+        {
+            return null;
+        }
+
+        var stored = await _secrets.LoadAsync(LocalProxySecretId, ct).ConfigureAwait(false);
+        var key = LocalProxyAuthValidator.Validate(settings, stored["password"]);
+        if (key is not null)
+        {
+            var message = key == LocalProxyAuthValidator.LoginRequiredKey
+                ? "LAN access is on but the proxy login is empty. Set it in Settings → Advanced."
+                : "LAN access is on but the proxy password is missing. Set it in Settings → Advanced.";
+            Fail(PrimaryKey, profile, settings, message, key);
+            throw new EngineException(message, localizationKey: key);
+        }
+
+        return new LocalProxyAuth(settings.LocalProxyUsername.Trim(), stored["password"]!);
     }
 
     public Task StartZapretAsync(AppSettings settings, CancellationToken ct = default) =>
@@ -253,6 +277,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             {
                 Profile = session.Profile,
                 Secrets = session.Secrets,
+                LocalProxyAuth = session.LocalProxyAuth,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
             }, ct).ConfigureAwait(false);
@@ -378,6 +403,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             {
                 Profile = session.Profile,
                 Secrets = session.Secrets,
+                LocalProxyAuth = session.LocalProxyAuth,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
             };
@@ -418,15 +444,16 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         }
     }
 
-    private void Fail(string key, Profile? profile, AppSettings settings, string message)
+    private void Fail(string key, Profile? profile, AppSettings settings, string message, string? localizationKey = null)
     {
         _log.Error(key, message);
-        SessionChanged?.Invoke(this, new SessionSnapshot(key, ConnectionStatus.Error, profile, null, settings.MockMode, null, message, null));
+        SessionChanged?.Invoke(this, new SessionSnapshot(key, ConnectionStatus.Error, profile, null, settings.MockMode, null, message, null)
+            { ErrorLocalizationKey = localizationKey });
     }
 
     private void Publish(Session session) => SessionChanged?.Invoke(this, session.ToSnapshot());
 
-    private sealed class Session(string key, IEngine engine, Profile? profile, ProfileSecrets secrets, AppSettings settings)
+    private sealed class Session(string key, IEngine engine, Profile? profile, ProfileSecrets secrets, AppSettings settings, LocalProxyAuth? lanAuth = null)
     {
         public string Key { get; } = key;
 
@@ -435,6 +462,8 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         public Profile? Profile { get; } = profile;
 
         public ProfileSecrets Secrets { get; } = secrets;
+
+        public LocalProxyAuth? LocalProxyAuth { get; } = lanAuth;
 
         public AppSettings Settings { get; } = settings;
 
