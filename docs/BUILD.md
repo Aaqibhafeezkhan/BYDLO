@@ -14,7 +14,7 @@
 **PowerShell — обычный пользовательский запуск:**
 
 ```powershell
-git clone https://github.com/endercodezz/BYDLO.git
+git clone https://git.ywfl.dev/endercodezz/BYDLO.git
 cd BYDLO
 # Убрать флаги разработки только из текущей оболочки.
 Remove-Item Env:BYDLO_MOCK, Env:BYDLO_SAFE_DEV, Env:BYDLO_DATA_DIR -ErrorAction SilentlyContinue
@@ -26,7 +26,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 **bash — обычный пользовательский запуск:**
 
 ```bash
-git clone https://github.com/endercodezz/BYDLO.git
+git clone https://git.ywfl.dev/endercodezz/BYDLO.git
 cd BYDLO
 unset BYDLO_MOCK BYDLO_SAFE_DEV BYDLO_DATA_DIR
 dotnet restore BYDLO.slnx
@@ -109,6 +109,9 @@ dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/w
 ## CI
 
 `.github/workflows/ci.yml`:
+
+> **Временно:** CI работает на раннерах Gitea (git.ywfl.dev), где нет macOS. Тесты на macOS и сборки
+> `osx-x64` / `osx-arm64` отключены до возвращения на GitHub (#57). Задача **release** использует `gh` и на Gitea не работает.
 
 1. **test** — сборка и модульные тесты на Ubuntu, Windows и macOS (`BYDLO_SAFE_DEV=1`).
 2. **desktop** — самодостаточная публикация для шести платформ, упаковка закреплённых sing-box/Xray/Zapret, сборка AmneziaWG для Windows/Linux и OpenVPN для всех платформ; лицензии, соответствующие исходники и хеши. Сетевые движки не запускаются. Для Unix используются нативные x64/ARM64 runners.

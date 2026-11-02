@@ -28,7 +28,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macOS is temporarily off: the Gitea runners have no macOS (#57).
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -67,8 +68,7 @@ jobs:
           - { rid: win-arm64, os: windows-latest }
           - { rid: linux-x64, os: ubuntu-24.04 }
           - { rid: linux-arm64, os: ubuntu-24.04-arm }
-          - { rid: osx-x64, os: macos-15-intel }
-          - { rid: osx-arm64, os: macos-latest }
+          # osx-x64 / osx-arm64 return with macOS runners (#57).
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
