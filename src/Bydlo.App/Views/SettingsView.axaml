@@ -46,6 +46,29 @@
         </StackPanel>
       </Border>
 
+      <Border Classes="panel">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h2" Text="{l:T settings.desktop}" />
+          <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding AutostartSupported}">
+            <TextBlock Text="{l:T settings.desktop.autostart}" TextWrapping="Wrap" Margin="0,0,18,0" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartWithSystem}" />
+          </Grid>
+          <TextBlock Classes="faint" Text="{l:T settings.desktop.autostart.hint}" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{l:T settings.desktop.connect}" TextWrapping="Wrap" Margin="0,0,18,0" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ConnectOnStartup}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{l:T settings.desktop.tray}" TextWrapping="Wrap" Margin="0,0,18,0" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding MinimizeToTray}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{l:T settings.desktop.notifications}" TextWrapping="Wrap" Margin="0,0,18,0" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowNotifications}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
       <!-- Connection -->
       <Border Classes="panel">
         <StackPanel Spacing="14">

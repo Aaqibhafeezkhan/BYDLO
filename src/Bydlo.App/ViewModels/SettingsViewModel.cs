@@ -29,6 +29,10 @@ public sealed partial class SettingsViewModel : PageViewModel
         _killSwitch = s.KillSwitch;
         _showAdvanced = s.ShowAdvanced;
         _suggestClipboardLinks = s.SuggestClipboardLinks;
+        _startWithSystem = s.StartWithSystem;
+        _connectOnStartup = s.ConnectOnStartup;
+        _minimizeToTray = s.MinimizeToTray;
+        _showNotifications = s.ShowNotifications;
     }
 
     /// <summary>Re-read settings changed outside this page, e.g. by the first-run onboarding.</summary>
@@ -46,9 +50,47 @@ public sealed partial class SettingsViewModel : PageViewModel
         ShowAdvanced = s.ShowAdvanced;
         KillSwitch = s.KillSwitch;
         SuggestClipboardLinks = s.SuggestClipboardLinks;
+        _updatingAutostart = true;
+        StartWithSystem = s.StartWithSystem;
+        _updatingAutostart = false;
+        ConnectOnStartup = s.ConnectOnStartup;
+        MinimizeToTray = s.MinimizeToTray;
+        ShowNotifications = s.ShowNotifications;
     }
 
     public static IReadOnlyList<string> Languages { get; } = ["auto", "en", "ru"];
+
+    public bool AutostartSupported => new Bydlo.Platform.AutostartService().IsSupported;
+
+    [ObservableProperty] private bool _startWithSystem;
+    [ObservableProperty] private bool _connectOnStartup;
+    [ObservableProperty] private bool _minimizeToTray;
+    [ObservableProperty] private bool _showNotifications;
+    private bool _updatingAutostart;
+
+    partial void OnStartWithSystemChanged(bool value)
+    {
+        if (_updatingAutostart) { return; }
+        try
+        {
+            if (NetworkSafetyGuard.IsLocked) { throw new InvalidOperationException(L["settings.desktop.locked"]); }
+            new Bydlo.Platform.AutostartService().SetEnabled(value);
+            Services.Settings.StartWithSystem = value;
+            Persist();
+        }
+        catch (Exception ex)
+        {
+            _updatingAutostart = true;
+            StartWithSystem = Services.Settings.StartWithSystem;
+            _updatingAutostart = false;
+            Services.Log.Warn("autostart", ex.GetType().Name);
+            Shell.ShowToast(L["settings.desktop.autostart.error"], isError: true);
+        }
+    }
+
+    partial void OnConnectOnStartupChanged(bool value) { Services.Settings.ConnectOnStartup = value; Persist(); }
+    partial void OnMinimizeToTrayChanged(bool value) { Services.Settings.MinimizeToTray = value; Persist(); }
+    partial void OnShowNotificationsChanged(bool value) { Services.Settings.ShowNotifications = value; Persist(); }
 
     public static IReadOnlyList<MockScenario> Scenarios { get; } = Enum.GetValues<MockScenario>();
 

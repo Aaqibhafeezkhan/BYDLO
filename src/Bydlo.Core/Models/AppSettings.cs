@@ -33,6 +33,14 @@ public enum MockScenario
 
 public sealed class AppSettings
 {
+    public bool StartWithSystem { get; set; }
+
+    public bool ConnectOnStartup { get; set; }
+
+    public bool MinimizeToTray { get; set; }
+
+    public bool ShowNotifications { get; set; } = true;
+
     public bool SuggestClipboardLinks { get; set; } = true;
 
     public ThemePreference Theme { get; set; } = ThemePreference.Purple;

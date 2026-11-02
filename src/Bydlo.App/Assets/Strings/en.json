@@ -346,5 +346,20 @@
   "tools.select.brief": "Success {0}, errors {1}, timeouts {2}, unknown {3}",
   "tools.select.curl": "curl is missing or incompatible. Install curl with HTTP/TLS support and retry.",
   "tools.select.details": "Takes several minutes and temporarily enables Zapret. Administrator/root rights are required. Tests each BAT configuration or native preset twice with the Test Zapret 1.10.3 standard HTTP/TLS suite. Results describe only these URLs and HTTP/TLS checks, not video playback, Discord voice, UDP or the whole BAT script. The original running configuration is restored before you apply a result.",
-  "tools.select.scope": "What is tested"
+  "tools.select.scope": "What is tested",
+  "notification.error": "Engine error. Open BYDLO for details.",
+  "notification.lost": "Connection lost. Reconnecting…",
+  "notification.restored": "Connection restored.",
+  "settings.desktop": "Desktop",
+  "settings.desktop.autostart": "Start with the system",
+  "settings.desktop.autostart.error": "Could not update autostart. Check access permissions and the executable location.",
+  "settings.desktop.autostart.hint": "Starts in the tray when minimize-to-tray is enabled and a tray is available. Requires a published executable; Linux uses XDG autostart, macOS uses a login LaunchAgent.",
+  "settings.desktop.connect": "Connect to the selected server on startup",
+  "settings.desktop.locked": "System registration is disabled by the development safety lock.",
+  "settings.desktop.notifications": "Show system notifications",
+  "settings.desktop.tray": "Minimize to tray when closing the window",
+  "tray.exit": "Exit",
+  "tray.exit.error": "Could not stop all engines. Retry Exit or use the cleanup controls before closing BYDLO.",
+  "tray.open": "Open BYDLO",
+  "tray.servers": "Select server"
 }

@@ -17,6 +17,8 @@ public sealed partial class App : Application
 
     public AppServices? Services { get; private set; }
 
+    public DesktopIntegration? Desktop { get; private set; }
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
@@ -32,9 +34,8 @@ public sealed partial class App : Application
         {
             var window = new MainWindow { DataContext = shell };
             desktop.MainWindow = window;
-            window.Closing += (_, _) => Services.ShutdownAsync().GetAwaiter().GetResult();
-            desktop.Exit += (_, _) => Services.ShutdownAsync().GetAwaiter().GetResult();
-            desktop.ShutdownRequested += (_, _) => Services.ShutdownAsync().GetAwaiter().GetResult();
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            Desktop = new DesktopIntegration(shell, window, desktop);
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime single)
         {

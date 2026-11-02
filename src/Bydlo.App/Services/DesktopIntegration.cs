@@ -1,0 +1,233 @@
+using System.ComponentModel;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Avalonia.Threading;
+using Bydlo.App.ViewModels;
+using Bydlo.Core.Connection;
+using Bydlo.Core.Models;
+using Bydlo.Core.Security;
+using Bydlo.Platform;
+using CommunityToolkit.Mvvm.Input;
+
+namespace Bydlo.App.Services;
+
+/// <summary>Owns desktop-only UI and keeps hidden sessions alive until explicit exit.</summary>
+public sealed class DesktopIntegration : IDisposable
+{
+    private readonly MainViewModel _shell;
+    private readonly Window _window;
+    private readonly IClassicDesktopStyleApplicationLifetime _lifetime;
+    private readonly TrayIcon _tray;
+    private readonly SessionNotificationTracker _notifications = new();
+    private readonly DesktopNotifications _nativeNotifications;
+    private bool _exiting;
+    private bool _disposed;
+    private bool _startupHandled;
+    private bool _refreshPending;
+
+    public DesktopIntegration(MainViewModel shell, Window window, IClassicDesktopStyleApplicationLifetime lifetime)
+    {
+        _shell = shell;
+        _window = window;
+        _lifetime = lifetime;
+        _nativeNotifications = new DesktopNotifications(shell.Services.Runner);
+        _tray = new TrayIcon { IsVisible = true };
+        TrayIcon.SetIcons(Application.Current!, new TrayIcons { _tray });
+        _tray.Clicked += OnTrayClicked;
+        window.Closing += OnClosing;
+        window.Opened += OnOpened;
+        lifetime.ShutdownRequested += OnShutdownRequested;
+        lifetime.Exit += OnExit;
+        shell.PropertyChanged += OnShellChanged;
+        shell.Profiles.CollectionChanged += OnProfilesChanged;
+        Loc.Instance.PropertyChanged += OnLanguageChanged;
+        shell.Services.Connections.SessionChanged += OnSessionChanged;
+        Refresh();
+    }
+
+    private void ShowWindow()
+    {
+        _window.Show();
+        _window.WindowState = WindowState.Normal;
+        _window.Activate();
+    }
+
+    private void OnTrayClicked(object? sender, EventArgs e) => ShowWindow();
+
+    private void OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (_exiting) { return; }
+        // Only a user window close may hide the UI; shutdown always stops the sessions.
+        if (e.CloseReason == WindowCloseReason.WindowClosing &&
+            _shell.Services.Settings.MinimizeToTray && _tray.NativeMenuExporter is not null)
+        {
+            e.Cancel = true;
+            _window.Hide();
+            return;
+        }
+
+        e.Cancel = true;
+        Dispatcher.UIThread.Post(async () => await ExitAsync());
+    }
+
+    private void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
+    {
+        if (_exiting) { return; }
+        e.Cancel = true;
+        Dispatcher.UIThread.Post(async () => await ExitAsync());
+    }
+
+    public async Task ExitAsync()
+    {
+        if (_exiting) { return; }
+        _exiting = true;
+        // Cleanup completes before the UI dispatcher and native window are destroyed.
+        try { await _shell.Services.ShutdownAsync(); }
+        catch (Exception ex)
+        {
+            _shell.Services.Log.Error("app", "Shutdown failed: " + ex.Message);
+            _exiting = false;
+            ShowWindow();
+            _shell.ShowToast(Loc.Instance["tray.exit.error"], isError: true);
+            return;
+        }
+        _lifetime.Shutdown();
+    }
+
+    private async void OnOpened(object? sender, EventArgs e)
+    {
+        if (_startupHandled) { return; }
+        _startupHandled = true;
+        var services = _shell.Services;
+        if (services.Args.Contains("--autostart", StringComparer.Ordinal) &&
+            services.Settings.OnboardingCompleted && services.Settings.MinimizeToTray &&
+            _tray.NativeMenuExporter is not null) { _window.Hide(); }
+        if (services.Settings.ConnectOnStartup && services.Settings.OnboardingCompleted &&
+            _shell.SelectedProfile is not null && (!NetworkSafetyGuard.IsLocked || services.IsMock))
+        {
+            await _shell.Home.ToggleConnectionCommand.ExecuteAsync(null);
+        }
+    }
+
+    private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MainViewModel.Primary) or nameof(MainViewModel.Zapret) or nameof(MainViewModel.Tg) or nameof(MainViewModel.SelectedProfile))
+        { ScheduleRefresh(); }
+    }
+
+    private void OnProfilesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => ScheduleRefresh();
+    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) => ScheduleRefresh();
+
+    private void ScheduleRefresh()
+    {
+        if (_refreshPending || _disposed) { return; }
+        _refreshPending = true;
+        Dispatcher.UIThread.Post(() => { _refreshPending = false; if (!_disposed) { Refresh(); } });
+    }
+
+    private string? _menuState;
+    private void Refresh()
+    {
+        var l = Loc.Instance;
+        var state = string.Join('|', l["tray.open"], _shell.Home.StatusText, _shell.Home.ButtonText,
+            _shell.Home.ZapretState, _shell.Home.TgState, _shell.SelectedProfile?.Id.ToString(),
+            string.Join(';', _shell.Profiles.Select(p => p.Id + ":" + p.Name)));
+        if (state == _menuState) { return; }
+        _menuState = state;
+        _tray.ToolTipText = "BYDLO · " + _shell.Home.StatusText + "\nZapret · " + _shell.Home.ZapretState + "\nTgWsProxy · " + _shell.Home.TgState;
+        var menu = new NativeMenu();
+        menu.Items.Add(Item(l["tray.open"], new RelayCommand(ShowWindow)));
+        menu.Items.Add(new NativeMenuItem { Header = _shell.Home.StatusText, IsEnabled = false });
+        menu.Items.Add(Item(_shell.Home.ButtonText, _shell.Home.ToggleConnectionCommand));
+        var servers = new NativeMenu();
+        foreach (var profile in _shell.Profiles)
+        {
+            servers.Items.Add(new NativeMenuItem
+            {
+                Header = profile.Name, ToggleType = NativeMenuItemToggleType.Radio,
+                IsChecked = _shell.SelectedProfile?.Id == profile.Id,
+                Command = new RelayCommand(() => _shell.SelectedProfile = profile),
+            });
+        }
+        menu.Items.Add(new NativeMenuItem { Header = l["tray.servers"], Menu = servers, IsEnabled = servers.Items.Count > 0 });
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(Item("Zapret · " + _shell.Home.ZapretState, _shell.Tools.ToggleZapretCommand));
+        menu.Items.Add(Item("TgWsProxy · " + _shell.Home.TgState, _shell.Tools.ToggleTgCommand));
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(Item(l["tray.exit"], new AsyncRelayCommand(ExitAsync)));
+        _tray.Menu = menu;
+        UpdateIcon();
+    }
+
+    private static NativeMenuItem Item(string header, System.Windows.Input.ICommand command) => new() { Header = header, Command = command };
+
+    private ConnectionStatus? _iconStatus;
+    private void UpdateIcon()
+    {
+        var statuses = new[] { _shell.Primary.Status, _shell.Zapret.Status, _shell.Tg.Status };
+        var status = statuses.Contains(ConnectionStatus.Error) ? ConnectionStatus.Error
+            : statuses.Any(s => s is ConnectionStatus.Connecting or ConnectionStatus.Reconnecting) ? ConnectionStatus.Connecting
+            : statuses.Contains(ConnectionStatus.Connected) ? ConnectionStatus.Connected : ConnectionStatus.Disconnected;
+        if (_iconStatus == status) { return; }
+        _iconStatus = status;
+        using var logo = new Bitmap(AssetLoader.Open(new Uri("avares://Bydlo.App/Assets/bydlo-256.png")));
+        using var rendered = new RenderTargetBitmap(new PixelSize(64, 64));
+        using (var context = rendered.CreateDrawingContext())
+        {
+            context.DrawImage(logo, new Rect(0, 0, 64, 64));
+            var key = status switch
+            {
+                ConnectionStatus.Connected => "SuccessBrush",
+                ConnectionStatus.Error => "DangerBrush",
+                ConnectionStatus.Connecting or ConnectionStatus.Reconnecting => "WarningBrush",
+                _ => "TextFaintBrush",
+            };
+            if (Application.Current!.TryFindResource(key, out var resource) && resource is IBrush brush)
+            { context.DrawEllipse(brush, null, new Point(51, 51), 12, 12); }
+        }
+        using var stream = new MemoryStream();
+        rendered.Save(stream);
+        stream.Position = 0;
+        _tray.Icon = new WindowIcon(stream);
+    }
+
+    private void OnSessionChanged(object? sender, SessionSnapshot session) => Dispatcher.UIThread.Post(async () =>
+    {
+        if (_disposed || _exiting) { return; }
+        var key = _notifications.Update(session);
+        if (key is null || !_shell.Services.Settings.ShowNotifications || NetworkSafetyGuard.IsLocked) { return; }
+        var name = session.Key switch
+        {
+            ConnectionManager.ZapretKey => "Zapret", ConnectionManager.TgWsProxyKey => "TgWsProxy", _ => "BYDLO",
+        };
+        try
+        {
+            // Generic localized text keeps server credentials and raw engine diagnostics out of system history.
+            await _nativeNotifications.ShowAsync(_window.TryGetPlatformHandle()?.Handle ?? 0, name, Loc.Instance[key]);
+        }
+        catch (Exception ex) { _shell.Services.Log.Warn("notifications", "Notification unavailable: " + ex.GetType().Name); }
+    });
+
+    private void OnExit(object? sender, ControlledApplicationLifetimeExitEventArgs e) => Dispose();
+
+    public void Dispose()
+    {
+        if (_disposed) { return; }
+        _disposed = true;
+        _tray.Clicked -= OnTrayClicked;
+        _tray.Dispose();
+        _nativeNotifications.Dispose();
+        _window.Closing -= OnClosing;
+        _window.Opened -= OnOpened;
+        _lifetime.ShutdownRequested -= OnShutdownRequested;
+        _lifetime.Exit -= OnExit;
+        _shell.PropertyChanged -= OnShellChanged;
+        _shell.Profiles.CollectionChanged -= OnProfilesChanged;
+        Loc.Instance.PropertyChanged -= OnLanguageChanged;
+        _shell.Services.Connections.SessionChanged -= OnSessionChanged;
+    }
+}
