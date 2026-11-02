@@ -75,15 +75,21 @@ Mock — инструмент агентской разработки, а не �
 
 ## Публикация
 
-Самодостаточные однофайловые сборки для каждой платформы:
+Самодостаточная публикация включает среду .NET, но ещё не содержит комплект движков.
+Для полного релиза выполните все шаги ниже в одной оболочке из корня checkout.
+Пример для `win-x64` выполняется на Windows; это сборка и упаковка, без запуска движков:
 
-```bash
+```powershell
+. ./scripts/env.ps1
+```
+
+```powershell
 dotnet publish src/Bydlo.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
 ```
 
 Чтобы добавить sing-box, Xray и Zapret в локальный релиз, после публикации выполните упаковщик (только скачивание, SHA-256 и извлечение; движки не запускаются):
 
-```bash
+```powershell
 dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/win-x64 .
 ```
 
@@ -104,6 +110,19 @@ dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/w
 
 Обычные `dotnet build` / `dotnet test` бинарники Zapret не скачивают. Не запускайте упаковщик на рабочей машине, если антивирус блокирует WinDivert: используйте CI. Для Linux/macOS извлекается только целевой nfqws/tpws, без Windows-драйверов из общего upstream-архива. Windows ARM64 получает `ZAPRET-UNAVAILABLE.txt` вместо несовместимого драйвера.
 
+Завершите подготовку проверкой файлов и добавлением документации:
+
+```powershell
+./scripts/verify-engine-bundle.ps1 -Rid win-x64 -PublishDirectory artifacts/win-x64
+Copy-Item LICENSE, THIRD_PARTY_NOTICES.md, README.md artifacts/win-x64/
+```
+
+Проверка читает заголовки PE/ELF/Mach-O, наличие движков, Windows-комплект DCO и
+`ENGINES-SHA256SUMS.txt`; бинарники не исполняются, даже с `--version`.
+Распространяйте весь каталог публикации, включая `engines/licenses/`, `engines/sources/`,
+lock-файлы и `ENGINES-SHA256SUMS.txt`. Одного исполняемого файла BYDLO недостаточно.
+`SHA256SUMS.txt` для готовых архивов — отдельная внешняя сумма; её создаёт задача release.
+
 Идентификаторы платформ: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64`.
 
 ## CI
@@ -116,16 +135,39 @@ dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/w
   Там же CI сам ставит PowerShell и инструменты сборки, которых нет в образе; артефакты сохраняются только на GitHub.
   Релизы с Gitea не публикуются. Сборка Windows и тесты Windows-логики на Linux — #60.
 
-1. **test** — сборка и модульные тесты на Ubuntu, Windows и macOS (`BYDLO_SAFE_DEV=1`).
-2. **desktop** — самодостаточная публикация для шести платформ, упаковка закреплённых sing-box/Xray/Zapret, сборка AmneziaWG для Windows/Linux и OpenVPN для всех платформ; лицензии, соответствующие исходники и хеши. Сетевые движки не запускаются. Для Unix используются нативные x64/ARM64 runners.
-3. **release** — для тегов `v*` упаковывает артефакты в zip, создаёт `SHA256SUMS.txt` и **черновик** релиза на GitHub.
+1. **test** — сборка, изолированные модульные тесты и headless-проверки интерфейса на Ubuntu (`BYDLO_SAFE_DEV=1`).
+2. **desktop** — публикация `linux-x64`, упаковка закреплённых sing-box/Xray/Zapret, сборка AmneziaWG и OpenVPN; проверка состава, архитектуры и хешей, добавление исходников и лицензий. Результат доступен как артефакт CI. Сетевые движки не запускаются.
+3. **release** — сохранённый GitHub-сценарий для тегов `v*`: zip, `SHA256SUMS.txt` и **черновик** релиза через `gh`. На зеркале Gitea релизы не публикуются.
+
+Упаковщики описывают шесть целевых платформ, но это не означает, что текущий CI собирает и
+проверяет каждую из них. Возврат Windows-сборок на Linux отслеживается в #60;
+для Unix-сборки OpenVPN сейчас нужен хост целевой ОС и архитектуры.
 
 ## Воспроизводимость
 
 - Версия SDK закреплена в `global.json`; версии всех пакетов закреплены централизованно в `Directory.Packages.props`.
 - Детерминированная сборка (`Deterministic`); в CI включён `ContinuousIntegrationBuild`.
 - Бинарные релизы закреплены в `engines/engines.lock.json`; входы сборок — в `engines/bundle-inputs.lock.json`, Go-зависимости — в `tools/amneziawg/go.mod` и `go.sum`.
-- Обновление: измените версию и URL входа, скачайте архив отдельно, проверьте upstream checksum/подпись и замените SHA-256. Для AmneziaWG обновите Go-модуль и суммы. Запустите обе команды упаковки для всех затронутых платформ, не запуская движки; изменения версий, лицензий и документации отправляйте одним PR.
+
+### Обновление встроенных компонентов
+
+1. В `engines/engines.lock.json` обновите версию, URL и SHA-256 готовых архивов;
+   в `engines/bundle-inputs.lock.json` — входы сборки и соответствующие исходники.
+   Для WinDivert/Cygwin обновите также `engines/zapret-sources.lock.json`.
+   Суммы сверяйте с upstream checksum/подписью до внесения в lock-файлы.
+2. Для AmneziaWG обновите `tools/amneziawg/go.mod` и `go.sum`, сохранив закреплённую
+   версию. Скрипт сборки сам создаёт архив хоста с vendored-зависимостями и лицензиями.
+3. Обновите тексты в `engines/licenses/`, `THIRD_PARTY_NOTICES.md`, список «О программе»
+   и версии в документации. При изменении путей или состава архива проверьте оба упаковщика
+   и `scripts/verify-engine-bundle.ps1`.
+4. Выполните `scripts/check.ps1` (или `scripts/check.sh` после `env.sh`), затем обе команды
+   упаковки и проверку комплекта для затронутых платформ на подходящих хостах.
+   Движки, драйверы и установщики не запускайте. В PR укажите реально проверенные RID.
+
+Каталог `third_party/` и скрипт subtree-обновления не используются: TgWsProxy перенесён
+на C# в `src/Bydlo.Engines/TgWsProxy`, его версия — `TgWsProxyEngine.UpstreamVersion`.
+Изменения upstream переносятся вручную с изолированными тестами; обновляйте также запись
+`tg-ws-proxy` в lock-файле и уведомления об авторстве. Python и pip в релиз не добавляются.
 
 ## Известные ограничения
 
