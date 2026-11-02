@@ -33,11 +33,13 @@
 
 ## Позже
 
-- Регистрация Cloudflare WARP (после проверки лицензии и условий использования).
 - Импорт полных JSON-конфигураций sing-box / Xray.
 - Управление наборами правил (geosite / geoip) с проверкой загрузок.
 - Автообновление самого BYDLO с проверкой подписи.
 - Переход на Avalonia 12.
 - Другие языки (переводы от сообщества).
+
+Регистрация Cloudflare WARP и цепочки прокси реализованы (см. [COMPATIBILITY.md](COMPATIBILITY.md));
+живую проверку в реальной сети выполняет мейнтейнер.
 
 Zapret для Android (root-first, исследование VpnService) отслеживается в [issue #21](https://github.com/endercodezz/BYDLO/issues/21). Windows ARM64 ожидает совместимый WinDivert driver.

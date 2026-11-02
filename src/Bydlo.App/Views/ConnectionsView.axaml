@@ -19,6 +19,17 @@
         </StackPanel>
       </Button>
       <Button Classes="ghost" Content="{l:T import.demo}" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}" HorizontalAlignment="Left" />
+      <Border Classes="card">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="h2" Text="{l:T warp.title}" />
+          <TextBlock Classes="muted" Text="{l:T warp.hint}" TextWrapping="Wrap" />
+          <TextBlock Classes="faint" Text="{l:T warp.consent}" TextWrapping="Wrap" />
+          <Button Classes="ghost" Content="{l:T warp.register}" Command="{Binding RegisterWarpCommand}" IsEnabled="{Binding CanRegisterWarp}" HorizontalAlignment="Left"
+                  IsVisible="{Binding !IsWarpBusy}" />
+          <Button Classes="ghost" Content="{l:T warp.registering}" HorizontalAlignment="Left" IsEnabled="False" IsVisible="{Binding IsWarpBusy}" />
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsWarpBusy}" Height="3" />
+        </StackPanel>
+      </Border>
       <Button Classes="ghost" Content="{l:T connections.latency.check}" Command="{Binding CheckLatencyCommand}" IsEnabled="{Binding CanCheckLatency}" HorizontalAlignment="Left" />
       <TextBlock Classes="faint" Text="{Binding CheckLatencyDisabledReason}" IsVisible="{Binding CheckLatencyDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
       <CheckBox Content="{l:T connections.latency.sort}" IsChecked="{Binding Shell.SortByLatency}" IsVisible="{Binding !IsEmpty}" />
@@ -85,6 +96,62 @@
                     </Button>
                     <Button AutomationProperties.Name="{l:T home.connect}" Classes="ghost" Margin="6,0,0,0" Padding="10,8"
                             Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ConnectToCommand}" CommandParameter="{Binding}">
+                      <c:OutlineIcon Data="{StaticResource LinePower}" Width="16" Height="16" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        </Border>
+      </StackPanel>
+
+      <!-- Proxy chains -->
+      <StackPanel Spacing="10">
+        <TextBlock Classes="caps" Text="{l:T chain.title}" />
+        <TextBlock Classes="faint" Text="{l:T chain.hint}" TextWrapping="Wrap" />
+        <Button Classes="ghost" Content="{l:T chain.new}" Command="{Binding Shell.NewChainCommand}" HorizontalAlignment="Left" />
+        <Border Classes="card" IsVisible="{Binding Shell.HasNoChains}">
+          <TextBlock Classes="muted" Text="{l:T chain.empty}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" />
+        </Border>
+        <Border Classes="panel" Padding="18,0" IsVisible="{Binding Shell.HasChains}">
+        <ItemsControl ItemsSource="{Binding Shell.Chains}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ChainItem">
+              <Border Classes="row profile-row" Classes.active="{Binding IsActive}">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Border Width="40" Height="40" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
+                    <c:OutlineIcon Data="{StaticResource LineLink}" Foreground="{DynamicResource AccentBrush}" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                      <Border Classes="pill ok" HorizontalAlignment="Left" Padding="7,1" IsVisible="{Binding IsActive}">
+                        <TextBlock Text="{l:T status.connected}" FontSize="10" />
+                      </Border>
+                    </StackPanel>
+                    <TextBlock Classes="faint" Text="{Binding Details}" />
+                    <TextBlock Classes="faint" Text="{Binding HopSummary}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <Button Classes="icon" AutomationProperties.Name="{l:T connections.favorite}" ToolTip.Tip="{l:T connections.favorite}"
+                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ToggleChainFavoriteCommand}" CommandParameter="{Binding}">
+                      <Panel>
+                        <c:OutlineIcon Data="{StaticResource LineStar}" Width="16" Height="16" IsVisible="{Binding IsFavorite}" Foreground="{DynamicResource WarningBrush}" />
+                        <c:OutlineIcon Data="{StaticResource LineStar}" Width="16" Height="16" IsVisible="{Binding !IsFavorite}" Opacity="0.4" />
+                      </Panel>
+                    </Button>
+                    <Button Classes="icon" AutomationProperties.Name="{l:T chain.edit}" ToolTip.Tip="{l:T chain.edit}"
+                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).EditChainCommand}" CommandParameter="{Binding}">
+                      <c:OutlineIcon Data="{StaticResource LinePencil}" Width="16" Height="16" />
+                    </Button>
+                    <Button Classes="icon" AutomationProperties.Name="{l:T chain.delete}" ToolTip.Tip="{l:T chain.delete}"
+                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteChainCommand}" CommandParameter="{Binding}">
+                      <c:OutlineIcon Data="{StaticResource LineDelete}" Width="16" Height="16" />
+                    </Button>
+                    <Button AutomationProperties.Name="{l:T home.connect}" Classes="ghost" Margin="6,0,0,0" Padding="10,8"
+                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ConnectChainCommand}" CommandParameter="{Binding}">
                       <c:OutlineIcon Data="{StaticResource LinePower}" Width="16" Height="16" />
                     </Button>
                   </StackPanel>

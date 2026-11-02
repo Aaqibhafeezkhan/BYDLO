@@ -55,6 +55,53 @@ public sealed class EngineRegistry
         return Create(kind, settings);
     }
 
+    /// <summary>Chain-capable engine kinds able to carry every hop on the given OS, best first.</summary>
+    public IReadOnlyList<EngineKind> CandidatesForChain(IReadOnlyList<Profile> hops, OsFamily os)
+    {
+        var required = hops.Select(ProtocolNeeds).Where(r => r is not null).Distinct().ToList();
+        return [.. _engines
+            .Where(e => !e.Descriptor.IsTool && (e.Descriptor.Kind is EngineKind.SingBox or EngineKind.Xray))
+            .Where(e => hops.All(h => e.Descriptor.Protocols.Contains(h.Protocol)))
+            .Where(e => e.Descriptor.SupportOn(os) != SupportLevel.Unsupported)
+            .Where(e => required.Count == 0 || required.Count == 1 && required[0] == e.Descriptor.Kind)
+            .OrderBy(e => e.Descriptor.SupportOn(os) == SupportLevel.Implemented ? 0 : 1)
+            .ThenBy(e => e.Priority)
+            .Select(e => e.Descriptor.Kind)];
+    }
+
+    public IEngine CreateForChain(IReadOnlyList<Profile> hops, EngineKind? preferred, AppSettings settings, OsFamily os)
+    {
+        if (settings.MockMode)
+        {
+            return _mockFactory();
+        }
+
+        var candidates = CandidatesForChain(hops, os);
+        if (candidates.Count == 0)
+        {
+            throw new EngineException("No chain-capable engine supports every hop on this OS.", localizationKey: "error.chain.engine");
+        }
+
+        if (preferred is { } wanted)
+        {
+            // An explicit engine that cannot carry the chain is an honest NotImplemented, not a silent fallback.
+            if (!candidates.Contains(wanted))
+            {
+                throw new EngineException($"Engine {wanted} cannot carry this chain.", localizationKey: "error.chain.engine");
+            }
+
+            return Create(wanted, settings);
+        }
+
+        var kind = candidates[0];
+        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
+        {
+            throw new EngineException("error.killswitch.engine");
+        }
+
+        return Create(kind, settings);
+    }
+
     public IEngine Create(EngineKind kind, AppSettings settings)
     {
         if (settings.MockMode || kind == EngineKind.Mock)

@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using Bydlo.App.Services;
 using Bydlo.Core.Connection;
 using Bydlo.Core.Diagnostics;
+using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
 using Bydlo.Engines.TgWsProxy;
@@ -91,6 +92,11 @@ public sealed partial class HomeViewModel : PageViewModel
     }
 
     public string? Error => IsError && Shell.Primary.Error is { } error ? Loc.Error(error, Shell.Primary.ErrorLocalizationKey) : null;
+
+    /// <summary>Relay chain carrying the active connection, if any (issue #75).</summary>
+    public bool IsChainActive => Shell.Primary.Chain is not null;
+
+    public string? ActiveChainName => Shell.Primary.Chain?.Name;
 
     public string Elapsed => IsConnected && Shell.Primary.ConnectedSince is { } since ? Format.Duration(DateTimeOffset.Now - since) : "00:00";
 
@@ -234,6 +240,23 @@ public sealed partial class HomeViewModel : PageViewModel
             return;
         }
 
+        if (Shell.SelectedChain is { } chainItem)
+        {
+            await Shell.Guard(async () =>
+            {
+                var chain = Services.Profiles.Chains.FirstOrDefault(c => c.Id == chainItem.Id)
+                    ?? throw new EngineException("One of the chain servers no longer exists.", localizationKey: "error.chain.unknown");
+                var hops = await Shell.Connections.ResolveChainAsync(chain);
+                foreach (var w in Services.Connections.PreviewChainConflicts(hops.Select(h => h.Profile).ToList(), Services.EffectiveSettings).Where(i => i.Severity == ConflictSeverity.Warning))
+                {
+                    Shell.ShowToast(w.Message);
+                }
+
+                await Services.Connections.ConnectChainAsync(chain, hops, Services.EffectiveSettings);
+            });
+            return;
+        }
+
         if (Shell.SelectedProfile is not { } item)
         {
             Shell.ShowToast(L["home.hint.noprofile"], isError: true);
@@ -316,6 +339,7 @@ public sealed partial class HomeViewModel : PageViewModel
         if (Shell.Profiles.FirstOrDefault(i => i.Id == best.Id) is { } item)
         {
             Shell.SelectedProfile = item;
+            Shell.SelectedChain = null;
         }
 
         if (!IsConnected && !IsBusy && !Shell.Primary.CleanupPending)
@@ -356,12 +380,12 @@ public sealed partial class HomeViewModel : PageViewModel
 
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.IsMock))
+        if (e.PropertyName is nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.SelectedChain) or nameof(MainViewModel.IsMock))
         {
             ResetCheck();
         }
 
-        if (e.PropertyName is nameof(MainViewModel.Primary) or nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.IsMock)
+        if (e.PropertyName is nameof(MainViewModel.Primary) or nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.SelectedChain) or nameof(MainViewModel.IsMock)
             or nameof(MainViewModel.Zapret) or nameof(MainViewModel.Tg) or nameof(MainViewModel.HasLatencyResults))
         {
             RefreshAll();
@@ -380,7 +404,8 @@ public sealed partial class HomeViewModel : PageViewModel
                      nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(IsEmpty), nameof(StatusText), nameof(ButtonText), nameof(Hint), nameof(Error),
                      nameof(Elapsed), nameof(DownSpeed), nameof(UpSpeed), nameof(EngineLabel), nameof(ZapretOn), nameof(ZapretState), nameof(TgOn), nameof(TgState),
                      nameof(IsTun), nameof(IsProxy), nameof(IsWholeDevice), nameof(ModeHint), nameof(HasProfiles), nameof(CanCheckConnection), nameof(CanRunCheck), nameof(CheckDisabledReason), nameof(CheckButtonText),
-                     nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult), nameof(HasLatencyResults),
+                      nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult), nameof(HasLatencyResults),
+                      nameof(IsChainActive), nameof(ActiveChainName),
                  })
         {
             OnPropertyChanged(name);

@@ -80,6 +80,7 @@ public sealed class TgWsProxyEngine(LogRedactor redactor, ITgNetwork? network = 
 
     public async Task StartAsync(EngineStartRequest request, CancellationToken ct = default)
     {
+        ChainGuards.ThrowIfChained(EngineKind.TgWsProxy, request);
         lock (_gate)
         {
             if (_server is not null || State is EngineState.Running or EngineState.Starting)

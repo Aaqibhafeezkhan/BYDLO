@@ -143,3 +143,34 @@ public static class CollectionExtensions
         }
     }
 }
+
+/// <summary>One proxy chain (relay) row. Hop names are resolved when the list reloads.</summary>
+public sealed partial class ChainItem(ProxyChain chain) : ObservableObject
+{
+    public ProxyChain Chain { get; } = chain;
+
+    public Guid Id => Chain.Id;
+
+    public string Name => Chain.Name;
+
+    /// <summary>Entry → … → exit hop names, resolved by <see cref="MainViewModel"/>.</summary>
+    [ObservableProperty]
+    private string _hopSummary = "";
+
+    public string Details
+    {
+        get
+        {
+            var engine = Chain.PreferredEngine is { } kind ? Labels.Engine(kind) : Loc.Instance["chain.engine.auto"];
+            return $"{Loc.T("chain.hops.count", Chain.ProfileIds.Count)} · {engine}";
+        }
+    }
+
+    public void RefreshDetails() => OnPropertyChanged(nameof(Details));
+
+    [ObservableProperty]
+    private bool _isFavorite = chain.IsFavorite;
+
+    [ObservableProperty]
+    private bool _isActive;
+}

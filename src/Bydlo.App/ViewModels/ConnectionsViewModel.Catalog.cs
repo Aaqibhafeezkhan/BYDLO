@@ -27,7 +27,11 @@ public sealed partial class ConnectionsViewModel
 
     public bool CanAddCatalog => !IsWorking;
 
-    partial void OnIsWorkingChanged(bool value) => OnPropertyChanged(nameof(CanAddCatalog));
+    partial void OnIsWorkingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanAddCatalog));
+        OnPropertyChanged(nameof(CanRegisterWarp));
+    }
 
     private void RefreshCatalog()
     {

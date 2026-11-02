@@ -91,6 +91,8 @@ internal sealed class ProfileDocument
     public List<Profile> Profiles { get; set; } = [];
 
     public List<Subscription> Subscriptions { get; set; } = [];
+
+    public List<ProxyChain> Chains { get; set; } = [];
 }
 
 /// <summary>Profile list persisted as JSON; secrets are delegated to <see cref="ISecretStore"/>.</summary>
@@ -110,6 +112,9 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
     public async Task LoadAsync(CancellationToken ct = default)
     {
         _doc = await JsonDefaults.ReadAsync<ProfileDocument>(path, ct).ConfigureAwait(false) ?? new ProfileDocument();
+        _doc.Profiles ??= [];
+        _doc.Subscriptions ??= [];
+        _doc.Chains ??= [];
     }
 
     public async Task<IReadOnlyList<Profile>> AddAsync(IEnumerable<ImportedProfile> imported, Guid? subscriptionId = null, CancellationToken ct = default)
@@ -131,7 +136,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     added.Add(item.Profile);
                 }
-                var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. added], Subscriptions = [.. _doc.Subscriptions] };
+                var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. added], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
                 await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
                 _doc = next;
             }
@@ -175,6 +180,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
             if (_doc.Profiles.RemoveAll(p => p.Id == id) > 0)
             {
                 await secrets.DeleteAsync(id.ToString(), ct).ConfigureAwait(false);
+                DetachFromChainsUnsafe(id);
                 await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
             }
         }
@@ -231,7 +237,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     item.Profile.SubscriptionId = sub.Id;
                 }
-                var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. profiles.Select(p => p.Profile)], Subscriptions = [.. _doc.Subscriptions, sub] };
+                var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. profiles.Select(p => p.Profile)], Subscriptions = [.. _doc.Subscriptions, sub], Chains = [.. _doc.Chains] };
                 await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
                 _doc = next;
             }
@@ -258,6 +264,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
             {
                 _doc.Profiles.Remove(old);
                 await secrets.DeleteAsync(old.Id.ToString(), ct).ConfigureAwait(false);
+                DetachFromChainsUnsafe(old.Id);
             }
 
             foreach (var item in fresh)

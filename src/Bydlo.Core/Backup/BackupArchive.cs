@@ -14,6 +14,7 @@ public sealed class BackupData
     public List<ImportedProfile> Profiles { get; init; } = [];
     public List<BackupSubscription> Subscriptions { get; init; } = [];
     public ProfileSecrets ToolSecrets { get; init; } = new();
+    public List<ProxyChain> Chains { get; init; } = [];
 }
 
 public sealed record BackupSubscription(Subscription Subscription, string Url);
@@ -125,7 +126,7 @@ public static class BackupArchive
 
     internal static void Validate(BackupData data)
     {
-        if (data.Version != 1 || data.Settings is null || data.Profiles is null || data.Subscriptions is null || data.ToolSecrets?.Values is null)
+        if (data.Version != 1 || data.Settings is null || data.Profiles is null || data.Subscriptions is null || data.ToolSecrets?.Values is null || data.Chains is null)
         { throw new InvalidDataException("Invalid backup."); }
         var s = data.Settings;
         if (s.Routing is null || s.Zapret is null || s.TgWsProxy is null || s.EnginePaths is null ||
@@ -153,6 +154,19 @@ public static class BackupArchive
                 p.Options is null || p.Name is null || p.Host is null || !Enum.IsDefined(p.Protocol) ||
                 p.Port is < 0 or > 65535 || (p.SubscriptionId is { } id && !ids.Contains(id)))
             { throw new InvalidDataException("Invalid profile."); }
+        }
+        var chainIds = new HashSet<Guid>();
+        foreach (var chain in data.Chains)
+        {
+            // Referential integrity (hop ids) is resolved at restore time against the merged
+            // document, so validation here is structural only.
+            if (chain is null || chain.Id == Guid.Empty || !chainIds.Add(chain.Id) ||
+                chain.Name is null || chain.ProfileIds is null ||
+                chain.ProfileIds.Count is < 2 or > 50 ||
+                chain.ProfileIds.Distinct().Count() != chain.ProfileIds.Count ||
+                chain.ProfileIds.Any(id => id == Guid.Empty) ||
+                (chain.PreferredEngine is { } kind && !Enum.IsDefined(kind)))
+            { throw new InvalidDataException("Invalid chain."); }
         }
     }
 }

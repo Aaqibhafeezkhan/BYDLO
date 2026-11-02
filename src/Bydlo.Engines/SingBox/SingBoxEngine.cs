@@ -72,7 +72,8 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             Redactor.RegisterSecret(lan.Password);
         }
 
-        var json = _builder.BuildJson(profile, request.Secrets, new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth));
+        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth);
+        var json = request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
         var configPath = Path.Combine(request.WorkDirectory, "sing-box.json");
         await SecureFile.WriteAsync(configPath, json, ct).ConfigureAwait(false);
 
