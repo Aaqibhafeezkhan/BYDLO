@@ -138,6 +138,15 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public string? ZapretError => Shell.Zapret.Status == ConnectionStatus.Error ? Loc.Error(Shell.Zapret.Error ?? "", Shell.Zapret.ErrorLocalizationKey) : null;
 
+    /// <summary>Zapret failed only because of missing elevation: offer a one-click restart here.</summary>
+    public bool ZapretNeedsElevation => Shell.Zapret.Status == ConnectionStatus.Error
+        && Shell.Zapret.ErrorLocalizationKey == "error.engine.zapret.admin";
+
+    /// <summary>Restart button is useful only where the OS supports relaunch (Windows, non-elevated).</summary>
+    public bool ShowRestartElevated => ZapretNeedsElevation
+        && !Services.Privileges.IsElevated
+        && Services.Privileges.CanRestartElevated;
+
     // ---------- TgWsProxy ----------
 
     [ObservableProperty]
@@ -175,9 +184,13 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public override void OnShown()
     {
+        // Capture the saved id before RefreshZapret fills the combo with a fallback:
+        // the startup check must test the remembered strategy, never the default.
+        var savedAtOpen = Services.Settings.Zapret.Strategy;
         if (!IsSelecting) { RefreshZapret(); }
         _ = RefreshTgAsync();
         _ = RefreshEnginesAsync();
+        MaybeRunStartupCheck(savedAtOpen);
     }
 
     public void ReloadSettings()
@@ -202,6 +215,9 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     private bool _loadingSettings;
 
+    /// <summary>Set while RefreshZapret assigns the combo; the change handler must not persist it.</summary>
+    private bool _refreshingZapret;
+
     // ---------- Zapret commands ----------
 
     [RelayCommand]
@@ -216,6 +232,9 @@ public sealed partial class ToolsViewModel : PageViewModel
         SaveZapretSettings();
         await Shell.Guard(() => Services.Connections.StartZapretAsync(Services.EffectiveSettings));
     }
+
+    [RelayCommand]
+    private Task RestartElevated() => Shell.Settings.RestartElevatedCommand.ExecuteAsync(null);
 
     [RelayCommand]
     private async Task BrowseZapret()
@@ -277,7 +296,12 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     partial void OnSelectedListChanged(ZapretUserList value) => LoadList();
 
-    partial void OnSelectedStrategyChanged(ZapretStrategy? value) => SaveZapretSettings();
+    partial void OnSelectedStrategyChanged(ZapretStrategy? value)
+    {
+        // RefreshZapret fills the combo programmatically (saved or default); that must never persist.
+        if (_refreshingZapret || _loadingSettings) { return; }
+        SaveZapretSettings();
+    }
 
     partial void OnGameFilterChanged(string value) => SaveZapretSettings();
 
@@ -294,7 +318,12 @@ public sealed partial class ToolsViewModel : PageViewModel
         var current = Services.Settings.Zapret.Strategy;
         Strategies.ReplaceWith(install.Strategies.Select(s => s.FileName.StartsWith("native-", StringComparison.Ordinal)
             ? s with { DisplayName = L["tools.zapret." + s.FileName + (PlatformInfo.Current.Os == OsFamily.MacOS ? ".macos" : "")] } : s));
-        SelectedStrategy = Strategies.FirstOrDefault(s => s.FileName == current) ?? Strategies.FirstOrDefault(s => s.FileName == ZapretEngine.DefaultStrategy(install));
+        _refreshingZapret = true;
+        try
+        {
+            SelectedStrategy = Strategies.FirstOrDefault(s => s.FileName == current) ?? Strategies.FirstOrDefault(s => s.FileName == ZapretEngine.DefaultStrategy(install));
+        }
+        finally { _refreshingZapret = false; }
         ZapretInfo = Loc.T("tools.zapret.found", install.Version ?? "?", Strategies.Count, install.Root);
         LoadList();
     }
@@ -501,6 +530,8 @@ public sealed partial class ToolsViewModel : PageViewModel
             OnPropertyChanged(nameof(ZapretRunning));
             OnPropertyChanged(nameof(ZapretStatus));
             OnPropertyChanged(nameof(ZapretError));
+            OnPropertyChanged(nameof(ZapretNeedsElevation));
+            OnPropertyChanged(nameof(ShowRestartElevated));
         }
         else if (e.PropertyName == nameof(MainViewModel.Tg))
         {

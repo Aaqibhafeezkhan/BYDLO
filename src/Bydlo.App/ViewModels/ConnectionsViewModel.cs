@@ -19,6 +19,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     public override void OnShown()
     {
         Subscriptions.ReplaceWith(Services.Profiles.Subscriptions);
+        RefreshCatalog();
         OnPropertyChanged(nameof(IsEmpty));
     }
 

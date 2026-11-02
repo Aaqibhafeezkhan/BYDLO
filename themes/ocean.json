@@ -1,0 +1,26 @@
+{
+  "id": "ocean",
+  "name": "Ocean",
+  "author": "BYDLO",
+  "version": 1,
+  "base": "dark",
+  "colors": {
+    "Bg": "#0F1A24",
+    "Sidebar": "#0D1620",
+    "Surface": "#15222E",
+    "Surface2": "#1A2A3A",
+    "SurfaceHover": "#21344A",
+    "Line": "#2A3F55",
+    "Primary": "#2E8FB8",
+    "PrimaryHover": "#3AA5CF",
+    "PrimaryPressed": "#22708F",
+    "Accent": "#5EC8E5",
+    "AccentSoft": "#162B38",
+    "ButtonEdge": "#4AA8C7",
+    "Text": "#E8F1F5",
+    "TextMuted": "#9DB4C0",
+    "TextFaint": "#7A94A1",
+    "NavActive": "#15222E",
+    "Edge": "#2E4459"
+  }
+}

@@ -56,6 +56,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         ConnectOnStartup = s.ConnectOnStartup;
         MinimizeToTray = s.MinimizeToTray;
         ShowNotifications = s.ShowNotifications;
+        RefreshCustomThemes();
     }
 
     public static IReadOnlyList<string> Languages { get; } = ["auto", "en", "ru"];
@@ -105,6 +106,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("Cygwin 3.4.10", "Cygwin contributors / Red Hat", "LGPL-3.0+", "https://cygwin.com/licensing.html", "", "about.cygwin"),
         new("Newlib", "Newlib contributors", "BSD / MIT", "https://sourceware.org/newlib/", "", "about.newlib"),
         new("tg-ws-proxy", "Flowseal", "MIT", "https://github.com/Flowseal/tg-ws-proxy", "Telegram WebSocket bridge proxy"),
+        new("vpn-configs-for-russia", "igareck", "GPL-3.0", "https://github.com/igareck/vpn-configs-for-russia", "Public subscription lists (downloaded on demand)"),
         new("sing-box", "SagerNet (nekohasekai)", "GPL-3.0-or-later", "https://github.com/SagerNet/sing-box", "Universal proxy platform"),
         new("Xray-core", "Project X (XTLS)", "MPL-2.0", "https://github.com/XTLS/Xray-core", "VLESS / REALITY / XHTTP"),
         new("Cronet / cronet-go", "The Chromium Authors / SagerNet", "BSD-3-Clause / GPL-3.0+", "https://github.com/SagerNet/cronet-go", "", "about.cronet"),
@@ -263,12 +265,24 @@ public sealed partial class SettingsViewModel : PageViewModel
     partial void OnThemeChanged(ThemePreference value)
     {
         Services.Settings.Theme = value;
-        Services.Theme.Apply(value);
+        if (value == ThemePreference.Custom && !ApplyStoredCustom())
+        {
+            // The custom file is gone: fall back to Purple instead of a half-applied UI.
+            Theme = ThemePreference.Purple;
+            return;
+        }
+        if (value != ThemePreference.Custom)
+        {
+            Services.Theme.Apply(value);
+            UpdateWarning(false);
+        }
         Persist();
         OnPropertyChanged(nameof(ThemePurple));
         OnPropertyChanged(nameof(ThemeLight));
         OnPropertyChanged(nameof(ThemeOled));
         OnPropertyChanged(nameof(ThemeSystem));
+        OnPropertyChanged(nameof(ThemeCustom));
+        RefreshCustomThemes();
     }
 
     partial void OnLanguageChanged(string value)

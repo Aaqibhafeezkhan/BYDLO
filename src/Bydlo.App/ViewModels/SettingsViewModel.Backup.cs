@@ -125,7 +125,7 @@ public sealed partial class SettingsViewModel
         {
             await Services.RestoreBackupAsync(_pendingBackup, ImportMode);
             Shell.Tools.ReloadSettings();
-            Services.Theme.Apply(Services.Settings.Theme);
+            Services.Theme.ApplySaved(Services.Settings, Services.Paths.DataDirectory);
             Bydlo.App.Services.Loc.Instance.SetLanguage(Services.Settings.Language);
             Shell.ReloadProfiles();
             Shell.RefreshMock();

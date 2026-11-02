@@ -25,6 +25,27 @@ public sealed partial class ConnectionManager
         finally { _gate.Release(); }
     }
 
+    /// <summary>
+    /// Checks only one strategy (the remembered one) with the standard HTTP/TLS probe.
+    /// Never enumerates other strategies; the previous session is restored afterwards.
+    /// </summary>
+    public async Task<ZapretSelectionReport> CheckZapretStrategyAsync(AppSettings settings, string strategy,
+        IReadOnlyList<string> targets, IZapretStrategyProbe probe,
+        IProgress<ZapretSelectionProgress>? progress = null, CancellationToken ct = default)
+    {
+        if (!await _gate.WaitAsync(0, ct).ConfigureAwait(false))
+        {
+            throw new EngineException("A connection operation is already in progress.", localizationKey: "tools.select.busy");
+        }
+        try
+        {
+            await probe.PrepareAsync(ct).ConfigureAwait(false);
+            var session = CaptureSelectionSession(settings);
+            return await new ZapretSelectionService().RunAsync(session, probe, [strategy], targets, strategy, progress, ct).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task ApplyZapretStrategyAsync(AppSettings settings, string strategy, Func<Task>? save = null, CancellationToken ct = default)
     {
         if (!await _gate.WaitAsync(0, ct).ConfigureAwait(false))

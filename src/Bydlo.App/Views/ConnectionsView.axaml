@@ -109,6 +109,25 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          <TextBlock Classes="caps" Text="{l:T catalog.title}" Margin="0,8,0,0" />
+          <TextBlock Classes="faint" Text="{l:T catalog.warning}" TextWrapping="Wrap" />
+          <ItemsControl ItemsSource="{Binding CatalogSources}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:CatalogRow">
+                <Border Classes="tile" Margin="0,0,0,6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                      <TextBlock Classes="faint" Text="{Binding Description}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="primary" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Content="{l:T catalog.add}" Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).AddCatalogSourceCommand}"
+                            CommandParameter="{Binding Id}" IsEnabled="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).CanAddCatalog}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
       </Expander>
     </StackPanel>
