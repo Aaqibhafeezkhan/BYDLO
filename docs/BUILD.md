@@ -132,7 +132,7 @@ lock-файлы и `ENGINES-SHA256SUMS.txt`. Одного исполняемог
 - **GitHub** (основной репозиторий) — полная матрица, описанная ниже, и черновики релизов.
 - **Зеркало на Gitea** ([git.ywfl.dev/endercodezz/BYDLO](https://git.ywfl.dev/endercodezz/BYDLO), раннеры
   [@yawaflua](https://github.com/yawaflua)) — только Linux x64: тесты на `ubuntu-latest` и публикация `linux-x64`.
-  Там же CI сам ставит PowerShell и инструменты сборки, которых нет в образе, и использует artifact actions v3.
+  Там же CI сам ставит PowerShell и инструменты сборки, которых нет в образе; артефакты сохраняются только на GitHub.
   Релизы с Gitea не публикуются. Сборка Windows и тесты Windows-логики на Linux — #60.
 
 1. **test** — сборка, изолированные модульные тесты и headless-проверки интерфейса на Ubuntu (`BYDLO_SAFE_DEV=1`).
