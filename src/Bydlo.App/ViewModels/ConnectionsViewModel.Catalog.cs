@@ -67,7 +67,7 @@ public sealed partial class ConnectionsViewModel
 
                 var row = CatalogSources.FirstOrDefault(r => r.Id == id);
                 var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(
-                    row?.Name ?? new Uri(url ?? source.Urls[0]).Host, url ?? source.Urls[0], result.Profiles);
+                    row?.Name ?? new Uri(url ?? source.Urls[0]).Host, url ?? source.Urls[0], result.Profiles, preview.Metadata);
                 Shell.ReloadProfiles();
                 Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, result.Profiles.Count));
                 OnShown();

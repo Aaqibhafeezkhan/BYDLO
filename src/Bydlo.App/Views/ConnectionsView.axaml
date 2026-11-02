@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
-             xmlns:st="using:Bydlo.Core.Storage"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.ConnectionsView"
              x:DataType="vm:ConnectionsViewModel">
@@ -93,18 +92,28 @@
           <TextBlock Classes="faint" Text="{l:T subs.hint}" TextWrapping="Wrap" />
           <ItemsControl ItemsSource="{Binding Subscriptions}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="st:Subscription">
+              <DataTemplate x:DataType="vm:SubscriptionRow">
                 <Border Classes="tile" Margin="0,0,0,6">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Name}" FontWeight="Medium" />
-                      <TextBlock Classes="faint" Text="{Binding LastUpdated, StringFormat='{}{0:g}'}" />
-                    </StackPanel>
-                    <Button Grid.Column="1" Classes="icon" ToolTip.Tip="{l:T subs.refresh}"
-                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).RefreshSubscriptionCommand}" CommandParameter="{Binding}">
-                      <c:OutlineIcon Data="{StaticResource LineRefresh}" Width="16" Height="16" />
-                    </Button>
-                  </Grid>
+                  <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBox Text="{Binding Name}" VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <Button Classes="ghost" Content="{l:T subs.rename}" ToolTip.Tip="{l:T subs.rename}"
+                                Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).RenameSubscriptionCommand}" CommandParameter="{Binding}" />
+                        <Button Classes="icon" ToolTip.Tip="{l:T subs.refresh}"
+                                Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).RefreshSubscriptionCommand}" CommandParameter="{Binding}">
+                          <c:OutlineIcon Data="{StaticResource LineRefresh}" Width="16" Height="16" />
+                        </Button>
+                        <Button Classes="icon" ToolTip.Tip="{l:T subs.delete}"
+                                Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteSubscriptionCommand}" CommandParameter="{Binding}">
+                          <c:OutlineIcon Data="{StaticResource LineDelete}" Width="16" Height="16" />
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="faint" Text="{Binding Details}" TextWrapping="Wrap" IsVisible="{Binding HasDetails}" />
+                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding TrafficFraction}" IsVisible="{Binding HasTraffic}" />
+                    <TextBlock Classes="faint" Text="{Binding LastUpdated, StringFormat='{}{0:g}'}" />
+                  </StackPanel>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>

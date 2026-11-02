@@ -118,6 +118,17 @@
         <StackPanel Spacing="12">
           <TextBlock Classes="h3" Text="{l:T import.title}" />
           <ToggleSwitch Content="{l:T settings.clipboard}" IsChecked="{Binding SuggestClipboardLinks}" />
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T subs.auto}" FontWeight="Medium" TextWrapping="Wrap" />
+              <TextBlock Classes="faint" Text="{l:T subs.auto.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding SubscriptionAutoUpdate}" />
+          </Grid>
+          <StackPanel Spacing="6" IsVisible="{Binding SubscriptionAutoUpdate}">
+            <TextBlock Text="{l:T subs.interval}" />
+            <NumericUpDown Value="{Binding SubscriptionUpdateIntervalHours}" Minimum="1" Maximum="168" FormatString="0" Width="140" HorizontalAlignment="Left" />
+          </StackPanel>
           <TextBlock Classes="faint" Text="{l:T settings.associations.hint}" TextWrapping="Wrap" />
           <WrapPanel IsEnabled="{Binding CanRegisterAssociations}">
             <Button Classes="ghost" Content="{l:T settings.associations.register}" Command="{Binding RegisterAssociationsCommand}" Margin="0,0,8,8" />
@@ -270,6 +281,22 @@
             </StackPanel>
           </StackPanel>
           <TextBlock Classes="muted" Text="{l:T about.text}" TextWrapping="Wrap" />
+          <Border Classes="tile">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Margin="0,0,18,0">
+                  <TextBlock Text="{l:T settings.update.auto}" FontWeight="Medium" TextWrapping="Wrap" />
+                  <TextBlock Classes="faint" Text="{l:T settings.update.auto.hint}" TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CheckForUpdates}" />
+              </Grid>
+              <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" />
+              <WrapPanel>
+                <Button Classes="ghost" Content="{l:T settings.update.check}" Command="{Binding CheckUpdatesCommand}" Margin="0,0,8,0" IsEnabled="{Binding !IsCheckingUpdates}" />
+                <Button Classes="ghost" Content="{l:T settings.update.open}" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding UpdateUrl}" IsVisible="{Binding HasUpdateUrl}" />
+              </WrapPanel>
+            </StackPanel>
+          </Border>
           <TextBlock Classes="caps" Text="{l:T about.credits}" Margin="0,6,0,0" />
           <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.Credits}">
             <ItemsControl.ItemTemplate>

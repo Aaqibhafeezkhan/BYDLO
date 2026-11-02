@@ -17,6 +17,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     private readonly SubscriptionClient _subscriptions;
     private ImportResult? _pending;
     private string? _pendingUrl;
+    private SubscriptionMetadata? _pendingMetadata;
     private AddServerStep _previousStep;
     private CancellationTokenSource? _preparation;
 
@@ -81,6 +82,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     {
         _pending = null;
         _pendingUrl = null;
+        _pendingMetadata = null;
         Input = Identifier = Password = Configuration = ServerName = Host = Sni = Summary = SubscriptionDetails = "";
         ErrorKey = null;
         SkippedCount = 0;
@@ -105,6 +107,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         ErrorKey = null;
         _pending = null;
         _pendingUrl = null;
+        _pendingMetadata = null;
         PreviewItems.Clear();
         Step = IsPreview ? _previousStep : AddServerStep.Source;
     }
@@ -155,6 +158,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         if (result.IsEmpty) { ErrorKey = "wizard.error.input"; return; }
         _pending = result;
         _pendingUrl = url;
+        _pendingMetadata = metadata;
         _previousStep = Step;
         PreviewItems.ReplaceWith(result.Profiles.Select(p => new ServerPreviewItem(Safe(p.Profile.Name, p.Secrets), Labels.Protocol(p.Profile.Protocol), Safe(p.Profile.Endpoint, p.Secrets))));
         Summary = Loc.T(url is null ? "wizard.recognized" : "wizard.subscription.recognized", result.Profiles.Count);
@@ -252,6 +256,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         ErrorKey = null;
         _pending = null;
         _pendingUrl = null;
+        _pendingMetadata = null;
         PreviewItems.Clear();
         if (IsPreview) { Step = _previousStep; }
         try { await action(); }
@@ -269,7 +274,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         try
         {
             if (_pendingUrl is { } url)
-            { await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, pending.Profiles); }
+            { await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, pending.Profiles, _pendingMetadata); }
             else { await Services.Profiles.AddAsync(pending.Profiles); }
             Shell.ReloadProfiles();
             Shell.SelectedProfile = Shell.Profiles.FirstOrDefault(p => p.Id == pending.Profiles[0].Profile.Id) ?? Shell.SelectedProfile;

@@ -93,6 +93,17 @@ public sealed class AppSettings
 
     public bool ShowAdvanced { get; set; }
 
+    /// <summary>Automatically refresh subscriptions whose <see cref="Storage.Subscription.LastUpdated"/> is older than the interval.</summary>
+    public bool SubscriptionAutoUpdate { get; set; } = true;
+
+    /// <summary>Auto-update interval in hours (1-168). Default 12.</summary>
+    public int SubscriptionUpdateIntervalHours { get; set; } = 12;
+
+    /// <summary>Automatically check GitHub Releases for a new BYDLO version. On by default.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
+    public DateTimeOffset? LastUpdateCheck { get; set; }
+
     public RoutingSettings Routing { get; set; } = new();
 
     public ZapretSettings Zapret { get; set; } = new();
@@ -129,7 +140,7 @@ public sealed class RoutingSettings
     /// <summary>When true only <see cref="ProxyDomains"/> go through the tunnel (split tunneling "include" mode).</summary>
     public bool ProxyOnlyListed { get; set; }
 
-    /// <summary>Process names that bypass the tunnel (TUN mode, sing-box only).</summary>
+    /// <summary>Process names that bypass the tunnel (sing-box TUN; Xray on Windows/Linux).</summary>
     public List<string> DirectProcesses { get; set; } = [];
 }
 

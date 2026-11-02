@@ -62,6 +62,21 @@ public sealed class XrayConfigBuilder
             rules.Add(new JsonObject { ["type"] = "field", ["ip"] = Arr(routing.DirectCidrs), ["outboundTag"] = "direct" });
         }
 
+        if (routing.DirectProcesses.Count > 0)
+        {
+            rules.Add(new JsonObject { ["type"] = "field", ["process"] = Arr(routing.DirectProcesses), ["outboundTag"] = "direct" });
+        }
+
+        if (routing.ProxyDomains.Count > 0)
+        {
+            rules.Add(new JsonObject { ["type"] = "field", ["domain"] = Arr(routing.ProxyDomains.Select(d => "domain:" + d)), ["outboundTag"] = "proxy" });
+        }
+
+        if (routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0)
+        {
+            rules.Add(new JsonObject { ["type"] = "field", ["network"] = "tcp,udp", ["outboundTag"] = "direct" });
+        }
+
         var root = new JsonObject
         {
             ["log"] = new JsonObject { ["loglevel"] = "warning" },
