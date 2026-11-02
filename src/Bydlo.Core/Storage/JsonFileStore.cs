@@ -86,7 +86,7 @@ internal sealed class ProfileDocument
 
 /// <summary>Profile list persisted as JSON; secrets are delegated to <see cref="ISecretStore"/>.</summary>
 #pragma warning disable CA1001 // lives for the whole app lifetime
-public sealed class ProfileStore(string path, ISecretStore secrets)
+public sealed partial class ProfileStore(string path, ISecretStore secrets)
 #pragma warning restore CA1001
 {
     private readonly SemaphoreSlim _gate = new(1, 1);

@@ -160,6 +160,18 @@ public sealed class AppServices
 
     public Task SaveSettingsAsync() => SettingsStore.SaveAsync(Settings);
 
+    public async Task RestoreBackupAsync(Bydlo.Core.Backup.BackupData data, Bydlo.Core.Backup.BackupImportMode mode)
+    {
+        var restored = Bydlo.Core.Backup.BackupArchive.ImportSettings(data, Settings, mode);
+        if (restored.LastProfileId is { } id && !data.Profiles.Any(p => p.Profile.Id == id) &&
+            (mode == Bydlo.Core.Backup.BackupImportMode.Replace || !Profiles.Profiles.Any(p => p.Id == id)))
+        { restored.LastProfileId = null; }
+        await SettingsStore.SaveAsync(restored);
+        try { await Profiles.RestoreBackupAsync(data, mode); }
+        catch { await SettingsStore.SaveAsync(Settings); throw; }
+        Settings = restored;
+    }
+
     private readonly CancellationTokenSource _shutdownCancellation = new();
 
     public CancellationToken ShutdownToken => _shutdownCancellation.Token;
