@@ -121,6 +121,7 @@ public sealed partial class ToolsViewModel
                 {
                     StartupCheckVerdict.Works => "tools.startup.works",
                     StartupCheckVerdict.Partial => "tools.startup.partial",
+                    StartupCheckVerdict.Unavailable => "tools.startup.unchecked",
                     _ => "tools.startup.failed",
                 };
                 StartupCheckStatus = Loc.T(key, saved, summary.Successes, summary.Total);

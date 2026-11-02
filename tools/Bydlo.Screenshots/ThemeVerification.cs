@@ -1,9 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Bydlo.App.Services;
 using Bydlo.App.ViewModels;
-using Bydlo.App.Views;using Bydlo.Core.Models;
+using Bydlo.App.Views;
+using Bydlo.Core.Models;
 using Bydlo.Core.Themes;
 
 internal static class ThemeVerification
@@ -25,6 +27,22 @@ internal static class ThemeVerification
         Require(!services.Theme.ApplySaved(services.Settings, services.Paths.DataDirectory), "Missing custom file reports no warning");
         shell.Settings.RefreshCustomThemes();
         Require(!shell.Settings.HasCustomThemeWarning, "Fallback to Purple clears the warning");
+
+        // A theme that cannot be applied must never block startup:
+        // ApplyCustom throws, ApplySaved falls back to the Purple base palette.
+        var bad = new CustomThemeDocument("bad", "Bad", "", 1, true,
+            new Dictionary<string, string> { ["Text"] = "#112233\n" }, []);
+        try
+        {
+            services.Theme.ApplyCustom(bad);
+            throw new InvalidOperationException("Unappliable color was applied");
+        }
+        catch (FormatException) { }
+        Require(!services.Theme.ApplySaved(new AppSettings { Theme = ThemePreference.Custom, CustomThemeId = "missing" }, services.Paths.DataDirectory),
+            "Unappliable custom theme falls back without throwing");
+        Require(Avalonia.Application.Current!.Resources.TryGetResource("BgBrush", null, out var bg) &&
+            bg is SolidColorBrush brush && brush.Color == Avalonia.Media.Color.Parse("#141418"),
+            "Fallback applies the Purple base palette");
 
         var ocean = CustomTheme.Parse("""
             {"id": "ocean", "name": "Ocean", "author": "BYDLO", "version": 1, "base": "dark",

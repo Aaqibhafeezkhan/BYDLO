@@ -478,6 +478,7 @@
   "tools.startup.works": "{0}: работает (успешно {1} из {2} проверок)",
   "tools.startup.partial": "{0}: работает частично (успешно {1} из {2} проверок)",
   "tools.startup.failed": "{0}: не работает (успешно {1} из {2} проверок)",
+  "tools.startup.unchecked": "{0}: проверить не удалось (успешно {1} из {2} проверок)",
   "tools.startup.target": "{0}: успешно {1} из {2} проверок, {3}",
   "tools.startup.details": "Подробности",
   "tools.startup.recheck": "Проверить снова",

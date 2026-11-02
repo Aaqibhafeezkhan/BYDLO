@@ -46,6 +46,10 @@ public class CustomThemeTests
     [InlineData("""{"id": "ok","version": 1,"base": "dark","colors": {"Bg": "#000000"}}""")]
     [InlineData("not json")]
     [InlineData("")]
+    [InlineData("{\"id\": \"ok\\n\",\"name\": \"N\",\"version\": 1,\"base\": \"dark\",\"colors\": {\"Bg\": \"#000000\"}}")]
+    [InlineData("{\"id\": \"ok\",\"name\": \"N\",\"version\": 1,\"base\": \"dark\",\"colors\": {\"Bg\": \"#000000\\n\"}}")]
+    [InlineData("{\"id\": \"ok\",\"name\": \"N\",\"version\": 1,\"base\": \"dark\",\"colors\": {\"Bg\": \" #000000\"}}")]
+    [InlineData("{\"id\": \"ok\",\"name\": \"N\",\"version\": 1,\"base\": \"dark\",\"colors\": {\"Bg\": \"#000000 \"}}")]
     public void Parse_rejects_broken_themes(string json) => Assert.Throws<CustomThemeException>(() => CustomTheme.Parse(json));
 
     [Fact]
@@ -69,6 +73,22 @@ public class CustomThemeTests
     }
 
     [Fact]
+    public void Expander_keys_keep_their_unsuffixed_names()
+    {
+        Assert.Equal("ExpanderHeaderBackground", CustomTheme.MapKey("ExpanderHeaderBackground"));
+        Assert.Equal("ExpanderHeaderBackgroundPointerOver", CustomTheme.MapKey("ExpanderHeaderBackgroundPointerOver"));
+        Assert.Equal("ExpanderContentBackground", CustomTheme.MapKey("ExpanderContentBackground"));
+        Assert.Equal("ExpanderHeaderBorderBrush", CustomTheme.MapKey("ExpanderHeaderBorderBrush"));
+        var doc = CustomTheme.Parse("""
+            {"id": "exp", "name": "Exp", "version": 1, "base": "dark",
+             "colors": {"ExpanderHeaderBackground": "#112233", "ExpanderContentBorderBrush": "#445566"}}
+            """);
+        Assert.Empty(doc.IgnoredKeys);
+        Assert.Equal("#FF112233", doc.ToResourceColors()["ExpanderHeaderBackground"]);
+        Assert.Equal("#FF445566", doc.ToResourceColors()["ExpanderContentBorderBrush"]);
+    }
+
+    [Fact]
     public void Contrast_matches_wcag_reference_points()
     {
         Assert.Equal(21, CustomTheme.ContrastRatio("#FFFFFF", "#000000"), 3);
@@ -77,6 +97,15 @@ public class CustomThemeTests
         Assert.True(CustomTheme.IsLowContrast("#000000", "#000000"));
         Assert.True(CustomTheme.IsLowContrast("#555555", "#141418"));
         Assert.False(CustomTheme.IsLowContrast("#EFEDF3", "#141418"));
+    }
+
+    [Fact]
+    public void Contrast_composites_transparency_over_the_background()
+    {
+        Assert.True(CustomTheme.IsLowContrast("#00FFFFFF", "#000000"));
+        Assert.True(CustomTheme.IsLowContrast("Transparent", "#000000"));
+        Assert.False(CustomTheme.IsLowContrast("#80FFFFFF", "#000000"));
+        Assert.False(CustomTheme.IsLowContrast("#FFFFFF", "#000000"));
     }
 
     [Fact]

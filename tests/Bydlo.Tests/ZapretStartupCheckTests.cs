@@ -41,7 +41,25 @@ public class ZapretStartupCheckTests
 
         var none = new[] { new ZapretCheck(Targets[0], "HTTP", ZapretCheckOutcome.Error, null), new ZapretCheck(Targets[0], "TLS1.2", ZapretCheckOutcome.Timeout, null) };
         Assert.Equal(StartupCheckVerdict.Failed, ZapretStartupCheck.Summarize(none).Verdict);
-        Assert.Equal(StartupCheckVerdict.Failed, ZapretStartupCheck.Summarize([]).Verdict);
+        Assert.Equal(StartupCheckVerdict.Unavailable, ZapretStartupCheck.Summarize([]).Verdict);
+    }
+
+    [Fact]
+    public void Summarize_reports_unchecked_when_nothing_conclusive()
+    {
+        var unknown = new[]
+        {
+            new ZapretCheck(Targets[0], "HTTP", ZapretCheckOutcome.Unknown, null),
+            new ZapretCheck(Targets[0], "TLS1.2", ZapretCheckOutcome.Unknown, null),
+            new ZapretCheck(Targets[0], "TLS1.3", ZapretCheckOutcome.Unknown, null),
+        };
+        Assert.Equal(StartupCheckVerdict.Unavailable, ZapretStartupCheck.Summarize(unknown).Verdict);
+        var errored = new[]
+        {
+            new ZapretCheck(Targets[0], "HTTP", ZapretCheckOutcome.Error, null),
+            new ZapretCheck(Targets[0], "TLS1.2", ZapretCheckOutcome.Unknown, null),
+        };
+        Assert.Equal(StartupCheckVerdict.Failed, ZapretStartupCheck.Summarize(errored).Verdict);
     }
 
     [Fact]
@@ -73,6 +91,7 @@ public class ZapretStartupCheckTests
         Assert.Equal(SavedStrategyState.Ready, ZapretStartupCheck.Classify("a.bat", ["a.bat", "b.bat"]));
         Assert.Equal(SavedStrategyState.Unavailable, ZapretStartupCheck.Classify("A.BAT", ["a.bat"]));
     }
+
     [Fact]
     public async Task Check_runs_only_the_saved_strategy_and_restores_state()
     {

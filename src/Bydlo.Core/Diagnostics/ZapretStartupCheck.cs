@@ -2,9 +2,10 @@ namespace Bydlo.Core.Diagnostics;
 
 /// <summary>
 /// Verdict of the saved-strategy startup check. Describes only HTTP/TLS probe
-/// success; it never claims that video, voice or UDP work.
+/// success; it never claims that video, voice or UDP work. Unavailable means
+/// the check itself produced no usable results (e.g. the engine never started).
 /// </summary>
-public enum StartupCheckVerdict { Works, Partial, Failed }
+public enum StartupCheckVerdict { Works, Partial, Failed, Unavailable }
 
 /// <summary>How the remembered strategy id relates to the installed strategies.</summary>
 public enum SavedStrategyState { Ready, Empty, Unavailable }
@@ -34,9 +35,11 @@ public static class ZapretStartupCheck
                     g.Count(), ok.Length == 0 ? null : (double?)ok.Average());
             }).ToArray();
         var successes = list.Count(c => c.Outcome == ZapretCheckOutcome.Success);
-        var verdict = list.Length == 0 || successes == 0 ? StartupCheckVerdict.Failed
+        var conclusive = list.Count(c => c.Outcome is ZapretCheckOutcome.Success or ZapretCheckOutcome.Error or ZapretCheckOutcome.Timeout);
+        var verdict = list.Length == 0 || conclusive == 0 ? StartupCheckVerdict.Unavailable
             : successes == list.Length ? StartupCheckVerdict.Works
-            : StartupCheckVerdict.Partial;
+            : successes > 0 ? StartupCheckVerdict.Partial
+            : StartupCheckVerdict.Failed;
         return new StartupCheckSummary(verdict, successes, list.Length, targets);
     }
 }

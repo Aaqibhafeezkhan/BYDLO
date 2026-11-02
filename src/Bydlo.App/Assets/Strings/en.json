@@ -478,6 +478,7 @@
   "tools.startup.works": "{0}: works ({1} of {2} checks passed)",
   "tools.startup.partial": "{0}: partially works ({1} of {2} checks passed)",
   "tools.startup.failed": "{0}: not working ({1} of {2} checks passed)",
+  "tools.startup.unchecked": "{0}: could not be checked ({1} of {2} checks passed)",
   "tools.startup.target": "{0}: {1} of {2} checks passed, {3}",
   "tools.startup.details": "Details",
   "tools.startup.recheck": "Check again",

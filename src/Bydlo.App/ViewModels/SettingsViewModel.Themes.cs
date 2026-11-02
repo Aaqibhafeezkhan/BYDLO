@@ -67,7 +67,7 @@ public sealed partial class SettingsViewModel
         CustomThemeWarning = low ? L["theme.custom.lowcontrast"] : "";
     }
 
-    /// <summary>Applies the stored custom theme; falls back to Purple when the file is gone.</summary>
+    /// <summary>Applies the stored custom theme; falls back to Purple when the file is gone or unappliable.</summary>
     private bool ApplyStoredCustom()
     {
         var doc = Services.Settings.CustomThemeId is { } id ? CustomThemeStore.TryLoad(ThemesDirectory, id) : null;
@@ -76,8 +76,17 @@ public sealed partial class SettingsViewModel
             Services.Theme.Apply(ThemePreference.Purple);
             return false;
         }
-        UpdateWarning(Services.Theme.ApplyCustom(doc));
-        return true;
+        try
+        {
+            UpdateWarning(Services.Theme.ApplyCustom(doc));
+            return true;
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidOperationException or CustomThemeException)
+        {
+            Services.Theme.Apply(ThemePreference.Purple);
+            UpdateWarning(false);
+            return false;
+        }
     }
 
     private void UpdateWarning(bool low)
@@ -136,7 +145,20 @@ public sealed partial class SettingsViewModel
     {
         Services.Settings.Theme = ThemePreference.Custom;
         Services.Settings.CustomThemeId = doc.Id;
-        UpdateWarning(Services.Theme.ApplyCustom(doc));
+        try
+        {
+            UpdateWarning(Services.Theme.ApplyCustom(doc));
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidOperationException or CustomThemeException)
+        {
+            Services.Theme.Apply(ThemePreference.Purple);
+            Services.Settings.CustomThemeId = null;
+            Shell.ShowToast(L["theme.custom.broken"], isError: true);
+            Theme = ThemePreference.Purple;
+            Persist();
+            RefreshCustomThemes();
+            return;
+        }
         Theme = ThemePreference.Custom;
         Persist();
         RefreshCustomThemes();

@@ -45,7 +45,8 @@ public sealed class ThemeService
 
     /// <summary>
     /// Applies the saved preference including the custom theme file.
-    /// A broken or missing custom file falls back to Purple. Returns the low-contrast flag.
+    /// A missing, broken or unappliable custom file falls back to Purple
+    /// so a bad theme can never block startup. Returns the low-contrast flag.
     /// </summary>
     public bool ApplySaved(AppSettings settings, string dataDirectory)
     {
@@ -54,10 +55,17 @@ public sealed class ThemeService
             var doc = CustomThemeStore.TryLoad(CustomThemeStore.ThemesDirectory(dataDirectory), id);
             if (doc is not null)
             {
-                return ApplyCustom(doc);
+                try
+                {
+                    return ApplyCustom(doc);
+                }
+                catch (Exception ex) when (ex is FormatException or InvalidOperationException or CustomThemeException)
+                {
+                    // Fall through to the base palette below.
+                }
             }
         }
-        Apply(settings.Theme);
+        Apply(settings.Theme == ThemePreference.Custom ? ThemePreference.Purple : settings.Theme);
         return false;
     }
 
@@ -84,6 +92,10 @@ public sealed class ThemeService
             if (key is "AccentColor" or "PrimaryColor")
             {
                 overrides[key] = Color.Parse(value);
+            }
+            else if (value.Equals("Transparent", StringComparison.OrdinalIgnoreCase))
+            {
+                overrides[key] = new SolidColorBrush(Colors.Transparent);
             }
             else
             {

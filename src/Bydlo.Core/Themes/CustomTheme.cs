@@ -65,14 +65,25 @@ public static partial class CustomTheme
 
     private static readonly HashSet<string> KnownResources = new(ResourceKeys, StringComparer.Ordinal);
 
-    [GeneratedRegex("^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$")]
+    [GeneratedRegex("^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?\\z")]
     private static partial Regex IdRegex();
 
-    [GeneratedRegex("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")]
+    [GeneratedRegex("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})\\z")]
     private static partial Regex HexRegex();
 
-    public static string MapKey(string shortName) =>
-        shortName is "AccentColor" or "PrimaryColor" ? shortName : shortName + "Brush";
+    /// <summary>
+    /// Short theme-file key to the palette resource key. Expander tokens keep
+    /// their unsuffixed names (ExpanderHeaderBackground, ...); the rest take "Brush".
+    /// Unknown keys fall through and are ignored by the caller.
+    /// </summary>
+    public static string MapKey(string shortName)
+    {
+        if (shortName is "AccentColor" or "PrimaryColor" || KnownResources.Contains(shortName))
+        {
+            return shortName;
+        }
+        return shortName + "Brush";
+    }
 
     /// <summary>Palette resource key back to the short theme-file form ("BgBrush" to "Bg").</summary>
     public static string ShortKey(string fullKey) =>
@@ -229,9 +240,17 @@ public static partial class CustomTheme
         return value;
     }
 
-    /// <summary>WCAG 2.x contrast ratio of two opaque colors (1 to 21).</summary>
-    public static double ContrastRatio(string first, string second) =>
-        ContrastRatio(ParseRgb(first), ParseRgb(second));
+    /// <summary>
+    /// WCAG 2.x contrast ratio. Semi-transparent text is composited over the background
+    /// first, so fully transparent text scores ~1 (unreadable) instead of 21.
+    /// </summary>
+    public static double ContrastRatio(string text, string background)
+    {
+        // Flatten a translucent background over black, then the text over it.
+        var bgFlat = Flatten(ParseRgba(background));
+        var fgFlat = FlattenOver(bgFlat, ParseRgba(text));
+        return ContrastRatio(fgFlat, bgFlat);
+    }
 
     public static double ContrastRatio((double R, double G, double B) first, (double R, double G, double B) second)
     {
@@ -249,17 +268,27 @@ public static partial class CustomTheme
         return 0.2126 * Linearize(c.R) + 0.7152 * Linearize(c.G) + 0.0722 * Linearize(c.B);
     }
 
-    private static (double R, double G, double B) ParseRgb(string hex)
+    private static (double R, double G, double B) Flatten((double R, double G, double B, double A) color) =>
+        FlattenOver((0, 0, 0), color);
+
+    private static (double R, double G, double B) FlattenOver((double R, double G, double B) back, (double R, double G, double B, double A) fore) =>
+        (fore.R * fore.A + back.R * (1 - fore.A),
+            fore.G * fore.A + back.G * (1 - fore.A),
+            fore.B * fore.A + back.B * (1 - fore.A));
+
+    private static (double R, double G, double B, double A) ParseRgba(string hex)
     {
         if (hex.Equals("Transparent", StringComparison.OrdinalIgnoreCase))
         {
-            throw new CustomThemeException("Cannot measure contrast of a transparent color.");
+            return (1, 1, 1, 0);
         }
         var clean = Normalize(hex).TrimStart('#');
+        var alpha = 1.0;
         if (clean.Length == 8)
         {
+            alpha = Convert.ToInt32(clean[..2], 16) / 255.0;
             clean = clean[2..];
         }
-        return (Convert.ToInt32(clean[..2], 16) / 255.0, Convert.ToInt32(clean.Substring(2, 2), 16) / 255.0, Convert.ToInt32(clean.Substring(4, 2), 16) / 255.0);
+        return (Convert.ToInt32(clean[..2], 16) / 255.0, Convert.ToInt32(clean.Substring(2, 2), 16) / 255.0, Convert.ToInt32(clean.Substring(4, 2), 16) / 255.0, alpha);
     }
 }
