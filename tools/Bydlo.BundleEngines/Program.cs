@@ -9,6 +9,11 @@ if (args.Length != 3)
     throw new ArgumentException("Usage: Bydlo.BundleEngines <RID> <publish-directory> <repository-root>");
 }
 
+if (args[0] is not ("win-x64" or "win-arm64" or "linux-x64" or "linux-arm64" or "osx-arm64"))
+{
+    throw new ArgumentException("Unsupported RID. macOS packages support Apple Silicon only.");
+}
+
 var parts = args[0].Split('-');
 var os = parts[0] switch { "win" => OsFamily.Windows, "linux" => OsFamily.Linux, "osx" => OsFamily.MacOS, _ => throw new ArgumentException("Unsupported RID") };
 var arch = parts[1] switch { "x64" => CpuArch.X64, "arm64" => CpuArch.Arm64, _ => throw new ArgumentException("Unsupported architecture") };

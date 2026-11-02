@@ -10,7 +10,6 @@ cap_source=${6:-}
 case "$rid:$(uname -m)" in
   linux-x64:x86_64) target=linux-x86_64 ;;
   linux-arm64:aarch64|linux-arm64:arm64) target=linux-aarch64 ;;
-  osx-x64:x86_64) target=darwin64-x86_64-cc ;;
   osx-arm64:arm64) target=darwin64-arm64-cc ;;
   *) echo 'OpenVPN must be built on a runner matching the target architecture' >&2; exit 1 ;;
 esac

@@ -9,6 +9,9 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 
 ## Протоколы
 
+Все столбцы macOS ниже относятся **только к Apple Silicon** (`osx-arm64`).
+Поддержка Intel прекращена: новые сборки и обновления для Intel Mac не выпускаются.
+
 | Протокол | Движок | Windows | Linux | macOS | Android |
 |---|---|---|---|---|---|
 | VLESS (TCP/WS/gRPC/HTTPUpgrade, TLS, REALITY, Vision) | sing-box | 🧪 | 🧪 | 🧪 | 🗓 |
@@ -33,7 +36,7 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 | Режим TUN (sing-box, нужны права администратора/root) | 🧪 | 🧪 | 🧪 | 🗓 (VpnService) |
 | Kill switch TUN (sing-box; отдельный TUN-процесс, без постоянных правил фаервола) | 🧪 | 🧪 | 🧪 | 🗓 |
 | Системный прокси на время подключения | 🧪 | 🗓 | 🗓 | ❌ |
-| Zapret | ✅ x64: winws + WinDivert; ARM64 ❌ | 🧪 x64/ARM64: nfqws + nftables | 🧪 Intel/Apple Silicon: tpws + PF, IPv4 TCP 80/443 | 🗓 [отдельная задача #21](https://github.com/endercodezz/BYDLO/issues/21) |
+| Zapret | ✅ x64: winws + WinDivert; ARM64 ❌ | 🧪 x64/ARM64: nfqws + nftables | 🧪 только Apple Silicon: tpws + PF, IPv4 TCP 80/443 | 🗓 [отдельная задача #21](https://github.com/endercodezz/BYDLO/issues/21) |
 | TgWsProxy (встроенный порт на C#, без Python) | ✅ | 🧪 | 🧪 | 🗓 |
 | Трей и меню сессий | 🧪 Avalonia TrayIcon | 🧪 нужен StatusNotifierItem/AppIndicator | 🧪 меню строки состояния | ❌ |
 | Автозапуск при входе (по выбору) | 🧪 HKCU Run | 🧪 XDG autostart | 🧪 LaunchAgent | ❌ |
@@ -65,16 +68,16 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 ## Получение движков
 
 Ниже описан состав полного комплекта для каждой целевой платформы. CI на GitHub
-собирает все шесть RID, зеркало на Gitea — только `linux-x64`
+собирает все пять RID, зеркало на Gitea — только `linux-x64`
 (см. [BUILD.md](BUILD.md#ci)). Наличие адаптера или упаковщика не подтверждает реальное подключение.
 
 | Движок | Как BYDLO его получает |
 |---|---|
-| sing-box 1.14.3, Xray-core 26.10.21 | Упаковываются для всех шести десктопных платформ с проверкой SHA-256. Загрузка по запросу остаётся запасным путём. |
-| Zapret: Flowseal 1.10.3 / bol-van 72.13 | Встроен в релизы Windows x64, Linux x64/ARM64 и macOS Intel/Apple Silicon; CI проверяет SHA-256. Загрузка по запросу и папка пользователя — резервные варианты. |
+| sing-box 1.14.3, Xray-core 26.10.21 | Упаковываются для всех пяти десктопных платформ с проверкой SHA-256. Загрузка по запросу остаётся запасным путём. |
+| Zapret: Flowseal 1.10.3 / bol-van 72.13 | Встроен в релизы Windows x64, Linux x64/ARM64 и macOS, только Apple Silicon; CI проверяет SHA-256. Загрузка по запросу и папка пользователя — резервные варианты. |
 | tg-ws-proxy 1.11.4 | Ничего не скачивается: ядро перенесено на C# и встроено в BYDLO. Без HTTP/2 для медиа через Cloudflare (`cf_h2`), без Cloudflare Worker и PROXY protocol |
 | AmneziaWG 3.1.20260828 | Windows x64/ARM64 и Linux x64/ARM64: собственный процесс-хост upstream Go-библиотеки, без официального клиента и awg-quick. Windows: встроен подписанный Wintun 0.14.1. macOS пока не реализован. |
-| OpenVPN 2.7.8 | Все шесть платформ: консольный движок. Windows: DLL и подписанный DCO 2.8.14 извлечены из закреплённого официального MSI; установка DCO и выделенного адаптера — отдельная команда с согласием и правами администратора. Linux/macOS: сборка со статическим OpenSSL 3.6.5; Linux также со статическим libcap-ng 0.9.6. |
+| OpenVPN 2.7.8 | Все пять платформ: консольный движок. Windows: DLL и подписанный DCO 2.8.14 извлечены из закреплённого официального MSI; установка DCO и выделенного адаптера — отдельная команда с согласием и правами администратора. Linux/macOS: сборка со статическим OpenSSL 3.6.5; Linux также со статическим libcap-ng 0.9.6. |
 | Нативный WireGuard | Официальный клиент, установленный пользователем; для userspace WireGuard доступен встроенный sing-box. |
 
 Для AmneziaWG нужны права администратора/root; Linux использует `/dev/net/tun`, `ip` и, при DNS в профиле,

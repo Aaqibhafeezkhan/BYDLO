@@ -33,7 +33,6 @@ public class BundledEngineTests
     [InlineData(OsFamily.Windows, CpuArch.Arm64)]
     [InlineData(OsFamily.Linux, CpuArch.X64)]
     [InlineData(OsFamily.Linux, CpuArch.Arm64)]
-    [InlineData(OsFamily.MacOS, CpuArch.X64)]
     [InlineData(OsFamily.MacOS, CpuArch.Arm64)]
     public void Bundled_copy_wins_over_managed_install_but_explicit_override_wins(OsFamily os, CpuArch arch)
     {
@@ -58,6 +57,22 @@ public class BundledEngineTests
             File.Delete(bundled);
             Assert.Equal(managed, locator.Locate(kind, new()));
         }
+    }
+
+    [Fact]
+    public void Engine_lock_has_no_Intel_Mac_downloads_or_bundled_executables()
+    {
+        var engineLock = EngineLock.LoadEmbedded();
+        var intel = new PlatformInfo(OsFamily.MacOS, CpuArch.X64).Rid;
+        var silicon = new PlatformInfo(OsFamily.MacOS, CpuArch.Arm64).Rid;
+        foreach (var entry in engineLock.Engines)
+        {
+            Assert.False(entry.Assets.ContainsKey(intel), entry.Id);
+            Assert.False(entry.BundledExecutables.ContainsKey(intel), entry.Id);
+        }
+        foreach (var id in new[] { "sing-box", "xray", "zapret-native" })
+        { Assert.True(engineLock.Find(id)!.Assets.ContainsKey(silicon), id); }
+        Assert.True(engineLock.Find("openvpn")!.BundledExecutables.ContainsKey(silicon));
     }
 
     [Fact]

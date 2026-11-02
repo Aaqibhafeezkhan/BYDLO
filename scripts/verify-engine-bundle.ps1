@@ -1,5 +1,5 @@
 param(
-    [Parameter(Mandatory)][string]$Rid,
+    [Parameter(Mandatory)][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','osx-arm64')][string]$Rid,
     [Parameter(Mandatory)][string]$PublishDirectory
 )
 $ErrorActionPreference = 'Stop'
@@ -30,7 +30,7 @@ foreach ($entry in $lock.engines) {
             $expected = if ($expectedArm) { 183 } else { 62 }
             if ($reader.ReadUInt16() -ne $expected) { throw "Wrong ELF architecture: $path" }
         } elseif ($magic -eq 4277009103) {
-            $expected = if ($expectedArm) { 0x100000c } else { 0x1000007 }
+            $expected = 0x100000c # macOS packages target Apple Silicon only.
             if ($reader.ReadUInt32() -ne $expected) { throw "Wrong Mach-O architecture: $path" }
         } elseif ($entry.id -ne 'zapret-native' -or $magic -ne 3199925962) {
             throw "Unknown executable format: $path"
