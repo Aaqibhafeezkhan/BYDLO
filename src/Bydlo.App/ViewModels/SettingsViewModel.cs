@@ -230,6 +230,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     partial void OnMockModeChanged(bool value)
     {
+        if (Services.ForcedMock) { return; }
         Services.Settings.MockMode = value;
         Shell.RefreshMock();
         Persist();

@@ -24,7 +24,7 @@ public sealed class AppServices
     private AppServices(string[] args)
     {
         Args = args;
-        ForcedMock = args.Contains("--mock") || Environment.GetEnvironmentVariable("BYDLO_MOCK") == "1";
+        ForcedMock = AppSettings.IsMockForced(args, Environment.GetEnvironmentVariable("BYDLO_MOCK"));
         Paths = AppPathsFactory.Create();
         Log = new LogHub(LogRedactor.Shared, Paths.LogsDirectory);
         Secrets = SecretStoreFactory.Create(Paths);
@@ -117,14 +117,7 @@ public sealed class AppServices
     public bool IsMock => ForcedMock || Settings.MockMode;
 
     /// <summary>Settings passed to engines (Mock Mode forced by the command line wins).</summary>
-    public AppSettings EffectiveSettings
-    {
-        get
-        {
-            Settings.MockMode = IsMock;
-            return Settings;
-        }
-    }
+    public AppSettings EffectiveSettings => Settings.WithMockMode(IsMock);
 
     public static async Task<AppServices> CreateAsync(string[] args)
     {
@@ -156,18 +149,7 @@ public sealed class AppServices
         return s;
     }
 
-    public async Task SaveSettingsAsync()
-    {
-        // Never persist a command-line forced mock mode as the user's choice.
-        var persisted = Settings.MockMode;
-        if (ForcedMock)
-        {
-            Settings.MockMode = false;
-        }
-
-        await SettingsStore.SaveAsync(Settings).ConfigureAwait(false);
-        Settings.MockMode = persisted;
-    }
+    public Task SaveSettingsAsync() => SettingsStore.SaveAsync(Settings);
 
     public void CleanupKillSwitch()
     {
