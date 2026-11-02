@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using Avalonia.Platform.Storage;
 using Bydlo.App.Services;
 using Bydlo.Core.Import;
 using Bydlo.Core.Models;
@@ -13,17 +12,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 {
     public ObservableCollection<Subscription> Subscriptions { get; } = [];
 
-    [ObservableProperty]
-    private string _importText = "";
-
-    [ObservableProperty]
-    private string _subscriptionUrl = "";
-
-    [ObservableProperty]
-    private string _subscriptionName = "";
-
-    [ObservableProperty]
-    private bool _isWorking;
+    [ObservableProperty] private bool _isWorking;
 
     public bool IsEmpty => Shell.Profiles.Count == 0;
 
@@ -31,12 +20,6 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     {
         Subscriptions.ReplaceWith(Services.Profiles.Subscriptions);
         OnPropertyChanged(nameof(IsEmpty));
-    }
-
-    [RelayCommand]
-    private async Task PasteFromClipboard()
-    {
-        await Shell.PasteImportCommand.ExecuteAsync(null);
     }
 
     public Task AddImportedAsync(ImportResult result) => AddAsync(result, null);
@@ -49,75 +32,9 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             throw new InvalidOperationException(L["import.none"]);
         }
 
-        var sub = await Services.Profiles.AddSubscriptionAsync(new Uri(url).Host, url);
-        await Services.Profiles.ReplaceSubscriptionProfilesAsync(sub.Id, result.Profiles);
+        var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, result.Profiles);
         Shell.ReloadProfiles();
         Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, result.Profiles.Count));
-        OnShown();
-    }
-
-    [RelayCommand]
-    private Task ImportFromText() => ImportAsync(ImportText, null);
-
-    [RelayCommand]
-    private async Task ImportFromFile()
-    {
-        var storage = Services.TopLevel()?.StorageProvider;
-        if (storage is null)
-        {
-            return;
-        }
-
-        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = L["import.file"],
-            AllowMultiple = true,
-            FileTypeFilter =
-            [
-                new FilePickerFileType("VPN configs") { Patterns = ["*.conf", "*.ovpn", "*.txt"] },
-                FilePickerFileTypes.All,
-            ],
-        });
-        await Shell.PreviewExternalAsync(files.Select(f => f.TryGetLocalPath()).OfType<string>());
-    }
-
-    [RelayCommand]
-    private async Task ImportFromQrImage()
-    {
-        var storage = Services.TopLevel()?.StorageProvider;
-        if (storage is null)
-        {
-            return;
-        }
-
-        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = L["import.qr"],
-            FileTypeFilter = [FilePickerFileTypes.ImageAll],
-        });
-        if (files.Count == 0 || files[0].TryGetLocalPath() is not { } path)
-        {
-            return;
-        }
-
-        await Shell.PreviewExternalAsync([path]);
-    }
-
-    [RelayCommand]
-    private async Task AddSubscription()
-    {
-        var url = SubscriptionUrl.Trim();
-        if (!ProfileImporter.LooksLikeSubscriptionUrl(url))
-        {
-            Shell.ShowToast(L["import.sub.invalid"], isError: true);
-            return;
-        }
-
-        var name = string.IsNullOrWhiteSpace(SubscriptionName) ? new Uri(url).Host : SubscriptionName.Trim();
-        var sub = await Services.Profiles.AddSubscriptionAsync(name, url);
-        SubscriptionUrl = "";
-        SubscriptionName = "";
-        await RefreshSubscription(sub);
         OnShown();
     }
 
@@ -214,18 +131,16 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             new(new Profile { Name = name, Protocol = kind, Host = host, Port = 443, Options = { ["demo"] = "true" } }, new ProfileSecrets());
     }
 
-    /// <summary>Used by the empty-state cards on Home.</summary>
+    /// <summary>Imports supplied text for internal callers; interactive entry points use the wizard.</summary>
     public Task ImportTextAsync(string text) => ImportAsync(text, null);
 
     private async Task ImportAsync(string text, Guid? subscription)
     {
         if (ProfileImporter.LooksLikeSubscriptionUrl(text))
         {
-            SubscriptionUrl = text.Trim();
-            await AddSubscription();
+            await ImportExternalSubscriptionAsync(text.Trim());
             return;
         }
-
         await AddAsync(Services.Importer.ImportText(text), subscription);
     }
 
@@ -236,7 +151,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             var added = await Services.Profiles.AddAsync(result.Profiles, subscription);
             Shell.ReloadProfiles();
             Shell.SelectedProfile = Shell.Profiles.FirstOrDefault(p => p.Id == added[0].Id) ?? Shell.SelectedProfile;
-            ImportText = "";
+
             Shell.ShowToast(Loc.T("import.added", added.Count) + (result.Errors.Count > 0 ? " " + Loc.T("import.skipped", result.Errors.Count) : ""));
         }
         else

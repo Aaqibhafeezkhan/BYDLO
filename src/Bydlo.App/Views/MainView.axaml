@@ -3,6 +3,7 @@
              xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:l="using:Bydlo.App.Services"
+             xmlns:v="using:Bydlo.App.Views"
              x:Class="Bydlo.App.Views.MainView"
              x:DataType="vm:MainViewModel"
              Background="{DynamicResource BackdropBrush}">
@@ -137,6 +138,10 @@
           </WrapPanel>
         </Grid>
       </Border>
+    </Border>
+
+    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" IsVisible="{Binding IsAddServerOpen}" Background="{DynamicResource BackdropBrush}">
+      <v:AddServerWizardView DataContext="{Binding AddServerWizard}" />
     </Border>
 
     <!-- First-run onboarding -->

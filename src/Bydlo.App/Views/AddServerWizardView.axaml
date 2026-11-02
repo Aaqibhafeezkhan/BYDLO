@@ -1,0 +1,136 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Bydlo.App.Controls"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:l="using:Bydlo.App.Services"
+             xmlns:m="using:Bydlo.Core.Models"
+             x:Class="Bydlo.App.Views.AddServerWizardView"
+             x:DataType="vm:AddServerWizardViewModel">
+  <ScrollViewer x:Name="WizardScroll" HorizontalScrollBarVisibility="Disabled" VerticalContentAlignment="Center">
+    <Border Classes="panel" MaxWidth="680" Margin="24" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+      <StackPanel Spacing="20">
+        <Border Classes="pill warn" IsVisible="{Binding Shell.IsMock}" HorizontalAlignment="Left"><TextBlock Text="{l:T mock.badge}" /></Border>
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Classes="h1" Text="{l:T wizard.title}" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CloseCommand}" IsEnabled="{Binding !IsSaving}" />
+        </Grid>
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding Busy}" Height="3" />
+        <StackPanel Spacing="18" IsEnabled="{Binding !Busy}">
+          <StackPanel IsVisible="{Binding IsSource}" Spacing="12">
+            <TextBlock Classes="muted" Text="{l:T wizard.source.hint}" TextWrapping="Wrap" Margin="0,0,0,6" />
+            <Button Classes="source-card" Command="{Binding ChooseLinkCommand}">
+              <Grid ColumnDefinitions="Auto,*">
+                <c:OutlineIcon Data="{StaticResource LineLink}" Width="26" Height="26" Foreground="{DynamicResource AccentBrush}" Margin="0,0,18,0" />
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Classes="h2" Text="{l:T wizard.link}" TextWrapping="Wrap" />
+                  <TextBlock Classes="muted" Text="{l:T wizard.link.hint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid>
+            </Button>
+            <Button Classes="source-card" Command="{Binding ChooseFileCommand}">
+              <Grid ColumnDefinitions="Auto,*">
+                <c:OutlineIcon Data="{StaticResource LineFile}" Width="26" Height="26" Foreground="{DynamicResource AccentBrush}" Margin="0,0,18,0" />
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Classes="h2" Text="{l:T wizard.file}" />
+                  <TextBlock Classes="muted" Text="{l:T wizard.file.hint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid>
+            </Button>
+            <Button Classes="source-card" Command="{Binding ChooseQrCommand}">
+              <Grid ColumnDefinitions="Auto,*">
+                <c:OutlineIcon Data="{StaticResource LineQr}" Width="26" Height="26" Foreground="{DynamicResource AccentBrush}" Margin="0,0,18,0" />
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Classes="h2" Text="{l:T wizard.qr}" />
+                  <TextBlock Classes="muted" Text="{l:T wizard.qr.hint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid>
+            </Button>
+            <Button Classes="text-action" Content="{l:T wizard.manual}" Command="{Binding ChooseManualCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsLink}" Spacing="14">
+            <TextBlock Classes="h2" Text="{l:T wizard.link}" />
+            <TextBlock Classes="muted" Text="{l:T wizard.link.hint}" TextWrapping="Wrap" />
+            <TextBox Text="{Binding Input}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" MaxHeight="200" Watermark="{l:T wizard.input}" AutomationProperties.Name="{l:T wizard.link}" />
+            <Button Classes="ghost" Content="{l:T import.clipboard}" Command="{Binding PasteCommand}" HorizontalAlignment="Left" />
+            <TextBlock Classes="faint" Text="{l:T wizard.fetch.hint}" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsFile}" Spacing="14">
+            <TextBlock Classes="h2" Text="{l:T wizard.file}" />
+            <Border Classes="card" Padding="24,32" BorderBrush="{DynamicResource AccentBrush}">
+              <StackPanel Spacing="12" HorizontalAlignment="Stretch">
+                <c:OutlineIcon Data="{StaticResource LineFile}" Width="36" Height="36" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{l:T wizard.drop}" TextAlignment="Center" TextWrapping="Wrap" FontSize="18" />
+                <TextBlock Classes="muted" Text="{l:T wizard.file.hint}" TextAlignment="Center" TextWrapping="Wrap" />
+                <Button Classes="primary" Content="{l:T wizard.select.file}" Command="{Binding SelectFileCommand}" HorizontalAlignment="Center" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsQr}" Spacing="14">
+            <TextBlock Classes="h2" Text="{l:T wizard.qr}" />
+            <TextBlock Classes="muted" Text="{l:T wizard.qr.hint}" TextWrapping="Wrap" />
+            <Button Classes="source-card" Content="{l:T wizard.paste.qr}" Command="{Binding PasteCommand}" />
+            <Button Classes="ghost" Content="{l:T wizard.select.qr}" Command="{Binding SelectQrCommand}" HorizontalAlignment="Stretch" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsManual}" Spacing="12">
+            <TextBlock Classes="h2" Text="{l:T wizard.manual}" />
+            <TextBlock Classes="faint" Text="{l:T wizard.manual.hint}" TextWrapping="Wrap" />
+            <TextBlock Text="{l:T wizard.protocol}" />
+            <ComboBox ItemsSource="{x:Static vm:AddServerWizardViewModel.Protocols}" SelectedItem="{Binding Protocol}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="m:ProtocolKind"><TextBlock Text="{Binding Converter={x:Static l:ProtocolLabelConverter.Instance}}" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBox Text="{Binding ServerName}" Watermark="{l:T wizard.name}" AutomationProperties.Name="{l:T wizard.name}" />
+            <StackPanel IsVisible="{Binding !UsesConfiguration}" Spacing="12">
+              <TextBox Text="{Binding Host}" Watermark="{l:T wizard.host}" AutomationProperties.Name="{l:T wizard.host}" />
+              <TextBlock Text="{l:T wizard.port}" />
+              <NumericUpDown Value="{Binding Port}" Minimum="1" Maximum="65535" FormatString="0" />
+              <TextBox IsVisible="{Binding UsesIdentifier}" Text="{Binding Identifier}" Watermark="{l:T wizard.identifier}" AutomationProperties.Name="{l:T wizard.identifier}" />
+              <TextBox IsVisible="{Binding UsesPassword}" Text="{Binding Password}" PasswordChar="●" Watermark="{l:T wizard.password}" AutomationProperties.Name="{l:T wizard.password}" />
+              <TextBox IsVisible="{Binding UsesMethod}" Text="{Binding Method}" Watermark="{l:T wizard.method}" AutomationProperties.Name="{l:T wizard.method}" />
+              <TextBox IsVisible="{Binding UsesTls}" Text="{Binding Sni}" Watermark="{l:T wizard.sni}" AutomationProperties.Name="{l:T wizard.sni}" />
+            </StackPanel>
+            <TextBox IsVisible="{Binding UsesConfiguration}" Text="{Binding Configuration}" AcceptsReturn="True" MinHeight="140" MaxHeight="240" TextWrapping="Wrap" Watermark="{l:T wizard.configuration}" AutomationProperties.Name="{l:T wizard.configuration}" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsPreview}" Spacing="14">
+            <TextBlock Classes="h2" Text="{l:T import.preview}" />
+            <TextBlock Text="{Binding Summary}" FontSize="18" TextWrapping="Wrap" />
+            <TextBlock Classes="muted" Text="{Binding SubscriptionDetails}" IsVisible="{Binding HasSubscriptionDetails}" TextWrapping="Wrap" />
+            <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding PreviewItems}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ServerPreviewItem">
+                  <Border Classes="tile" Margin="0,0,0,8">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Protocol}" Foreground="{DynamicResource AccentBrush}" />
+                      <TextBlock Classes="faint" Text="{Binding Endpoint}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            </ScrollViewer>
+            <TextBlock Text="{Binding Skipped}" IsVisible="{Binding HasSkipped}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
+            <TextBlock Classes="faint" Text="{l:T wizard.preview.hint}" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <Border Classes="tile" IsVisible="{Binding HasError}" Background="{DynamicResource DangerSoftBrush}">
+            <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" />
+          </Border>
+          <WrapPanel IsVisible="{Binding !IsSource}">
+            <Button Classes="ghost" Content="{l:T wizard.back}" Command="{Binding BackCommand}" Margin="0,0,8,8" />
+            <Button Classes="primary" Content="{l:T wizard.continue}" Command="{Binding ContinueCommand}" IsVisible="{Binding IsLink}" Margin="0,0,0,8" />
+            <Button Classes="primary" Content="{l:T wizard.continue}" Command="{Binding ContinueCommand}" IsVisible="{Binding IsManual}" Margin="0,0,0,8" />
+            <Button Classes="primary" Content="{l:T wizard.add}" Command="{Binding AddCommand}" IsVisible="{Binding IsPreview}" Margin="0,0,0,8" />
+          </WrapPanel>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </ScrollViewer>
+</UserControl>

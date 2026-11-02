@@ -24,6 +24,8 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
   WireGuard, AmneziaWG, OpenVPN.
 - **Импорт:** ссылки (`vless://`, `vmess://`, `trojan://`, `ss://`, `hy2://`, `tuic://`, `socks5://`, `wireguard://`…),
   base64-подписки, `.conf` (WireGuard / AmneziaWG), `.ovpn`, изображения с QR-кодом.
+- **[Мастер добавления серверов](docs/IMPORT.md):** одна кнопка, выбор ссылки/подписки, файла или QR-кода,
+  предпросмотр до сохранения и базовая форма ручного ввода.
 - **[Резервная копия](docs/BACKUP.md):** зашифрованный паролем файл `.bydlobackup` с серверами, подписками, ключами доступа,
   настройками и маршрутизацией; предпросмотр импорта с объединением или заменой — в настройках.
 - **Zapret из коробки:** Windows x64 — Flowseal; Linux x64/ARM64 — nfqws + nftables; macOS — tpws + PF (IPv4 TCP 80/443). На Windows стратегии Flowseal используются без изменений, `winws.exe` запускается без окна консоли;

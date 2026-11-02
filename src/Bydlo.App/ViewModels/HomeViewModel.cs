@@ -26,11 +26,6 @@ public sealed partial class HomeViewModel : PageViewModel
         {
             OnPropertyChanged(nameof(IsEmpty));
             OnPropertyChanged(nameof(HasProfiles));
-            if (!IsEmpty)
-            {
-                IsLinkImportVisible = false;
-                LinkImportText = "";
-            }
         };
         L.PropertyChanged += (_, _) => RefreshAll();
         _clock = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => OnPropertyChanged(nameof(Elapsed)));
@@ -150,12 +145,6 @@ public sealed partial class HomeViewModel : PageViewModel
     private void ToggleModeHint() => ShowModeHint = !ShowModeHint;
 
     [ObservableProperty]
-    private bool _isLinkImportVisible;
-
-    [ObservableProperty]
-    private string _linkImportText = "";
-
-    [ObservableProperty]
     private bool _isChecking;
 
     [ObservableProperty]
@@ -256,33 +245,6 @@ public sealed partial class HomeViewModel : PageViewModel
         }
 
         await Shell.Guard(() => Services.Connections.ConnectAsync(item.Profile, Services.EffectiveSettings));
-    }
-
-    [RelayCommand]
-    private void ShowLinkImport() => IsLinkImportVisible = true;
-
-    [RelayCommand]
-    private void HideLinkImport()
-    {
-        IsLinkImportVisible = false;
-        LinkImportText = "";
-    }
-
-    [RelayCommand]
-    private async Task ImportLink()
-    {
-        if (string.IsNullOrWhiteSpace(LinkImportText))
-        {
-            return;
-        }
-
-        var before = Shell.Profiles.Count;
-        await Shell.Connections.ImportTextAsync(LinkImportText);
-        if (Shell.Profiles.Count > before)
-        {
-            LinkImportText = "";
-            IsLinkImportVisible = false;
-        }
     }
 
     [RelayCommand]
