@@ -15,7 +15,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     [ObservableProperty] private bool _isWorking;
 
-    private bool _autoRefreshStarted;
+    private bool _autoRefreshInProgress;
 
     public bool IsEmpty => Shell.Profiles.Count == 0;
 
@@ -109,7 +109,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     /// <summary>Refreshes subscriptions whose data is older than the configured interval.</summary>
     public async Task AutoRefreshIfDueAsync()
     {
-        if (_autoRefreshStarted || IsWorking)
+        if (_autoRefreshInProgress || IsWorking)
         {
             return;
         }
@@ -126,7 +126,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         {
             return;
         }
-        _autoRefreshStarted = true;
+        _autoRefreshInProgress = true;
         IsWorking = true;
         try
         {
@@ -164,7 +164,8 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         finally
         {
             IsWorking = false;
-            OnShown();
+            _autoRefreshInProgress = false;
+            Subscriptions.ReplaceWith(Services.Profiles.Subscriptions.Select(s => new SubscriptionRow(s)));
         }
     }
 

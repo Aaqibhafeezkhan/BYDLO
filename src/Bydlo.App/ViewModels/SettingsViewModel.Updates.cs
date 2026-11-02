@@ -66,6 +66,10 @@ public sealed partial class SettingsViewModel
                     Shell.ShowToast(Loc.T("settings.update.available", release.Tag));
                 }
             }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                UpdateStatus = L["settings.update.error"];
+            }
             finally
             {
                 IsCheckingUpdates = false;

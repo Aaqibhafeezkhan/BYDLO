@@ -61,5 +61,10 @@ public sealed class SubscriptionTests
         Assert.Empty(store.Subscriptions);
         Assert.Empty(store.Profiles);
         Assert.Null(await store.GetSubscriptionUrlAsync(sub.Id));
+
+        var fresh = Import("trojan://new-password@server.example:443#Refreshed");
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.ReplaceSubscriptionProfilesAsync(sub.Id, [fresh]));
+        Assert.Empty(store.Profiles);
+        Assert.Null((await store.Secrets.LoadAsync(fresh.Profile.Id.ToString()))["password"]);
     }
 }

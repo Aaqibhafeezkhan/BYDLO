@@ -87,10 +87,7 @@ public sealed class GitHubUpdateClient(Func<HttpMessageHandler>? handlerFactory 
         }
         using var http = CreateClient();
         using var response = await http.GetAsync(BydloReleasesUrl, ct).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-        {
-            return null;
-        }
+        response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         var release = ParseRelease(body);
         return release is not null && IsNewer(currentVersion, release.Tag) ? release : null;

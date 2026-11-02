@@ -251,6 +251,9 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
+                ?? throw new InvalidDataException("Subscription not found.");
+
             foreach (var old in _doc.Profiles.Where(p => p.SubscriptionId == subscriptionId).ToList())
             {
                 _doc.Profiles.Remove(old);
@@ -264,17 +267,13 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
                 await secrets.SaveAsync(item.Profile.Id.ToString(), item.Secrets, ct).ConfigureAwait(false);
             }
 
-            var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId);
-            if (sub is not null)
+            sub.LastUpdated = DateTimeOffset.UtcNow;
+            if (metadata is not null)
             {
-                sub.LastUpdated = DateTimeOffset.UtcNow;
-                if (metadata is not null)
-                {
-                    sub.Upload = metadata.Upload;
-                    sub.Download = metadata.Download;
-                    sub.Total = metadata.Total;
-                    sub.Expires = metadata.Expires;
-                }
+                sub.Upload = metadata.Upload;
+                sub.Download = metadata.Download;
+                sub.Total = metadata.Total;
+                sub.Expires = metadata.Expires;
             }
 
             await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);

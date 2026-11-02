@@ -69,12 +69,20 @@ public sealed class UpdateCheckerTests
         Assert.Null(await client.CheckEngineAsync("https://example.com/tool", "1.0"));
     }
 
-    private sealed class Stub(string body, Func<string, string>? byUrl = null) : HttpMessageHandler
+    [Fact]
+    public async Task Bydlo_check_reports_http_failure()
+    {
+        var client = new GitHubUpdateClient(() => new Stub("", status: HttpStatusCode.Forbidden));
+        var error = await Assert.ThrowsAsync<HttpRequestException>(() => client.CheckBydloAsync("0.1.0"));
+        Assert.Equal(HttpStatusCode.Forbidden, error.StatusCode);
+    }
+
+    private sealed class Stub(string body, Func<string, string>? byUrl = null, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var payload = byUrl?.Invoke(request.RequestUri?.ToString() ?? "") ?? body;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return Task.FromResult(new HttpResponseMessage(status)
             {
                 Content = new StringContent(payload, Encoding.UTF8, "application/json"),
             });
