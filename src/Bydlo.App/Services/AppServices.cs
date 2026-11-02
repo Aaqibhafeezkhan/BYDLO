@@ -19,6 +19,7 @@ using Bydlo.Platform;
 namespace Bydlo.App.Services;
 
 /// <summary>Composition root: creates every service once. No DI container on purpose — the graph is small.</summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "ShutdownAsync owns the asynchronous application lifetime and disposes its resources.")]
 public sealed class AppServices
 {
     private AppServices(string[] args)
@@ -151,6 +152,10 @@ public sealed class AppServices
 
     public Task SaveSettingsAsync() => SettingsStore.SaveAsync(Settings);
 
+    private readonly CancellationTokenSource _shutdownCancellation = new();
+
+    public CancellationToken ShutdownToken => _shutdownCancellation.Token;
+
     public void CleanupKillSwitch()
     {
         if (IsMock || NetworkSafetyGuard.IsLocked) { return; }
@@ -179,7 +184,8 @@ public sealed class AppServices
 
     private async Task ShutdownCoreAsync()
     {
+        _shutdownCancellation.Cancel();
         try { await Connections.StopAllAsync().ConfigureAwait(false); }
-        finally { Http.Dispose(); }
+        finally { Http.Dispose(); _shutdownCancellation.Dispose(); }
     }
 }

@@ -48,8 +48,13 @@ public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProce
         catch (OperationCanceledException)
         {
             try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
             throw new TimeoutException($"{spec.DisplayName} did not finish in {timeout.TotalSeconds:0}s.");
         }
+
+        // Flush asynchronous output callbacks before inspecting the structured result.
+        process.WaitForExit();
 
         lock (output)
         {

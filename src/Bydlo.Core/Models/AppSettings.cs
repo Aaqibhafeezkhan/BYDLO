@@ -123,6 +123,8 @@ public sealed class RoutingSettings
 
 public sealed class ZapretSettings
 {
+    public List<string> TestTargets { get; set; } = ["https://www.youtube.com/", "https://discord.com/"];
+
     /// <summary>Fallback folder with an extracted Flowseal release or a native nfqws/tpws executable.</summary>
     public string? InstallPath { get; set; }
 

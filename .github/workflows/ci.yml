@@ -38,6 +38,8 @@ jobs:
         run: dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
       - name: Verify import flows (headless, no engines or network)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/import-verification en --verify-import
+      - name: Verify Zapret selection UI (headless, no engines or network)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/selection-verification en --verify-zapret-selection
       - uses: actions/upload-artifact@v4
         if: always()
         with:
