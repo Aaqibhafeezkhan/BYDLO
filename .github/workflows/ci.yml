@@ -88,6 +88,31 @@ jobs:
         with:
           go-version: '1.27.3'
           cache: false
+      # Gitea runner images ship without PowerShell and some build tools that GitHub images include (#57).
+      - name: Install build tools missing on the runner
+        shell: bash
+        run: |
+          missing=
+          for tool in make gcc perl autoreconf libtoolize pkg-config readelf; do
+            command -v "$tool" >/dev/null || missing=1
+          done
+          if [ -n "$missing" ]; then
+            sudo=; [ "$(id -u)" = 0 ] || sudo=sudo
+            $sudo apt-get update -qq
+            $sudo apt-get install -y -qq --no-install-recommends build-essential perl autoconf automake libtool pkg-config binutils
+          fi
+          if ! command -v pwsh >/dev/null; then
+            ver=7.6.7
+            sha=6896f9e3a6b0a354bf470835a96da76d2f801cd50dcf047ad7c4563bf93bf431
+            curl -fsSL -o "$RUNNER_TEMP/pwsh.tar.gz" "https://github.com/PowerShell/PowerShell/releases/download/v$ver/powershell-$ver-linux-x64.tar.gz"
+            echo "$sha  $RUNNER_TEMP/pwsh.tar.gz" | sha256sum -c -
+            mkdir -p "$RUNNER_TEMP/pwsh"
+            tar -xzf "$RUNNER_TEMP/pwsh.tar.gz" -C "$RUNNER_TEMP/pwsh"
+            chmod +x "$RUNNER_TEMP/pwsh/pwsh"
+            echo "$RUNNER_TEMP/pwsh" >> "$GITHUB_PATH"
+            # Without ICU, PowerShell refuses to start unless globalization is invariant.
+            ldconfig -p | grep -q libicu || echo "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1" >> "$GITHUB_ENV"
+          fi
       - name: Build and bundle AmneziaWG and OpenVPN (never execute engines)
         shell: pwsh
         run: ./scripts/build-bundled-engines.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
