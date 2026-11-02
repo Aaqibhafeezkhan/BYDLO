@@ -28,8 +28,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # macOS is temporarily off: the Gitea runners have no macOS (#57).
-        os: [ubuntu-latest, windows-latest]
+        # Temporarily Linux only: the Gitea runners have no Windows or macOS (#57).
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -50,7 +50,8 @@ jobs:
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-verification en --verify-desktop
       - name: Verify bundled engine UI (headless, mock only, no driver setup)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verification en --mock --verify-bundled-engines
-      - uses: actions/upload-artifact@v4
+      # Gitea rejects artifact actions v4+ (GHES API); v3 until we are back on GitHub (#57).
+      - uses: actions/upload-artifact@v3
         if: always()
         with:
           name: test-results-${{ matrix.os }}
@@ -64,11 +65,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { rid: win-x64, os: windows-latest }
-          - { rid: win-arm64, os: windows-latest }
-          - { rid: linux-x64, os: ubuntu-24.04 }
-          - { rid: linux-arm64, os: ubuntu-24.04-arm }
-          # osx-x64 / osx-arm64 return with macOS runners (#57).
+          # The Gitea runners only offer ubuntu-latest. win-x64 / win-arm64 (windows-latest),
+          # linux-arm64 (ubuntu-24.04-arm) and osx-x64 / osx-arm64 return with matching runners (#57).
+          - { rid: linux-x64, os: ubuntu-latest }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -89,6 +88,31 @@ jobs:
         with:
           go-version: '1.27.3'
           cache: false
+      # Gitea runner images ship without PowerShell and some build tools that GitHub images include (#57).
+      - name: Install build tools missing on the runner
+        shell: bash
+        run: |
+          missing=
+          for tool in make gcc perl autoreconf libtoolize pkg-config readelf; do
+            command -v "$tool" >/dev/null || missing=1
+          done
+          if [ -n "$missing" ]; then
+            sudo=; [ "$(id -u)" = 0 ] || sudo=sudo
+            $sudo apt-get update -qq
+            $sudo apt-get install -y -qq --no-install-recommends build-essential perl autoconf automake libtool pkg-config binutils
+          fi
+          if ! command -v pwsh >/dev/null; then
+            ver=7.6.7
+            sha=6896f9e3a6b0a354bf470835a96da76d2f801cd50dcf047ad7c4563bf93bf431
+            curl -fsSL -o "$RUNNER_TEMP/pwsh.tar.gz" "https://github.com/PowerShell/PowerShell/releases/download/v$ver/powershell-$ver-linux-x64.tar.gz"
+            echo "$sha  $RUNNER_TEMP/pwsh.tar.gz" | sha256sum -c -
+            mkdir -p "$RUNNER_TEMP/pwsh"
+            tar -xzf "$RUNNER_TEMP/pwsh.tar.gz" -C "$RUNNER_TEMP/pwsh"
+            chmod +x "$RUNNER_TEMP/pwsh/pwsh"
+            echo "$RUNNER_TEMP/pwsh" >> "$GITHUB_PATH"
+            # Without ICU, PowerShell refuses to start unless globalization is invariant.
+            ldconfig -p | grep -q libicu || echo "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1" >> "$GITHUB_ENV"
+          fi
       - name: Build and bundle AmneziaWG and OpenVPN (never execute engines)
         shell: pwsh
         run: ./scripts/build-bundled-engines.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
@@ -98,7 +122,7 @@ jobs:
       - name: Add notices
         shell: bash
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-${{ matrix.rid }}/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         with:
           name: BYDLO-${{ matrix.rid }}
           path: publish/BYDLO-${{ matrix.rid }}
@@ -111,10 +135,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      # v3 has no "pattern": it downloads every artifact; the loop below only packs BYDLO-*.
+      - uses: actions/download-artifact@v3
         with:
           path: dist
-          pattern: BYDLO-*
       - name: Package and checksum
         run: |
           cd dist

@@ -110,8 +110,9 @@ dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/w
 
 `.github/workflows/ci.yml`:
 
-> **Временно:** CI работает на раннерах Gitea (git.ywfl.dev), где нет macOS. Тесты на macOS и сборки
-> `osx-x64` / `osx-arm64` отключены до возвращения на GitHub (#57). Задача **release** использует `gh` и на Gitea не работает.
+> **Временно:** CI работает на раннерах Gitea (git.ywfl.dev), где есть только Linux x64 (`ubuntu-latest`).
+> Тесты идут только на Ubuntu, публикуется только `linux-x64`; Windows, Linux ARM64 и macOS вернутся вместе
+> с подходящими раннерами или после возвращения на GitHub (#57). Задача **release** использует `gh` и на Gitea не работает.
 
 1. **test** — сборка и модульные тесты на Ubuntu, Windows и macOS (`BYDLO_SAFE_DEV=1`).
 2. **desktop** — самодостаточная публикация для шести платформ, упаковка закреплённых sing-box/Xray/Zapret, сборка AmneziaWG для Windows/Linux и OpenVPN для всех платформ; лицензии, соответствующие исходники и хеши. Сетевые движки не запускаются. Для Unix используются нативные x64/ARM64 runners.
