@@ -177,8 +177,13 @@ BYDLO построен на работе этих проектов:
 Спасибо им.
 
 Отдельное спасибо [@yawaflua](https://github.com/yawaflua): когда аккаунт проекта на GitHub временно заблокировали,
-его Gitea и раннеры приютили BYDLO — репозиторий, issues и CI. Зеркало и Linux-сборки там живут до сих пор:
-[git.ywfl.dev/endercodezz/BYDLO](https://git.ywfl.dev/endercodezz/BYDLO).
+его Gitea и раннеры приютили BYDLO — репозиторий, issues и CI.
+
+## Контрибьюторы
+
+Спасибо всем, кто помогает развивать проект ❤️
+
+[![Контрибьюторы](https://contrib.rocks/image?repo=endercodezz/BYDLO&max=100&columns=12)](https://github.com/endercodezz/BYDLO/graphs/contributors)
 
 ## Лицензия
 
