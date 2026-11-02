@@ -19,9 +19,8 @@ public class ZapretPlatformTests
     [Theory]
     [InlineData(OsFamily.Linux, CpuArch.X64)]
     [InlineData(OsFamily.Linux, CpuArch.Arm64)]
-    [InlineData(OsFamily.MacOS, CpuArch.X64)]
     [InlineData(OsFamily.MacOS, CpuArch.Arm64)]
-    public void Native_assets_are_pinned_for_both_architectures(OsFamily os, CpuArch arch)
+    public void Native_assets_are_pinned_for_supported_platforms(OsFamily os, CpuArch arch)
     {
         var entry = EngineLock.LoadEmbedded().Find("zapret-native")!;
         Assert.True(entry.Assets.ContainsKey(new PlatformInfo(os, arch).Rid));
@@ -96,7 +95,8 @@ public class ZapretPlatformTests
             var runner = new FakeProcessRunner();
             runner.StartupOutput.Add("capture is started");
             var firewall = new FakeFirewall { FailApply = scenario == "apply-fails" };
-            await using var engine = new ZapretEngine(runner, new LogRedactor(), new FakeLocator(new(os, CpuArch.X64)), new FakePrivileges(true), firewall);
+            var arch = os == OsFamily.MacOS ? CpuArch.Arm64 : CpuArch.X64;
+            await using var engine = new ZapretEngine(runner, new LogRedactor(), new FakeLocator(new(os, arch)), new FakePrivileges(true), firewall);
             var request = new EngineStartRequest { Settings = new() { Zapret = new() { InstallPath = root } }, WorkDirectory = TestDirs.New("session") };
             if (scenario == "apply-fails")
             {

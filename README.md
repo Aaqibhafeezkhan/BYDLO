@@ -27,7 +27,7 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 - **Zapret из коробки:** Windows x64 — Flowseal; Linux x64/ARM64 — nfqws + nftables; macOS — tpws + PF (IPv4 TCP 80/443). На Windows стратегии Flowseal используются без изменений, `winws.exe` запускается без окна консоли;
   выбор стратегии, игровой фильтр, редактор пользовательских списков, логи, встроенная закреплённая версия с проверкой SHA-256 в CI; пользовательские списки переживают обновления.
 - **TgWsProxy:** встроенный порт tg-ws-proxy от Flowseal — без Python и установки, ссылка `tg://proxy` в один клик, управление секретом, контроль занятых портов.
-- **Движки в релизе:** sing-box и Xray на всех шести платформах; AmneziaWG без клиента Amnezia на Windows/Linux; консольный OpenVPN. На Windows подписанный DCO устанавливается из BYDLO один раз с явным согласием, без OpenVPN GUI и служб.
+- **Движки в релизе:** sing-box и Xray на всех пяти платформах; AmneziaWG без клиента Amnezia на Windows/Linux; консольный OpenVPN. На Windows подписанный DCO устанавливается из BYDLO один раз с явным согласием, без OpenVPN GUI и служб.
 - **Работа в фоне:** трей BYDLO с выбором сервера и управлением VPN/Zapret/TgWsProxy; настраиваемые автозапуск, подключение при старте и системные уведомления.
 - **Маршрутизация:** локальный прокси или режим всего устройства (TUN), раздельное туннелирование, DNS,
   списки «напрямую / через туннель / блокировать», диапазоны mesh-VPN остаются вне туннеля.
@@ -68,7 +68,7 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 |---|---|
 | Windows 10/11 x64, ARM64 | Сборка в CI на GitHub. Zapret только на x64 |
 | Linux x64, ARM64 | Сборка в CI на GitHub (x64 также на зеркале Gitea); встроенный nfqws, нужен root + nftables |
-| macOS Intel, Apple Silicon | Сборка в CI на GitHub, без подписи. Встроенный tpws, только IPv4 TCP 80/443, нужен root |
+| macOS, только Apple Silicon | Сборка в CI на GitHub, без подписи. Встроенный tpws, только IPv4 TCP 80/443, нужен root |
 | Android ARM64 | Запланирован (см. [roadmap](docs/ROADMAP.md)) |
 
 Подробно по протоколам и платформам: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).

@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"windows-latest"},{"rid":"win-arm64","os":"windows-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-x64","os":"macos-15-intel"},{"rid":"osx-arm64","os":"macos-latest"}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"}]') }}
+        include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"windows-latest"},{"rid":"win-arm64","os":"windows-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-arm64","os":"macos-latest"}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -138,6 +138,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -155,4 +156,4 @@ jobs:
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/*.zip dist/SHA256SUMS.txt --draft --generate-notes --repo "${GITHUB_REPOSITORY}"
+        run: gh release create "${GITHUB_REF_NAME}" dist/*.zip dist/SHA256SUMS.txt --draft --generate-notes --notes-file docs/RELEASE_NOTES.md --repo "${GITHUB_REPOSITORY}"
