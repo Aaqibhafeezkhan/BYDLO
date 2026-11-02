@@ -302,5 +302,19 @@
   "error.engine.tunnel.admin": "Для создания туннеля нужны права администратора.",
   "error.engine.amnezia.missing": "Установите AmneziaWG (amneziawg-windows / amneziawg-tools).",
   "error.engine.wireguard.missing": "Установите WireGuard (wireguard.com/install) или используйте движок sing-box.",
-  "error.engine.tunnel.platform": "Поддержка нативного WireGuard / AmneziaWG на этой платформе запланирована."
+  "error.engine.tunnel.platform": "Поддержка нативного WireGuard / AmneziaWG на этой платформе запланирована.",
+  "home.duration": "Время сеанса",
+  "import.manual": "Ввести конфигурацию вручную",
+  "settings.about": "О приложении и лицензии",
+  "tools.setup": "Установка и стратегия",
+  "home.connection": "Подключение",
+  "home.mode.proxy": "Прокси",
+  "home.mode.device": "Всё устройство",
+  "home.mode": "Режим подключения",
+  "home.hint.ready": "Выберите сервер и подключитесь",
+  "home.tools.manage": "Настроить",
+  "home.hint.mock": "Тестовое подключение · Mock Mode",
+  "home.mode.proxy.hint": "Только приложения, настроенные на локальный прокси SOCKS5 / HTTP: 127.0.0.1:{0}.",
+  "home.hint.error": "Попробуйте снова или выберите другой сервер",
+  "home.hint.busy": "Подождите, состояние подключения обновляется…"
 }

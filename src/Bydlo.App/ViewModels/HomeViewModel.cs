@@ -25,6 +25,7 @@ public sealed partial class HomeViewModel : PageViewModel
         shell.Profiles.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(IsEmpty));
+            OnPropertyChanged(nameof(HasProfiles));
             if (!IsEmpty)
             {
                 IsLinkImportVisible = false;
@@ -72,12 +73,15 @@ public sealed partial class HomeViewModel : PageViewModel
     {
         get
         {
+            if (IsError) return L["home.hint.error"];
+            if (IsBusy) return L["home.hint.busy"];
             if (!IsConnected)
             {
-                return Shell.SelectedProfile is null ? L["home.hint.noprofile"] : L["home.hint.tap"];
+                return Shell.SelectedProfile is null ? L["home.hint.noprofile"] : L["home.hint.ready"];
             }
 
-            if (Shell.Primary.Mode == ConnectionMode.Tun || Shell.Primary.IsMock)
+            if (Shell.Primary.IsMock) return L["home.hint.mock"];
+            if (Shell.Primary.Mode == ConnectionMode.Tun)
             {
                 return L["home.hint.connected"];
             }
@@ -106,12 +110,44 @@ public sealed partial class HomeViewModel : PageViewModel
         get => Services.Settings.Mode == ConnectionMode.Tun;
         set
         {
+            if (value == IsTun) return;
             Services.Settings.Mode = value ? ConnectionMode.Tun : ConnectionMode.LocalProxy;
             _ = Services.SaveSettingsAsync();
             OnPropertyChanged();
             OnPropertyChanged(nameof(Hint));
+            OnPropertyChanged(nameof(IsProxy));
+            OnPropertyChanged(nameof(IsWholeDevice));
+            OnPropertyChanged(nameof(ModeHint));
         }
     }
+
+    public bool HasProfiles => Shell.Profiles.Count > 0;
+
+    public bool IsProxy
+    {
+        get => !IsTun;
+        set
+        {
+            if (value) IsTun = false;
+        }
+    }
+
+    public bool IsWholeDevice
+    {
+        get => IsTun;
+        set
+        {
+            if (value) IsTun = true;
+        }
+    }
+
+    public string ModeHint => IsTun ? L["home.tun.hint"] : Loc.T("home.mode.proxy.hint", Services.Settings.LocalProxyPort);
+
+    [ObservableProperty]
+    private bool _showModeHint;
+
+    [RelayCommand]
+    private void ToggleModeHint() => ShowModeHint = !ShowModeHint;
 
     [ObservableProperty]
     private bool _isLinkImportVisible;
@@ -354,7 +390,7 @@ public sealed partial class HomeViewModel : PageViewModel
                  {
                      nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(IsEmpty), nameof(StatusText), nameof(ButtonText), nameof(Hint), nameof(Error),
                      nameof(Elapsed), nameof(DownSpeed), nameof(UpSpeed), nameof(EngineLabel), nameof(ZapretOn), nameof(ZapretState), nameof(TgOn), nameof(TgState),
-                     nameof(IsTun), nameof(CanCheckConnection), nameof(CanRunCheck), nameof(CheckDisabledReason), nameof(CheckButtonText),
+                     nameof(IsTun), nameof(IsProxy), nameof(IsWholeDevice), nameof(ModeHint), nameof(HasProfiles), nameof(CanCheckConnection), nameof(CanRunCheck), nameof(CheckDisabledReason), nameof(CheckButtonText),
                      nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult),
                  })
         {

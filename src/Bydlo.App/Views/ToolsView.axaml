@@ -1,36 +1,37 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:z="using:Bydlo.Engines.Zapret"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.ToolsView"
              x:DataType="vm:ToolsViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="980" Margin="24,28,24,32" Spacing="18">
-      <StackPanel Spacing="4">
+    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
+      <StackPanel Spacing="8">
         <TextBlock Classes="h1" Text="{l:T nav.tools}" />
         <TextBlock Classes="muted" Text="{l:T tools.subtitle}" TextWrapping="Wrap" />
       </StackPanel>
 
       <!-- Zapret -->
-      <Border Classes="card">
+      <Border Classes="panel">
         <StackPanel Spacing="14">
-          <Grid ColumnDefinitions="Auto,*,Auto">
-            <Border Width="42" Height="42" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}">
-              <PathIcon Data="{StaticResource IconBolt}" Foreground="{DynamicResource AccentBrush}" />
+          <Grid x:Name="ZapretHeader" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+            <Border Width="42" Height="42" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
+              <c:OutlineIcon Data="{StaticResource LineBolt}" Foreground="{DynamicResource TextMutedBrush}" />
             </Border>
             <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
               <TextBlock Classes="h2" Text="Zapret" />
               <TextBlock Classes="faint" Text="{l:T tools.zapret.desc}" TextWrapping="Wrap" />
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <StackPanel x:Name="ZapretActions" Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <Border Classes="pill" Classes.ok="{Binding ZapretRunning}">
                 <TextBlock Text="{Binding ZapretStatus}" />
               </Border>
               <Button Classes="primary" Command="{Binding ToggleZapretCommand}">
                 <Panel>
-                  <TextBlock Text="{l:T tools.start}" Foreground="White" IsVisible="{Binding !ZapretRunning}" />
-                  <TextBlock Text="{l:T tools.stop}" Foreground="White" IsVisible="{Binding ZapretRunning}" />
+                  <TextBlock Text="{l:T tools.start}" Foreground="{DynamicResource OnPrimaryBrush}" IsVisible="{Binding !ZapretRunning}" />
+                  <TextBlock Text="{l:T tools.stop}" Foreground="{DynamicResource OnPrimaryBrush}" IsVisible="{Binding ZapretRunning}" />
                 </Panel>
               </Button>
             </StackPanel>
@@ -41,16 +42,18 @@
           </Border>
           <TextBlock Classes="muted" Text="{Binding ZapretInfo}" TextWrapping="Wrap" />
 
+          <Expander Header="{l:T tools.setup}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="12">
           <WrapPanel>
             <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding InstallZapretCommand}" IsEnabled="{Binding !IsInstalling}" IsVisible="{Binding CanInstallZapret}">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <PathIcon Data="{StaticResource IconDownload}" Width="16" Height="16" />
+                <c:OutlineIcon Data="{StaticResource LineDownload}" Width="16" Height="16" />
                 <TextBlock Text="{l:T tools.zapret.download}" />
               </StackPanel>
             </Button>
             <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding BrowseZapretCommand}">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <PathIcon Data="{StaticResource IconFolder}" Width="16" Height="16" />
+                <c:OutlineIcon Data="{StaticResource LineFolder}" Width="16" Height="16" />
                 <TextBlock Text="{l:T tools.zapret.choose}" />
               </StackPanel>
             </Button>
@@ -77,6 +80,9 @@
           <TextBlock Classes="faint" Text="{l:T tools.zapret.tcpts}" IsVisible="{Binding IsWindows}" TextWrapping="Wrap" />
 
           <TextBlock Classes="faint" Text="{Binding ZapretPlatformNote}" TextWrapping="Wrap" />
+
+            </StackPanel>
+          </Expander>
 
           <Expander Header="{l:T tools.zapret.lists}" HorizontalAlignment="Stretch">
             <StackPanel Spacing="10">
@@ -108,24 +114,24 @@
       </Border>
 
       <!-- TgWsProxy -->
-      <Border Classes="card">
+      <Border Classes="panel">
         <StackPanel Spacing="14">
-          <Grid ColumnDefinitions="Auto,*,Auto">
-            <Border Width="42" Height="42" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}">
-              <PathIcon Data="{StaticResource IconSend}" Foreground="{DynamicResource AccentBrush}" />
+          <Grid x:Name="TgHeader" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+            <Border Width="42" Height="42" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
+              <c:OutlineIcon Data="{StaticResource LineSend}" Foreground="{DynamicResource TextMutedBrush}" />
             </Border>
             <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
               <TextBlock Classes="h2" Text="TgWsProxy" />
               <TextBlock Classes="faint" Text="{l:T tools.tg.desc}" TextWrapping="Wrap" />
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <StackPanel x:Name="TgActions" Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <Border Classes="pill" Classes.ok="{Binding TgRunning}">
                 <TextBlock Text="{Binding TgStatus}" />
               </Border>
               <Button Classes="primary" Command="{Binding ToggleTgCommand}">
                 <Panel>
-                  <TextBlock Text="{l:T tools.start}" Foreground="White" IsVisible="{Binding !TgRunning}" />
-                  <TextBlock Text="{l:T tools.stop}" Foreground="White" IsVisible="{Binding TgRunning}" />
+                  <TextBlock Text="{l:T tools.start}" Foreground="{DynamicResource OnPrimaryBrush}" IsVisible="{Binding !TgRunning}" />
+                  <TextBlock Text="{l:T tools.stop}" Foreground="{DynamicResource OnPrimaryBrush}" IsVisible="{Binding TgRunning}" />
                 </Panel>
               </Button>
             </StackPanel>
@@ -140,18 +146,20 @@
               <TextBlock Classes="mono" Text="{Binding TgLink}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
                 <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}">
-                  <PathIcon Data="{StaticResource IconCopy}" Width="16" Height="16" />
+                  <c:OutlineIcon Data="{StaticResource LineCopy}" Width="16" Height="16" />
                 </Button>
                 <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.open}" Command="{Binding OpenInTelegramCommand}">
-                  <PathIcon Data="{StaticResource IconSend}" Width="16" Height="16" />
+                  <c:OutlineIcon Data="{StaticResource LineSend}" Width="16" Height="16" />
                 </Button>
                 <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.regen}" Command="{Binding RegenerateSecretCommand}">
-                  <PathIcon Data="{StaticResource IconRefresh}" Width="16" Height="16" />
+                  <c:OutlineIcon Data="{StaticResource LineRefresh}" Width="16" Height="16" />
                 </Button>
               </StackPanel>
             </Grid>
           </Border>
 
+          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="12">
           <Grid ColumnDefinitions="2*,12,*" RowDefinitions="Auto,Auto">
             <TextBlock Classes="caps" Text="{l:T tools.tg.host}" Margin="0,0,0,6" />
             <TextBox Grid.Row="1" Text="{Binding TgHost}" />
@@ -163,8 +171,7 @@
             <TextBlock Classes="muted" Text="{Binding TgRuntimeInfo}" TextWrapping="Wrap" />
           </StackPanel>
 
-          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="12">
+
               <StackPanel Spacing="6">
                 <TextBlock Classes="caps" Text="{l:T tools.tg.dcip}" />
                 <TextBox Text="{Binding TgDcIps}" AcceptsReturn="True" MinHeight="60" FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
@@ -210,9 +217,8 @@
       </Border>
 
       <!-- Engines -->
-      <Border Classes="card">
+      <Expander Header="{l:T tools.engines}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="12">
-          <TextBlock Classes="h2" Text="{l:T tools.engines}" />
           <TextBlock Classes="faint" Text="{l:T tools.engines.hint}" TextWrapping="Wrap" />
           <ItemsControl ItemsSource="{Binding Engines}">
             <ItemsControl.ItemTemplate>
@@ -221,7 +227,7 @@
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Spacing="2">
                       <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Name}" FontWeight="Medium" />
                         <TextBlock Classes="faint" Text="{Binding Version}" VerticalAlignment="Center" />
                       </StackPanel>
                       <TextBlock Classes="faint" Text="{Binding License}" />
@@ -232,7 +238,7 @@
                       </Border>
                       <Button Classes="ghost" Padding="10,6" IsVisible="{Binding CanInstall}"
                               Command="{Binding $parent[UserControl].((vm:ToolsViewModel)DataContext).InstallEngineCommand}" CommandParameter="{Binding}">
-                        <PathIcon Data="{StaticResource IconDownload}" Width="15" Height="15" />
+                        <c:OutlineIcon Data="{StaticResource LineDownload}" Width="15" Height="15" />
                       </Button>
                     </StackPanel>
                   </Grid>
@@ -241,7 +247,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </StackPanel>
-      </Border>
+      </Expander>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

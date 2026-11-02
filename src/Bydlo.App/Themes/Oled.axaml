@@ -1,76 +1,39 @@
-<!-- BYDLO OLED theme: true black background, violet accents, minimal glow. -->
-<ResourceDictionary xmlns="https://github.com/avaloniaui"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Color x:Key="AccentColor">#B79CFF</Color>
-  <Color x:Key="PrimaryColor">#9366E5</Color>
-
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Color x:Key="AccentColor">#B9A1ED</Color>
+  <Color x:Key="PrimaryColor">#7250BC</Color>
   <SolidColorBrush x:Key="BgBrush" Color="#000000" />
-  <SolidColorBrush x:Key="SidebarBrush" Color="#D008060E" />
-  <LinearGradientBrush x:Key="SurfaceBrush" StartPoint="0%,0%" EndPoint="65%,100%">
-    <GradientStop Offset="0" Color="#B0241B32" />
-    <GradientStop Offset="0.35" Color="#B015101F" />
-    <GradientStop Offset="1" Color="#D00D0914" />
-  </LinearGradientBrush>
-  <SolidColorBrush x:Key="Surface2Brush" Color="#901F172E" />
-  <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#B02D2140" />
-  <SolidColorBrush x:Key="LineBrush" Color="#384E3D6A" />
-  <SolidColorBrush x:Key="AccentBrush" Color="#C6ACFF" />
-  <SolidColorBrush x:Key="PrimaryBrush" Color="#9366E5" />
-  <SolidColorBrush x:Key="AccentSoftBrush" Color="#26B79CFF" />
-  <SolidColorBrush x:Key="TextBrush" Color="#F4F0FA" />
-  <SolidColorBrush x:Key="TextMutedBrush" Color="#B9ACC9" />
-  <SolidColorBrush x:Key="TextFaintBrush" Color="#9A89AF" />
+  <SolidColorBrush x:Key="SidebarBrush" Color="#000000" />
+  <SolidColorBrush x:Key="SurfaceBrush" Color="#0D0D11" />
+  <SolidColorBrush x:Key="Surface2Brush" Color="#17171E" />
+  <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#23232D" />
+  <SolidColorBrush x:Key="LineBrush" Color="#292933" />
+  <SolidColorBrush x:Key="AccentBrush" Color="#B9A1ED" />
+  <SolidColorBrush x:Key="PrimaryBrush" Color="#7250BC" />
+  <SolidColorBrush x:Key="AccentSoftBrush" Color="#21192E" />
+  <SolidColorBrush x:Key="TextBrush" Color="#EFEDF3" />
+  <SolidColorBrush x:Key="TextMutedBrush" Color="#A8A5B3" />
+  <SolidColorBrush x:Key="TextFaintBrush" Color="#8F8B9B" />
+  <SolidColorBrush x:Key="SuccessBrush" Color="#78B89A" />
+  <SolidColorBrush x:Key="SuccessSoftBrush" Color="#182B22" />
+  <SolidColorBrush x:Key="WarningBrush" Color="#D9B77B" />
+  <SolidColorBrush x:Key="WarningSoftBrush" Color="#2D2517" />
+  <SolidColorBrush x:Key="DangerBrush" Color="#DA9298" />
+  <SolidColorBrush x:Key="DangerSoftBrush" Color="#302024" />
   <SolidColorBrush x:Key="OnPrimaryBrush" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="SuccessBrush" Color="#4ADE80" />
-  <SolidColorBrush x:Key="SuccessSoftBrush" Color="#1F4ADE80" />
-  <SolidColorBrush x:Key="WarningBrush" Color="#FBBF24" />
-  <SolidColorBrush x:Key="WarningSoftBrush" Color="#1FFBBF24" />
-  <SolidColorBrush x:Key="DangerBrush" Color="#F87171" />
-  <SolidColorBrush x:Key="DangerSoftBrush" Color="#1FF87171" />
-  <SolidColorBrush x:Key="ScrimBrush" Color="#D9000000" />
-
   <SolidColorBrush x:Key="BackdropBrush" Color="#000000" />
-  <RadialGradientBrush x:Key="GlowBrush" GradientOrigin="50%,50%" Center="50%,50%" RadiusX="50%" RadiusY="50%">
-    <GradientStop Offset="0" Color="#409366E5" />
-    <GradientStop Offset="1" Color="#009366E5" />
-  </RadialGradientBrush>
-  <RadialGradientBrush x:Key="GlowOnBrush" GradientOrigin="50%,50%" Center="50%,50%" RadiusX="50%" RadiusY="50%">
-    <GradientStop Offset="0" Color="#3334D399" />
-    <GradientStop Offset="1" Color="#0034D399" />
-  </RadialGradientBrush>
-  <LinearGradientBrush x:Key="ConnectIdleBrush" StartPoint="10%,0%" EndPoint="85%,100%">
-    <GradientStop Offset="0" Color="#A0322448" />
-    <GradientStop Offset="1" Color="#B00E0917" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="ConnectOnBrush" StartPoint="0%,0%" EndPoint="100%,100%">
-    <GradientStop Offset="0" Color="#A78BFA" />
-    <GradientStop Offset="1" Color="#6D3FD0" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="PrimaryGradientBrush" StartPoint="0%,0%" EndPoint="100%,100%">
-    <GradientStop Offset="0" Color="#A78BFA" />
-    <GradientStop Offset="1" Color="#6D3FD0" />
-  </LinearGradientBrush>
-
-  <!-- Fluent control overrides -->
-  <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#16121F" />
-  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#1E1829" />
-  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#1E1829" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#23232D" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#17171E" />
+  <SolidColorBrush x:Key="ExpanderContentBackground" Color="Transparent" />
+  <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPressed" Color="Transparent" />
-  <SolidColorBrush x:Key="ExpanderContentBackground" Color="#0E0B14" />
-  <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="#221C2E" />
-
-  <!-- Layered glass: directional edge light, translucent fill and soft elevation. -->
-  <LinearGradientBrush x:Key="GlassEdgeBrush" StartPoint="0%,0%" EndPoint="80%,100%">
-    <GradientStop Offset="0" Color="#709F84C4" />
-    <GradientStop Offset="0.45" Color="#0D9F84C4" />
-    <GradientStop Offset="1" Color="#384E3D6A" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="GlassSheenBrush" StartPoint="0%,0%" EndPoint="35%,100%">
-    <GradientStop Offset="0" Color="#02FFFFFF" />
-    <GradientStop Offset="1" Color="#00FFFFFF" />
-  </LinearGradientBrush>
-  <BoxShadows x:Key="GlassShadow">0 12 36 0 #18000000</BoxShadows>
-  <BoxShadows x:Key="ConnectShadow">0 16 48 0 #18000000</BoxShadows>
+  <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#805FC8" />
+  <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#6240A7" />
+  <SolidColorBrush x:Key="ButtonEdgeBrush" Color="#9676CD" />
+  <SolidColorBrush x:Key="NavActiveBrush" Color="#26242E" />
+  <SolidColorBrush x:Key="EdgeBrush" Color="#39363F" />
+  <BoxShadows x:Key="ActionShadow">0 4 14 0 #40000000</BoxShadows>
+  <SolidColorBrush x:Key="ScrimBrush" Color="#D9000000" />
 </ResourceDictionary>
