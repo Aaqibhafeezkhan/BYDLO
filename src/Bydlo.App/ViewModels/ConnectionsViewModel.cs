@@ -176,6 +176,15 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     }
 
     [RelayCommand]
+    private Task CopyLink(ProfileItem item) => ProfileShareDialog.ShowAsync(Services, item.Profile, "share.copy");
+
+    [RelayCommand]
+    private Task ShowQr(ProfileItem item) => ProfileShareDialog.ShowAsync(Services, item.Profile, "share.qr");
+
+    [RelayCommand]
+    private Task ExportConfig(ProfileItem item) => ProfileShareDialog.ShowAsync(Services, item.Profile, "share.file");
+
+    [RelayCommand]
     private async Task Delete(ProfileItem item)
     {
         if (Shell.Primary.Profile?.Id == item.Id)
