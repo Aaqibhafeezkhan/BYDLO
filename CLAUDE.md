@@ -26,6 +26,22 @@ Agents MUST NOT, under any circumstances:
 Allowed: reading docs, reading source code, fetching dependencies, static analysis, compiling,
 and isolated tests that do not touch system networking.
 
+### Agent workflow (not the user launch instructions)
+
+Before any .NET / NuGet / Python command, load `scripts/env.ps1` or `scripts/env.sh`.
+Keep `BYDLO_SAFE_DEV=1` throughout agent work. For every UI / flow run, explicitly pass `--mock`
+(or set `BYDLO_MOCK=1`); do not rely on a saved preference. Build and run isolated tests only.
+Never execute the user commands that clear the safety flags as part of agent verification.
+
+### Manual user launch
+
+README.md and docs/BUILD.md document a separate manual workflow: no `env.*`, no `--mock`,
+no `BYDLO_MOCK=1` or `BYDLO_SAFE_DEV=1`, and the saved Mock Mode switch turned off.
+Fresh settings default to real adapters. Only the maintainer verifies real connectivity.
+`BYDLO_DATA_DIR` selects the settings directory; clearing it leaves development data intact and
+returns to the normal user data directory, whose saved mock preference must also be checked.
+Do not weaken the guard or force mock in normal entry points to reconcile these workflows.
+
 Safety mechanisms in the code base (keep them working):
 
 - `BYDLO_SAFE_DEV=1` (set by `scripts/env.sh` / `scripts/env.ps1` and by every hook) makes

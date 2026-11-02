@@ -48,6 +48,17 @@ public sealed class AppSettings
 
     public bool MockMode { get; set; }
 
+    /// <summary>Session override without changing the saved user preference.</summary>
+    public AppSettings WithMockMode(bool enabled)
+    {
+        var copy = (AppSettings)MemberwiseClone();
+        copy.MockMode = enabled;
+        return copy;
+    }
+
+    public static bool IsMockForced(IEnumerable<string> args, string? environmentValue) =>
+        args.Contains("--mock", StringComparer.Ordinal) || environmentValue == "1";
+
     public MockScenario MockScenario { get; set; } = MockScenario.Success;
 
     public Guid? LastProfileId { get; set; }
