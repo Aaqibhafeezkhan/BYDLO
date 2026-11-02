@@ -142,4 +142,66 @@ public class ConfigBuilderTests
 
         Assert.True(forced.index < direct.index);
     }
+
+    [Fact]
+    public void Xray_supports_proxy_only_listed_with_catch_all_direct()
+    {
+        var settings = new AppSettings
+        {
+            Routing =
+            {
+                ProxyOnlyListed = true,
+                ProxyDomains = ["example.com"],
+            },
+        };
+        var p = Import("vless://id@x.example.com:443?security=tls&sni=x.example.com");
+        var rules = new XrayConfigBuilder()
+            .Build(p.Profile, p.Secrets, new BuildContext(settings))["routing"]!["rules"]!.AsArray();
+
+        Assert.Contains(rules, r =>
+            r!["domain"] is JsonArray d && d.Any(n => (string?)n == "domain:example.com") &&
+            (string?)r["outboundTag"] == "proxy");
+        var last = rules[^1]!.AsObject();
+        Assert.Equal("direct", (string?)last["outboundTag"]);
+        Assert.Equal("tcp,udp", (string?)last["network"]);
+    }
+
+    [Fact]
+    public void Xray_forces_ip_check_through_proxy_in_include_mode()
+    {
+        var settings = new AppSettings
+        {
+            Routing =
+            {
+                DirectDomains = ["ipwho.is"],
+                ProxyOnlyListed = true,
+                ProxyDomains = ["example.com"],
+            },
+        };
+        var p = Import("vless://id@x.example.com:443?security=tls&sni=x.example.com");
+        var rules = new XrayConfigBuilder()
+            .Build(p.Profile, p.Secrets, new BuildContext(settings))["routing"]!["rules"]!.AsArray();
+
+        var forced = rules
+            .Select((rule, index) => (rule, index))
+            .First(x => x.rule!["domain"] is JsonArray d && d.Any(n => (string?)n == "domain:ipwho.is") && (string?)x.rule["outboundTag"] == "proxy");
+        var catchAll = rules
+            .Select((rule, index) => (rule, index))
+            .First(x => (string?)x.rule!["outboundTag"] == "direct" && (string?)x.rule["network"] == "tcp,udp");
+
+        Assert.True(forced.index < catchAll.index);
+    }
+
+    [Fact]
+    public void Xray_supports_direct_processes()
+    {
+        var settings = new AppSettings { Routing = { DirectProcesses = ["game.exe"] } };
+        var p = Import("vless://id@x.example.com:443?security=tls&sni=x.example.com");
+        var rules = new XrayConfigBuilder()
+            .Build(p.Profile, p.Secrets, new BuildContext(settings))["routing"]!["rules"]!.AsArray();
+
+        Assert.Contains(rules, r =>
+            r!["process"] is JsonArray d && d.Any(n => (string?)n == "game.exe") &&
+            (string?)r["outboundTag"] == "direct");
+    }
 }

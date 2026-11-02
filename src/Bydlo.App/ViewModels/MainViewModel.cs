@@ -85,6 +85,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         services.Connections.SessionChanged += (_, s) => Dispatcher.UIThread.Post(() => OnSessionChanged(s));
         _hasOrphans = services.Orphans.Count > 0;
+        _ = Settings.CheckForUpdatesIfDueAsync();
     }
 
     public AppServices Services { get; }

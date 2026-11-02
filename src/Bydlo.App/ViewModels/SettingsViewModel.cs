@@ -36,6 +36,9 @@ public sealed partial class SettingsViewModel : PageViewModel
         _connectOnStartup = s.ConnectOnStartup;
         _minimizeToTray = s.MinimizeToTray;
         _showNotifications = s.ShowNotifications;
+        _subscriptionAutoUpdate = s.SubscriptionAutoUpdate;
+        _subscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
+        _checkForUpdates = s.CheckForUpdates;
     }
 
     /// <summary>Re-read settings changed outside this page, e.g. by the first-run onboarding.</summary>
@@ -63,6 +66,9 @@ public sealed partial class SettingsViewModel : PageViewModel
         ConnectOnStartup = s.ConnectOnStartup;
         MinimizeToTray = s.MinimizeToTray;
         ShowNotifications = s.ShowNotifications;
+        SubscriptionAutoUpdate = s.SubscriptionAutoUpdate;
+        SubscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
+        CheckForUpdates = s.CheckForUpdates;
         OnPropertyChanged(nameof(LanSysProxyConflict));
         RefreshCustomThemes();
     }
@@ -229,6 +235,12 @@ public sealed partial class SettingsViewModel : PageViewModel
     [ObservableProperty]
     private bool _suggestClipboardLinks;
 
+    [ObservableProperty]
+    private bool _subscriptionAutoUpdate;
+
+    [ObservableProperty]
+    private int _subscriptionUpdateIntervalHours;
+
     public bool CanRegisterAssociations => OperatingSystem.IsWindows() &&
         Environment.ProcessPath is { } path && !Path.GetFileNameWithoutExtension(path).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
 
@@ -240,6 +252,18 @@ public sealed partial class SettingsViewModel : PageViewModel
             Shell.DismissClipboardOffer();
         }
 
+        Persist();
+    }
+
+    partial void OnSubscriptionAutoUpdateChanged(bool value)
+    {
+        Services.Settings.SubscriptionAutoUpdate = value;
+        Persist();
+    }
+
+    partial void OnSubscriptionUpdateIntervalHoursChanged(int value)
+    {
+        Services.Settings.SubscriptionUpdateIntervalHours = Math.Clamp(value, 1, 168);
         Persist();
     }
 

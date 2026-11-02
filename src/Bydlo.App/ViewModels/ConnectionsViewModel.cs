@@ -12,9 +12,11 @@ namespace Bydlo.App.ViewModels;
 
 public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageViewModel(shell)
 {
-    public ObservableCollection<Subscription> Subscriptions { get; } = [];
+    public ObservableCollection<SubscriptionRow> Subscriptions { get; } = [];
 
     [ObservableProperty] private bool _isWorking;
+
+    private bool _autoRefreshInProgress;
 
     [ObservableProperty] private bool _isCheckingLatency;
 
@@ -62,9 +64,10 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     public override void OnShown()
     {
-        Subscriptions.ReplaceWith(Services.Profiles.Subscriptions);
+        Subscriptions.ReplaceWith(Services.Profiles.Subscriptions.Select(s => new SubscriptionRow(s)));
         RefreshCatalog();
         OnPropertyChanged(nameof(IsEmpty));
+        _ = AutoRefreshIfDueAsync();
         OnPropertyChanged(nameof(CanCheckLatency));
         OnPropertyChanged(nameof(CheckLatencyDisabledReason));
     }
@@ -73,37 +76,40 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     public async Task ImportExternalSubscriptionAsync(string url)
     {
-        var result = await Services.Subscriptions.FetchAsync(url);
-        if (result.IsEmpty)
+        var preview = await Services.Subscriptions.FetchPreviewAsync(url);
+        if (preview.Import.IsEmpty)
         {
             throw new InvalidOperationException(L["import.none"]);
         }
 
-        var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, result.Profiles);
+        var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, preview.Import.Profiles, preview.Metadata);
         Shell.ReloadProfiles();
-        Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, result.Profiles.Count));
+        Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, preview.Import.Profiles.Count));
         OnShown();
     }
 
     [RelayCommand]
-    private async Task RefreshSubscription(Subscription sub)
+    private async Task RefreshSubscription(SubscriptionRow row)
     {
         IsWorking = true;
         try
         {
             await Shell.Guard(async () =>
             {
-                var url = await Services.Profiles.GetSubscriptionUrlAsync(sub.Id) ?? throw new InvalidOperationException("Subscription URL missing.");
-                var result = await Services.Subscriptions.FetchAsync(url);
-                if (result.IsEmpty)
+                var url = await Services.Profiles.GetSubscriptionUrlAsync(row.Id) ?? throw new InvalidOperationException("Subscription URL missing.");
+                var preview = await Services.Subscriptions.FetchPreviewAsync(url, Services.ShutdownToken);
+                if (preview.Import.IsEmpty)
                 {
-                    Shell.ShowToast((result.Errors.Count > 0 ? result.Errors[0] : null) ?? L["import.none"], isError: true);
+                    Shell.ShowToast((preview.Import.Errors.Count > 0 ? preview.Import.Errors[0] : null) ?? L["import.none"], isError: true);
                     return;
                 }
 
-                await Services.Profiles.ReplaceSubscriptionProfilesAsync(sub.Id, result.Profiles);
+                var selected = Shell.SelectedProfile;
+                var selectedKey = selected is null ? null : ProfileKey(selected.Profile);
+                await Services.Profiles.ReplaceSubscriptionProfilesAsync(row.Id, preview.Import.Profiles, preview.Metadata);
                 Shell.ReloadProfiles();
-                Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, result.Profiles.Count));
+                RestoreSelection(selectedKey);
+                Shell.ShowToast(Loc.T("import.sub.updated", row.Snapshot.Name, preview.Import.Profiles.Count));
             });
         }
         finally
@@ -112,6 +118,117 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             OnShown();
         }
     }
+
+    [RelayCommand]
+    private async Task RenameSubscription(SubscriptionRow row)
+    {
+        var name = (row.Name ?? "").Trim();
+        if (name.Length == 0 || name == row.Snapshot.Name)
+        {
+            return;
+        }
+        await Shell.Guard(async () =>
+        {
+            await Services.Profiles.RenameSubscriptionAsync(row.Id, name);
+            OnShown();
+            Shell.ShowToast(L["toast.saved"]);
+        });
+    }
+
+    [RelayCommand]
+    private async Task DeleteSubscription(SubscriptionRow row)
+    {
+        if (Shell.Primary.Profile?.SubscriptionId == row.Id)
+        {
+            Shell.ShowToast(L["connections.delete.active"], isError: true);
+            return;
+        }
+        await Shell.Guard(async () =>
+        {
+            await Services.Profiles.RemoveSubscriptionAsync(row.Id);
+            Shell.ReloadProfiles();
+            OnShown();
+        });
+    }
+
+    /// <summary>Refreshes subscriptions whose data is older than the configured interval.</summary>
+    public async Task AutoRefreshIfDueAsync()
+    {
+        if (_autoRefreshInProgress || IsWorking)
+        {
+            return;
+        }
+        if (!Services.Settings.SubscriptionAutoUpdate || Services.IsMock || NetworkSafetyGuard.IsLocked)
+        {
+            return;
+        }
+        var intervalHours = Math.Clamp(Services.Settings.SubscriptionUpdateIntervalHours, 1, 168);
+        var now = DateTimeOffset.UtcNow;
+        var due = Services.Profiles.Subscriptions
+            .Where(s => s.LastUpdated is null || now - s.LastUpdated > TimeSpan.FromHours(intervalHours))
+            .ToList();
+        if (due.Count == 0)
+        {
+            return;
+        }
+        _autoRefreshInProgress = true;
+        IsWorking = true;
+        try
+        {
+            var selected = Shell.SelectedProfile;
+            var selectedKey = selected is null ? null : ProfileKey(selected.Profile);
+            var refreshed = 0;
+            foreach (var sub in due)
+            {
+                try
+                {
+                    var url = await Services.Profiles.GetSubscriptionUrlAsync(sub.Id, Services.ShutdownToken);
+                    if (url is null)
+                    {
+                        continue;
+                    }
+                    var preview = await Services.Subscriptions.FetchPreviewAsync(url, Services.ShutdownToken);
+                    if (preview.Import.IsEmpty)
+                    {
+                        continue;
+                    }
+                    await Services.Profiles.ReplaceSubscriptionProfilesAsync(sub.Id, preview.Import.Profiles, preview.Metadata, Services.ShutdownToken);
+                    refreshed++;
+                }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or InvalidDataException)
+                {
+                    Services.Log.Warn("subs", $"Auto-update failed: {sub.Name}");
+                }
+            }
+            if (refreshed > 0)
+            {
+                Shell.ReloadProfiles();
+                RestoreSelection(selectedKey);
+            }
+        }
+        finally
+        {
+            IsWorking = false;
+            _autoRefreshInProgress = false;
+            Subscriptions.ReplaceWith(Services.Profiles.Subscriptions.Select(s => new SubscriptionRow(s)));
+        }
+    }
+
+    private void RestoreSelection(string? key)
+    {
+        if (key is null)
+        {
+            return;
+        }
+        var match = Shell.Profiles.FirstOrDefault(p => ProfileKey(p.Profile) == key);
+        if (match is not null)
+        {
+            Shell.SelectedProfile = match;
+        }
+    }
+
+    private static string ProfileKey(Profile profile) =>
+        $"{profile.Protocol}|{profile.Host}|{profile.Port}|{profile.Name}";
 
     [RelayCommand]
     private async Task Select(ProfileItem item)
