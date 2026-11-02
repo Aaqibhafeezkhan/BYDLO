@@ -10,6 +10,7 @@
 
 - ✅ TgWsProxy без Python: ядро Flowseal tg-ws-proxy перенесено на C# и встроено в BYDLO ([#29](https://github.com/endercodezz/BYDLO/issues/29), этап 2).
 - ✅ Проверено в реальной сети на Windows x64: Zapret (Flowseal) и TgWsProxy.
+- ✅ TgWsProxy: живые соединения в пуле и автоматический перезапуск слушателя после сна ([#51](https://github.com/endercodezz/BYDLO/issues/51)); проверено на Windows x64.
 - TgWsProxy: HTTP/2-мультиплексирование медиа через Cloudflare (`cf_h2` в оригинале).
 - Пройти матрицу ручного тестирования на всех десктопных платформах и исправить найденное.
 - Редактор профилей (переименование, параметры, учётные данные OpenVPN, выбор движка для профиля).
