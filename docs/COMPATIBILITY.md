@@ -21,12 +21,16 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 | Shadowsocks (включая шифры 2022, плагины SIP003 через sing-box) | sing-box / Xray | 🧪 | 🧪 | 🧪 | 🗓 |
 | Hysteria 2 (obfs, смена портов) | sing-box | 🧪 | 🧪 | 🧪 | 🗓 |
 | TUIC v5 | sing-box | 🧪 | 🧪 | 🧪 | 🗓 |
+| AnyTLS, ShadowTLS (Shadowsocks через detour), SSH | sing-box | 🧪 | 🧪 | 🧪 | 🗓 |
+| NaiveProxy | sing-box | 🧪 | 🧪 | 🧪 | 🗓 |
 | SOCKS5 / HTTP(S) | sing-box / Xray | 🧪 | 🧪 | 🧪 | 🗓 |
 | WireGuard (в пространстве пользователя) | endpoint sing-box | 🧪 | 🧪 | 🧪 | 🗓 |
 | WireGuard (нативный туннель) | wireguard.exe / wg-quick | 🧪 | 🧪 | 🧪 | 🗓 |
 | AmneziaWG | встроенный amneziawg-go 3.1.20260828 | 🧪 Wintun | 🧪 userspace TUN | 🗓 | 🗓 |
 | OpenVPN | openvpn | 🧪 | 🧪 | 🧪 | 🗓 |
 | Cloudflare WARP | — (импорт профиля WireGuard, созданного, например, wgcf) | 🗓 | 🗓 | 🗓 | 🗓 |
+
+Для NaiveProxy на Windows и Linux используйте совместимую сборку sing-box с библиотекой libcronet рядом с исполняемым файлом; сторонняя сборка может не включать этот outbound. ShadowTLS импортируется как ссылка `shadowtls://` с параметрами `version`, `method` и `ss_password`; пароль ShadowTLS передаётся в userinfo.
 
 ## Режимы и инструменты
 
@@ -62,6 +66,7 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 | Источник | Статус |
 |---|---|
 | `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://` / `hy2://`, `tuic://`, `socks5://`, `http(s)://`, `wireguard://` | ✅ (покрыто тестами) |
+| `anytls://`, `shadowtls://`, `naive+https://`, `naive+quic://`, `ssh://` | ✅ (покрыто тестами) |
 | Подписки в base64 и открытым текстом | ✅ |
 | `.conf` WireGuard / AmneziaWG, `.ovpn` OpenVPN | ✅ |
 | QR-код из файла изображения | ✅ (ZXing) |
@@ -73,6 +78,7 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 | Формат | Статус |
 |---|---|
 | Ссылки и QR: VLESS, VMess, Trojan, Shadowsocks (SIP002), Hysteria2, TUIC, SOCKS5, HTTP(S) | ✅; параметры и секреты проверены циклом импорт → экспорт → импорт |
+| Ссылки и QR: AnyTLS, ShadowTLS, NaiveProxy, SSH | ✅; ручное добавление через мастер пока недоступно |
 | WireGuard / AmneziaWG `.conf`, OpenVPN `.ovpn` | ✅; экспорт сохранённой конфигурации с ключами и встроенными сертификатами |
 
 Перед показом QR, копированием ссылки и записью файла требуется подтверждение предупреждения о данных доступа.

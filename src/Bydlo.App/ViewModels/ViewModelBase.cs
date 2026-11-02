@@ -111,6 +111,10 @@ public static class Labels
         ProtocolKind.WireGuard => "WireGuard",
         ProtocolKind.AmneziaWG => "AmneziaWG",
         ProtocolKind.OpenVpn => "OpenVPN",
+        ProtocolKind.AnyTls => Loc.Instance["protocol.anytls"],
+        ProtocolKind.ShadowTls => Loc.Instance["protocol.shadowtls"],
+        ProtocolKind.Naive => Loc.Instance["protocol.naive"],
+        ProtocolKind.Ssh => Loc.Instance["protocol.ssh"],
         _ => p.ToString(),
     };
 

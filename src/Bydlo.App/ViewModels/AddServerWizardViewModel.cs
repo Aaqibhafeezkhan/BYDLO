@@ -47,7 +47,8 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     [ObservableProperty] private string _configuration = "";
 
     public ObservableCollection<ServerPreviewItem> PreviewItems { get; } = [];
-    public static IReadOnlyList<ProtocolKind> Protocols { get; } = Enum.GetValues<ProtocolKind>();
+    public static IReadOnlyList<ProtocolKind> Protocols { get; } = Enum.GetValues<ProtocolKind>()
+        .Where(p => p is not (ProtocolKind.AnyTls or ProtocolKind.ShadowTls or ProtocolKind.Naive or ProtocolKind.Ssh)).ToArray();
     public bool IsSource => Step == AddServerStep.Source;
     public bool IsLink => Step == AddServerStep.Link;
     public bool IsFile => Step == AddServerStep.File;
