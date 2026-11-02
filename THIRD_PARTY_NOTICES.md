@@ -13,7 +13,6 @@ SHA-256. Исходный код каждого движка доступен в
 | zapret (winws, nfqws, tpws) | bol-van | MIT | https://github.com/bol-van/zapret | Windows: внутри Flowseal; Linux/macOS: закреплённый upstream v72.13, nfqws/tpws как отдельные процессы. |
 | WinDivert | basil00 | LGPL-3.0 или GPL-2.0 | https://github.com/basil00/WinDivert | Драйвер перехвата пакетов, используемый `winws.exe` (входит в релиз Flowseal). |
 | Cygwin 3.4.10 / Newlib | Cygwin contributors / Red Hat и другие | LGPL-3.0-or-later с Cygwin Linking Exception; дополнительные permissive notices Newlib | https://cygwin.com/licensing.html | Неизменённый cygwin1.dll из Flowseal; динамическая библиотека winws. |
-| tg-ws-proxy | Flowseal | MIT | https://github.com/Flowseal/tg-ws-proxy | Консольная точка входа `tg-ws-proxy`; по запросу пользователя устанавливается из закреплённого тега в отдельное окружение Python. |
 | sing-box | SagerNet / nekohasekai | GPL-3.0-or-later (с дополнительными условиями об использовании названия) | https://github.com/SagerNet/sing-box | Основной движок для VLESS/VMess/Trojan/Shadowsocks/Hysteria 2/TUIC/SOCKS/HTTP/WireGuard; конфигурацию генерирует BYDLO. |
 | Xray-core | Project X (XTLS) | MPL-2.0 | https://github.com/XTLS/Xray-core | Движок для транспорта XHTTP и альтернативный движок для протоколов семейства V2Ray. |
 | WireGuard for Windows / wireguard-tools | Jason A. Donenfeld, WireGuard LLC | MIT / GPL-2.0 | https://www.wireguard.com | Официальный клиент для нативных туннелей WireGuard (устанавливает пользователь). |
@@ -22,6 +21,37 @@ SHA-256. Исходный код каждого движка доступен в
 
 Лицензия sing-box содержит дополнительные условия, ограничивающие использование названия «sing-box» для производных
 работ. BYDLO упоминает sing-box только для указания авторства и не переименовывает и не распространяет изменённые бинарники sing-box.
+
+## Перенесённый код: tg-ws-proxy
+
+Ядро [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) v1.11.4 (MIT) перенесено на C# в
+`src/Bydlo.Engines/TgWsProxy` и работает внутри BYDLO: протокол MTProto obfuscated2, Fake TLS, пул WebSocket,
+резервные пути через Cloudflare и прямой TCP, закодированный список доменов Cloudflare. Python-код в репозиторий не
+копируется. Лицензия оригинала:
+
+```text
+MIT License
+
+Copyright (c) 2026 Flowseal
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## Библиотеки, входящие в BYDLO (NuGet)
 

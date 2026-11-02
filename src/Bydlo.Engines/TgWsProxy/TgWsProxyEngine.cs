@@ -3,9 +3,7 @@ using System.Text;
 using Bydlo.Core.Connection;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
-using Bydlo.Core.Processes;
 using Bydlo.Core.Security;
-using Bydlo.Engines.Installation;
 
 namespace Bydlo.Engines.TgWsProxy;
 
@@ -33,12 +31,16 @@ public static class TgLinkBuilder
 }
 
 /// <summary>
-/// Flowseal tg-ws-proxy in headless mode (the <c>tg-ws-proxy</c> CLI entry point): a local MTProto proxy that tunnels
-/// Telegram Desktop traffic over WebSocket. No tray GUI is started.
+/// TgWsProxy built into BYDLO: a native C# port of Flowseal tg-ws-proxy running in-process
+/// (<see cref="TgWsProxyServer"/>). No Python, no external executable, no window.
 /// </summary>
-public sealed class TgWsProxyEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator, TgWsProxyRuntime runtime)
-    : ProcessEngineBase(runner, redactor)
+public sealed class TgWsProxyEngine(LogRedactor redactor, ITgNetwork? network = null, TimeProvider? time = null) : IEngine
 {
+    /// <summary>Upstream release the native port follows.</summary>
+    public const string UpstreamVersion = "1.11.4";
+
+    public const string BuiltIn = "built-in";
+
     public static readonly EngineDescriptor Info = new()
     {
         Kind = EngineKind.TgWsProxy,
@@ -51,147 +53,163 @@ public sealed class TgWsProxyEngine(IProcessRunner runner, LogRedactor redactor,
             [OsFamily.Windows] = SupportLevel.Implemented,
             [OsFamily.Linux] = SupportLevel.Implemented,
             [OsFamily.MacOS] = SupportLevel.Implemented,
-            [OsFamily.Android] = SupportLevel.Unsupported,
+            [OsFamily.Android] = SupportLevel.Planned,
         },
     };
 
-    public override EngineDescriptor Descriptor => Info;
+    private readonly Lock _gate = new();
+    private TgWsProxyServer? _server;
+    private CancellationTokenSource? _traffic;
 
-    public override bool CanHandle(Profile profile) => false;
+    public EngineDescriptor Descriptor => Info;
 
-    public override Task<EngineAvailability> CheckAvailabilityAsync(AppSettings settings, CancellationToken ct = default)
+    public EngineState State { get; private set; } = EngineState.Stopped;
+
+    public event EventHandler<EngineStateChangedEventArgs>? StateChanged;
+
+    public event EventHandler<string>? Log;
+
+    public event EventHandler<TrafficSample>? Traffic;
+
+    public bool CanHandle(Profile profile) => false;
+
+    public Task<EngineAvailability> CheckAvailabilityAsync(AppSettings settings, CancellationToken ct = default) =>
+        Task.FromResult(Info.SupportOn(PlatformInfo.Current.Os) == SupportLevel.Implemented
+            ? EngineAvailability.Ready(BuiltIn)
+            : EngineAvailability.NotImplemented("TgWsProxy is not available on this platform yet.", "error.engine.tg.platform"));
+
+    public async Task StartAsync(EngineStartRequest request, CancellationToken ct = default)
     {
-        if (Info.SupportOn(locator.Platform.Os) != SupportLevel.Implemented)
+        lock (_gate)
         {
-            return Task.FromResult(EngineAvailability.Unsupported("TgWsProxy needs a Python runtime, which BYDLO does not provide on this platform.", "error.engine.tg.platform"));
+            if (_server is not null || State is EngineState.Running or EngineState.Starting)
+            {
+                throw new EngineException($"{Info.DisplayName} is already running.");
+            }
+
+            SetState(EngineState.Starting);
         }
 
-        var custom = settings.TgWsProxy.CustomExecutable;
-        if (!string.IsNullOrWhiteSpace(custom))
+        TgWsProxyServer? server = null;
+        try
         {
-            return Task.FromResult(File.Exists(custom)
-                ? EngineAvailability.Ready(custom)
-                : new EngineAvailability(AvailabilityStatus.NotInstalled, "The configured tg-ws-proxy executable was not found.") { LocalizationKey = "error.engine.tg.custom" });
+            var availability = await CheckAvailabilityAsync(request.Settings, ct).ConfigureAwait(false);
+            if (!availability.IsReady)
+            {
+                throw new EngineException(availability.Message, localizationKey: availability.LocalizationKey);
+            }
+
+            var secret = request.Secrets["secret"];
+            if (!TgLinkBuilder.IsValidSecret(secret))
+            {
+                throw new EngineException("TgWsProxy secret is missing or invalid. Regenerate it in Tools → TgWsProxy.", localizationKey: "error.engine.tg.secret");
+            }
+
+            redactor.RegisterSecret(secret);
+            var options = TgWsProxyOptions.From(request.Settings.TgWsProxy, secret!);
+
+            // The in-process proxy opens real sockets: same development lock as any external engine.
+            NetworkSafetyGuard.EnsureAllowed("start TgWsProxy");
+
+            server = new TgWsProxyServer(options, network ?? new SystemTgNetwork(options.BufferSize), OnServerLog, time);
+            server.Faulted += (_, message) => _ = FailAsync(message);
+            await server.StartAsync(ct).ConfigureAwait(false);
+
+            lock (_gate)
+            {
+                _server = server;
+                _traffic = new CancellationTokenSource();
+            }
+
+            _ = ReportTrafficAsync(server, _traffic.Token);
+            SetState(EngineState.Running);
         }
-
-        var managed = runtime.Executable;
-        return Task.FromResult(managed is not null
-            ? EngineAvailability.Ready(managed)
-            : new EngineAvailability(AvailabilityStatus.NotInstalled, "TgWsProxy runtime is not installed. Install it in Tools → TgWsProxy (needs Python 3.9+).") { LocalizationKey = "error.engine.tg.missing" });
-    }
-
-    public static IReadOnlyList<string> BuildArguments(TgWsProxySettings s, string secret, string? logFile)
-    {
-        var args = new List<string> { "--host", s.Host, "--port", s.Port.ToString(System.Globalization.CultureInfo.InvariantCulture), "--secret", secret };
-        if (s.DcIps.Count == 0)
+        catch (Exception ex)
         {
-            // An empty --dc-ip clears upstream defaults (argparse nargs='?').
-            args.Add("--dc-ip");
-        }
+            if (server is not null)
+            {
+                await server.DisposeAsync().ConfigureAwait(false);
+            }
 
-        foreach (var dc in s.DcIps)
-        {
-            args.AddRange(["--dc-ip", dc]);
-        }
-
-        if (!string.IsNullOrWhiteSpace(s.FakeTlsDomain))
-        {
-            args.AddRange(["--fake-tls-domain", s.FakeTlsDomain.Trim()]);
-        }
-
-        if (!s.CfProxyFallback)
-        {
-            args.Add("--no-cfproxy");
-        }
-
-        if (s.Verbose)
-        {
-            args.Add("-v");
-        }
-
-        if (logFile is not null)
-        {
-            args.AddRange(["--log-file", logFile]);
-        }
-
-        return args;
-    }
-
-    protected override Task<ProcessSpec> PrepareAsync(EngineStartRequest request, EngineAvailability availability, CancellationToken ct)
-    {
-        var secret = request.Secrets["secret"];
-        if (!TgLinkBuilder.IsValidSecret(secret))
-        {
-            throw new EngineException("TgWsProxy secret is missing or invalid. Regenerate it in Tools → TgWsProxy.");
-        }
-
-        return Task.FromResult(new ProcessSpec
-        {
-            FileName = availability.ExecutablePath!,
-            Arguments = BuildArguments(request.Settings.TgWsProxy, secret!, null),
-            WorkingDirectory = request.WorkDirectory,
-            DisplayName = "tg-ws-proxy",
-            Environment = new Dictionary<string, string> { ["PYTHONUNBUFFERED"] = "1", ["PYTHONIOENCODING"] = "utf-8" },
-        });
-    }
-
-    protected override bool IsReadyLine(string line) => line.Contains("Listening on", StringComparison.Ordinal);
-
-    protected override string? TryParseFatal(string line) =>
-        line.Contains("Address already in use", StringComparison.OrdinalIgnoreCase) || line.Contains("WinError 10048", StringComparison.Ordinal)
-            ? "The TgWsProxy port is already in use."
-            : line.Contains("ERROR", StringComparison.Ordinal) && line.Contains("Secret", StringComparison.Ordinal) ? line : null;
-}
-
-/// <summary>
-/// Private Python virtualenv with the pinned tg-ws-proxy package (headless CLI). Created only on user request,
-/// inside BYDLO's engines folder.
-/// </summary>
-public sealed class TgWsProxyRuntime(string enginesDirectory, EngineLock engineLock, IProcessRunner runner)
-{
-    public string VenvDirectory => Path.Combine(enginesDirectory, "tg-ws-proxy", "venv");
-
-    public string? Executable
-    {
-        get
-        {
-            var exe = OperatingSystem.IsWindows()
-                ? Path.Combine(VenvDirectory, "Scripts", "tg-ws-proxy.exe")
-                : Path.Combine(VenvDirectory, "bin", "tg-ws-proxy");
-            return File.Exists(exe) ? exe : null;
+            var message = ex is System.Net.Sockets.SocketException { SocketErrorCode: System.Net.Sockets.SocketError.AddressAlreadyInUse }
+                ? "The TgWsProxy port is already in use."
+                : ex.Message;
+            SetState(EngineState.Failed, message);
+            throw ex as EngineException ?? new EngineException(message, ex);
         }
     }
 
-    public async Task InstallAsync(string pythonExecutable, IProgress<string>? progress = null, CancellationToken ct = default)
+    public async Task StopAsync(CancellationToken ct = default)
     {
-        var pip = engineLock.Find("tg-ws-proxy")?.Pip ?? throw new InvalidOperationException("tg-ws-proxy is not pinned in engines.lock.json.");
-        Directory.CreateDirectory(Path.GetDirectoryName(VenvDirectory)!);
+        SetState(EngineState.Stopping);
+        await StopServerAsync().ConfigureAwait(false);
+        SetState(EngineState.Stopped);
+    }
 
-        progress?.Report("python -m venv");
-        await RunAsync(pythonExecutable, ["-m", "venv", VenvDirectory], ct).ConfigureAwait(false);
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync().ConfigureAwait(false);
+        GC.SuppressFinalize(this);
+    }
 
-        var venvPython = OperatingSystem.IsWindows()
-            ? Path.Combine(VenvDirectory, "Scripts", "python.exe")
-            : Path.Combine(VenvDirectory, "bin", "python");
-        progress?.Report("pip install " + pip);
-        await RunAsync(venvPython, ["-m", "pip", "install", "--disable-pip-version-check", "--no-input", pip], ct).ConfigureAwait(false);
-        if (Executable is null)
+    private async Task FailAsync(string message)
+    {
+        await StopServerAsync().ConfigureAwait(false);
+        SetState(EngineState.Failed, message);
+    }
+
+    private async Task StopServerAsync()
+    {
+        TgWsProxyServer? server;
+        lock (_gate)
         {
-            throw new EngineException("tg-ws-proxy was installed but its entry point was not found.");
+            server = _server;
+            _server = null;
+            _traffic?.Cancel();
+            _traffic?.Dispose();
+            _traffic = null;
+        }
+
+        if (server is not null)
+        {
+            await server.DisposeAsync().ConfigureAwait(false);
         }
     }
 
-    private async Task RunAsync(string exe, IReadOnlyList<string> args, CancellationToken ct)
+    private void OnServerLog(TgLogLevel level, string message)
     {
-        // Package installation does not touch system networking, but it is still gated in development.
-        var (code, output) = await runner.RunToCompletionAsync(
-            new ProcessSpec { FileName = exe, Arguments = args, DisplayName = "python", AffectsNetwork = true },
-            TimeSpan.FromMinutes(10), ct).ConfigureAwait(false);
-        if (code != 0)
+        var prefix = level switch
         {
-            var tail = string.Join('\n', output.Split('\n').TakeLast(6));
-            throw new EngineException($"Installing the TgWsProxy runtime failed (code {code}):\n{tail}");
+            TgLogLevel.Debug => "DEBUG",
+            TgLogLevel.Warning => "WARN ",
+            TgLogLevel.Error => "ERROR",
+            _ => "INFO ",
+        };
+        Log?.Invoke(this, redactor.Redact($"{prefix}  {message}"));
+    }
+
+    private async Task ReportTrafficAsync(TgWsProxyServer server, CancellationToken ct)
+    {
+        var clock = time ?? TimeProvider.System;
+        long lastUp = 0, lastDown = 0;
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), clock, ct).ConfigureAwait(false);
+                var up = server.Stats.BytesUp;
+                var down = server.Stats.BytesDown;
+                Traffic?.Invoke(this, new TrafficSample(clock.GetLocalNow(), up - lastUp, down - lastDown, up, down));
+                (lastUp, lastDown) = (up, down);
+            }
         }
+        catch (OperationCanceledException) { }
+    }
+
+    private void SetState(EngineState state, string? error = null)
+    {
+        State = state;
+        StateChanged?.Invoke(this, new EngineStateChangedEventArgs(state, error));
     }
 }
 

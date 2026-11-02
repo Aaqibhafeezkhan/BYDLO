@@ -141,9 +141,6 @@ public sealed class TgWsProxySettings
 
     public int Port { get; set; } = 1443;
 
-    /// <summary>Custom command to run tg-ws-proxy (headless CLI). Empty = managed runtime.</summary>
-    public string? CustomExecutable { get; set; }
-
     public List<string> DcIps { get; set; } = ["2:149.154.167.220", "4:149.154.167.220"];
 
     public string FakeTlsDomain { get; set; } = "";
@@ -151,4 +148,7 @@ public sealed class TgWsProxySettings
     public bool Verbose { get; set; }
 
     public bool CfProxyFallback { get; set; } = true;
+
+    /// <summary>Own Cloudflare-proxied domains for the fallback. Empty uses the list maintained by Flowseal.</summary>
+    public List<string> CfProxyDomains { get; set; } = [];
 }

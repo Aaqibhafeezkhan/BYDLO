@@ -40,9 +40,8 @@ public sealed class AppServices
         Installer = new EngineInstaller(Http, Lock, Paths.EnginesDirectory);
         Locator = new EngineLocator(Installer, PlatformInfo.Current);
         ZapretFirewall = new ZapretFirewall(Runner, Installer.UserDataDirectory);
-        TgRuntime = new TgWsProxyRuntime(Paths.EnginesDirectory, Lock, Runner);
         TgSecrets = new TgWsProxySecrets(Secrets);
-        Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, TgRuntime, () => new MockEngine(), ZapretFirewall);
+        Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, () => new MockEngine(), ZapretFirewall);
         SystemProxy = SystemProxyFactory.Create();
         Connections = new ConnectionManager(Registry, Secrets, Paths, new ConflictDetector(new TcpPortChecker()), Log, SystemProxy);
         ConnectionCheck = new ConnectionCheckService();
@@ -84,8 +83,6 @@ public sealed class AppServices
     public EngineLocator Locator { get; }
 
     public ZapretFirewall ZapretFirewall { get; }
-
-    public TgWsProxyRuntime TgRuntime { get; }
 
     public TgWsProxySecrets TgSecrets { get; }
 

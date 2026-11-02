@@ -254,7 +254,7 @@ public class ZapretPlatformTests
         var archive = bytes.ToArray();
         var engineLock = new EngineLock
         {
-            Engines = [new("zapret-native", "test", "MIT", "https://example.invalid", null,
+            Engines = [new("zapret-native", "test", "MIT", "https://example.invalid",
                 new() { ["linux-x64"] = new("https://example.invalid/archive.zip", Convert.ToHexString(SHA256.HashData(archive)), "native/nfqws") })],
         };
         using var http = new HttpClient(new ArchiveHandler(archive));

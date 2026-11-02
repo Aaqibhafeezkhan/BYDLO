@@ -20,7 +20,6 @@ public static class EngineRegistryFactory
         LogRedactor redactor,
         EngineLocator locator,
         IPrivilegeService privileges,
-        TgWsProxyRuntime tgRuntime,
         Func<IEngine>? mockFactory = null,
         IZapretFirewall? zapretFirewall = null)
     {
@@ -33,7 +32,7 @@ public static class EngineRegistryFactory
             .Register(TunnelServiceEngine.AmneziaInfo, () => new TunnelServiceEngine(true, runner, redactor, locator, privileges), priority: 10)
             .Register(OpenVpnEngine.Info, () => new OpenVpnEngine(runner, redactor, locator, privileges), priority: 10)
             .Register(ZapretEngine.Info, () => new ZapretEngine(runner, redactor, locator, privileges, zapretFirewall))
-            .Register(TgWsProxyEngine.Info, () => new TgWsProxyEngine(runner, redactor, locator, tgRuntime));
+            .Register(TgWsProxyEngine.Info, () => new TgWsProxyEngine(redactor));
         return registry;
     }
 }

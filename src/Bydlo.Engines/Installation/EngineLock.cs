@@ -14,7 +14,6 @@ public sealed record EngineLockEntry(
     [property: JsonPropertyName("version")] string Version,
     [property: JsonPropertyName("license")] string License,
     [property: JsonPropertyName("upstream")] string Upstream,
-    [property: JsonPropertyName("pip")] string? Pip,
     [property: JsonPropertyName("assets")] Dictionary<string, EngineAsset> Assets);
 
 /// <summary>Pinned engine versions and digests from <c>engines/engines.lock.json</c> (embedded at build time).</summary>
