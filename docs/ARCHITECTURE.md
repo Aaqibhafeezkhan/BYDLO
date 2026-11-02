@@ -17,7 +17,8 @@ flowchart TD
   REG --> OV["OpenVpnEngine"]
   REG --> ZA["ZapretEngine (Flowseal)"]
   REG --> TG["TgWsProxyEngine (Flowseal)"]
-  SB & XR & OV & ZA & TG --> PR["IProcessRunner<br/>+ ProcessJournal"]
+  SB & XR & OV & ZA --> PR["IProcessRunner<br/>+ ProcessJournal"]
+  TG --> RT["TgWsProxyServer<br/>внутри BYDLO"]
   WG --> PR
   PR --> GUARD["NetworkSafetyGuard"]
   STORE --> SEC["ISecretStore<br/>DPAPI / AES-GCM"]
@@ -56,6 +57,13 @@ AmneziaWG / OpenVPN) и предлагает только движки, у ко�
 
 **Восстановление после сбоев.** `ProcessJournal` записывает PID запущенных движков. При следующем запуске BYDLO находит
 процессы, у которых совпадают имя образа и время запуска, и предлагает их остановить.
+
+**Запуск без окон.** Внешние движки и вспомогательные команды проходят через `SystemProcessRunner`:
+`UseShellExecute=false`, `CreateNoWindow=true`, перенаправление stdin/stdout/stderr.
+sing-box, Xray, AmneziaWG и OpenVPN не запускают собственные GUI; Zapret запускает бинарник
+напрямую по разобранным аргументам, без исполнения BAT/shell-стратегий. TgWsProxy не создаёт
+отдельного процесса. Запрос повышения прав — отдельный явный перезапуск самого BYDLO,
+а не фоновая привилегированная служба.
 
 **Разделение привилегий.** BYDLO работает от обычного пользователя (`asInvoker`). Операции, меняющие систему, — режим TUN,
 туннельные службы WireGuard, адаптер AmneziaWG, маршруты OpenVPN, WinDivert (Zapret), системный прокси — требуют повышения прав,
