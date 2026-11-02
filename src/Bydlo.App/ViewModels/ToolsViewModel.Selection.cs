@@ -55,8 +55,12 @@ public sealed partial class ToolsViewModel
         }
     }
 
-    partial void OnIsSelectingChanged(bool value) => SelectZapretCommand.NotifyCanExecuteChanged();
-    private bool CanSelectZapret() => !IsSelecting;
+    partial void OnIsSelectingChanged(bool value)
+    {
+        SelectZapretCommand.NotifyCanExecuteChanged();
+        RecheckStartupCommand.NotifyCanExecuteChanged();
+    }
+    private bool CanSelectZapret() => !IsSelecting && !IsCheckingStartup;
 
     [RelayCommand(CanExecute = nameof(CanSelectZapret))]
     private async Task SelectZapret()

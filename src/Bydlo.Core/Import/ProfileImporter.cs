@@ -156,6 +156,48 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
             return new(new ImportResult([], ["Subscription URL must start with https://"]), new());
         }
 
+        return await FetchOneAsync(uri, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Tries mirrors in order and returns the first one that yields profiles,
+    /// with the URL that worked. Returns the last failure when all fail.
+    /// </summary>
+    public async Task<(SubscriptionPreview Result, string? Url)> FetchFirstAsync(IEnumerable<string> urls, CancellationToken ct = default)
+    {
+        var last = new SubscriptionPreview(new ImportResult([], ["Subscription list is empty."]), new());
+        foreach (var url in urls)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http"))
+            {
+                continue;
+            }
+
+            SubscriptionPreview result;
+            try
+            {
+                result = await FetchOneAsync(uri, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+            {
+                last = new(new ImportResult([], [ex.Message]), new());
+                continue;
+            }
+
+            if (!result.Import.IsEmpty)
+            {
+                return (result, url);
+            }
+
+            last = result;
+        }
+
+        return (last, null);
+    }
+
+    private async Task<SubscriptionPreview> FetchOneAsync(Uri uri, CancellationToken ct)
+    {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.UserAgent.ParseAdd("BYDLO/0.1");
         using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);

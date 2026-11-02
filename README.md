@@ -145,6 +145,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 ## Документация
 
 - [Импорт, буфер обмена и «Открыть с помощью»](docs/IMPORT.md)
+- [Пользовательские темы](docs/THEMES.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Сборка](docs/BUILD.md)
 - [Совместимость протоколов и платформ](docs/COMPATIBILITY.md)

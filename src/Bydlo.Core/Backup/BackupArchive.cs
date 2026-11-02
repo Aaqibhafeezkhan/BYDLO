@@ -99,6 +99,12 @@ public static class BackupArchive
         settings.ConnectOnStartup = current.ConnectOnStartup;
         settings.MockMode = current.MockMode;
         settings.OnboardingCompleted = current.OnboardingCompleted;
+        // Custom theme files live next to the data directory and are not part of the backup.
+        settings.CustomThemeId = current.CustomThemeId;
+        if (settings.Theme == ThemePreference.Custom && settings.CustomThemeId is null)
+        {
+            settings.Theme = ThemePreference.Purple;
+        }
         if (mode == BackupImportMode.Merge)
         {
             var r = settings.Routing;
