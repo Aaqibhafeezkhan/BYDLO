@@ -66,9 +66,9 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 
 | Платформа | v0.1 |
 |---|---|
-| Windows 10/11 x64, ARM64 | Локальная сборка; CI временно отключён. Zapret только на x64 |
-| Linux x64, ARM64 | CI сейчас только x64; встроенный nfqws, нужен root + nftables |
-| macOS Intel, Apple Silicon | Локальная сборка без подписи; CI временно отключён. Встроенный tpws, только IPv4 TCP 80/443, нужен root |
+| Windows 10/11 x64, ARM64 | Сборка в CI на GitHub. Zapret только на x64 |
+| Linux x64, ARM64 | Сборка в CI на GitHub (x64 также на зеркале Gitea); встроенный nfqws, нужен root + nftables |
+| macOS Intel, Apple Silicon | Сборка в CI на GitHub, без подписи. Встроенный tpws, только IPv4 TCP 80/443, нужен root |
 | Android ARM64 | Запланирован (см. [roadmap](docs/ROADMAP.md)) |
 
 Подробно по протоколам и платформам: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
