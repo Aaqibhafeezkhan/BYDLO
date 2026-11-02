@@ -58,7 +58,7 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
 
     public async Task StartAsync(EngineStartRequest request, CancellationToken ct = default)
     {
-        if (State is EngineState.Running or EngineState.Starting)
+        if (_process is not null || State is EngineState.Running or EngineState.Starting)
         {
             throw new EngineException($"{Descriptor.DisplayName} is already running.");
         }
@@ -121,7 +121,12 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
         }
         catch (Exception ex)
         {
-            await KillQuietlyAsync().ConfigureAwait(false);
+            try { await StopCoreAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false); }
+            catch (Exception cleanupError)
+            {
+                EmitLog("Cleanup failed; recovery is required: " + cleanupError.Message);
+                ex = new AggregateException(ex, cleanupError);
+            }
             SetState(EngineState.Failed, ex.Message);
             throw ex as EngineException ?? new EngineException(ex.Message, ex);
         }
@@ -129,25 +134,22 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
 
     public async Task StopAsync(CancellationToken ct = default)
     {
-        if (_process is null)
-        {
-            await OnStoppingAsync().ConfigureAwait(false);
-            SetState(EngineState.Stopped);
-            return;
-        }
-
         SetState(EngineState.Stopping);
-        _stopping = true;
-        await OnStoppingAsync().ConfigureAwait(false);
-        await _process.StopAsync(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
-        await _process.DisposeAsync().ConfigureAwait(false);
-        _process = null;
-        SetState(EngineState.Stopped);
+        try
+        {
+            await StopCoreAsync(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+            SetState(EngineState.Stopped);
+        }
+        catch (Exception ex)
+        {
+            SetState(EngineState.Failed, ex.Message);
+            throw;
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
-        await KillQuietlyAsync().ConfigureAwait(false);
+        await StopAsync().ConfigureAwait(false);
         GC.SuppressFinalize(this);
     }
 
@@ -170,28 +172,25 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
         if (!_stopping) { SetState(EngineState.Failed, message); }
     }
 
-    private async Task KillQuietlyAsync()
+    private async Task StopCoreAsync(TimeSpan timeout, CancellationToken ct = default)
     {
         _stopping = true;
+        var errors = new List<Exception>();
         // Also needed when Prepare/Start failed before a process was assigned.
         try { await OnStoppingAsync().ConfigureAwait(false); }
-        catch (Exception ex) { EmitLog("Cleanup failed; recovery is required: " + ex.Message); }
-        if (_process is null)
+        catch (Exception ex) { errors.Add(ex); }
+        if (_process is not null)
         {
-            return;
+            try
+            {
+                await _process.StopAsync(timeout, ct).ConfigureAwait(false);
+                await _process.DisposeAsync().ConfigureAwait(false);
+                _process = null;
+            }
+            catch (Exception ex) { errors.Add(ex); } // Keep the handle so stop/dispose can be retried.
         }
 
-        _stopping = true;
-        try
-        {
-            await _process.StopAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
-            await _process.DisposeAsync().ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or IOException or TimeoutException)
-        {
-        }
-
-        _process = null;
+        if (errors.Count > 0) { throw new AggregateException("Engine cleanup failed.", errors); }
     }
 
     protected void SetState(EngineState state, string? error = null)

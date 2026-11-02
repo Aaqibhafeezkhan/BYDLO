@@ -66,7 +66,7 @@ public sealed partial class HomeViewModel : PageViewModel
         _ => L["status.disconnected"],
     };
 
-    public string ButtonText => IsConnected || IsBusy ? L["home.disconnect"] : L["home.connect"];
+    public string ButtonText => IsConnected || IsBusy || Shell.Primary.CleanupPending ? L["home.disconnect"] : L["home.connect"];
 
     public string Hint
     {
@@ -190,18 +190,18 @@ public sealed partial class HomeViewModel : PageViewModel
         OnPropertyChanged(nameof(CheckLatency));
     }
 
-    public bool ZapretOn => Shell.Zapret.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
+    public bool ZapretOn => Shell.Zapret.CleanupPending || Shell.Zapret.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
     public string ZapretState => ToolState(Shell.Zapret, Services.Settings.Zapret.Strategy is { } s ? Path.GetFileNameWithoutExtension(s) : L["tools.zapret.nostrategy"]);
 
-    public bool TgOn => Shell.Tg.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
+    public bool TgOn => Shell.Tg.CleanupPending || Shell.Tg.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
     public string TgState => ToolState(Shell.Tg, $"{Services.Settings.TgWsProxy.Host}:{Services.Settings.TgWsProxy.Port}");
 
     [RelayCommand]
     private async Task ToggleConnection()
     {
-        if (IsConnected || IsBusy)
+        if (IsConnected || IsBusy || Shell.Primary.CleanupPending)
         {
             await Shell.Guard(() => Services.Connections.DisconnectAsync());
             return;
