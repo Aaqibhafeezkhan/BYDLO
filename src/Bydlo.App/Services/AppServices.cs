@@ -101,6 +101,9 @@ public sealed class AppServices
     /// <summary>Explicit external-IP check used by Home. Never runs automatically.</summary>
     public ConnectionCheckService ConnectionCheck { get; }
 
+    /// <summary>Explicit per-server latency probe used by Connections. Never runs automatically.</summary>
+    public ServerLatencyProbe ServerLatency { get; } = new();
+
     public ProfileImporter Importer { get; }
 
     public SubscriptionClient Subscriptions { get; }

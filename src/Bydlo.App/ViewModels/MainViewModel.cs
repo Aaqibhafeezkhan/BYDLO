@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using Bydlo.App.Services;
 using Bydlo.Core.Connection;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -118,6 +119,16 @@ public sealed partial class MainViewModel : ViewModelBase
     public static IReadOnlyList<string> OnboardingLanguages { get; } = ["auto", "en", "ru"];
 
     public ObservableCollection<ProfileItem> Profiles { get; } = [];
+
+    /// <summary>Last latency probe per profile id (issue #10). Empty until the user checks.</summary>
+    public Dictionary<Guid, ServerLatencyResult> Latencies { get; } = new();
+
+    public bool HasLatencyResults => Latencies.Count > 0;
+
+    [ObservableProperty]
+    private bool _sortByLatency;
+
+    partial void OnSortByLatencyChanged(bool value) => ReloadProfiles();
 
     /// <summary>Last 60 seconds of download / upload speed (bytes/s) for charts.</summary>
     public ObservableCollection<double> DownHistory { get; } = [];
@@ -248,15 +259,54 @@ public sealed partial class MainViewModel : ViewModelBase
     public void ReloadProfiles()
     {
         var activeId = Primary.Profile?.Id;
-        var items = Services.Profiles.Profiles
-            .OrderByDescending(p => p.IsFavorite)
-            .ThenBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
+        var items = ServerListOrdering.Order(Services.Profiles.Profiles, Latencies, SortByLatency)
             .Select(p => new ProfileItem(p) { IsActive = p.Id == activeId })
             .ToList();
+        foreach (var item in items)
+        {
+            ApplyLatency(item);
+        }
+
         var selectedId = SelectedProfile?.Id ?? Services.Settings.LastProfileId;
         Profiles.ReplaceWith(items);
         SelectedProfile = Profiles.FirstOrDefault(p => p.Id == selectedId) ?? Profiles.FirstOrDefault();
         IsMock = Services.IsMock;
+    }
+
+    /// <summary>Stores fresh probe results and refreshes the visible rows (issue #10).</summary>
+    public void SetLatencies(IReadOnlyDictionary<Guid, ServerLatencyResult> results)
+    {
+        Latencies.Clear();
+        foreach (var (id, result) in results)
+        {
+            Latencies[id] = result;
+        }
+
+        foreach (var item in Profiles)
+        {
+            ApplyLatency(item);
+        }
+
+        if (SortByLatency)
+        {
+            ReloadProfiles();
+        }
+
+        OnPropertyChanged(nameof(HasLatencyResults));
+    }
+
+    private void ApplyLatency(ProfileItem item)
+    {
+        if (Latencies.TryGetValue(item.Id, out var result))
+        {
+            item.Latency = result.Reachable ? result.Latency : null;
+            item.LatencyFailed = !result.Reachable;
+        }
+        else
+        {
+            item.Latency = null;
+            item.LatencyFailed = false;
+        }
     }
 
     public void ShowToast(string message, bool isError = false, string? localizationKey = null)

@@ -40,6 +40,8 @@
         </ComboBox>
         <Button Classes="text-action" Content="{l:T import.title}" Command="{Binding Shell.NavigateCommand}" CommandParameter="connections"
                 HorizontalAlignment="Center" Margin="0,10,0,0" IsVisible="{Binding !HasProfiles}" />
+        <Button Classes="text-action" Content="{l:T home.best}" Command="{Binding BestServerCommand}"
+                HorizontalAlignment="Center" Margin="0,10,0,0" IsVisible="{Binding HasProfiles}" />
         <Border Width="224" Height="54" HorizontalAlignment="Center" Margin="0,22,0,20" CornerRadius="12" BoxShadow="{DynamicResource ActionShadow}">
           <Button Classes="primary connect-action" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
                   Command="{Binding ToggleConnectionCommand}" AutomationProperties.Name="{Binding ButtonText}">

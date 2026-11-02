@@ -216,6 +216,29 @@
 
           <Border Classes="tile">
             <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Margin="0,0,18,0">
+                  <TextBlock Text="{l:T settings.lan}" FontWeight="Medium" TextWrapping="Wrap" />
+                  <TextBlock Classes="faint" Text="{l:T settings.lan.hint}" TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AllowLan}" />
+              </Grid>
+              <StackPanel Spacing="8" IsVisible="{Binding AllowLan}">
+                <TextBlock Text="{l:T settings.lan.warning}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
+                <TextBlock Classes="caps" Text="{l:T settings.lan.login}" />
+                <TextBox Text="{Binding LocalProxyUsername}" Watermark="{l:T settings.lan.login}" MaxLength="64" />
+                <TextBlock Classes="caps" Text="{l:T settings.lan.password}" />
+                <TextBox Text="{Binding LocalProxyPassword}" PasswordChar="●" Watermark="{l:T settings.lan.password}" MaxLength="128" />
+                <TextBlock Classes="faint" Text="{l:T settings.lan.saved}" IsVisible="{Binding HasLocalProxyPassword}" TextWrapping="Wrap" />
+                <TextBlock Classes="faint" Text="{l:T settings.lan.nopassword}" IsVisible="{Binding !HasLocalProxyPassword}" TextWrapping="Wrap" />
+                <TextBlock Classes="faint" Text="{l:T settings.lan.firewall}" TextWrapping="Wrap" />
+                <TextBlock Text="{l:T settings.lan.sysproxy}" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding LanSysProxyConflict}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="tile">
+            <StackPanel Spacing="10">
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <c:OutlineIcon Data="{StaticResource LineFlask}" Foreground="{DynamicResource WarningBrush}" />
                 <TextBlock Text="{l:T settings.mock}" FontWeight="Medium" TextWrapping="Wrap" />
@@ -246,6 +269,7 @@
               </StackPanel>
               <Button Classes="ghost" HorizontalAlignment="Left" Content="{l:T settings.admin.restart}" Command="{Binding RestartElevatedCommand}" IsVisible="{Binding CanRestartElevated}" />
               <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
+              <TextBlock Classes="faint" Text="{l:T settings.admin.manual}" TextWrapping="Wrap" IsVisible="{Binding ShowElevationManualHint}" />
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock Classes="muted" Text="{l:T settings.secrets}" />
                 <TextBlock Text="{Binding SecretProtection}" TextWrapping="Wrap" />
