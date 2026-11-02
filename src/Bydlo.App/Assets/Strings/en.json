@@ -173,6 +173,7 @@
   "error.engine.openvpn.driver.refused": "Windows refused the DCO driver. Check administrator rights and the package signature.",
   "error.engine.openvpn.driver.adapter": "DCO was staged, but the BYDLO adapter could not be created. Retry setup.",
   "error.engine.amnezia.config": "Invalid or unsupported AmneziaWG configuration. Hooks, Table, SaveConfig and DNS domains are not supported.",
+  "error.engine.amnezia.legacy": "The custom AmneziaWG path selects an old client. Clear that path or select the bundled bydlo-amneziawg host.",
   "error.engine.amnezia.network": "AmneziaWG network setup failed. Check administrator rights, system tools and the recovery journal; an existing bydlo-awg interface or reserved route can also block setup.",
   "tools.engines.downloading": "Downloading",
   "tools.engines.installed": "{0} installed.",

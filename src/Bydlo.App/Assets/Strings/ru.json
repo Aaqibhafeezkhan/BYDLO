@@ -173,6 +173,7 @@
   "error.engine.openvpn.driver.refused": "Windows отказала в установке DCO. Проверьте права администратора и подпись пакета.",
   "error.engine.openvpn.driver.adapter": "DCO добавлен, но создать адаптер BYDLO не удалось. Повторите настройку.",
   "error.engine.amnezia.config": "Неверная или неподдерживаемая конфигурация AmneziaWG. Хуки, Table, SaveConfig и DNS-домены не поддерживаются.",
+  "error.engine.amnezia.legacy": "Пользовательский путь AmneziaWG указывает на старый клиент. Сбросьте этот путь или выберите встроенный хост bydlo-amneziawg.",
   "error.engine.amnezia.network": "Не удалось настроить сеть AmneziaWG. Проверьте права администратора, системные утилиты и журнал восстановления; существующий адаптер bydlo-awg или зарезервированный маршрут также могут мешать запуску.",
   "tools.engines.downloading": "Загрузка",
   "tools.engines.installed": "{0} установлен.",

@@ -84,6 +84,29 @@ public class BundledEngineTests
     }
 
     [Fact]
+    public async Task Amnezia_masks_allowed_networks_without_masking_the_interface_address()
+    {
+        var config = await AmneziaConfig.ParseAsync(Config.Replace("0.0.0.0/0, ::/0", "10.20.30.99/24", StringComparison.Ordinal),
+            (_, _) => Task.FromResult(new[] { IPAddress.Parse("203.0.113.20") }), default);
+        Assert.Equal(["10.20.30.0/24"], config.Routes);
+        Assert.Contains("allowed_ip=10.20.30.0/24", config.Uapi, StringComparison.Ordinal);
+        Assert.Equal("10.5.0.2/24", config.Addresses[0]);
+        await Assert.ThrowsAsync<FormatException>(() => AmneziaConfig.ParseAsync(Config.Replace("AllowedIPs = 0.0.0.0/0, ::/0", "", StringComparison.Ordinal),
+            (_, _) => Task.FromResult(new[] { IPAddress.Parse("203.0.113.20") }), default));
+    }
+
+    [Theory]
+    [InlineData("amneziawg.exe")]
+    [InlineData("awg-quick")]
+    public async Task Amnezia_rejects_legacy_custom_client_before_starting_it(string path)
+    {
+        var runner = new FakeProcessRunner();
+        var engine = new AmneziaEngine(runner, new LogRedactor(), new FakeLocator(new(OsFamily.Windows, CpuArch.X64), path), new FakePrivileges(true), new FakeAmneziaNetwork());
+        Assert.Equal("error.engine.amnezia.legacy", (await engine.CheckAvailabilityAsync(new())).LocalizationKey);
+        Assert.Empty(runner.Started);
+    }
+
+    [Fact]
     public async Task Amnezia_supervises_headless_process_and_retains_cleanup_for_retry()
     {
         var runner = new FakeProcessRunner { StartupOutput = { "BYDLO_AMNEZIA_READY" } };

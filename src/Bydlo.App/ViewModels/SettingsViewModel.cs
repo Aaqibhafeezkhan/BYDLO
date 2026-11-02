@@ -108,7 +108,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("sing-box", "SagerNet (nekohasekai)", "GPL-3.0-or-later", "https://github.com/SagerNet/sing-box", "Universal proxy platform"),
         new("Xray-core", "Project X (XTLS)", "MPL-2.0", "https://github.com/XTLS/Xray-core", "VLESS / REALITY / XHTTP"),
         new("WireGuard", "Jason A. Donenfeld / WireGuard LLC", "MIT / GPL-2.0", "https://www.wireguard.com", "WireGuard tunnels"),
-        new("AmneziaWG", "Amnezia VPN", "MIT / GPL-2.0", "https://github.com/amnezia-vpn", "Obfuscated WireGuard"),
+        new("AmneziaWG", "WireGuard LLC / Amnezia VPN", "MIT (core), GPL-3.0+ (host)", "https://github.com/amnezia-vpn/amneziawg-go", "Obfuscated WireGuard"),
         new("Wintun 0.14.1", "WireGuard LLC", "Prebuilt Binaries License", "https://www.wintun.net/", "", "about.wintun"),
         new("OpenVPN DCO 2.8.14", "OpenVPN Inc. & contributors", "GPL-2.0", "https://github.com/OpenVPN/ovpn-dco-win", "", "about.dco"),
         new("OpenSSL 3.6.5", "OpenSSL Project Authors", "Apache-2.0", "https://github.com/openssl/openssl", "TLS / cryptography"),

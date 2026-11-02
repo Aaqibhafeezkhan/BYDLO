@@ -17,7 +17,7 @@ public sealed class AmneziaEngine(IProcessRunner runner, LogRedactor redactor, E
 {
     public static readonly EngineDescriptor Info = TunnelServiceEngine.AmneziaInfo with
     {
-        License = "MIT (amneziawg-go); Wintun binary license (Windows)",
+        License = "MIT (amneziawg-go); GPL-3.0+ (host); Wintun binary license (Windows)",
     };
 
     private AmneziaConfig? _config;
@@ -34,6 +34,9 @@ public sealed class AmneziaEngine(IProcessRunner runner, LogRedactor redactor, E
         var exe = locator.Locate(EngineKind.AmneziaWG, settings);
         if (exe is null)
         { return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "Bundled AmneziaWG is missing.") { LocalizationKey = "error.engine.amnezia.missing" }); }
+        if (Path.GetFileNameWithoutExtension(exe).Equals("amneziawg", StringComparison.OrdinalIgnoreCase)
+            || Path.GetFileName(exe).Equals("awg-quick", StringComparison.OrdinalIgnoreCase))
+        { return Task.FromResult(EngineAvailability.Unsupported("The custom path selects a legacy client; select the bundled BYDLO host.", "error.engine.amnezia.legacy")); }
         return Task.FromResult(privileges.IsElevated ? EngineAvailability.Ready(exe)
             : new EngineAvailability(AvailabilityStatus.NeedsElevation, "Creating a tunnel needs administrator rights.", exe) { LocalizationKey = "error.engine.tunnel.admin" });
     }

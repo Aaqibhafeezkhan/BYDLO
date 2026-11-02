@@ -128,7 +128,7 @@
     },
     {
       "assets": {},
-      "license": "MIT (amneziawg-go); Wintun binary license",
+      "license": "MIT (amneziawg-go); GPL-3.0+ (host); Wintun binary license",
       "id": "amneziawg",
       "bundledExecutables": {
         "linux-x64": "bydlo-amneziawg",

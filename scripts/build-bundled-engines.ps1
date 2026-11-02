@@ -79,7 +79,9 @@ if ($Rid.StartsWith('win-')) {
         Copy-Item (Join-Path $original "bin/$name") $ovpnDir -Force
     }
     Copy-Item (Join-Path $original 'bin/libssl-3-*.dll'),(Join-Path $original 'bin/libcrypto-3-*.dll') $ovpnDir -Force
-    Copy-Item (Join-Path $original 'Common Files/ovpn-dco') (Join-Path $ovpnDir 'dco') -Recurse -Force
+    $driverDir = Join-Path $ovpnDir 'dco'
+    New-Item -ItemType Directory -Force $driverDir | Out-Null
+    Copy-Item (Join-Path $original 'Common Files/ovpn-dco/*') $driverDir -Recurse -Force
     Copy-Item (Join-Path $original 'license.txt') $ovpnDir -Force
 } else {
     $opensslSource = Fetch 'openssl-source'
@@ -94,7 +96,9 @@ if ($Rid.StartsWith('win-')) {
 
 # Record packaged bytes without launching them. Retain build inputs for audit/update work.
 Copy-Item (Join-Path $repo 'engines/bundle-inputs.lock.json') (Join-Path $output 'engines') -Force
+Copy-Item (Join-Path $repo 'engines/engines.lock.json') (Join-Path $output 'engines') -Force
 Copy-Item (Join-Path $repo 'scripts/build-openvpn.sh') $sources -Force
+Copy-Item (Join-Path $repo 'scripts/build-bundled-engines.ps1') $sources -Force
 Get-ChildItem (Join-Path $output 'engines') -Recurse -File | Sort-Object FullName | ForEach-Object {
     '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), ([IO.Path]::GetRelativePath($output, $_.FullName).Replace('\','/'))
 } | Set-Content (Join-Path $output 'ENGINES-SHA256SUMS.txt') -Encoding utf8NoBOM

@@ -45,15 +45,17 @@ public sealed record AmneziaConfig(string Uapi, string[] Addresses, string[] Dns
             if (peer.TryGetValue("PersistentKeepalive", out var keepalive))
             { text.AppendLine("persistent_keepalive_interval=" + Number(keepalive, 0, 65535)); }
             text.AppendLine("replace_allowed_ips=true");
-            foreach (var cidr in List(peer.GetValueOrDefault("AllowedIPs", "0.0.0.0/0, ::/0")))
+            if (!peer.TryGetValue("AllowedIPs", out var allowedIps) || List(allowedIps).Length == 0)
+            { throw new FormatException("AmneziaWG peer requires explicit AllowedIPs."); }
+            foreach (var cidr in List(allowedIps))
             {
-                var net = Network(cidr);
+                var net = Network(cidr, canonicalize: true);
                 text.AppendLine("allowed_ip=" + net);
                 // More-specific routes leave the original default route in place.
                 routes.AddRange(net switch { "0.0.0.0/0" => ["0.0.0.0/1", "128.0.0.0/1"], "::/0" => ["::/1", "8000::/1"], _ => [net] });
             }
         }
-        var addresses = List(iface.GetValueOrDefault("Address", "")).Select(Network).ToArray();
+        var addresses = List(iface.GetValueOrDefault("Address", "")).Select(v => Network(v)).ToArray();
         if (addresses.Length == 0) { throw new FormatException("AmneziaWG configuration has no interface address."); }
         var dns = List(iface.GetValueOrDefault("DNS", "")).Select(v => IPAddress.Parse(v).ToString()).ToArray();
         var endpointHosts = endpoints.Select(e => e + (IPAddress.Parse(e).AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? "/32" : "/128")).ToHashSet(StringComparer.Ordinal);
@@ -72,11 +74,23 @@ public sealed record AmneziaConfig(string Uapi, string[] Addresses, string[] Dns
 
     private static string[] List(string value) => value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static string Network(string value)
+    private static string Network(string value, bool canonicalize = false)
     {
         var parts = value.Split('/');
+        if (parts.Length > 2) { throw new FormatException("Invalid AmneziaWG network."); }
         var ip = IPAddress.Parse(parts[0]);
         var max = ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128;
-        return ip + "/" + (parts.Length == 2 ? Number(parts[1], 0, max) : max);
+        var prefix = parts.Length == 2 ? Number(parts[1], 0, max) : max;
+        if (canonicalize)
+        {
+            var bytes = ip.GetAddressBytes();
+            for (var i = 0; i < bytes.Length; i++)
+            {
+                var bits = Math.Clamp(prefix - 8 * i, 0, 8);
+                bytes[i] &= (byte)(0xff << (8 - bits));
+            }
+            ip = new IPAddress(bytes);
+        }
+        return ip + "/" + prefix;
     }
 }

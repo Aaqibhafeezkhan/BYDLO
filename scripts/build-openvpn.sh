@@ -30,10 +30,11 @@ if [[ "$rid" == linux-* ]]; then
   tar -xzf "$cap_source" --strip-components=1 -C "$stage/libcap-ng-build"
   (
     cd "$stage/libcap-ng-build"
-    autoreconf -fi
+    # Upstream bootstrap also generates NEWS, which is absent from Git tag archives.
+    sh ./autogen.sh
     ./configure --prefix="$prefix" --libdir="$prefix/lib" --enable-static --disable-shared --without-python --without-python3
-    make -j2
-    make install
+    make -C src -j2
+    make -C src install
   )
 fi
 (
