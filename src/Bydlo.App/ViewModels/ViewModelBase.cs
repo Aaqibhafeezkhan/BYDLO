@@ -35,6 +35,10 @@ public sealed partial class ProfileItem(Profile profile) : ObservableObject
 
     public string ProtocolLabel => Labels.Protocol(Profile.Protocol);
 
+    public bool CanShareLink => Bydlo.Core.Import.ProfileExporter.HasShareLink(Profile.Protocol);
+
+    public bool CanExportConfig => Bydlo.Core.Import.ProfileExporter.HasConfigFile(Profile.Protocol);
+
     public string Details
     {
         get

@@ -1,4 +1,11 @@
 {
+  "share.title": "Share server",
+  "share.qr": "Show QR code",
+  "share.copy": "Copy link",
+  "share.file": "Export configuration",
+  "share.close": "Close",
+  "share.warning": "The link, QR code or configuration contains credentials that grant access to this server. Share only with people you trust. Exported files are not encrypted. Configurations referencing external files require those files separately.",
+  "share.error": "Could not share this server. Check that its credentials are available. If the QR code is too large, copy the link instead.",
   "app.slogan": "One app. Every protocol.",
   "app.full": "Bypass Your Digital Limitations Online",
 
