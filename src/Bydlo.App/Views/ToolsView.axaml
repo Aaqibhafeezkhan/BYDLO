@@ -265,17 +265,27 @@
       <Expander Header="{l:T tools.engines}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="12">
           <TextBlock Classes="faint" Text="{l:T tools.engines.hint}" TextWrapping="Wrap" />
+          <Border Classes="tile" IsVisible="{Binding IsWindows}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{l:T tools.openvpn.driver.title}" FontWeight="Medium" />
+              <TextBlock Classes="muted" Text="{l:T tools.openvpn.driver.hint}" TextWrapping="Wrap" />
+              <CheckBox IsChecked="{Binding OpenVpnDriverConsent}">
+                <TextBlock Text="{l:T tools.openvpn.driver.consent}" TextWrapping="Wrap" />
+              </CheckBox>
+              <Button Classes="ghost" Content="{l:T tools.openvpn.driver.install}" Command="{Binding InstallOpenVpnDriverCommand}" IsEnabled="{Binding OpenVpnDriverConsent}" />
+            </StackPanel>
+          </Border>
           <ItemsControl ItemsSource="{Binding Engines}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:EngineRow">
                 <Border Classes="tile" Margin="0,0,0,6">
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Spacing="2">
-                      <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Grid ColumnDefinitions="Auto,*">
                         <TextBlock Text="{Binding Name}" FontWeight="Medium" />
-                        <TextBlock Classes="faint" Text="{Binding Version}" VerticalAlignment="Center" />
-                      </StackPanel>
-                      <TextBlock Classes="faint" Text="{Binding License}" />
+                        <TextBlock Grid.Column="1" Margin="8,0,0,0" Classes="faint" Text="{Binding Version}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                      <TextBlock Classes="faint" Text="{Binding License}" TextWrapping="Wrap" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                       <Border Classes="pill" Classes.ok="{Binding IsReady}">

@@ -81,11 +81,26 @@ Mock — инструмент агентской разработки, а не �
 dotnet publish src/Bydlo.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
 ```
 
-Чтобы добавить встроенный Zapret в локальный релиз, после публикации выполните упаковщик (только скачивание, SHA-256 и извлечение; ничего не запускает):
+Чтобы добавить sing-box, Xray и Zapret в локальный релиз, после публикации выполните упаковщик (только скачивание, SHA-256 и извлечение; движки не запускаются):
 
 ```bash
 dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/win-x64 .
 ```
+
+Затем соберите и добавьте AmneziaWG/OpenVPN. Нужен Go 1.27.3 и PowerShell 7; для Linux/macOS также
+компилятор C, make, Perl, pkg-config, а на Linux — autoconf/automake/libtool. Unix-сборка выполняется
+на машине той же архитектуры. Windows MSI извлекается read-only через закреплённый lessmsi;
+его действия установки, GUI, движки, драйверы и службы не запускаются.
+
+```powershell
+. ./scripts/env.ps1
+./scripts/build-bundled-engines.ps1 -Rid win-x64 -PublishDirectory artifacts/win-x64
+```
+
+Скрипт проверяет SHA-256 входов из `engines/bundle-inputs.lock.json`, Go использует `go.mod`/`go.sum`
+и `-mod=readonly`. В архив включаются исходники, лицензии и `ENGINES-SHA256SUMS.txt`.
+В каталоге релиза AmneziaWG находится в `engines/amneziawg/<version>/`, OpenVPN — в
+`engines/openvpn/<version>/`. Обычная сборка приложения не требует Go и бинарников движков.
 
 Обычные `dotnet build` / `dotnet test` бинарники Zapret не скачивают. Не запускайте упаковщик на рабочей машине, если антивирус блокирует WinDivert: используйте CI. Для Linux/macOS извлекается только целевой nfqws/tpws, без Windows-драйверов из общего upstream-архива. Windows ARM64 получает `ZAPRET-UNAVAILABLE.txt` вместо несовместимого драйвера.
 
@@ -96,17 +111,19 @@ dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/w
 `.github/workflows/ci.yml`:
 
 1. **test** — сборка и модульные тесты на Ubuntu, Windows и macOS (`BYDLO_SAFE_DEV=1`).
-2. **desktop** — самодостаточная публикация для всех шести платформ, упаковка закреплённого Zapret с проверкой SHA-256, лицензиями и соответствующими исходниками LGPL-компонентов; артефакты загружаются вместе с `LICENSE` и сведениями о сторонних компонентах.
+2. **desktop** — самодостаточная публикация для шести платформ, упаковка закреплённых sing-box/Xray/Zapret, сборка AmneziaWG для Windows/Linux и OpenVPN для всех платформ; лицензии, соответствующие исходники и хеши. Сетевые движки не запускаются. Для Unix используются нативные x64/ARM64 runners.
 3. **release** — для тегов `v*` упаковывает артефакты в zip, создаёт `SHA256SUMS.txt` и **черновик** релиза на GitHub.
 
 ## Воспроизводимость
 
 - Версия SDK закреплена в `global.json`; версии всех пакетов закреплены централизованно в `Directory.Packages.props`.
 - Детерминированная сборка (`Deterministic`); в CI включён `ContinuousIntegrationBuild`.
-- BYDLO не собирает движки из исходников; их версии и SHA-256 закреплены в `engines/engines.lock.json`.
+- Бинарные релизы закреплены в `engines/engines.lock.json`; входы сборок — в `engines/bundle-inputs.lock.json`, Go-зависимости — в `tools/amneziawg/go.mod` и `go.sum`.
+- Обновление: измените версию и URL входа, скачайте архив отдельно, проверьте upstream checksum/подпись и замените SHA-256. Для AmneziaWG обновите Go-модуль и суммы. Запустите обе команды упаковки для всех затронутых платформ, не запуская движки; изменения версий, лицензий и документации отправляйте одним PR.
 
 ## Известные ограничения
 
 - Сборки для macOS не подписаны и не нотаризованы — Gatekeeper покажет предупреждение.
 - Сборки для Windows не подписаны.
+- Встроенный OpenVPN для Linux собирается на Ubuntu 24.04; совместимость со старыми версиями glibc не заявляется.
 - Android не входит в v0.1 (см. [ROADMAP.md](ROADMAP.md)).

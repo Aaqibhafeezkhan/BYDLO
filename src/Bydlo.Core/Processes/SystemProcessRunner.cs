@@ -119,7 +119,7 @@ public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProce
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
             journal?.Record(new JournalEntry(spec.DisplayName, Id, Path.GetFileName(spec.FileName), StartedAt,
-                GracefulTermination: spec.GracefulTermination));
+                GracefulTermination: spec.GracefulTermination, WindowsExitEventName: spec.WindowsExitEventName));
             if (process.HasExited)
             {
                 RaiseExited();
@@ -136,7 +136,7 @@ public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProce
 
             try
             {
-                if (spec.GracefulTermination) { ProcessTermination.RequestGracefulExit(process); }
+                if (spec.GracefulTermination) { ProcessTermination.RequestGracefulExit(process, spec.WindowsExitEventName); }
                 // Closing stdin lets well-behaved CLIs shut down; then wait, then kill the tree.
                 process.StandardInput.Close();
             }

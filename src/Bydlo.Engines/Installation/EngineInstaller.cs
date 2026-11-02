@@ -31,12 +31,13 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
     private string? FindExecutable(string id, PlatformInfo platform, string root)
     {
         var entry = engineLock.Find(id);
-        if (entry is null || !entry.Assets.TryGetValue(platform.Rid, out var asset))
+        if (entry is null)
         {
             return null;
         }
-
-        var exe = Path.Combine(root, id, entry.Version, asset.Executable.Replace('/', Path.DirectorySeparatorChar));
+        var relative = entry.Assets.TryGetValue(platform.Rid, out var asset) ? asset.Executable : entry.BundledExecutables.GetValueOrDefault(platform.Rid);
+        if (relative is null) { return null; }
+        var exe = Path.Combine(root, id, entry.Version, relative.Replace('/', Path.DirectorySeparatorChar));
         return File.Exists(exe) ? exe : null;
     }
 
@@ -90,7 +91,7 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
             Directory.Delete(target, recursive: true);
         }
 
-        Directory.Move(staging, target);
+        await MoveDirectoryAsync(staging, target, ct).ConfigureAwait(false);
         File.Delete(archive);
 
         var exe = Path.Combine(target, asset.Executable.Replace('/', Path.DirectorySeparatorChar));
@@ -101,6 +102,19 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
 
         progress?.Report(new InstallProgress("done", 1));
         return exe;
+    }
+
+    private static async Task MoveDirectoryAsync(string source, string destination, CancellationToken ct)
+    {
+        // Windows file scanners can briefly retain extracted files without FILE_SHARE_DELETE.
+        // Retry only its transient access/sharing failures, never suppress a permanent error.
+        for (var attempt = 0; ; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            try { Directory.Move(source, destination); return; }
+            catch (IOException ex) when (OperatingSystem.IsWindows() && attempt < 6 && (ex.HResult & 0xffff) is 5 or 32 or 33)
+            { await Task.Delay(TimeSpan.FromMilliseconds(50 * (attempt + 1)), ct).ConfigureAwait(false); }
+        }
     }
 
     private async Task DownloadAsync(string url, string path, IProgress<InstallProgress>? progress, CancellationToken ct)

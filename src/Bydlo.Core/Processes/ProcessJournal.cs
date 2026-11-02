@@ -5,7 +5,7 @@ using Bydlo.Core.Security;
 namespace Bydlo.Core.Processes;
 
 public sealed record JournalEntry(string DisplayName, int Pid, string ImageName, DateTimeOffset StartedAt,
-    int OwnerPid = 0, DateTimeOffset? OwnerStartedAt = null, bool GracefulTermination = false);
+    int OwnerPid = 0, DateTimeOffset? OwnerStartedAt = null, bool GracefulTermination = false, string? WindowsExitEventName = null);
 
 /// <summary>
 /// Persists PIDs of engine processes so that, after a BYDLO crash, orphaned engines can be found and stopped
@@ -105,7 +105,7 @@ public sealed class ProcessJournal(string filePath)
                     Remove(e.Pid);
                     continue;
                 }
-                if (!e.GracefulTermination || !ProcessTermination.RequestGracefulExit(p) || !p.WaitForExit(5000))
+                if (!e.GracefulTermination || !ProcessTermination.RequestGracefulExit(p, e.WindowsExitEventName) || !p.WaitForExit(5000))
                 {
                     p.Kill(entireProcessTree: true);
                 }

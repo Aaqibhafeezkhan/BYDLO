@@ -20,40 +20,50 @@ var id = os == OsFamily.Windows ? "zapret" : "zapret-native";
 using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
 var staging = Path.Combine(repo, ".tmp", "bundle-" + args[0] + "-" + Guid.NewGuid().ToString("N"));
 var installer = new EngineInstaller(http, engineLock, staging);
-if (!installer.HasAsset(id, platform))
-{
-    // ARM64 Windows has no compatible pinned kernel driver. Do not package x64 as ARM64.
-    Directory.CreateDirectory(output);
-    await File.WriteAllTextAsync(Path.Combine(output, "ZAPRET-UNAVAILABLE.txt"),
-        "Zapret is unavailable on Windows ARM64: the pinned Flowseal release contains an x64 WinDivert driver only.\n");
-    return;
-}
-
 try
 {
-    var executable = await installer.InstallAsync(id, platform);
-    var entry = engineLock.Find(id)!;
-    var source = installer.InstallDirectory(id, entry.Version);
-    var destination = Path.Combine(output, "engines", id, entry.Version);
-    if (os == OsFamily.Windows)
+    foreach (var engineId in new[] { "sing-box", "xray", id })
     {
-        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        if (!installer.HasAsset(engineId, platform))
         {
-            var target = Path.Combine(destination, Path.GetRelativePath(source, file));
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(file, target, overwrite: true);
+            // ARM64 Windows has no compatible pinned kernel driver. Do not package x64 as ARM64.
+            Directory.CreateDirectory(output);
+            await File.WriteAllTextAsync(Path.Combine(output, "ZAPRET-UNAVAILABLE.txt"),
+                "Zapret is unavailable on Windows ARM64: the pinned Flowseal release contains an x64 WinDivert driver only.\n");
+            continue;
         }
-    }
-    else
-    {
-        // Keep only the selected executable, not unrelated platforms' binaries or install scripts.
-        var target = Path.Combine(destination, Path.GetRelativePath(source, executable));
-        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-        File.Copy(executable, target, overwrite: true);
+
+        var executable = await installer.InstallAsync(engineId, platform);
+        var entry = engineLock.Find(engineId)!;
+        var source = installer.InstallDirectory(engineId, entry.Version);
+        var destination = Path.Combine(output, "engines", engineId, entry.Version);
+        if (os == OsFamily.Windows || engineId != "zapret-native")
+        {
+            foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            {
+                var target = Path.Combine(destination, Path.GetRelativePath(source, file));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Copy(file, target, overwrite: true);
+            }
+        }
+        else
+        {
+            // Keep only the selected executable, not unrelated platforms' binaries or install scripts.
+            var target = Path.Combine(destination, Path.GetRelativePath(source, executable));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(executable, target, overwrite: true);
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(target, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+            }
+        }
+
         if (!OperatingSystem.IsWindows())
         {
-            File.SetUnixFileMode(target, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+            var targetExecutable = Path.Combine(destination, Path.GetRelativePath(source, executable));
+            File.SetUnixFileMode(targetExecutable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
         }
+        Console.WriteLine($"Bundled SHA-256 verified {engineId} {entry.Version} for {platform.Rid}.");
     }
 
     var licenses = Path.Combine(output, "engines", "licenses");
@@ -83,7 +93,7 @@ try
         }
     }
 
-    Console.WriteLine($"Bundled SHA-256 verified {id} {entry.Version} for {platform.Rid}.");
+
 }
 finally
 {

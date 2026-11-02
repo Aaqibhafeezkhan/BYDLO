@@ -1,0 +1,42 @@
+{
+  "openvpn-windows-x64": {
+    "url": "https://build.openvpn.net/downloads/releases/OpenVPN-2.7.8-I002-amd64.msi",
+    "sha256": "33104dd02c48cba172612882b1af6276422b1b4340d4c9c84dd2afb4b356fe9f"
+  },
+  "openvpn-windows-arm64": {
+    "url": "https://build.openvpn.net/downloads/releases/OpenVPN-2.7.8-I002-arm64.msi",
+    "sha256": "abbbc6337d5770639154c9baa8673640a005a0ec829856c2565fd5d84481f12f"
+  },
+  "lessmsi": {
+    "url": "https://github.com/activescott/lessmsi/releases/download/v2.12.9/lessmsi-v2.12.9.zip",
+    "sha256": "5b4e187e74b184ad3a63ccf06c3d17dae2b8c4b6c298a996dbd51a9f6db29d21"
+  },
+  "wintun": {
+    "url": "https://www.wintun.net/builds/wintun-0.14.1.zip",
+    "sha256": "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51"
+  },
+  "openvpn-source": {
+    "url": "https://github.com/OpenVPN/openvpn/releases/download/v2.7.8/openvpn-2.7.8.tar.gz",
+    "sha256": "c070d1d2440b5a6fca6c2c68645c98cd492116ac36ef4f0946177115532c8e36"
+  },
+  "openssl-source": {
+    "sha256": "a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98",
+    "url": "https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz"
+  },
+  "xray-source": {
+    "sha256": "44ef4874529a03848c90f1fdcfb763350fbc5f1de741ec90e0024d651df25650",
+    "url": "https://codeload.github.com/XTLS/Xray-core/tar.gz/refs/tags/v26.10.21"
+  },
+  "dco-source": {
+    "sha256": "9b86879f27f23a9cce3ff137c22f3147ddc0824e05e495f128e0e5318b39b3e3",
+    "url": "https://codeload.github.com/OpenVPN/ovpn-dco-win/tar.gz/refs/tags/2.8.14"
+  },
+  "sing-box-source": {
+    "sha256": "9a8e3712a5f611ad95f1d16874bbdcdffbd3b8eed16dae2d71ce7042a33c3386",
+    "url": "https://codeload.github.com/SagerNet/sing-box/tar.gz/refs/tags/v1.14.3"
+  },
+  "libcap-ng-source": {
+    "sha256": "399040138e0ca62fa2bcabd63da9af4431a246ef7a654561a0ca3cb00010a539",
+    "url": "https://codeload.github.com/stevegrubb/libcap-ng/tar.gz/refs/tags/v0.9.6"
+  }
+}

@@ -15,12 +15,24 @@ SHA-256. Исходный код каждого движка доступен в
 | Cygwin 3.4.10 / Newlib | Cygwin contributors / Red Hat и другие | LGPL-3.0-or-later с Cygwin Linking Exception; дополнительные permissive notices Newlib | https://cygwin.com/licensing.html | Неизменённый cygwin1.dll из Flowseal; динамическая библиотека winws. |
 | sing-box | SagerNet / nekohasekai | GPL-3.0-or-later (с дополнительными условиями об использовании названия) | https://github.com/SagerNet/sing-box | Основной движок для VLESS/VMess/Trojan/Shadowsocks/Hysteria 2/TUIC/SOCKS/HTTP/WireGuard; конфигурацию генерирует BYDLO. |
 | Xray-core | Project X (XTLS) | MPL-2.0 | https://github.com/XTLS/Xray-core | Движок для транспорта XHTTP и альтернативный движок для протоколов семейства V2Ray. |
+| Cronet / cronet-go | The Chromium Authors, SagerNet и участники | BSD-3-Clause (Chromium), GPL-3.0-or-later (Go-обвязка) | https://github.com/SagerNet/cronet-go/tree/0d28acc44093df24b2526dea3d6ffefd6b0a54f0 | Неизменённая libcronet из архива sing-box. Текст Chromium BSD включён в `engines/licenses/Chromium.txt`; закреплённый Chromium/NaiveProxy: https://github.com/SagerNet/naiveproxy/tree/72a06c9fca0e2d228588c7f3074bf7efff3ff686. |
+| Xray GeoIP / GeoSite | Project X, V2Ray и авторы исходных списков | GPL-3.0; MIT для GeoSite и унаследованных частей | https://github.com/XTLS/Xray-rules-dat | Неизменённые geoip.dat/geosite.dat внутри закреплённого архива Xray; дополнительные тексты лицензий находятся в `engines/licenses/Xray-rules-*.txt`. |
 | WireGuard for Windows / wireguard-tools | Jason A. Donenfeld, WireGuard LLC | MIT / GPL-2.0 | https://www.wireguard.com | Официальный клиент для нативных туннелей WireGuard (устанавливает пользователь). |
-| AmneziaWG (amneziawg-windows, amneziawg-tools) | Amnezia VPN | MIT / GPL-2.0 | https://github.com/amnezia-vpn | Официальный клиент для туннелей AmneziaWG (устанавливает пользователь). |
-| OpenVPN | OpenVPN Inc. и участники | GPL-2.0 (с исключением для OpenSSL) | https://github.com/OpenVPN/openvpn | Официальный community-клиент (устанавливает пользователь). |
+| AmneziaWG (amneziawg-go 3.1.20260828) | WireGuard LLC, Amnezia VPN и участники | MIT; хост BYDLO — GPL-3.0-or-later | https://github.com/amnezia-vpn/amneziawg-go/tree/v3.1.20260828 | Компилируется вместе с минимальным процесс-хостом, без клиента Amnezia. |
+| Wintun 0.14.1 | WireGuard LLC | Prebuilt Binaries License | https://www.wintun.net/ | Неизменённая подписанная DLL для AmneziaWG на Windows; собственная копия также входит в upstream-архив Xray. Текст лицензии: `engines/licenses/Wintun.txt` и `LICENSE-Wintun` рядом с Xray; используется только через разрешённый Wintun API. |
+| OpenVPN 2.7.8 | OpenVPN Inc. и участники | GPL-2.0 (с исключениями для OpenSSL/Apache-2.0) | https://github.com/OpenVPN/openvpn/tree/v2.7.8 | Встроенный консольный движок без OpenVPN GUI и служб. |
+| OpenVPN DCO 2.8.14 | OpenVPN Inc. и участники | GPL-2.0 | https://github.com/OpenVPN/ovpn-dco-win/tree/2.8.14 | Неизменённые подписанные драйверы Windows 10/11; установка только с явным согласием. |
+| OpenSSL 3.6.5 | OpenSSL Project Authors | Apache-2.0 | https://github.com/openssl/openssl/tree/openssl-3.6.5 | Windows: DLL из официального MSI; Unix: статическая библиотека OpenVPN. |
+| libcap-ng 0.9.6 | Steve Grubb и участники | LGPL-2.1-or-later | https://github.com/stevegrubb/libcap-ng/tree/v0.9.6 | Статическая библиотека Linux OpenVPN; соответствующие исходники и скрипт пересборки включены. |
+| pkcs11-helper / Microsoft Visual C++ runtime | Alon Bar-Lev / Microsoft | BSD (выбранная альтернатива для pkcs11-helper) / условия распространения Microsoft runtime | https://github.com/OpenSC/pkcs11-helper | Неизменённые runtime DLL из официального Windows MSI; тексты OpenVPN bundle сохранены в `engines/licenses/OpenVPN-bundle.txt`. |
 
 Лицензия sing-box содержит дополнительные условия, ограничивающие использование названия «sing-box» для производных
 работ. BYDLO упоминает sing-box только для указания авторства и не переименовывает и не распространяет изменённые бинарники sing-box.
+
+В `engines/sources/` релиза включаются закреплённые исходники sing-box, Xray, OpenVPN, OpenSSL,
+DCO (Windows), libcap-ng (Linux), а для AmneziaWG — процесс-хост и полные vendored Go-зависимости с их лицензиями.
+Входы сборок и SHA-256 находятся в `engines/bundle-inputs.lock.json`; команды — в `docs/BUILD.md`.
+Windows MSI используется только как источник файлов: установщик и его custom actions никогда не запускаются сборкой.
 
 ## Перенесённый код: tg-ws-proxy
 
