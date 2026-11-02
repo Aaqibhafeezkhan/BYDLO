@@ -57,9 +57,11 @@ public sealed partial class ToolsViewModel : PageViewModel
         _tgVerbose = s.TgWsProxy.Verbose;
         _tgCustomExe = s.TgWsProxy.CustomExecutable ?? "";
         _pythonPath = OperatingSystem.IsWindows() ? "python" : "python3";
+        LoadSelection();
         shell.PropertyChanged += OnShellChanged;
         L.PropertyChanged += (_, _) =>
         {
+            if (_selectionReport is not null && !IsSelecting) { ShowSelectionReport(_selectionReport); }
             OnPropertyChanged(nameof(ZapretError));
             OnPropertyChanged(nameof(TgError));
             RefreshZapret();
@@ -157,7 +159,7 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public override void OnShown()
     {
-        RefreshZapret();
+        if (!IsSelecting) { RefreshZapret(); }
         _ = RefreshTgAsync();
         _ = RefreshEnginesAsync();
     }

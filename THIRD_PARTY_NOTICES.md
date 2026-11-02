@@ -63,3 +63,37 @@ SHA-256. Исходный код каждого движка доступен в
 - Cygwin DLL 3.4.10: LGPLv3+ и Linking Exception, тексты `CYGWIN_LICENSE`, LGPLv3 и дополнительные notices Newlib включены. Архив `cygwin-3.4.10-1-src.tar.xz` содержит соответствующие исходники и cygport recipe; источник — зеркало дистрибутива Cygwin в ČVUT.
 
 Релизные архивы включают `engines/licenses/` и (для Windows x64) `engines/sources/` с исходниками WinDivert и Cygwin. Их URL и SHA-256 закреплены отдельно в `engines/zapret-sources.lock.json`; упаковка прекращается при несовпадении. GPLv3 находится в корневом `LICENSE`. Бинарники не изменяются; библиотеку Cygwin/WinDivert можно заменить совместимой версией. Нативные пресеты написаны для BYDLO, код/стратегии Sergeydigl3 и других проектов без лицензии не копируются.
+
+## Перенос стандартных проверок Test Zapret
+
+`src/Bydlo.Engines/Zapret/TestZapretProbe.cs` переносит стандартную HTTP/TLS-часть
+[Flowseal Test Zapret 1.10.3](https://github.com/Flowseal/zapret-discord-youtube/blob/1.10.3/utils/test%20zapret.ps1)
+в управляемый жизненный цикл BYDLO. Изменения: структурированные результаты curl, отдельные
+таймауты/неизвестные результаты, проверка HTTP-кода, реальное время успешных ответов,
+отмена и запуск только собственных дочерних процессов. Интерактивный координатор, ping
+и DPI-suite не переносятся. © 2016–2026 bol-van; © 2024–2026 Flowseal. Лицензия MIT:
+
+```text
+MIT License
+
+Copyright (c) 2016-2026 bol-van
+Copyright (c) 2024-2026 Flowseal
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

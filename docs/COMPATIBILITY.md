@@ -110,3 +110,9 @@ LAN (IPv4, IPv6 link-local и ULA) и mesh-диапазоны исключают
 
 Схема: [TUN / strict_route](https://sing-box.sagernet.org/configuration/inbound/tun/),
 [SOCKS outbound](https://sing-box.sagernet.org/configuration/outbound/socks/).
+
+Автоподбор Zapret доступен в «Инструменты → Zapret»: Windows — аргументы winws из найденных BAT,
+Linux/macOS — нативные пресеты. Стандартные HTTP/TLS-проверки Test Zapret 1.10.3 перенесены
+в BYDLO; интерактивный скрипт не запускается. Проверка только по явному действию пользователя,
+с правами администратора/root, curl и возможностью отмены. Область измерений и ограничения:
+[автоподбор в TESTING.md](TESTING.md#автоподбор-zapret).

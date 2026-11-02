@@ -39,7 +39,7 @@ public sealed record SessionSnapshot(
 /// Owns one primary tunnel plus independent tool sessions (Zapret, TgWsProxy), checks conflicts,
 /// supervises engines and reconnects after crashes.
 /// </summary>
-public sealed class ConnectionManager : IAsyncDisposable
+public sealed partial class ConnectionManager : IAsyncDisposable
 {
     public const string PrimaryKey = "primary";
     public const string ZapretKey = "zapret";
@@ -191,6 +191,7 @@ public sealed class ConnectionManager : IAsyncDisposable
 
     private async Task StartToolAsync(string key, EngineKind kind, AppSettings settings, IReadOnlyList<ConflictIssue> issues, CancellationToken ct)
     {
+        settings = CloneSettings(settings);
         foreach (var w in issues.Where(i => i.Severity == ConflictSeverity.Warning))
         {
             _log.Warn(key, w.Message);
