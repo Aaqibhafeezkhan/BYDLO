@@ -50,7 +50,8 @@ jobs:
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-verification en --verify-desktop
       - name: Verify bundled engine UI (headless, mock only, no driver setup)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verification en --mock --verify-bundled-engines
-      - uses: actions/upload-artifact@v4
+      # Gitea rejects artifact actions v4+ (GHES API); v3 until we are back on GitHub (#57).
+      - uses: actions/upload-artifact@v3
         if: always()
         with:
           name: test-results-${{ matrix.os }}
@@ -96,7 +97,7 @@ jobs:
       - name: Add notices
         shell: bash
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-${{ matrix.rid }}/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         with:
           name: BYDLO-${{ matrix.rid }}
           path: publish/BYDLO-${{ matrix.rid }}
@@ -109,10 +110,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      # v3 has no "pattern": it downloads every artifact; the loop below only packs BYDLO-*.
+      - uses: actions/download-artifact@v3
         with:
           path: dist
-          pattern: BYDLO-*
       - name: Package and checksum
         run: |
           cd dist
