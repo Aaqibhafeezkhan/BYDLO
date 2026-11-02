@@ -53,19 +53,27 @@ public sealed partial class MainView : UserControl
             e.Handled = true;
             if (paths.Length > 0)
             {
-                await vm.PreviewExternalAsync(paths);
+                if (vm.IsAddServerOpen) { await vm.AddServerWizard.PreviewFilesAsync(paths); }
+                else { await vm.PreviewExternalAsync(paths); }
             }
         }
     }
 
     private async void OnPasteKey(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && DataContext is MainViewModel { IsAddServerOpen: true } shell)
+        {
+            shell.AddServerWizard.CloseCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
         // Text boxes retain their normal paste behavior. The import button also accepts QR images.
         var modifier = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
         if (!e.Handled && e.Key == Key.V && e.KeyModifiers == modifier && DataContext is MainViewModel vm)
         {
             e.Handled = true;
-            await vm.PasteImportCommand.ExecuteAsync(null);
+            if (vm.IsAddServerOpen) { await vm.AddServerWizard.PasteCommand.ExecuteAsync(null); }
+            else { await vm.PasteImportCommand.ExecuteAsync(null); }
         }
     }
 

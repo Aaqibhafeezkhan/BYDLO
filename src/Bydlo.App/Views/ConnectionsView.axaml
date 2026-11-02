@@ -13,46 +13,13 @@
         <TextBlock Classes="muted" Text="{l:T connections.subtitle}" TextWrapping="Wrap" />
       </StackPanel>
 
-      <!-- Import -->
-      <Border Classes="panel">
-        <StackPanel Spacing="12">
-          <TextBlock Classes="h3" Text="{l:T import.title}" />
-          <WrapPanel>
-            <Button Classes="primary" Margin="0,0,8,8" Command="{Binding PasteFromClipboardCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <c:OutlineIcon Data="{StaticResource LinePaste}" Width="16" Height="16" Foreground="{DynamicResource OnPrimaryBrush}" />
-                <TextBlock Text="{l:T import.clipboard}" Foreground="{DynamicResource OnPrimaryBrush}" />
-              </StackPanel>
-            </Button>
-            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding ImportFromFileCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <c:OutlineIcon Data="{StaticResource LineFile}" Width="16" Height="16" />
-                <TextBlock Text="{l:T import.file}" />
-              </StackPanel>
-            </Button>
-            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding ImportFromQrImageCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <c:OutlineIcon Data="{StaticResource LineQr}" Width="16" Height="16" />
-                <TextBlock Text="{l:T import.qr}" />
-              </StackPanel>
-            </Button>
-            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <c:OutlineIcon Data="{StaticResource LineFlask}" Width="16" Height="16" />
-                <TextBlock Text="{l:T import.demo}" />
-              </StackPanel>
-            </Button>
-          </WrapPanel>
-          <Expander Header="{l:T import.manual}" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="12">
-          <TextBox Text="{Binding ImportText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70" MaxHeight="160"
-                   Watermark="{l:T import.placeholder}" FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
-          <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T import.add}" Command="{Binding ImportFromTextCommand}" />
-            </StackPanel>
-          </Expander>
+      <Button Classes="primary" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="20,18">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <c:OutlineIcon Data="{StaticResource LinePlus}" Foreground="{DynamicResource OnPrimaryBrush}" />
+          <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" FontSize="16" />
         </StackPanel>
-      </Border>
-
+      </Button>
+      <Button Classes="ghost" Content="{l:T import.demo}" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}" HorizontalAlignment="Left" />
       <!-- Profiles -->
       <StackPanel Spacing="10">
         <TextBlock Classes="caps" Text="{l:T connections.profiles}" />
@@ -124,12 +91,6 @@
       <Expander Header="{l:T subs.title}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="12">
           <TextBlock Classes="faint" Text="{l:T subs.hint}" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-            <TextBox Text="{Binding SubscriptionUrl}" Watermark="https://…" />
-            <TextBox Grid.Row="1" Margin="0,8,0,0" Text="{Binding SubscriptionName}" Watermark="{l:T subs.name}" />
-            <Button Grid.Column="1" Grid.RowSpan="2" Margin="8,0,0,0" Classes="primary" VerticalAlignment="Stretch"
-                    Content="{l:T subs.add}" Command="{Binding AddSubscriptionCommand}" IsEnabled="{Binding !IsWorking}" />
-          </Grid>
           <ItemsControl ItemsSource="{Binding Subscriptions}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="st:Subscription">

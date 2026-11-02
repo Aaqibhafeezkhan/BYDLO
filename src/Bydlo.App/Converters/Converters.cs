@@ -6,6 +6,14 @@ using Avalonia.Media;
 
 namespace Bydlo.App.Services;
 
+public sealed class ProtocolLabelConverter : IValueConverter
+{
+    public static ProtocolLabelConverter Instance { get; } = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is Bydlo.Core.Models.ProtocolKind protocol ? Bydlo.App.ViewModels.Labels.Protocol(protocol) : value;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 /// <summary>Resource key → icon geometry (used by navigation items).</summary>
 public sealed class IconConverter : IValueConverter
 {

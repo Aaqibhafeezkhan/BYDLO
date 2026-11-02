@@ -109,15 +109,28 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            foreach (var item in imported)
+            var items = imported.ToList();
+            if (items.Select(p => p.Profile.Id).Distinct().Count() != items.Count || items.Any(p => _doc.Profiles.Any(existing => existing.Id == p.Profile.Id)))
+            { throw new InvalidDataException("New profiles must have unique IDs."); }
+            var written = new List<string>();
+            try
             {
-                item.Profile.SubscriptionId = subscriptionId ?? item.Profile.SubscriptionId;
-                _doc.Profiles.Add(item.Profile);
-                await secrets.SaveAsync(item.Profile.Id.ToString(), item.Secrets, ct).ConfigureAwait(false);
-                added.Add(item.Profile);
+                foreach (var item in items)
+                {
+                    item.Profile.SubscriptionId = subscriptionId ?? item.Profile.SubscriptionId;
+                    written.Add(item.Profile.Id.ToString());
+                    await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
+                    added.Add(item.Profile);
+                }
+                var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. added], Subscriptions = [.. _doc.Subscriptions] };
+                await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+                _doc = next;
             }
-
-            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+            catch
+            {
+                foreach (var id in written) { await secrets.DeleteAsync(id, CancellationToken.None).ConfigureAwait(false); }
+                throw;
+            }
         }
         finally
         {
@@ -177,6 +190,41 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
             _gate.Release();
         }
 
+        return sub;
+    }
+
+    /// <summary>Saves a previewed subscription and its credentials together, without downloading it again.</summary>
+    public async Task<Subscription> AddSubscriptionWithProfilesAsync(string name, string url, IReadOnlyList<ImportedProfile> profiles, CancellationToken ct = default)
+    {
+        var sub = new Subscription { Name = name, LastUpdated = DateTimeOffset.UtcNow };
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (profiles.Count == 0 || profiles.Select(p => p.Profile.Id).Distinct().Count() != profiles.Count ||
+                profiles.Any(p => _doc.Profiles.Any(existing => existing.Id == p.Profile.Id)))
+            { throw new InvalidDataException("A new subscription requires new profiles."); }
+            var written = new List<string>();
+            try
+            {
+                written.Add(SubscriptionSecretId(sub.Id));
+                await secrets.SaveAsync(written[0], new ProfileSecrets { Values = { ["url"] = url } }, ct).ConfigureAwait(false);
+                foreach (var item in profiles)
+                {
+                    written.Add(item.Profile.Id.ToString());
+                    await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
+                    item.Profile.SubscriptionId = sub.Id;
+                }
+                var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. profiles.Select(p => p.Profile)], Subscriptions = [.. _doc.Subscriptions, sub] };
+                await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+                _doc = next;
+            }
+            catch
+            {
+                foreach (var id in written) { await secrets.DeleteAsync(id, CancellationToken.None).ConfigureAwait(false); }
+                throw;
+            }
+        }
+        finally { _gate.Release(); }
         return sub;
     }
 

@@ -30,7 +30,7 @@ public sealed class ProfileImporter
     private readonly OpenVpnParser _openVpn = new();
 
     /// <summary>True when the text is a single http(s) URL that looks like a subscription rather than a proxy.</summary>
-    public static bool LooksLikeSubscriptionUrl(string text)
+    public static bool LooksLikeSubscriptionUrl(string text, bool allowRoot = false)
     {
         var t = text.Trim();
         if (t.Contains('\n') || !Uri.TryCreate(t, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
@@ -38,7 +38,7 @@ public sealed class ProfileImporter
             return false;
         }
 
-        return uri.AbsolutePath.Length > 1 || uri.Query.Length > 1;
+        return uri.UserInfo.Length == 0 && (uri.AbsolutePath.Length > 1 || uri.Query.Length > 1 || allowRoot && uri.IsDefaultPort);
     }
 
     public ImportResult ImportText(string text, string? sourceName = null)
@@ -146,11 +146,14 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
 {
     private const int MaxBytes = 5 * 1024 * 1024;
 
-    public async Task<ImportResult> FetchAsync(string url, CancellationToken ct = default)
+    public async Task<ImportResult> FetchAsync(string url, CancellationToken ct = default) =>
+        (await FetchPreviewAsync(url, ct).ConfigureAwait(false)).Import;
+
+    public async Task<SubscriptionPreview> FetchPreviewAsync(string url, CancellationToken ct = default)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http"))
         {
-            return new ImportResult([], ["Subscription URL must start with https://"]);
+            return new(new ImportResult([], ["Subscription URL must start with https://"]), new());
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -158,15 +161,28 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
         using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
-            return new ImportResult([], [$"Subscription server returned HTTP {(int)response.StatusCode}."]);
+            return new(new ImportResult([], [$"Subscription server returned HTTP {(int)response.StatusCode}."]), new());
         }
 
         if (response.Content.Headers.ContentLength > MaxBytes)
         {
-            return new ImportResult([], ["Subscription is too large."]);
+            return new(new ImportResult([], ["Subscription is too large."]), new());
         }
 
-        var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-        return body.Length > MaxBytes ? new ImportResult([], ["Subscription is too large."]) : importer.ImportText(body);
+        await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[8192];
+        int count;
+        while ((count = await stream.ReadAsync(chunk, ct).ConfigureAwait(false)) > 0)
+        {
+            if (buffer.Length + count > MaxBytes)
+            { return new(new ImportResult([], ["Subscription is too large."]), new()); }
+            buffer.Write(chunk, 0, count);
+        }
+        buffer.Position = 0;
+        using var reader = new StreamReader(buffer);
+        var body = await reader.ReadToEndAsync(ct).ConfigureAwait(false);
+        var metadata = SubscriptionMetadata.Parse(response.Headers.TryGetValues("subscription-userinfo", out var info) ? info.FirstOrDefault() : null);
+        return new(importer.ImportText(body), metadata);
     }
 }

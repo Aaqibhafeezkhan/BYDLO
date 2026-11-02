@@ -138,7 +138,7 @@ internal static class ImportVerification
         }
     }
 
-    private static WriteableBitmap MakeQr(string payload)
+    internal static WriteableBitmap MakeQr(string payload)
     {
         var writer = new BarcodeWriterPixelData
         {

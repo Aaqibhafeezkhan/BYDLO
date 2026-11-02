@@ -18,7 +18,7 @@ public sealed partial class MainViewModel
 
     public ObservableCollection<string> ImportPreviewItems { get; } = [];
 
-    public bool CanReceiveActivation => !_preparingImport && !IsImportBusy && !HasImportPreview;
+    public bool CanReceiveActivation => !_preparingImport && !IsImportBusy && !HasImportPreview && !IsAddServerOpen;
 
     [ObservableProperty] private bool _isDragOver;
     [ObservableProperty] private bool _hasImportPreview;

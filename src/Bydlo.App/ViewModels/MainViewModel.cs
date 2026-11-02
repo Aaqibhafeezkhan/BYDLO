@@ -48,7 +48,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private int _toastVersion;
     private string? _toastLocalizationKey;
 
-    public MainViewModel(AppServices services)
+    public MainViewModel(AppServices services, Bydlo.Core.Import.SubscriptionClient? subscriptionClient = null)
     {
         Services = services;
         L.PropertyChanged += (_, _) =>
@@ -65,6 +65,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         Home = new HomeViewModel(this);
         Connections = new ConnectionsViewModel(this);
+        AddServerWizard = new AddServerWizardViewModel(this, subscriptionClient);
         Tools = new ToolsViewModel(this);
         Routing = new RoutingViewModel(this);
         Statistics = new StatisticsViewModel(this);
@@ -90,6 +91,19 @@ public sealed partial class MainViewModel : ViewModelBase
     public HomeViewModel Home { get; }
 
     public ConnectionsViewModel Connections { get; }
+
+    public AddServerWizardViewModel AddServerWizard { get; }
+
+    [ObservableProperty] private bool _isAddServerOpen;
+
+    [RelayCommand]
+    private void OpenAddServer()
+    {
+        if (AddServerWizard.Busy || HasImportPreview || IsImportBusy) { return; }
+        DismissClipboardOffer();
+        AddServerWizard.Reset();
+        IsAddServerOpen = true;
+    }
 
     public ToolsViewModel Tools { get; }
 

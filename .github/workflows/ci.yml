@@ -46,6 +46,8 @@ jobs:
         run: dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
       - name: Verify import flows (headless, no engines or network)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/import-verification en --verify-import
+      - name: Verify add-server wizard (headless, mock only, fake HTTP)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/wizard-verification ru --mock --verify-wizard
       - name: Verify Zapret selection UI (headless, no engines or network)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/selection-verification en --verify-zapret-selection
       - name: Verify desktop integration (headless, mock only, no OS registration)

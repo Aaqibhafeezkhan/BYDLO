@@ -12,21 +12,7 @@
         <c:OutlineIcon Data="{StaticResource LineServers}" Width="40" Height="40" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
         <TextBlock Text="{l:T home.empty.title}" FontSize="30" FontWeight="Medium" TextAlignment="Center" TextWrapping="Wrap" />
         <TextBlock Classes="muted" Text="{l:T home.empty.text}" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460" />
-        <WrapPanel HorizontalAlignment="Center">
-          <Button Classes="primary" Content="{l:T import.link.action}" Command="{Binding ShowLinkImportCommand}" Margin="0,0,8,8" />
-          <Button Classes="ghost" Content="{l:T import.file.action}" Command="{Binding Shell.Connections.ImportFromFileCommand}" Margin="0,0,8,8" />
-          <Button Classes="ghost" Content="{l:T import.qr.action}" Command="{Binding Shell.Connections.ImportFromQrImageCommand}" Margin="0,0,0,8" />
-        </WrapPanel>
-        <Border Classes="panel" IsVisible="{Binding IsLinkImportVisible}">
-          <StackPanel Spacing="12">
-            <TextBlock Classes="h3" Text="{l:T import.link.title}" />
-            <TextBox Text="{Binding LinkImportText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" MaxHeight="160" Watermark="{l:T import.placeholder}" />
-            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-              <Button Classes="ghost" Content="{l:T common.cancel}" Command="{Binding HideLinkImportCommand}" />
-              <Button Classes="primary" Content="{l:T import.add}" Command="{Binding ImportLinkCommand}" />
-            </StackPanel>
-          </StackPanel>
-        </Border>
+        <Button Classes="primary" Content="{l:T wizard.title}" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Center" />
       </StackPanel>
       <StackPanel IsVisible="{Binding !IsEmpty}" x:Name="Hero" Margin="0,28,0,0" HorizontalAlignment="Stretch">
         <Border Classes="connection-mark" Classes.connected="{Binding IsConnected}" Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}"
