@@ -1,12 +1,14 @@
 # Как помочь BYDLO
 
+> **Временно:** репозиторий, issues и CI переехали на [git.ywfl.dev/endercodezz/BYDLO](https://git.ywfl.dev/endercodezz/BYDLO), пока аккаунт на GitHub заблокирован. Номера issues и история коммитов сохранены.
+
 Спасибо, что хотите помочь! BYDLO — открытый проект под GPL-3.0, и любой вклад ценен: исправление ошибки, перевод,
 тест на реальной сети, улучшение документации или новый движок.
 
 Если вы здесь впервые, начните с задач с меткой
-[`good first issue`](https://github.com/endercodezz/BYDLO/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22):
+[`good first issue`](https://git.ywfl.dev/endercodezz/BYDLO/issues?state=open&labels=37):
 они небольшие и не требуют знания всего проекта. Задачи, где особенно нужна помощь, помечены
-[`help wanted`](https://github.com/endercodezz/BYDLO/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+[`help wanted`](https://git.ywfl.dev/endercodezz/BYDLO/issues?state=open&labels=41).
 
 ## Сначала о безопасности сети
 
@@ -28,7 +30,7 @@ BYDLO управляет VPN, прокси и Zapret, то есть может �
 На Linux нужны системные зависимости Avalonia (X11 и fontconfig).
 
 ```bash
-git clone https://github.com/endercodezz/BYDLO.git
+git clone https://git.ywfl.dev/endercodezz/BYDLO.git
 cd BYDLO
 source scripts/env.sh                         # кэши в .tmp/, BYDLO_SAFE_DEV=1
 ./scripts/check.sh                            # restore + сборка Release + тесты

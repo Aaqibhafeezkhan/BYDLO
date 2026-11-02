@@ -11,10 +11,10 @@
 
 ## v0.2 — проверка и доработка
 
-- ✅ TgWsProxy без Python: ядро Flowseal tg-ws-proxy перенесено на C# и встроено в BYDLO ([#29](https://github.com/endercodezz/BYDLO/issues/29), этап 2).
+- ✅ TgWsProxy без Python: ядро Flowseal tg-ws-proxy перенесено на C# и встроено в BYDLO ([#29](https://git.ywfl.dev/endercodezz/BYDLO/issues/29), этап 2).
 - Реализована упаковка остальных движков #29: sing-box/Xray, AmneziaWG без клиента на Windows/Linux, OpenVPN с DCO по согласию на Windows и статическим OpenSSL на Unix. Реальные подключения и установку DCO проверяет владелец; автоматические проверки их не запускают.
 - ✅ Проверено в реальной сети на Windows x64: Zapret (Flowseal) и TgWsProxy.
-- ✅ TgWsProxy: живые соединения в пуле и автоматический перезапуск слушателя после сна ([#51](https://github.com/endercodezz/BYDLO/issues/51)); проверено на Windows x64.
+- ✅ TgWsProxy: живые соединения в пуле и автоматический перезапуск слушателя после сна ([#51](https://git.ywfl.dev/endercodezz/BYDLO/issues/51)); проверено на Windows x64.
 - TgWsProxy: HTTP/2-мультиплексирование медиа через Cloudflare (`cf_h2` в оригинале).
 - Пройти матрицу ручного тестирования на всех десктопных платформах и исправить найденное.
 - Редактор профилей (переименование, параметры, учётные данные OpenVPN, выбор движка для профиля).
@@ -40,4 +40,4 @@
 - Переход на Avalonia 12.
 - Другие языки (переводы от сообщества).
 
-Zapret для Android (root-first, исследование VpnService) отслеживается в [issue #21](https://github.com/endercodezz/BYDLO/issues/21). Windows ARM64 ожидает совместимый WinDivert driver.
+Zapret для Android (root-first, исследование VpnService) отслеживается в [issue #21](https://git.ywfl.dev/endercodezz/BYDLO/issues/21). Windows ARM64 ожидает совместимый WinDivert driver.

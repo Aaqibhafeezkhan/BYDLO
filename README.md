@@ -6,6 +6,8 @@
 
 <p align="center"><img src="docs/images/home-connected-518abc8255e1.png" width="880" alt="Главный экран BYDLO: подключение и выбранный сервер"></p>
 
+> **Временно:** репозиторий, issues и CI переехали на [git.ywfl.dev/endercodezz/BYDLO](https://git.ywfl.dev/endercodezz/BYDLO), пока аккаунт на GitHub заблокирован. Номера issues и история коммитов сохранены.
+
 BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
 BYDLO не изобретает протоколы заново: он управляет проверенными движками (sing-box, Xray-core, WireGuard,
@@ -82,7 +84,7 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 **PowerShell — обычный пользовательский запуск:**
 
 ```powershell
-git clone https://github.com/endercodezz/BYDLO.git
+git clone https://git.ywfl.dev/endercodezz/BYDLO.git
 cd BYDLO
 # Убрать флаги разработки только из текущей оболочки.
 Remove-Item Env:BYDLO_MOCK, Env:BYDLO_SAFE_DEV, Env:BYDLO_DATA_DIR -ErrorAction SilentlyContinue
@@ -94,7 +96,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 **bash — обычный пользовательский запуск:**
 
 ```bash
-git clone https://github.com/endercodezz/BYDLO.git
+git clone https://git.ywfl.dev/endercodezz/BYDLO.git
 cd BYDLO
 unset BYDLO_MOCK BYDLO_SAFE_DEV BYDLO_DATA_DIR
 dotnet restore BYDLO.slnx
@@ -138,7 +140,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 Проект открыт для всех: исправления, переводы, тесты на реальной сети, новые движки и документация.
 Начните с [CONTRIBUTING.md](CONTRIBUTING.md) — там сборка, Mock-режим, правила сетевой безопасности и процесс
 issue → ветка → PR. Задачи для первого вклада помечены
-[`good first issue`](https://github.com/endercodezz/BYDLO/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+[`good first issue`](https://git.ywfl.dev/endercodezz/BYDLO/issues?state=open&labels=37).
 
 ## Благодарности
 
