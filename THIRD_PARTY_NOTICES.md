@@ -86,6 +86,7 @@ SOFTWARE.
 | Шрифт Inter (через Avalonia.Fonts.Inter) | SIL Open Font License 1.1 | https://github.com/rsms/inter |
 | Material Design Icons (геометрия иконок в `src/Bydlo.App/Themes/Icons.axaml`) | Apache-2.0 | https://github.com/Templarian/MaterialDesign |
 | Тестовые файлы `tests/Bydlo.Tests/Fixtures/general*.bat.txt` (стратегии Flowseal без изменений) | MIT, © 2016-2026 bol-van, © 2024-2026 Flowseal | https://github.com/Flowseal/zapret-discord-youtube |
+| Списки подписок [igareck/vpn-configs-for-russia](https://github.com/igareck/vpn-configs-for-russia) (скачиваются приложением с зеркал автора, в проект не копируются) | GPL-3.0 | https://github.com/igareck/vpn-configs-for-russia |
 
 ## Тексты лицензий
 

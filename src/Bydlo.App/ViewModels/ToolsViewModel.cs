@@ -138,6 +138,15 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public string? ZapretError => Shell.Zapret.Status == ConnectionStatus.Error ? Loc.Error(Shell.Zapret.Error ?? "", Shell.Zapret.ErrorLocalizationKey) : null;
 
+    /// <summary>Zapret failed only because of missing elevation: offer a one-click restart here.</summary>
+    public bool ZapretNeedsElevation => Shell.Zapret.Status == ConnectionStatus.Error
+        && Shell.Zapret.ErrorLocalizationKey == "error.engine.zapret.admin";
+
+    /// <summary>Restart button is useful only where the OS supports relaunch (Windows, non-elevated).</summary>
+    public bool ShowRestartElevated => ZapretNeedsElevation
+        && !Services.Privileges.IsElevated
+        && Services.Privileges.CanRestartElevated;
+
     // ---------- TgWsProxy ----------
 
     [ObservableProperty]
@@ -178,6 +187,7 @@ public sealed partial class ToolsViewModel : PageViewModel
         if (!IsSelecting) { RefreshZapret(); }
         _ = RefreshTgAsync();
         _ = RefreshEnginesAsync();
+        MaybeRunStartupCheck();
     }
 
     public void ReloadSettings()
@@ -216,6 +226,9 @@ public sealed partial class ToolsViewModel : PageViewModel
         SaveZapretSettings();
         await Shell.Guard(() => Services.Connections.StartZapretAsync(Services.EffectiveSettings));
     }
+
+    [RelayCommand]
+    private Task RestartElevated() => Shell.Settings.RestartElevatedCommand.ExecuteAsync(null);
 
     [RelayCommand]
     private async Task BrowseZapret()
@@ -501,6 +514,8 @@ public sealed partial class ToolsViewModel : PageViewModel
             OnPropertyChanged(nameof(ZapretRunning));
             OnPropertyChanged(nameof(ZapretStatus));
             OnPropertyChanged(nameof(ZapretError));
+            OnPropertyChanged(nameof(ZapretNeedsElevation));
+            OnPropertyChanged(nameof(ShowRestartElevated));
         }
         else if (e.PropertyName == nameof(MainViewModel.Tg))
         {

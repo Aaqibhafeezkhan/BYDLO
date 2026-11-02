@@ -26,7 +26,7 @@ public sealed partial class App : Application
         // Loading settings and profiles is fast local file I/O; doing it synchronously keeps startup simple.
         Services = Task.Run(() => AppServices.CreateAsync(Args)).GetAwaiter().GetResult();
         Loc.Instance.SetLanguage(Services.Settings.Language);
-        Services.Theme.Apply(Services.Settings.Theme);
+        ApplyTheme(Services);
         Services.Theme.TrackSystemTheme();
         var shell = new MainViewModel(Services);
 
@@ -44,4 +44,7 @@ public sealed partial class App : Application
 
         base.OnFrameworkInitializationCompleted();
     }
+
+    /// <summary>Applies the saved theme; a broken or missing custom file falls back to Purple.</summary>
+    private static void ApplyTheme(AppServices services) => services.Theme.ApplySaved(services.Settings, services.Paths.DataDirectory);
 }
