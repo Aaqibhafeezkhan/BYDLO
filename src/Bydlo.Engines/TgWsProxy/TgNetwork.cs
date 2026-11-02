@@ -15,6 +15,15 @@ public interface ITgNetwork
 
     /// <summary>Downloads a small text file (the Cloudflare domain list); null on any failure.</summary>
     Task<string?> GetStringAsync(Uri uri, IReadOnlyDictionary<string, string> pinnedHosts, CancellationToken ct);
+
+    /// <summary>Binds the local listener that Telegram clients connect to.</summary>
+    ITgListener Listen(string host, int port);
+}
+
+/// <summary>The local listening socket. <see cref="AcceptAsync"/> throws once the socket is dead.</summary>
+public interface ITgListener : IDisposable
+{
+    Task<(Stream Stream, string Label)> AcceptAsync(CancellationToken ct);
 }
 
 /// <summary>Real sockets. Every call checks <see cref="NetworkSafetyGuard"/>, so nothing connects in development.</summary>
@@ -86,8 +95,9 @@ public sealed class SystemTgNetwork(int bufferSize = 256 * 1024) : ITgNetwork
         }
     }
 
-    /// <summary>Binds the local listener.</summary>
-    internal static TcpListener Listen(string host, int port)
+    public ITgListener Listen(string host, int port) => new SystemTgListener(Bind(host, port), bufferSize);
+
+    private static TcpListener Bind(string host, int port)
     {
         NetworkSafetyGuard.EnsureAllowed("start the TgWsProxy listener");
         var address = host is "" or "0.0.0.0" ? IPAddress.Any
@@ -99,5 +109,23 @@ public sealed class SystemTgNetwork(int bufferSize = 256 * 1024) : ITgNetwork
         listener.Server.NoDelay = true;
         listener.Start();
         return listener;
+    }
+}
+
+internal sealed class SystemTgListener(TcpListener listener, int bufferSize) : ITgListener
+{
+    public async Task<(Stream Stream, string Label)> AcceptAsync(CancellationToken ct)
+    {
+        var socket = await listener.AcceptSocketAsync(ct).ConfigureAwait(false);
+        socket.NoDelay = true;
+        socket.ReceiveBufferSize = bufferSize;
+        socket.SendBufferSize = bufferSize;
+        return (new NetworkStream(socket, ownsSocket: true), socket.RemoteEndPoint?.ToString() ?? "?");
+    }
+
+    public void Dispose()
+    {
+        listener.Stop();
+        listener.Dispose();
     }
 }

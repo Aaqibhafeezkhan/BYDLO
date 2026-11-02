@@ -201,6 +201,127 @@ public class TgWsProxyTests
         await ws.DisposeAsync();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Idle_websocket_notices_server_close_and_answers_ping_without_a_reader(bool closeFrame)
+    {
+        var (client, server) = DuplexPipe.Create();
+        var serverTask = Task.Run(async () =>
+        {
+            await ReadHttpHeadAsync(server);
+            await server.WriteAsync("HTTP/1.1 101 Switching Protocols\r\n\r\n"u8.ToArray());
+            await server.WriteAsync(Frame(0x9, "idle"u8, fin: true));
+            var (op, payload) = await ReadClientFrameAsync(server);
+            Assert.Equal(0xA, op);
+            Assert.Equal("idle"u8.ToArray(), payload);
+            if (closeFrame)
+            {
+                await server.WriteAsync(Frame(0x8, [0x03, 0xE8], fin: true));
+            }
+            else
+            {
+                await server.DisposeAsync();
+            }
+        });
+
+        // Nobody calls ReceiveAsync: this is a connection waiting in the pool.
+        await using var ws = await RawWebSocket.UpgradeAsync(client, "kws2.web.telegram.org", "/apiws", CancellationToken.None);
+        await serverTask.WaitAsync(TimeSpan.FromSeconds(10));
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!ws.IsClosed && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(ws.IsClosed);
+        await Assert.ThrowsAsync<IOException>(() => ws.SendAsync(new byte[1], CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Pool_hands_out_a_live_connection_after_warmup()
+    {
+        var network = new FakeTgNetwork();
+        var options = new TgWsProxyOptions { Secret = Secret, PoolSize = 1, DcRedirects = new Dictionary<int, string> { [2] = "149.154.167.220" }, CfProxyFallback = false };
+        await using var proxy = new TgWsProxyServer(options, network, (_, _) => { });
+        await proxy.StartAsync();
+
+        // Warmup opens one regular and one media connection to the configured IP with the real Host name.
+        var upstreams = new[] { await network.NextAsync(), await network.NextAsync() };
+        foreach (var upstream in upstreams)
+        {
+            Assert.Equal(("149.154.167.220", 443, true), (upstream.Host, upstream.Port, upstream.Validate));
+            var request = await ReadHttpHeadAsync(upstream.Stream);
+            Assert.Contains("GET /apiws HTTP/1.1", request, StringComparison.Ordinal);
+            await upstream.Stream.WriteAsync("HTTP/1.1 101 Switching Protocols\r\n\r\n"u8.ToArray());
+        }
+
+        var pool = proxy.Pool;
+        RawWebSocket? ws = null;
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (ws is null && DateTime.UtcNow < deadline)
+        {
+            ws = pool.Get(2, isMedia: false, isTestDc: false);
+            await Task.Delay(10);
+        }
+
+        Assert.NotNull(ws);
+        Assert.False(ws.IsClosed);
+        await ws.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Listener_is_rebound_after_the_socket_dies()
+    {
+        var network = new FakeTgNetwork();
+        var logs = new ConcurrentQueue<string>();
+        await using var proxy = new TgWsProxyServer(new TgWsProxyOptions { Secret = Secret, PoolSize = 0, CfProxyFallback = false }, network, (_, m) => logs.Enqueue(m));
+        string? fault = null;
+        proxy.Faulted += (_, m) => fault = m;
+        await proxy.StartAsync();
+        Assert.Equal(1, network.Listens);
+
+        network.Listener!.Fail(new IOException("socket died"));
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (network.Listens < 2 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(20);
+        }
+
+        Assert.Equal(2, network.Listens);
+        Assert.Null(fault);
+        Assert.Contains(logs, l => l.Contains("Server restored", StringComparison.Ordinal));
+
+        // The new listener serves clients: a wrong handshake is still answered by the proxy.
+        var (clientSide, proxySide) = DuplexPipe.Create();
+        network.Listener!.Accept(proxySide);
+        await clientSide.WriteAsync(new byte[64]);
+        await clientSide.DisposeAsync();
+        deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!logs.Any(l => l.Contains("bad handshake", StringComparison.Ordinal)) && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(20);
+        }
+
+        Assert.Contains(logs, l => l.Contains("bad handshake", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Proxy_faults_when_the_port_cannot_be_bound_again()
+    {
+        var network = new FakeTgNetwork();
+        await using var proxy = new TgWsProxyServer(new TgWsProxyOptions { Secret = Secret, PoolSize = 0, CfProxyFallback = false }, network, (_, _) => { });
+        var faulted = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        proxy.Faulted += (_, m) => faulted.TrySetResult(m);
+        await proxy.StartAsync();
+
+        network.ListenError = new IOException("address in use");
+        network.Listener!.Fail(new IOException("socket died"));
+        var message = await faulted.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.Contains("socket died", message, StringComparison.Ordinal);
+        Assert.Equal(4, network.Listens); // first bind + three attempts
+    }
+
     [Fact]
     public async Task WebSocket_upgrade_failure_reports_status()
     {
@@ -576,6 +697,27 @@ internal sealed class FakeTgNetwork : ITgNetwork
 
     public Task<string?> GetStringAsync(Uri uri, IReadOnlyDictionary<string, string> pinnedHosts, CancellationToken ct) => Task.FromResult<string?>(null);
 
+    public int Listens => Volatile.Read(ref _listens);
+
+    public FakeListener? Listener { get; private set; }
+
+    /// <summary>When set, every further <see cref="Listen"/> call fails with it.</summary>
+    public Exception? ListenError { get; set; }
+
+    private int _listens;
+
+    public ITgListener Listen(string host, int port)
+    {
+        Interlocked.Increment(ref _listens);
+        if (ListenError is { } error)
+        {
+            throw error;
+        }
+
+        Listener = new FakeListener();
+        return Listener;
+    }
+
     public async Task<Upstream> NextAsync() => await _connections.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
 
     private Task<Stream> Open(string host, int port, string? serverName, bool validate)
@@ -587,6 +729,35 @@ internal sealed class FakeTgNetwork : ITgNetwork
     }
 
     public sealed record Upstream(string Host, int Port, string? ServerName, bool Validate, Stream Stream);
+
+    /// <summary>Accepts connections pushed by the test; <see cref="Fail"/> simulates a dead listening socket.</summary>
+    public sealed class FakeListener : ITgListener
+    {
+        private readonly System.Threading.Channels.Channel<Stream> _incoming = System.Threading.Channels.Channel.CreateUnbounded<Stream>();
+        private Exception? _failure;
+
+        public void Accept(Stream stream) => _incoming.Writer.TryWrite(stream);
+
+        public void Fail(Exception error)
+        {
+            _failure = error;
+            _incoming.Writer.TryComplete();
+        }
+
+        public async Task<(Stream Stream, string Label)> AcceptAsync(CancellationToken ct)
+        {
+            try
+            {
+                return (await _incoming.Reader.ReadAsync(ct), "fake");
+            }
+            catch (System.Threading.Channels.ChannelClosedException) when (_failure is not null)
+            {
+                throw _failure;
+            }
+        }
+
+        public void Dispose() => _incoming.Writer.TryComplete();
+    }
 }
 
 /// <summary>Two connected in-memory streams; disposing one end signals end-of-stream to the other.</summary>
