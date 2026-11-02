@@ -20,6 +20,39 @@ public sealed class XrayConfigBuilder
     public string BuildJson(Profile profile, ProfileSecrets secrets, BuildContext ctx) =>
         Build(profile, secrets, ctx).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
 
+    /// <summary>
+    /// Builds a relay chain: traffic enters at <c>hops[0]</c> and leaves at the last hop.
+    /// Every hop routes through the previous one via <c>proxySettings</c>.
+    /// Routing rules point at the exit hop.
+    /// </summary>
+    public string BuildChainJson(IReadOnlyList<ChainHop> hops, BuildContext ctx) =>
+        BuildChain(hops, ctx).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+
+    public JsonObject BuildChain(IReadOnlyList<ChainHop> hops, BuildContext ctx)
+    {
+        if (hops.Count < ChainValidator.MinHops)
+        {
+            throw new Engines.EngineException("A chain needs at least two servers.", localizationKey: "error.chain.toofew");
+        }
+
+        if (hops.Count > ChainValidator.MaxHops)
+        {
+            throw new Engines.EngineException("This chain has too many hops.", localizationKey: "error.chain.toolong");
+        }
+
+        foreach (var hop in hops)
+        {
+            if (!Supported.Contains(hop.Profile.Protocol))
+            {
+                throw new Engines.EngineException($"The {hop.Profile.Protocol} hop cannot be chained by Xray.", localizationKey: "error.chain.engine");
+            }
+        }
+
+        return BuildCore(ctx, hops.Select((h, i) => BuildOutbound(h.Profile, h.Secrets, Tag(i), i > 0 ? Tag(i - 1) : null)).ToList(), Tag(hops.Count - 1));
+    }
+
+    internal static string Tag(int index) => $"proxy-{index}";
+
     public JsonObject Build(Profile p, ProfileSecrets s, BuildContext ctx)
     {
         if (!Supported.Contains(p.Protocol))
@@ -27,6 +60,11 @@ public sealed class XrayConfigBuilder
             throw new NotSupportedException($"Xray adapter does not handle {p.Protocol}.");
         }
 
+        return BuildCore(ctx, [BuildOutbound(p, s)], "proxy");
+    }
+
+    private static JsonObject BuildCore(BuildContext ctx, List<JsonObject> proxies, string proxyTag)
+    {
         var settings = ctx.Settings;
         var routing = settings.Routing;
         var rules = new JsonArray
@@ -35,7 +73,7 @@ public sealed class XrayConfigBuilder
             {
                 ["type"] = "field",
                 ["domain"] = Arr(ConnectionCheckService.ProviderDomains.Select(d => "domain:" + d)),
-                ["outboundTag"] = "proxy",
+                ["outboundTag"] = proxyTag,
             },
         };
         if (routing.BypassPrivateNetworks)
@@ -98,9 +136,9 @@ public sealed class XrayConfigBuilder
                     ["settings"] = httpSettings,
                 }),
             ["outbounds"] = new JsonArray(
-                BuildOutbound(p, s),
+                [.. proxies,
                 new JsonObject { ["tag"] = "direct", ["protocol"] = "freedom" },
-                new JsonObject { ["tag"] = "block", ["protocol"] = "blackhole" }),
+                new JsonObject { ["tag"] = "block", ["protocol"] = "blackhole" }]),
             ["routing"] = new JsonObject { ["domainStrategy"] = "IPIfNonMatch", ["rules"] = rules },
         };
         if (ctx.ClashApiPort is { } statsPort)
@@ -116,9 +154,10 @@ public sealed class XrayConfigBuilder
         return root;
     }
 
-    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s)
+    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, string tag = "proxy", string? via = null)
     {
-        var o = new JsonObject { ["tag"] = "proxy" };
+        var o = new JsonObject { ["tag"] = tag };
+        var needsStream = true;
         switch (p.Protocol)
         {
             case ProtocolKind.Vless:
@@ -151,7 +190,8 @@ public sealed class XrayConfigBuilder
                         ["address"] = p.Host, ["port"] = p.Port, ["method"] = p.Option(Keys.Method) ?? "aes-256-gcm", ["password"] = s[Keys.Password] ?? "",
                     }),
                 };
-                return o;
+                needsStream = false;
+                break;
             case ProtocolKind.Socks5:
             case ProtocolKind.Http:
                 o["protocol"] = p.Protocol == ProtocolKind.Socks5 ? "socks" : "http";
@@ -162,10 +202,21 @@ public sealed class XrayConfigBuilder
                 }
 
                 o["settings"] = new JsonObject { ["servers"] = new JsonArray(server) };
-                return o;
+                needsStream = false;
+                break;
         }
 
-        o["streamSettings"] = BuildStream(p, p.Protocol == ProtocolKind.Trojan ? "tls" : "none");
+        if (needsStream)
+        {
+            o["streamSettings"] = BuildStream(p, p.Protocol == ProtocolKind.Trojan ? "tls" : "none");
+        }
+
+        // Chain relay: dial the server through the previous hop.
+        if (via is not null)
+        {
+            o["proxySettings"] = new JsonObject { ["tag"] = via, ["transportLayer"] = true };
+        }
+
         return o;
     }
 

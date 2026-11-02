@@ -43,6 +43,7 @@ public sealed class AmneziaEngine(IProcessRunner runner, LogRedactor redactor, E
 
     protected override async Task<ProcessSpec> PrepareAsync(EngineStartRequest request, EngineAvailability availability, CancellationToken ct)
     {
+        ChainGuards.ThrowIfChained(EngineKind.AmneziaWG, request);
         var raw = request.Secrets[Keys.RawConfig] ?? throw new EngineException("Profile has no stored configuration.");
         try { _config = await AmneziaConfig.ParseAsync(raw, resolve ?? ResolveAsync, ct).ConfigureAwait(false); }
         catch (Exception ex) when (ex is FormatException or KeyNotFoundException or ArgumentException)

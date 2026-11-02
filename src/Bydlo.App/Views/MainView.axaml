@@ -144,6 +144,10 @@
       <v:AddServerWizardView DataContext="{Binding AddServerWizard}" />
     </Border>
 
+    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" IsVisible="{Binding IsChainEditorOpen}" Background="{DynamicResource BackdropBrush}">
+      <v:ChainEditorView DataContext="{Binding ChainEditor}" />
+    </Border>
+
     <!-- First-run onboarding -->
     <Border Grid.RowSpan="3" Grid.ColumnSpan="2" IsVisible="{Binding IsOnboardingVisible}" Background="{DynamicResource ScrimBrush}">
       <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" VerticalContentAlignment="Center">

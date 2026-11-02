@@ -64,6 +64,7 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
 
     protected override async Task<ProcessSpec> PrepareAsync(EngineStartRequest request, EngineAvailability availability, CancellationToken ct)
     {
+        ChainGuards.ThrowIfChained(EngineKind.OpenVpn, request);
         var raw = request.Secrets[Keys.RawConfig] ?? throw new EngineException("Profile has no stored .ovpn configuration.");
         _configFile = Path.Combine(request.WorkDirectory, "profile.ovpn");
         await SecureFile.WriteAsync(_configFile, raw, ct).ConfigureAwait(false);

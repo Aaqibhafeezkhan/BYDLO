@@ -58,15 +58,22 @@ public sealed partial class MainViewModel : ViewModelBase
             {
                 Toast = Loc.Error(Toast, _toastLocalizationKey);
             }
+
+            foreach (var c in Chains)
+            {
+                c.RefreshDetails();
+            }
         };
         _isOnboardingVisible = !services.Settings.OnboardingCompleted;
         _onboardingLanguage = services.Settings.Language;
         _onboardingTheme = services.Settings.Theme;
         ReloadProfiles();
+        ReloadChains();
 
         Home = new HomeViewModel(this);
         Connections = new ConnectionsViewModel(this);
         AddServerWizard = new AddServerWizardViewModel(this, subscriptionClient);
+        ChainEditor = new ChainEditorViewModel(this);
         Tools = new ToolsViewModel(this);
         Routing = new RoutingViewModel(this);
         Statistics = new StatisticsViewModel(this);
@@ -84,6 +91,11 @@ public sealed partial class MainViewModel : ViewModelBase
         _currentNav.IsSelected = true;
 
         services.Connections.SessionChanged += (_, s) => Dispatcher.UIThread.Post(() => OnSessionChanged(s));
+        Chains.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasChains));
+            OnPropertyChanged(nameof(HasNoChains));
+        };
         _hasOrphans = services.Orphans.Count > 0;
     }
 
@@ -106,6 +118,26 @@ public sealed partial class MainViewModel : ViewModelBase
         IsAddServerOpen = true;
     }
 
+    public ChainEditorViewModel ChainEditor { get; }
+
+    [ObservableProperty] private bool _isChainEditorOpen;
+
+    [RelayCommand]
+    private void NewChain()
+    {
+        if (IsChainEditorOpen) { return; }
+        ChainEditor.Create();
+        IsChainEditorOpen = true;
+    }
+
+    [RelayCommand]
+    private void EditChain(ChainItem item)
+    {
+        if (IsChainEditorOpen) { return; }
+        ChainEditor.Edit(item);
+        IsChainEditorOpen = true;
+    }
+
     public ToolsViewModel Tools { get; }
 
     public RoutingViewModel Routing { get; }
@@ -119,6 +151,16 @@ public sealed partial class MainViewModel : ViewModelBase
     public static IReadOnlyList<string> OnboardingLanguages { get; } = ["auto", "en", "ru"];
 
     public ObservableCollection<ProfileItem> Profiles { get; } = [];
+
+    /// <summary>Relay chains (issue #75), entry → exit.</summary>
+    public ObservableCollection<ChainItem> Chains { get; } = [];
+
+    public bool HasChains => Chains.Count > 0;
+
+    public bool HasNoChains => Chains.Count == 0;
+
+    [ObservableProperty]
+    private ChainItem? _selectedChain;
 
     /// <summary>Last latency probe per profile id (issue #10). Empty until the user checks.</summary>
     public Dictionary<Guid, ServerLatencyResult> Latencies { get; } = new();
@@ -271,6 +313,33 @@ public sealed partial class MainViewModel : ViewModelBase
         Profiles.ReplaceWith(items);
         SelectedProfile = Profiles.FirstOrDefault(p => p.Id == selectedId) ?? Profiles.FirstOrDefault();
         IsMock = Services.IsMock;
+        ReloadChains();
+    }
+
+    /// <summary>Reloads chain rows and resolves hop names against current profiles.</summary>
+    public void ReloadChains()
+    {
+        var names = Services.Profiles.Profiles.ToDictionary(p => p.Id, p => p.Name);
+        var activeId = Primary.Chain?.Id;
+        var items = Services.Profiles.Chains
+            .OrderByDescending(c => c.IsFavorite)
+            .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(c => new ChainItem(c)
+            {
+                IsActive = c.Id == activeId,
+                HopSummary = string.Join(" → ", c.ProfileIds.Select(id => names.TryGetValue(id, out var n) ? n : "?")),
+            })
+            .ToList();
+        foreach (var item in items)
+        {
+            item.RefreshDetails();
+        }
+
+        var selectedId = SelectedChain?.Id;
+        Chains.ReplaceWith(items);
+        SelectedChain = items.FirstOrDefault(c => c.Id == selectedId);
+        OnPropertyChanged(nameof(HasChains));
+        OnPropertyChanged(nameof(HasNoChains));
     }
 
     /// <summary>Stores fresh probe results and refreshes the visible rows (issue #10).</summary>
@@ -350,6 +419,11 @@ public sealed partial class MainViewModel : ViewModelBase
                 foreach (var p in Profiles)
                 {
                     p.IsActive = s.Status == ConnectionStatus.Connected && p.Id == s.Profile?.Id;
+                }
+
+                foreach (var c in Chains)
+                {
+                    c.IsActive = s.Status == ConnectionStatus.Connected && c.Id == s.Chain?.Id;
                 }
 
                 if (s.LastTraffic is { } t && s.Status == ConnectionStatus.Connected)

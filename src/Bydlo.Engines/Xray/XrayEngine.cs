@@ -62,7 +62,8 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             Redactor.RegisterSecret(lan.Password);
         }
 
-        var json = _builder.BuildJson(profile, request.Secrets, new BuildContext(request.Settings, LocalProxyAuth: request.LocalProxyAuth));
+        var ctx = new BuildContext(request.Settings, LocalProxyAuth: request.LocalProxyAuth);
+        var json = request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
         var configPath = Path.Combine(request.WorkDirectory, "xray.json");
         await SecureFile.WriteAsync(configPath, json, ct).ConfigureAwait(false);
         return new ProcessSpec

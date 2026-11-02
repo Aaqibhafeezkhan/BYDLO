@@ -18,6 +18,8 @@ public sealed partial class ProfileStore
             { data.Profiles.Add(new(BackupArchive.Clone(profile), await secrets.LoadAsync(profile.Id.ToString(), ct).ConfigureAwait(false))); }
             foreach (var sub in _doc.Subscriptions)
             { data.Subscriptions.Add(new(BackupArchive.Clone(sub), await GetSubscriptionUrlAsync(sub.Id, ct).ConfigureAwait(false) ?? "")); }
+            foreach (var chain in _doc.Chains)
+            { data.Chains.Add(BackupArchive.Clone(chain)); }
             return data;
         }
         finally { _gate.Release(); }
@@ -37,6 +39,20 @@ public sealed partial class ProfileStore
                 incoming.Profiles.InsertRange(0, _doc.Profiles.Where(p => incoming.Profiles.All(i => i.Id != p.Id)));
                 incoming.Subscriptions.InsertRange(0, _doc.Subscriptions.Where(s => incoming.Subscriptions.All(i => i.Id != s.Id)));
             }
+
+            // Chains travel with the profiles they reference; keep only structurally valid,
+            // fully resolvable chains so a stale chain can never break the restore.
+            var chainIds = new HashSet<Guid>(incoming.Profiles.Select(p => p.Id));
+            var incomingChains = data.Chains
+                .Where(c => c.Id != Guid.Empty && !string.IsNullOrWhiteSpace(c.Name))
+                .Where(c => c.ProfileIds.Count >= ChainValidator.MinHops && c.ProfileIds.Count <= ChainValidator.MaxHops)
+                .Where(c => c.ProfileIds.Distinct().Count() == c.ProfileIds.Count)
+                .Where(c => c.ProfileIds.All(chainIds.Contains))
+                .Where(c => c.PreferredEngine is null or Models.EngineKind.SingBox or Models.EngineKind.Xray)
+                .GroupBy(c => c.Id).Select(g => g.First()).ToList();
+            incoming.Chains = mode == BackupImportMode.Merge
+                ? [.. _doc.Chains.Where(c => incomingChains.All(i => i.Id != c.Id)), .. incomingChains]
+                : incomingChains;
             var writes = data.Profiles.ToDictionary(p => p.Profile.Id.ToString(), p => p.Secrets);
             foreach (var sub in data.Subscriptions)
             { writes.Add(SubscriptionSecretId(sub.Subscription.Id), new ProfileSecrets { Values = { ["url"] = sub.Url } }); }

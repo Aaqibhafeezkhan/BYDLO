@@ -30,6 +30,100 @@ public sealed class SingBoxConfigBuilder
     public string BuildJson(Profile profile, ProfileSecrets secrets, BuildContext ctx) =>
         Build(profile, secrets, ctx).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
 
+    /// <summary>
+    /// Builds a relay chain: traffic enters at <c>hops[0]</c> and leaves at the last hop.
+    /// Every hop dials through the previous one via sing-box <c>detour</c>
+    /// (WireGuard hops become endpoints with <c>detour</c>). Route and DNS point at the exit hop.
+    /// </summary>
+    public string BuildChainJson(IReadOnlyList<ChainHop> hops, BuildContext ctx) =>
+        BuildChain(hops, ctx).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+
+    public JsonObject BuildChain(IReadOnlyList<ChainHop> hops, BuildContext ctx)
+    {
+        if (hops.Count < ChainValidator.MinHops)
+        {
+            throw new Engines.EngineException("A chain needs at least two servers.", localizationKey: "error.chain.toofew");
+        }
+
+        if (hops.Count > ChainValidator.MaxHops)
+        {
+            throw new Engines.EngineException("This chain has too many hops.", localizationKey: "error.chain.toolong");
+        }
+
+        foreach (var hop in hops)
+        {
+            if (!Supported.Contains(hop.Profile.Protocol))
+            {
+                throw new Engines.EngineException($"The {hop.Profile.Protocol} hop cannot be chained by sing-box.", localizationKey: "error.chain.engine");
+            }
+        }
+
+        var settings = ctx.Settings;
+        var routing = settings.Routing;
+        var exitTag = Tag(hops.Count - 1);
+        var root = new JsonObject
+        {
+            ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
+            ["dns"] = BuildDns(routing, exitTag),
+            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth)),
+        };
+
+        var outbounds = new JsonArray();
+        JsonArray? endpoints = null;
+        for (var i = 0; i < hops.Count; i++)
+        {
+            var tag = Tag(i);
+            var (profile, secrets) = (hops[i].Profile, hops[i].Secrets);
+            var via = i > 0 ? Tag(i - 1) : null;
+            if (profile.Protocol == ProtocolKind.WireGuard)
+            {
+                endpoints ??= new JsonArray();
+                var ep = BuildWireGuardEndpoint(profile, secrets, tag);
+                if (via is not null)
+                {
+                    ep["detour"] = via;
+                }
+
+                endpoints.Add(ep);
+            }
+            else
+            {
+                var o = BuildOutbound(profile, secrets, tag);
+                if (via is not null)
+                {
+                    o["detour"] = via;
+                }
+
+                outbounds.Add(o);
+            }
+        }
+
+        if (endpoints is not null)
+        {
+            root["endpoints"] = endpoints;
+        }
+
+        outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
+        root["outbounds"] = outbounds;
+        root["route"] = BuildRoute(routing, settings.Mode, exitTag);
+
+        if (ctx.ClashApiPort is { } apiPort)
+        {
+            root["experimental"] = new JsonObject
+            {
+                ["clash_api"] = new JsonObject
+                {
+                    ["external_controller"] = $"127.0.0.1:{apiPort}",
+                    ["secret"] = ctx.ClashApiSecret ?? "",
+                },
+            };
+        }
+
+        return root;
+    }
+
+    internal static string Tag(int index) => $"proxy-{index}";
+
     public JsonObject Build(Profile profile, ProfileSecrets secrets, BuildContext ctx)
     {
         if (!Supported.Contains(profile.Protocol))
@@ -139,11 +233,11 @@ public sealed class SingBoxConfigBuilder
             "fd7a:115c:a1e2::/48",
         ];
 
-    private static JsonObject BuildDns(RoutingSettings routing)
+    private static JsonObject BuildDns(RoutingSettings routing, string proxyTag = ProxyTag)
     {
         var servers = new JsonArray
         {
-            new JsonObject { ["type"] = "https", ["tag"] = "remote", ["server"] = routing.RemoteDns, ["detour"] = ProxyTag },
+            new JsonObject { ["type"] = "https", ["tag"] = "remote", ["server"] = routing.RemoteDns, ["detour"] = proxyTag },
         };
         servers.Add(routing.DirectDns is "local" or ""
             ? new JsonObject { ["type"] = "local", ["tag"] = "local" }
@@ -208,13 +302,13 @@ public sealed class SingBoxConfigBuilder
         return inbound;
     }
 
-    private static JsonObject BuildRoute(RoutingSettings routing, ConnectionMode mode)
+    private static JsonObject BuildRoute(RoutingSettings routing, ConnectionMode mode, string proxyTag = ProxyTag)
     {
         var rules = new JsonArray
         {
             new JsonObject { ["action"] = "sniff" },
             new JsonObject { ["protocol"] = "dns", ["action"] = "hijack-dns" },
-            new JsonObject { ["domain_suffix"] = ToArray(ConnectionCheckService.ProviderDomains), ["outbound"] = ProxyTag },
+            new JsonObject { ["domain_suffix"] = ToArray(ConnectionCheckService.ProviderDomains), ["outbound"] = proxyTag },
         };
         if (routing.BypassPrivateNetworks)
         {
@@ -248,21 +342,21 @@ public sealed class SingBoxConfigBuilder
 
         if (routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0)
         {
-            rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.ProxyDomains), ["outbound"] = ProxyTag });
+            rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.ProxyDomains), ["outbound"] = proxyTag });
         }
 
         return new JsonObject
         {
             ["rules"] = rules,
-            ["final"] = routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0 ? "direct" : ProxyTag,
+            ["final"] = routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0 ? "direct" : proxyTag,
             ["auto_detect_interface"] = true,
             ["default_domain_resolver"] = "local",
         };
     }
 
-    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s)
+    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, string tag = ProxyTag)
     {
-        var o = new JsonObject { ["tag"] = ProxyTag, ["server"] = p.Host, ["server_port"] = p.Port };
+        var o = new JsonObject { ["tag"] = tag, ["server"] = p.Host, ["server_port"] = p.Port };
         switch (p.Protocol)
         {
             case ProtocolKind.Vless:
@@ -367,20 +461,30 @@ public sealed class SingBoxConfigBuilder
         return o;
     }
 
-    private static JsonObject BuildWireGuardEndpoint(Profile p, ProfileSecrets s)
+    private static JsonObject BuildWireGuardEndpoint(Profile p, ProfileSecrets s, string tag = ProxyTag)
     {
         var raw = s[Keys.RawConfig] ?? throw new InvalidOperationException("WireGuard profile has no stored configuration.");
         var cfg = WireGuardConfig.Parse(raw);
         var ep = new JsonObject
         {
             ["type"] = "wireguard",
-            ["tag"] = ProxyTag,
+            ["tag"] = tag,
             ["address"] = ToArray(SplitList(cfg.Interface.GetValueOrDefault("Address", "10.0.0.2/32"))),
             ["private_key"] = cfg.Interface["PrivateKey"],
         };
         if (int.TryParse(cfg.Interface.GetValueOrDefault("MTU"), out var mtu))
         {
             ep["mtu"] = mtu;
+        }
+
+        // Optional WARP-style reserved bytes (issue #85), stored as a comma-separated option.
+        // Endpoints share the tag namespace with outbounds, so an exit endpoint is a valid
+        // route final / DNS detour target, like in a direct WireGuard connection.
+        if (p.Option(Keys.Reserved) is { } reservedText)
+        {
+            ep["reserved"] = new JsonArray((TryParseReserved(reservedText)
+                ?? throw new Engines.EngineException("The WireGuard 'reserved' option must be three bytes, e.g. '1,2,3'.", localizationKey: "error.engine.wireguard.reserved"))
+                .Select(b => (JsonNode)JsonValue.Create((int)b)!).ToArray());
         }
 
         var peers = new JsonArray();
@@ -500,6 +604,31 @@ public sealed class SingBoxConfigBuilder
 
     internal static IEnumerable<string> SplitList(string value) =>
         value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    internal static byte[]? TryParseReserved(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var parts = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length != 3)
+        {
+            return null;
+        }
+
+        var bytes = new byte[3];
+        for (var i = 0; i < 3; i++)
+        {
+            if (!byte.TryParse(parts[i], out bytes[i]))
+            {
+                return null;
+            }
+        }
+
+        return bytes;
+    }
 
     private static JsonArray ToArray(IEnumerable<string> items) => new([.. items.Select(i => (JsonNode)JsonValue.Create(i)!)]);
 }
