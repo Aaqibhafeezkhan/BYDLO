@@ -31,6 +31,23 @@ public sealed partial class SettingsViewModel : PageViewModel
         _suggestClipboardLinks = s.SuggestClipboardLinks;
     }
 
+    /// <summary>Re-read settings changed outside this page, e.g. by the first-run onboarding.</summary>
+    public override void OnShown()
+    {
+        var s = Services.Settings;
+        Theme = s.Theme;
+        Language = s.Language;
+        MockMode = Services.IsMock;
+        MockScenario = s.MockScenario;
+        LocalPort = s.LocalProxyPort;
+        IpCheckProvider = s.IpCheckProvider;
+        SetSystemProxy = s.SetSystemProxy;
+        AutoReconnect = s.AutoReconnect;
+        ShowAdvanced = s.ShowAdvanced;
+        KillSwitch = s.KillSwitch;
+        SuggestClipboardLinks = s.SuggestClipboardLinks;
+    }
+
     public static IReadOnlyList<string> Languages { get; } = ["auto", "en", "ru"];
 
     public static IReadOnlyList<MockScenario> Scenarios { get; } = Enum.GetValues<MockScenario>();

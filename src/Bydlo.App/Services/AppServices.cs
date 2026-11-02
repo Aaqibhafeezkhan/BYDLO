@@ -129,7 +129,15 @@ public sealed class AppServices
     public static async Task<AppServices> CreateAsync(string[] args)
     {
         var s = new AppServices(args);
+        var firstRun = !File.Exists(s.Paths.SettingsFile);
         s.Settings = await s.SettingsStore.LoadAsync().ConfigureAwait(false);
+        if (firstRun)
+        {
+            s.Settings.OnboardingCompleted = false;
+            s.Settings.Language = "auto";
+            s.Settings.Theme = ThemePreference.System;
+        }
+
         await s.Profiles.LoadAsync().ConfigureAwait(false);
         if (!s.IsMock && !NetworkSafetyGuard.IsLocked && s.Privileges.IsElevated && s.ZapretFirewall.HasPendingRecovery)
         {

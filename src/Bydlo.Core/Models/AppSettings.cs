@@ -40,6 +40,12 @@ public sealed class AppSettings
     /// <summary>"auto", "en" or "ru".</summary>
     public string Language { get; set; } = "auto";
 
+    /// <summary>
+    /// False only for a fresh installation. Existing settings without this field deserialize as true,
+    /// so upgrading users are not shown the first-run screen again.
+    /// </summary>
+    public bool OnboardingCompleted { get; set; } = true;
+
     public bool MockMode { get; set; }
 
     public MockScenario MockScenario { get; set; } = MockScenario.Success;

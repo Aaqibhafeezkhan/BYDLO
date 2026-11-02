@@ -27,6 +27,7 @@
   <SolidColorBrush x:Key="WarningSoftBrush" Color="#26FBBF24" />
   <SolidColorBrush x:Key="DangerBrush" Color="#F87171" />
   <SolidColorBrush x:Key="DangerSoftBrush" Color="#26F87171" />
+  <SolidColorBrush x:Key="ScrimBrush" Color="#B8000000" />
 
   <LinearGradientBrush x:Key="BackdropBrush" StartPoint="0%,0%" EndPoint="100%,100%">
     <GradientStop Offset="0" Color="#302343" />

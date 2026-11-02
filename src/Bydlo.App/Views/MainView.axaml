@@ -151,5 +151,42 @@
         </Grid>
       </Border>
     </Border>
+
+    <!-- First-run onboarding -->
+    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" IsVisible="{Binding IsOnboardingVisible}" Background="{DynamicResource ScrimBrush}">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" VerticalContentAlignment="Center">
+        <Border Classes="card" MaxWidth="560" Margin="24" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{DynamicResource BgBrush}">
+          <StackPanel Spacing="16">
+            <Border Width="56" Height="56" CornerRadius="18" Background="{DynamicResource PrimaryGradientBrush}">
+              <PathIcon Data="{StaticResource IconShield}" Foreground="White" Width="28" Height="28" />
+            </Border>
+            <TextBlock Classes="h1" Text="{l:T onboarding.title}" TextWrapping="Wrap" />
+            <TextBlock Classes="muted" Text="{l:T onboarding.text}" TextWrapping="Wrap" />
+            <TextBlock Classes="caps" Text="{l:T settings.language}" />
+            <ComboBox ItemsSource="{x:Static vm:MainViewModel.OnboardingLanguages}" SelectedItem="{Binding OnboardingLanguage}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=lang.}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Classes="caps" Text="{l:T settings.theme}" />
+            <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="4" HorizontalAlignment="Left">
+              <WrapPanel>
+                <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemePurple}"><TextBlock Text="{l:T theme.purple}" /></RadioButton>
+                <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemeLight}"><TextBlock Text="{l:T theme.light}" /></RadioButton>
+                <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemeOled}"><TextBlock Text="{l:T theme.oled}" /></RadioButton>
+                <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemeSystem}"><TextBlock Text="{l:T theme.system}" /></RadioButton>
+              </WrapPanel>
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Classes="ghost" Content="{l:T onboarding.skip}" Command="{Binding FinishOnboardingCommand}" />
+              <Button Classes="primary" Content="{l:T onboarding.start}" Command="{Binding FinishOnboardingCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+    </Border>
   </Grid>
 </UserControl>
