@@ -1,5 +1,8 @@
 name: CI
 
+# One workflow for two hosts: GitHub (main repository, full matrix) and the Gitea mirror at
+# git.ywfl.dev (runners kindly provided by @yawaflua: Linux x64 only). Steps branch on github.server_url.
+
 on:
   push:
     # Feature branches are checked by pull_request; avoid a second full matrix on every push.
@@ -28,8 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Temporarily Linux only: the Gitea runners have no Windows or macOS (#57).
-        os: [ubuntu-latest]
+        os: ${{ fromJSON(github.server_url == 'https://github.com' && '["ubuntu-latest","windows-latest","macos-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -50,9 +52,10 @@ jobs:
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-verification en --verify-desktop
       - name: Verify bundled engine UI (headless, mock only, no driver setup)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verification en --mock --verify-bundled-engines
-      # Gitea rejects artifact actions v4+ (GHES API); v3 until we are back on GitHub (#57).
-      - uses: actions/upload-artifact@v3
-        if: always()
+      # Artifacts are kept on GitHub only: artifact actions v4 refuse to run on Gitea (it looks like GHES),
+      # and GitHub fails the whole job if a step even references the deprecated v3.
+      - uses: actions/upload-artifact@v4
+        if: always() && github.server_url == 'https://github.com'
         with:
           name: test-results-${{ matrix.os }}
           path: TestResults
@@ -64,10 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # The Gitea runners only offer ubuntu-latest. win-x64 / win-arm64 (windows-latest),
-          # linux-arm64 (ubuntu-24.04-arm) and osx-x64 / osx-arm64 return with matching runners (#57).
-          - { rid: linux-x64, os: ubuntu-latest }
+        include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"windows-latest"},{"rid":"win-arm64","os":"windows-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-x64","os":"macos-15-intel"},{"rid":"osx-arm64","os":"macos-latest"}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -88,8 +88,9 @@ jobs:
         with:
           go-version: '1.27.3'
           cache: false
-      # Gitea runner images ship without PowerShell and some build tools that GitHub images include (#57).
-      - name: Install build tools missing on the runner
+      # Gitea runner images ship without PowerShell and some build tools that GitHub images include.
+      - name: Install build tools missing on the Gitea runner
+        if: github.server_url != 'https://github.com'
         shell: bash
         run: |
           missing=
@@ -122,23 +123,25 @@ jobs:
       - name: Add notices
         shell: bash
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-${{ matrix.rid }}/
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
+        if: github.server_url == 'https://github.com'
         with:
           name: BYDLO-${{ matrix.rid }}
           path: publish/BYDLO-${{ matrix.rid }}
 
   release:
     name: Draft release
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Releases are published on GitHub only; the Gitea mirror just builds.
+    if: startsWith(github.ref, 'refs/tags/v') && github.server_url == 'https://github.com'
     needs: [desktop]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      # v3 has no "pattern": it downloads every artifact; the loop below only packs BYDLO-*.
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: BYDLO-*
       - name: Package and checksum
         run: |
           cd dist
