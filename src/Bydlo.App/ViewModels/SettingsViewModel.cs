@@ -107,6 +107,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("tg-ws-proxy", "Flowseal", "MIT", "https://github.com/Flowseal/tg-ws-proxy", "Telegram WebSocket bridge proxy"),
         new("sing-box", "SagerNet (nekohasekai)", "GPL-3.0-or-later", "https://github.com/SagerNet/sing-box", "Universal proxy platform"),
         new("Xray-core", "Project X (XTLS)", "MPL-2.0", "https://github.com/XTLS/Xray-core", "VLESS / REALITY / XHTTP"),
+        new("Cronet / cronet-go", "The Chromium Authors / SagerNet", "BSD-3-Clause / GPL-3.0+", "https://github.com/SagerNet/cronet-go", "", "about.cronet"),
+        new("Xray GeoIP / GeoSite", "Project X / V2Ray & contributors", "GPL-3.0 / MIT", "https://github.com/XTLS/Xray-rules-dat", "", "about.geodata"),
         new("WireGuard", "Jason A. Donenfeld / WireGuard LLC", "MIT / GPL-2.0", "https://www.wireguard.com", "WireGuard tunnels"),
         new("AmneziaWG", "WireGuard LLC / Amnezia VPN", "MIT (core), GPL-3.0+ (host)", "https://github.com/amnezia-vpn/amneziawg-go", "Obfuscated WireGuard"),
         new("Wintun 0.14.1", "WireGuard LLC", "Prebuilt Binaries License", "https://www.wintun.net/", "", "about.wintun"),

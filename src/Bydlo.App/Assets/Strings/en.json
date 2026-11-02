@@ -157,6 +157,8 @@
   "tools.engines": "Engines",
   "tools.engines.hint": "Releases include pinned sing-box, Xray, OpenVPN and AmneziaWG (Windows/Linux). Downloads are a fallback for missing sing-box/Xray. Native WireGuard still uses an installed client.",
   "about.wintun": "Userspace tunnel adapter for bundled AmneziaWG on Windows",
+  "about.cronet": "Upstream sing-box runtime library",
+  "about.geodata": "Unmodified routing databases from the upstream Xray package",
   "about.dco": "Signed OpenVPN driver; installed only with explicit consent",
   "tools.openvpn.driver.title": "OpenVPN driver (Windows)",
   "tools.openvpn.driver.hint": "Install the bundled signed DCO driver and a BYDLO-OpenVPN adapter once. Administrator rights are required. They remain installed after BYDLO closes; no OpenVPN GUI or background service is installed.",

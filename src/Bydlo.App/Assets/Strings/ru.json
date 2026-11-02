@@ -157,6 +157,8 @@
   "tools.engines": "Движки",
   "tools.engines.hint": "В релиз включены закреплённые sing-box, Xray, OpenVPN и AmneziaWG (Windows/Linux). Загрузка — запасной путь для отсутствующих sing-box/Xray. Нативный WireGuard пока использует установленный клиент.",
   "about.wintun": "Адаптер встроенного AmneziaWG для Windows",
+  "about.cronet": "Библиотека из официального пакета sing-box",
+  "about.geodata": "Неизменённые базы маршрутизации из официального пакета Xray",
   "about.dco": "Подписанный драйвер OpenVPN; установка только с явным согласием",
   "tools.openvpn.driver.title": "Драйвер OpenVPN (Windows)",
   "tools.openvpn.driver.hint": "Один раз установите встроенный подписанный драйвер DCO и адаптер BYDLO-OpenVPN. Нужны права администратора. Они останутся в системе после закрытия BYDLO; интерфейс и фоновая служба OpenVPN не устанавливаются.",
