@@ -31,6 +31,7 @@ public sealed record SessionSnapshot(
     int LocalProxyPort = 0)
 {
     public string? ErrorLocalizationKey { get; init; }
+    public bool CleanupPending { get; init; }
 }
 
 /// <summary>
@@ -168,10 +169,13 @@ public sealed class ConnectionManager : IAsyncDisposable
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
+            var errors = new List<Exception>();
             foreach (var key in new[] { PrimaryKey, ZapretKey, TgWsProxyKey })
             {
-                await StopSessionUnsafeAsync(key).ConfigureAwait(false);
+                try { await StopSessionUnsafeAsync(key).ConfigureAwait(false); }
+                catch (Exception ex) { errors.Add(ex); }
             }
+            if (errors.Count > 0) { throw new AggregateException("Session cleanup failed.", errors); }
         }
         finally
         {
@@ -213,7 +217,11 @@ public sealed class ConnectionManager : IAsyncDisposable
         }
     }
 
-    private bool IsActive(string key) => Snapshot(key).Status is ConnectionStatus.Connected or ConnectionStatus.Connecting or ConnectionStatus.Reconnecting;
+    private bool IsActive(string key)
+    {
+        var snapshot = Snapshot(key);
+        return snapshot.CleanupPending || snapshot.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting or ConnectionStatus.Reconnecting;
+    }
 
     private async Task StartSessionUnsafeAsync(Session session, CancellationToken ct)
     {
@@ -259,7 +267,16 @@ public sealed class ConnectionManager : IAsyncDisposable
             session.ErrorLocalizationKey = (ex as EngineException)?.LocalizationKey;
             _log.Error(session.Key, session.Error);
             Publish(session);
-            await session.Engine.DisposeAsync().ConfigureAwait(false);
+            try { await session.Engine.DisposeAsync().ConfigureAwait(false); }
+            catch (Exception cleanupError)
+            {
+                session.CleanupPending = true;
+                session.Error = _log.Redactor.Redact(new AggregateException(ex, cleanupError).Message);
+                session.ErrorLocalizationKey = "error.engine.cleanup";
+                _log.Error(session.Key, session.Error);
+                Publish(session);
+                throw new EngineException(session.Error, localizationKey: session.ErrorLocalizationKey);
+            }
             throw;
         }
     }
@@ -280,31 +297,40 @@ public sealed class ConnectionManager : IAsyncDisposable
         session.UserStopped = true;
         session.Status = ConnectionStatus.Disconnecting;
         Publish(session);
-        try
+        var errors = new List<Exception>();
+        if (session.SystemProxySet)
         {
-            if (session.SystemProxySet)
+            try
             {
                 await _systemProxy.ClearAsync().ConfigureAwait(false);
+                session.SystemProxySet = false;
             }
-
+            catch (Exception ex) { errors.Add(ex); }
+        }
+        try
+        {
             await session.Engine.StopAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _log.Warn(key, $"Stop reported: {ex.Message}");
         }
-        finally
+        // Dispose retries engine cleanup even when Stop failed. A successful retry completes it.
+        try { await session.Engine.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception ex) { errors.Add(ex); }
+        if (errors.Count > 0)
         {
-            try { await session.Engine.DisposeAsync().ConfigureAwait(false); }
-            catch (Exception ex) { _log.Warn(key, $"Dispose reported: {ex.Message}"); }
-            lock (_sessions)
-            {
-                _sessions.Remove(key);
-            }
-
-            _log.Info(key, "Stopped");
-            SessionChanged?.Invoke(this, Snapshot(key));
+            session.CleanupPending = true;
+            session.Status = ConnectionStatus.Error;
+            session.Error = _log.Redactor.Redact(new AggregateException("Session cleanup failed.", errors).Message);
+            session.ErrorLocalizationKey = "error.engine.cleanup";
+            _log.Error(key, session.Error);
+            Publish(session);
+            throw new EngineException(session.Error, localizationKey: session.ErrorLocalizationKey);
         }
+        lock (_sessions) { _sessions.Remove(key); }
+        _log.Info(key, "Stopped");
+        SessionChanged?.Invoke(this, Snapshot(key));
     }
 
     private void OnEngineStateChanged(Session session, EngineStateChangedEventArgs e)
@@ -434,7 +460,10 @@ public sealed class ConnectionManager : IAsyncDisposable
 
         public bool SystemProxySet { get; set; }
 
+        public bool CleanupPending { get; set; }
+
         public SessionSnapshot ToSnapshot() =>
-            new(Key, Status, Profile, Engine.Descriptor.Kind, IsMock, ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort) { ErrorLocalizationKey = ErrorLocalizationKey };
+            new(Key, Status, Profile, Engine.Descriptor.Kind, IsMock, ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort)
+            { ErrorLocalizationKey = ErrorLocalizationKey, CleanupPending = CleanupPending };
     }
 }

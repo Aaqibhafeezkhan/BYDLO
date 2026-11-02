@@ -111,7 +111,7 @@ public sealed partial class ToolsViewModel : PageViewModel
     [ObservableProperty]
     private bool _isInstalling;
 
-    public bool ZapretRunning => Shell.Zapret.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
+    public bool ZapretRunning => Shell.Zapret.CleanupPending || Shell.Zapret.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
     public string ZapretStatus => StatusOf(Shell.Zapret);
 
@@ -149,7 +149,7 @@ public sealed partial class ToolsViewModel : PageViewModel
     [ObservableProperty]
     private string _tgRuntimeInfo = "";
 
-    public bool TgRunning => Shell.Tg.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
+    public bool TgRunning => Shell.Tg.CleanupPending || Shell.Tg.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
     public string TgStatus => StatusOf(Shell.Tg);
 
