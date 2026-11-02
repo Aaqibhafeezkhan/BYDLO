@@ -180,6 +180,28 @@ public sealed partial class ToolsViewModel : PageViewModel
         _ = RefreshEnginesAsync();
     }
 
+    public void ReloadSettings()
+    {
+        _loadingSettings = true;
+        try
+        {
+            var s = Services.Settings;
+            ZapretPath = s.Zapret.InstallPath ?? "";
+            GameFilter = s.Zapret.GameFilter;
+            SelectedStrategy = null;
+            TgHost = s.TgWsProxy.Host;
+            TgPort = s.TgWsProxy.Port;
+            TgDcIps = string.Join('\n', s.TgWsProxy.DcIps);
+            TgFakeTls = s.TgWsProxy.FakeTlsDomain;
+            TgCfFallback = s.TgWsProxy.CfProxyFallback;
+            TgVerbose = s.TgWsProxy.Verbose;
+            TgCfDomains = string.Join('\n', s.TgWsProxy.CfProxyDomains);
+        }
+        finally { _loadingSettings = false; }
+    }
+
+    private bool _loadingSettings;
+
     // ---------- Zapret commands ----------
 
     [RelayCommand]
@@ -287,6 +309,7 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     private void SaveZapretSettings()
     {
+        if (_loadingSettings) { return; }
         var z = Services.Settings.Zapret;
         z.InstallPath = string.IsNullOrWhiteSpace(ZapretPath) ? null : ZapretPath.Trim();
         z.Strategy = SelectedStrategy?.FileName ?? z.Strategy;

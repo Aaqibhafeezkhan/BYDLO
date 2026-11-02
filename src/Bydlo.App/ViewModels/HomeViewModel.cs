@@ -379,7 +379,7 @@ public sealed partial class HomeViewModel : PageViewModel
         }
     }
 
-    private void RefreshAll()
+    public void RefreshAll()
     {
         if (!IsConnected)
         {
