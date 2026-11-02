@@ -23,7 +23,8 @@ public sealed class XrayConfigBuilder
     /// <summary>
     /// Builds a relay chain: traffic enters at <c>hops[0]</c> and leaves at the last hop.
     /// Every hop routes through the previous one via <c>proxySettings</c>.
-    /// Routing rules point at the exit hop.
+    /// The exit hop is listed first so Xray's default outbound (used when no rule matches)
+    /// carries the whole chain; routing rules point at the exit hop explicitly.
     /// </summary>
     public string BuildChainJson(IReadOnlyList<ChainHop> hops, BuildContext ctx) =>
         BuildChain(hops, ctx).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
@@ -48,7 +49,7 @@ public sealed class XrayConfigBuilder
             }
         }
 
-        return BuildCore(ctx, hops.Select((h, i) => BuildOutbound(h.Profile, h.Secrets, Tag(i), i > 0 ? Tag(i - 1) : null)).ToList(), Tag(hops.Count - 1));
+        return BuildCore(ctx, hops.Select((h, i) => BuildOutbound(h.Profile, h.Secrets, Tag(i), i > 0 ? Tag(i - 1) : null)).Reverse().ToList(), Tag(hops.Count - 1));
     }
 
     internal static string Tag(int index) => $"proxy-{index}";

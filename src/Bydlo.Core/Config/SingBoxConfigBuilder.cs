@@ -478,14 +478,13 @@ public sealed class SingBoxConfigBuilder
         }
 
         // Optional WARP-style reserved bytes (issue #85), stored as a comma-separated option.
+        // sing-box expects them inside each peer (peers.reserved), not at the endpoint level.
         // Endpoints share the tag namespace with outbounds, so an exit endpoint is a valid
         // route final / DNS detour target, like in a direct WireGuard connection.
-        if (p.Option(Keys.Reserved) is { } reservedText)
-        {
-            ep["reserved"] = new JsonArray((TryParseReserved(reservedText)
-                ?? throw new Engines.EngineException("The WireGuard 'reserved' option must be three bytes, e.g. '1,2,3'.", localizationKey: "error.engine.wireguard.reserved"))
-                .Select(b => (JsonNode)JsonValue.Create((int)b)!).ToArray());
-        }
+        var reserved = p.Option(Keys.Reserved) is { } reservedText
+            ? TryParseReserved(reservedText)
+                ?? throw new Engines.EngineException("The WireGuard 'reserved' option must be three bytes, e.g. '1,2,3'.", localizationKey: "error.engine.wireguard.reserved")
+            : null;
 
         var peers = new JsonArray();
         foreach (var peer in cfg.Peers)
@@ -498,6 +497,11 @@ public sealed class SingBoxConfigBuilder
                 ["public_key"] = peer.GetValueOrDefault("PublicKey", ""),
                 ["allowed_ips"] = ToArray(SplitList(peer.GetValueOrDefault("AllowedIPs", "0.0.0.0/0, ::/0"))),
             };
+            if (reserved is not null)
+            {
+                po["reserved"] = new JsonArray(reserved.Select(b => (JsonNode)JsonValue.Create((int)b)!).ToArray());
+            }
+
             if (peer.TryGetValue("PresharedKey", out var psk))
             {
                 po["pre_shared_key"] = psk;

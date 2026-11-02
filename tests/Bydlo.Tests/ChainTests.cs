@@ -191,6 +191,19 @@ public class ChainTests
     }
 
     [Fact]
+    public void SingBox_wireguard_reserved_goes_inside_peers()
+    {
+        var imported = Hop("trojan://pw@one.example.com:443");
+        var conf = "[Interface]\nPrivateKey = yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk=\nAddress = 10.8.0.2/32\n\n[Peer]\nPublicKey = xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 203.0.113.5:51820\n";
+        var wg = Import(conf);
+        wg.Profile.Options[Keys.Reserved] = "1,2,3";
+        var root = new SingBoxConfigBuilder().BuildChain([imported, new ChainHop(wg.Profile, wg.Secrets)], new BuildContext(new AppSettings()));
+        var ep = root["endpoints"]![0]!;
+        Assert.Null(ep["reserved"]);
+        Assert.Equal([1, 2, 3], ep["peers"]![0]!["reserved"]!.AsArray().Select(n => (int)n!));
+    }
+
+    [Fact]
     public void SingBox_chain_rejects_unsupported_hop()
     {
         var ovpn = new Profile { Name = "ovpn", Protocol = ProtocolKind.OpenVpn, Host = "vpn.example.com", Port = 1194 };
@@ -213,9 +226,13 @@ public class ChainTests
         };
         var root = new XrayConfigBuilder().BuildChain(hops, new BuildContext(new AppSettings()));
         var tags = root["outbounds"]!.AsArray().Select(o => (string?)o!["tag"]).ToList();
-        Assert.Equal(["proxy-0", "proxy-1", "direct", "block"], tags);
-        Assert.Null(root["outbounds"]![0]!["proxySettings"]);
-        Assert.Equal("proxy-0", (string?)root["outbounds"]![1]!["proxySettings"]!["tag"]);
+        // The exit hop goes first: Xray sends unmatched traffic through the first outbound,
+        // so the default must carry the whole chain, not just the entry hop.
+        Assert.Equal(["proxy-1", "proxy-0", "direct", "block"], tags);
+        var exit = root["outbounds"]![0]!;
+        var entry = root["outbounds"]![1]!;
+        Assert.Null(entry["proxySettings"]);
+        Assert.Equal("proxy-0", (string?)exit["proxySettings"]!["tag"]);
         Assert.Equal("proxy-1", (string?)root["routing"]!["rules"]![0]!["outboundTag"]);
     }
 

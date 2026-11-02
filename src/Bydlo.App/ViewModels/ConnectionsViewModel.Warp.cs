@@ -34,9 +34,10 @@ public sealed partial class ConnectionsViewModel
                 }
 
                 var client = new WarpClient(Services.Http, Services.Log.Redactor);
-                var registration = await client.RegisterAsync(options: null, Services.ShutdownToken).ConfigureAwait(false);
+                // No ConfigureAwait(false): the lines below touch bound collections and must resume on the UI thread.
+                var registration = await client.RegisterAsync(options: null, Services.ShutdownToken);
                 var imported = WarpProfileFactory.Create(L["warp.title"], registration);
-                var added = await Services.Profiles.AddAsync([imported], ct: Services.ShutdownToken).ConfigureAwait(false);
+                var added = await Services.Profiles.AddAsync([imported], ct: Services.ShutdownToken);
                 Shell.ReloadProfiles();
                 Shell.SelectedProfile = Shell.Profiles.FirstOrDefault(p => p.Id == added[0].Id) ?? Shell.SelectedProfile;
                 Shell.SelectedChain = null;

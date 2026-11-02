@@ -109,7 +109,7 @@ Xray — через `proxySettings`. Нативные WireGuard / AmneziaWG / Op
 
 | Функция | sing-box | Xray-core |
 |---|---|---|
-| Цепочка из 2–5 звеньев | 🧪 (`detour` между outbound/endpoint) | 🧪 (`proxySettings` между outbound) |
+| Цепочка из 2–5 звеньев | 🧪 (`detour` между outbound/endpoint) | 🧪 (`proxySettings` между outbound; выходной — первый outbound по умолчанию) |
 | WARP как звено цепочки | 🧪 (endpoint с `detour`, включая `reserved`) | ❌ (Xray не поддерживает WireGuard-звено) |
 | Проверка соединения цепочки целиком | 🧪 (сквозная проверка через локальный прокси) | 🧪 (так же) |
 
