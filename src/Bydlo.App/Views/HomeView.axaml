@@ -2,63 +2,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:l="using:Bydlo.App.Services"
+             xmlns:c="using:Bydlo.App.Controls"
              x:Class="Bydlo.App.Views.HomeView"
              x:DataType="vm:HomeViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="980" Margin="24,28,24,28" Spacing="18" HorizontalAlignment="Stretch">
-      <StackPanel Spacing="5">
-        <TextBlock Classes="caps" Text="{l:T home.overline}" />
-        <TextBlock Classes="h1" Text="{l:T home.title}" />
-      </StackPanel>
-
-      <!-- First-run / empty state -->
-      <StackPanel IsVisible="{Binding IsEmpty}" Spacing="18">
-        <Border Classes="card" Padding="26">
-          <StackPanel Spacing="10">
-            <TextBlock Classes="caps" Text="{l:T home.empty.overline}" />
-            <TextBlock Classes="h1" Text="{l:T home.empty.title}" TextWrapping="Wrap" />
-            <TextBlock Classes="muted" Text="{l:T home.empty.text}" TextWrapping="Wrap" MaxWidth="680" />
-          </StackPanel>
-        </Border>
-
-        <Grid x:Name="EmptyCards" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto">
-          <Border x:Name="EmptyLinkCard" Classes="card" Padding="18">
-            <StackPanel Spacing="10">
-              <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Left">
-                <PathIcon Data="{StaticResource IconLink}" Foreground="{DynamicResource AccentBrush}" />
-              </Border>
-              <TextBlock Classes="h3" Text="{l:T import.link.title}" />
-              <TextBlock Classes="faint" Text="{l:T import.link.hint}" TextWrapping="Wrap" />
-              <Button Classes="primary" HorizontalAlignment="Stretch" Content="{l:T import.link.action}" Command="{Binding ShowLinkImportCommand}" />
-            </StackPanel>
-          </Border>
-          <Border x:Name="EmptyFileCard" Grid.Column="1" Classes="card" Padding="18">
-            <StackPanel Spacing="10">
-              <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Left">
-                <PathIcon Data="{StaticResource IconFile}" Foreground="{DynamicResource AccentBrush}" />
-              </Border>
-              <TextBlock Classes="h3" Text="{l:T import.file.title}" />
-              <TextBlock Classes="faint" Text="{l:T import.file.hint}" TextWrapping="Wrap" />
-              <Button Classes="ghost" HorizontalAlignment="Stretch" Content="{l:T import.file.action}" Command="{Binding Shell.Connections.ImportFromFileCommand}" />
-            </StackPanel>
-          </Border>
-          <Border x:Name="EmptyQrCard" Grid.Column="2" Classes="card" Padding="18">
-            <StackPanel Spacing="10">
-              <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Left">
-                <PathIcon Data="{StaticResource IconQr}" Foreground="{DynamicResource AccentBrush}" />
-              </Border>
-              <TextBlock Classes="h3" Text="{l:T import.qr.title}" />
-              <TextBlock Classes="faint" Text="{l:T import.qr.hint}" TextWrapping="Wrap" />
-              <Button Classes="ghost" HorizontalAlignment="Stretch" Content="{l:T import.qr.action}" Command="{Binding Shell.Connections.ImportFromQrImageCommand}" />
-            </StackPanel>
-          </Border>
-        </Grid>
-
-        <Border Classes="card" IsVisible="{Binding IsLinkImportVisible}" Padding="18">
-          <StackPanel Spacing="10">
+    <StackPanel x:Name="Page" MaxWidth="620" Margin="24,32,24,28">
+      <TextBlock Classes="page-label" Text="{l:T home.connection}" />
+      <StackPanel IsVisible="{Binding IsEmpty}" Spacing="20" Margin="0,48,0,0">
+        <c:OutlineIcon Data="{StaticResource LineServers}" Width="40" Height="40" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{l:T home.empty.title}" FontSize="30" FontWeight="Medium" TextAlignment="Center" TextWrapping="Wrap" />
+        <TextBlock Classes="muted" Text="{l:T home.empty.text}" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460" />
+        <WrapPanel HorizontalAlignment="Center">
+          <Button Classes="primary" Content="{l:T import.link.action}" Command="{Binding ShowLinkImportCommand}" Margin="0,0,8,8" />
+          <Button Classes="ghost" Content="{l:T import.file.action}" Command="{Binding Shell.Connections.ImportFromFileCommand}" Margin="0,0,8,8" />
+          <Button Classes="ghost" Content="{l:T import.qr.action}" Command="{Binding Shell.Connections.ImportFromQrImageCommand}" Margin="0,0,0,8" />
+        </WrapPanel>
+        <Border Classes="panel" IsVisible="{Binding IsLinkImportVisible}">
+          <StackPanel Spacing="12">
             <TextBlock Classes="h3" Text="{l:T import.link.title}" />
-            <TextBox Text="{Binding LinkImportText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70" MaxHeight="160"
-                     Watermark="{l:T import.placeholder}" FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
+            <TextBox Text="{Binding LinkImportText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" MaxHeight="160" Watermark="{l:T import.placeholder}" />
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
               <Button Classes="ghost" Content="{l:T common.cancel}" Command="{Binding HideLinkImportCommand}" />
               <Button Classes="primary" Content="{l:T import.add}" Command="{Binding ImportLinkCommand}" />
@@ -66,201 +28,130 @@
           </StackPanel>
         </Border>
       </StackPanel>
-
-      <Grid x:Name="Dashboard" ColumnDefinitions="1.1*,*" RowDefinitions="Auto,Auto" IsVisible="{Binding !IsEmpty}">
-        <Border Classes="card" Padding="16,20" Background="{DynamicResource SurfaceBrush}">
-          <Grid>
-            <Border Background="{DynamicResource GlassSheenBrush}" CornerRadius="24" Margin="-15,-19" IsHitTestVisible="False" />
-            <StackPanel Spacing="2">
-
-              <!-- Status -->
-              <StackPanel HorizontalAlignment="Center" Spacing="6">
-                <Border HorizontalAlignment="Center" Classes="pill"
-                        Classes.ok="{Binding IsConnected}" Classes.bad="{Binding IsError}" Classes.warn="{Binding IsBusy}">
-                  <StackPanel Orientation="Horizontal" Spacing="7">
-                    <Ellipse Classes="dot" Width="7" Height="7" />
-                    <TextBlock Text="{Binding StatusText}" />
-                  </StackPanel>
-                </Border>
-              </StackPanel>
-
-              <!-- Connect hero -->
-              <Grid Width="264" Height="246" HorizontalAlignment="Center">
-                <Ellipse Width="264" Height="246" Fill="{DynamicResource GlowBrush}" Opacity="{Binding !IsConnected, Converter={x:Static l:BoolToOpacityConverter.Instance}}">
-                  <Ellipse.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.5" /></Transitions></Ellipse.Transitions>
-                </Ellipse>
-                <Ellipse Width="264" Height="246" Fill="{DynamicResource GlowOnBrush}" Opacity="{Binding IsConnected, Converter={x:Static l:BoolToOpacityConverter.Instance}}">
-                  <Ellipse.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.5" /></Transitions></Ellipse.Transitions>
-                </Ellipse>
-                <Ellipse Width="226" Height="226" Stroke="{DynamicResource LineBrush}" StrokeThickness="1" />
-                <Ellipse Width="210" Height="210" Stroke="{DynamicResource GlassEdgeBrush}" StrokeThickness="1" />
-                <Ellipse Classes="ring" Classes.active="{Binding IsBusy}" Width="196" Height="196"
-                         Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" RenderTransformOrigin="50%,50%">
-                  <Ellipse.RenderTransform><ScaleTransform /></Ellipse.RenderTransform>
-                </Ellipse>
-
-                <Border Width="190" Height="190" CornerRadius="95" BoxShadow="{DynamicResource ConnectShadow}" IsHitTestVisible="False" />
-                <Button Classes="connect" Command="{Binding ToggleConnectionCommand}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                        AutomationProperties.Name="{Binding ButtonText}">
-                  <Grid Width="188" Height="188">
-                    <Ellipse Fill="{DynamicResource ConnectIdleBrush}" />
-                    <Ellipse Fill="{DynamicResource ConnectOnBrush}" Opacity="{Binding IsConnected, Converter={x:Static l:BoolToOpacityConverter.Instance}}">
-                      <Ellipse.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.35" /></Transitions></Ellipse.Transitions>
-                    </Ellipse>
-                    <Ellipse Fill="{DynamicResource GlassSheenBrush}" Stroke="{DynamicResource GlassEdgeBrush}" StrokeThickness="1.5" />
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-                      <PathIcon Data="{StaticResource IconPower}" Width="52" Height="52" HorizontalAlignment="Center"
-                                Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding !IsConnected}" />
-                      <PathIcon Data="{StaticResource IconPower}" Width="52" Height="52" HorizontalAlignment="Center"
-                                Foreground="White" IsVisible="{Binding IsConnected}" />
-                      <TextBlock Text="{Binding ButtonText}" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="15" />
-                    </StackPanel>
-                  </Grid>
-                </Button>
+      <StackPanel IsVisible="{Binding !IsEmpty}" x:Name="Hero" Margin="0,28,0,0" HorizontalAlignment="Stretch">
+        <Border Classes="connection-mark" Classes.connected="{Binding IsConnected}" Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}"
+                Width="48" Height="48" HorizontalAlignment="Center" Margin="0,0,0,18">
+          <c:OutlineIcon Data="{StaticResource LineShield}" Width="26" Height="26" />
+        </Border>
+        <TextBlock x:Name="StatusTitle" Text="{Binding StatusText}" FontSize="38" FontWeight="Medium" LetterSpacing="-1"
+                   HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+        <TextBlock Classes="muted" Text="{Binding Hint}" HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" MaxWidth="460" Margin="0,10,0,26" FontSize="13" />
+        <ComboBox Classes="server-picker" ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}"
+                  HorizontalAlignment="Stretch" MaxWidth="400" PlaceholderText="{l:T home.noprofiles}"
+                  IsEnabled="{Binding !IsBusy}" AutomationProperties.Name="{l:T home.server}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ProfileItem">
+              <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+                <c:OutlineIcon Data="{StaticResource LineServers}" Width="22" Height="22" Margin="0,0,14,0" Foreground="{DynamicResource TextMutedBrush}" />
+                <StackPanel Grid.Column="1" Spacing="3">
+                  <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="14" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="faint" Text="{Binding Details}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
               </Grid>
-
-              <StackPanel HorizontalAlignment="Center" Spacing="4">
-                <TextBlock Text="{Binding Elapsed}" FontSize="32" FontWeight="Light" HorizontalAlignment="Center" FontFeatures="tnum" />
-                <TextBlock Classes="muted" Text="{Binding Hint}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460" Margin="8,0" />
-              </StackPanel>
-
-              <!-- Explicit connection check: only when connected, never automatic. -->
-              <StackPanel IsVisible="{Binding IsConnected}" Spacing="10" Margin="0,12,0,0" HorizontalAlignment="Stretch">
-                <Button Classes="ghost" HorizontalAlignment="Center" Command="{Binding CheckConnectionCommand}" IsEnabled="{Binding CanRunCheck}"
-                        AutomationProperties.Name="{Binding CheckButtonText}">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <PathIcon Data="{StaticResource IconCheck}" Width="15" Height="15" />
-                    <TextBlock Text="{Binding CheckButtonText}" />
-                  </StackPanel>
-                </Button>
-                <TextBlock Classes="faint" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
-                           Text="{Binding CheckDisabledReason}" IsVisible="{Binding CheckDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                <Border Classes="tile" IsVisible="{Binding HasCheckResult}" HorizontalAlignment="Stretch" MaxWidth="460">
-                  <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="4">
-                    <TextBlock Classes="caps" Text="{l:T home.check.ip}" />
-                    <TextBlock Classes="caps" Grid.Column="1" Text="{l:T home.check.country}" />
-                    <TextBlock Classes="caps" Grid.Column="2" Text="{l:T home.check.latency}" />
-                    <SelectableTextBlock Grid.Row="1" Text="{Binding CheckIp}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CheckCountry}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding CheckLatency}" FontWeight="SemiBold" />
-                  </Grid>
-                </Border>
-                <Border Classes="banner bad" IsVisible="{Binding HasCheckError}">
-                  <Grid ColumnDefinitions="Auto,*">
-                    <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource DangerBrush}" />
-                    <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding CheckError}" TextWrapping="Wrap" />
-                  </Grid>
-                </Border>
-              </StackPanel>
-
-              <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,10,0,0">
-                <Grid ColumnDefinitions="Auto,*">
-                  <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource DangerBrush}" />
-                  <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Error}" TextWrapping="Wrap" />
-                </Grid>
-              </Border>
-
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Classes="text-action" Content="{l:T import.title}" Command="{Binding Shell.NavigateCommand}" CommandParameter="connections"
+                HorizontalAlignment="Center" Margin="0,10,0,0" IsVisible="{Binding !HasProfiles}" />
+        <Border Width="224" Height="54" HorizontalAlignment="Center" Margin="0,22,0,20" CornerRadius="12" BoxShadow="{DynamicResource ActionShadow}">
+          <Button Classes="primary connect-action" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  Command="{Binding ToggleConnectionCommand}" AutomationProperties.Name="{Binding ButtonText}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <c:OutlineIcon Data="{StaticResource LinePower}" Width="20" Height="20" Foreground="{DynamicResource OnPrimaryBrush}" />
+              <TextBlock Text="{Binding ButtonText}" Foreground="{DynamicResource OnPrimaryBrush}" FontWeight="Medium" FontSize="15" />
             </StackPanel>
-          </Grid>
+          </Button>
         </Border>
-
-        <!-- Server + mode -->
-        <Border x:Name="ServerCard" Classes="card" Grid.Column="1" Margin="18,0,0,0" Padding="22">
-          <StackPanel Spacing="22" VerticalAlignment="Center">
-            <Border Width="54" Height="54" CornerRadius="19" HorizontalAlignment="Left" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource GlassEdgeBrush}" BorderThickness="1">
-              <PathIcon Data="{StaticResource IconServers}" Width="25" Height="25" Foreground="{DynamicResource AccentBrush}" />
-            </Border>
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Classes="h2" Text="{l:T home.server}" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Classes="icon" Command="{Binding Shell.NavigateCommand}" CommandParameter="connections"
-                      ToolTip.Tip="{l:T home.manage}">
-                <PathIcon Data="{StaticResource IconPlus}" Width="16" Height="16" />
-              </Button>
-            </Grid>
-            <ComboBox ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}"
-                      HorizontalAlignment="Stretch" PlaceholderText="{l:T home.noprofiles}" IsEnabled="{Binding !IsBusy}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:ProfileItem">
-                  <StackPanel Spacing="2" Margin="0,2">
-                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Classes="faint" Text="{Binding Details}" />
-                  </StackPanel>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-            <Border Height="1" Background="{DynamicResource LineBrush}" />
-            <Grid ColumnDefinitions="*,Auto">
-              <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-                <TextBlock Text="{l:T home.tun}" FontWeight="Medium" TextWrapping="Wrap" />
-                <TextBlock Classes="faint" Text="{l:T home.tun.hint}" TextWrapping="Wrap" />
-              </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsTun}" IsEnabled="{Binding !IsBusy}" />
-            </Grid>
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+          <Border Classes="mode-switch">
+            <StackPanel Orientation="Horizontal">
+              <RadioButton Classes="segment mode" GroupName="connectionMode" IsChecked="{Binding IsProxy}" IsEnabled="{Binding !IsBusy}">
+                <TextBlock Text="{l:T home.mode.proxy}" />
+              </RadioButton>
+              <RadioButton Classes="segment mode" GroupName="connectionMode" IsChecked="{Binding IsWholeDevice}" IsEnabled="{Binding !IsBusy}">
+                <TextBlock Text="{l:T home.mode.device}" />
+              </RadioButton>
+            </StackPanel>
+          </Border>
+          <Button Classes="icon" ToolTip.Tip="{Binding ModeHint}" AutomationProperties.Name="{l:T home.mode}" Command="{Binding ToggleModeHintCommand}">
+            <c:OutlineIcon Data="{StaticResource LineInfo}" Width="16" Height="16" />
+          </Button>
+        </StackPanel>
+        <TextBlock Classes="faint" Text="{Binding ModeHint}" IsVisible="{Binding ShowModeHint}" TextAlignment="Center" TextWrapping="Wrap" Margin="12,12,12,0" />
+        <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,20,0,0">
+          <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+        </Border>
+      </StackPanel>
+      <Border IsVisible="{Binding !IsEmpty}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,24,0,0" Padding="0,20,0,0">
+        <Grid ColumnDefinitions="*,*,*">
+          <StackPanel Spacing="7" HorizontalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:OutlineIcon Data="{StaticResource LineDown}" Width="13" Height="13" />
+              <TextBlock Classes="faint" Text="{l:T stats.down}" />
+            </StackPanel>
+            <TextBlock Classes="metric" Text="{Binding DownSpeed}" />
           </StackPanel>
-        </Border>
+          <StackPanel Grid.Column="1" Spacing="7" HorizontalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:OutlineIcon Data="{StaticResource LineUp}" Width="13" Height="13" />
+              <TextBlock Classes="faint" Text="{l:T stats.up}" />
+            </StackPanel>
+            <TextBlock Classes="metric" Text="{Binding UpSpeed}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Spacing="7" HorizontalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:OutlineIcon Data="{StaticResource LineClock}" Width="13" Height="13" />
+              <TextBlock Classes="faint" Text="{l:T home.duration}" />
+            </StackPanel>
+            <TextBlock Classes="metric" Text="{Binding Elapsed}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+      <Expander Header="{l:T home.check}" IsVisible="{Binding IsConnected}" HorizontalAlignment="Stretch" Margin="0,4,0,0">
+        <StackPanel Spacing="12">
+          <Button Classes="ghost" Content="{Binding CheckButtonText}" Command="{Binding CheckConnectionCommand}" IsEnabled="{Binding CanRunCheck}" HorizontalAlignment="Left" />
+          <TextBlock Classes="faint" Text="{Binding CheckDisabledReason}" IsVisible="{Binding CheckDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+          <StackPanel Spacing="8" IsVisible="{Binding HasCheckResult}">
+            <TextBlock Classes="caps" Text="{l:T home.check.ip}" />
+            <TextBlock Text="{Binding CheckIp}" FontWeight="Medium" />
+            <TextBlock Classes="caps" Text="{l:T home.check.country}" />
+            <TextBlock Text="{Binding CheckCountry}" TextWrapping="Wrap" />
+            <TextBlock Classes="caps" Text="{l:T home.check.latency}" />
+            <TextBlock Text="{Binding CheckLatency}" />
+          </StackPanel>
+          <Border Classes="banner bad" IsVisible="{Binding HasCheckError}"><TextBlock Text="{Binding CheckError}" TextWrapping="Wrap" /></Border>
+        </StackPanel>
+      </Expander>
+      <Grid IsVisible="{Binding !IsEmpty}" ColumnDefinitions="*,Auto" Margin="0,16,0,8">
+        <TextBlock Classes="page-label" Text="{l:T nav.tools}" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="text-action" Content="{l:T home.tools.manage}" Command="{Binding Shell.NavigateCommand}" CommandParameter="tools" />
       </Grid>
-
-      <!-- Quick cards -->
-      <Grid x:Name="QuickCards" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto">
-        <Border x:Name="TrafficCard" Classes="card" MinHeight="136" Padding="16">
-          <StackPanel Spacing="10">
-            <TextBlock Classes="caps" Text="{l:T home.speed}" />
-            <Grid ColumnDefinitions="*,*">
-              <StackPanel Spacing="2">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                  <PathIcon Data="{StaticResource IconDown}" Width="13" Height="13" Foreground="{DynamicResource SuccessBrush}" />
-                  <TextBlock Classes="faint" Text="{l:T stats.down}" />
-                </StackPanel>
-                <TextBlock Text="{Binding DownSpeed}" FontSize="17" FontWeight="SemiBold" />
-              </StackPanel>
-              <StackPanel Grid.Column="1" Spacing="2">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                  <PathIcon Data="{StaticResource IconUp}" Width="13" Height="13" Foreground="{DynamicResource AccentBrush}" />
-                  <TextBlock Classes="faint" Text="{l:T stats.up}" />
-                </StackPanel>
-                <TextBlock Text="{Binding UpSpeed}" FontSize="17" FontWeight="SemiBold" />
-              </StackPanel>
-            </Grid>
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <TextBlock Classes="faint" Text="{l:T stats.engine}" />
-              <TextBlock Classes="faint" Text="{Binding EngineLabel}" />
-            </StackPanel>
-          </StackPanel>
-        </Border>
-
-        <Border x:Name="ZapretCard" Classes="card" Grid.Column="1" MinHeight="136" Padding="16">
-          <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*,Auto">
-            <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource AccentSoftBrush}">
-              <PathIcon Data="{StaticResource IconBolt}" Foreground="{DynamicResource AccentBrush}" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
-              <TextBlock Text="Zapret" FontWeight="SemiBold" />
+      <Border IsVisible="{Binding !IsEmpty}" Classes="panel" Padding="16,0">
+        <StackPanel>
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,14">
+            <c:OutlineIcon Data="{StaticResource LineBolt}" Margin="0,0,12,0" />
+            <StackPanel Grid.Column="1" Spacing="3" Margin="0,0,12,0">
+              <TextBlock Text="Zapret" FontWeight="Medium" FontSize="13" />
               <TextBlock Classes="faint" Text="{Binding ZapretState}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="2" IsChecked="{Binding ZapretOn, Mode=OneWay}" Command="{Binding ToggleZapretCommand}" />
-            <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Classes="faint" Margin="0,10,0,0" Text="{l:T home.zapret.hint}" TextWrapping="Wrap" />
+            <ToggleSwitch Grid.Column="2" IsChecked="{Binding ZapretOn, Mode=OneWay}" Command="{Binding ToggleZapretCommand}" AutomationProperties.Name="Zapret" />
           </Grid>
-        </Border>
-
-        <Border x:Name="TelegramCard" Classes="card" Grid.Column="2" MinHeight="136" Padding="16">
-          <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*,Auto">
-            <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource AccentSoftBrush}">
-              <PathIcon Data="{StaticResource IconSend}" Foreground="{DynamicResource AccentBrush}" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
-              <TextBlock Text="TgWsProxy" FontWeight="SemiBold" />
+          <Border Height="1" Background="{DynamicResource LineBrush}" />
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,14">
+            <c:OutlineIcon Data="{StaticResource LineSend}" Margin="0,0,12,0" />
+            <StackPanel Grid.Column="1" Spacing="3" Margin="0,0,12,0">
+              <TextBlock Text="TgWsProxy" FontWeight="Medium" FontSize="13" />
               <TextBlock Classes="faint" Text="{Binding TgState}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="2" IsChecked="{Binding TgOn, Mode=OneWay}" Command="{Binding ToggleTgCommand}" />
-            <Button Grid.Row="2" Grid.ColumnSpan="3" Classes="ghost" Margin="0,10,0,0" HorizontalAlignment="Stretch" Command="{Binding CopyTgLinkCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                <PathIcon Data="{StaticResource IconLink}" Width="15" Height="15" />
-                <TextBlock Text="{l:T tools.tg.copy}" />
-              </StackPanel>
+            <Button Grid.Column="2" Classes="icon" Command="{Binding CopyTgLinkCommand}" Margin="0,0,8,0"
+                    AutomationProperties.Name="{l:T tools.tg.copy}" ToolTip.Tip="{l:T tools.tg.copy}">
+              <c:OutlineIcon Data="{StaticResource LineCopy}" Width="16" Height="16" />
             </Button>
+            <ToggleSwitch Grid.Column="3" IsChecked="{Binding TgOn, Mode=OneWay}" Command="{Binding ToggleTgCommand}" AutomationProperties.Name="TgWsProxy" />
           </Grid>
-        </Border>
-      </Grid>
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

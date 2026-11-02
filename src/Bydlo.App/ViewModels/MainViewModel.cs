@@ -71,12 +71,12 @@ public sealed partial class MainViewModel : ViewModelBase
         Settings = new SettingsViewModel(this);
         NavItems =
         [
-            new("home", "nav.home", "IconHome", Home),
-            new("connections", "nav.connections", "IconServers", Connections),
-            new("tools", "nav.tools", "IconTools", Tools),
-            new("routing", "nav.routing", "IconRouting", Routing),
-            new("statistics", "nav.statistics", "IconStats", Statistics),
-            new("settings", "nav.settings", "IconSettings", Settings),
+            new("home", "nav.home", "LineHome", Home),
+            new("connections", "nav.connections", "LineServers", Connections),
+            new("tools", "nav.tools", "LineTools", Tools),
+            new("routing", "nav.routing", "LineRouting", Routing),
+            new("statistics", "nav.statistics", "LineStats", Statistics),
+            new("settings", "nav.settings", "LineSettings", Settings),
         ];
         _currentNav = NavItems[0];
         _currentNav.IsSelected = true;
@@ -111,6 +111,7 @@ public sealed partial class MainViewModel : ViewModelBase
     public ObservableCollection<double> UpHistory { get; } = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVisibleToast))]
     private NavItem _currentNav;
 
     [ObservableProperty]
@@ -120,6 +121,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private ProfileItem? _selectedProfile;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVisibleToast))]
     private SessionSnapshot _primary = new(ConnectionManager.PrimaryKey, ConnectionStatus.Disconnected, null, null, false, null, null, null);
 
     [ObservableProperty]
@@ -152,12 +154,18 @@ public sealed partial class MainViewModel : ViewModelBase
     private bool _hasOrphans;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVisibleToast))]
     private string? _toast;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVisibleToast))]
     private bool _toastIsError;
 
     public PageViewModel CurrentPage => CurrentNav.Page;
+
+    // A connection error is already visible inline on Home; do not cover the tools with a duplicate toast.
+    public bool HasVisibleToast => Toast is not null &&
+        !(ToastIsError && CurrentNav.Key == "home" && Home.Error == Toast);
 
     public bool IsElevated => Services.Privileges.IsElevated;
 

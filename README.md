@@ -4,7 +4,7 @@
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
 <i>One app. Every protocol. Zero bullshit.</i></p>
 
-<p align="center"><img src="docs/images/home-connected.png" width="760" alt="Главный экран BYDLO"></p>
+<p align="center"><img src="docs/images/home-connected.png" width="880" alt="Главный экран BYDLO: подключение и выбранный сервер"></p>
 
 BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
@@ -18,7 +18,7 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 
 ## Возможности
 
-- **Подключение одной кнопкой**: большая анимированная кнопка, скорость в реальном времени и таймер сеанса.
+- **Подключение одной кнопкой**: заметная кнопка подключения, скорость в реальном времени и таймер сеанса.
 - **Проверка соединения**: внешний IP, страна и задержка через туннель — по явному нажатию, с выбором сервиса проверки.
 - **Протоколы:** VLESS (включая REALITY и XHTTP через Xray), VMess, Trojan, Shadowsocks, Hysteria 2, TUIC, SOCKS5, HTTP(S),
   WireGuard, AmneziaWG, OpenVPN.
@@ -32,13 +32,33 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 - **Безопасность:** секреты хранятся зашифрованными (DPAPI на Windows), учётные данные вырезаются из логов,
   восстановление после сбоев, проверка целостности загружаемых движков, привилегированные операции изолированы и выключены по умолчанию.
 - **Дизайн:** фиолетовая (по умолчанию), светлая, чёрная OLED и системная темы; русский и английский языки;
-  адаптивная раскладка от ширины телефона до десктопа.
+  спокойные непрозрачные поверхности, адаптивная раскладка от ширины телефона до десктопа.
 - **Mock-режим:** явно помеченная имитация подключения, трафика и ошибок для проверки интерфейса без запуска сетевых движков.
 
-| | | |
-|---|---|---|
-| ![Светлая тема](docs/images/home-light.png) | ![OLED](docs/images/home-oled.png) | ![Инструменты](docs/images/tools.png) |
-| ![Подключения](docs/images/connections.png) | ![Статистика](docs/images/statistics.png) | ![Настройки](docs/images/settings.png) |
+## Интерфейс
+
+Фиолетовая, светлая и OLED-темы используют общую компоновку. На узком экране sidebar заменяется нижней навигацией.
+Скриншоты сняты на русском языке в Mock Mode; подключение и трафик на них имитируются.
+
+<p align="center">
+  <img src="docs/images/home-light.png" width="48%" alt="Главный экран: светлая тема">
+  <img src="docs/images/home-oled.png" width="48%" alt="Главный экран: OLED-тема">
+</p>
+<p align="center">
+  <img src="docs/images/connections.png" width="48%" alt="Подключения: импорт и список серверов">
+  <img src="docs/images/tools.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
+</p>
+<p align="center">
+  <img src="docs/images/routing.png" width="48%" alt="Маршрутизация: режимы, DNS и правила">
+  <img src="docs/images/statistics.png" width="48%" alt="Статистика: скорость, трафик и журнал">
+</p>
+<p align="center">
+  <img src="docs/images/settings.png" width="70%" alt="Настройки приложения">
+</p>
+<p align="center">
+  <img src="docs/images/mobile-home.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
+  <img src="docs/images/mobile-connections.png" width="260" alt="Узкое окно: список серверов">
+</p>
 
 ## Платформы
 

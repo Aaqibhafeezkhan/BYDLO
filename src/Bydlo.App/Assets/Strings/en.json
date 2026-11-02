@@ -302,5 +302,19 @@
   "error.engine.tunnel.admin": "Creating a tunnel needs administrator rights.",
   "error.engine.amnezia.missing": "Install AmneziaWG (amneziawg-windows / amneziawg-tools).",
   "error.engine.wireguard.missing": "Install WireGuard (wireguard.com/install) or use the sing-box engine.",
-  "error.engine.tunnel.platform": "Native WireGuard / AmneziaWG on this platform is planned."
+  "error.engine.tunnel.platform": "Native WireGuard / AmneziaWG on this platform is planned.",
+  "home.duration": "Session time",
+  "import.manual": "Enter configuration manually",
+  "settings.about": "About and licenses",
+  "tools.setup": "Installation and strategy",
+  "home.connection": "Connection",
+  "home.mode.proxy": "Proxy",
+  "home.mode.device": "Whole device",
+  "home.mode": "Connection mode",
+  "home.hint.ready": "Choose a server to connect",
+  "home.tools.manage": "Configure",
+  "home.hint.mock": "Simulated connection · Mock Mode",
+  "home.mode.proxy.hint": "Only apps configured to use the local SOCKS5 / HTTP proxy: 127.0.0.1:{0}.",
+  "home.hint.error": "Try again or choose another server",
+  "home.hint.busy": "Updating your connection…"
 }

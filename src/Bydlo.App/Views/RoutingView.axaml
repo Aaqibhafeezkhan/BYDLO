@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.RoutingView"
@@ -14,34 +15,34 @@
     </Style>
   </UserControl.Styles>
   <ScrollViewer>
-    <StackPanel MaxWidth="980" Margin="24,28,24,32" Spacing="18">
-      <Grid ColumnDefinitions="*,Auto">
+    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
+      <Grid x:Name="PageHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
         <StackPanel Spacing="4">
           <TextBlock Classes="h1" Text="{l:T nav.routing}" />
           <TextBlock Classes="muted" Text="{l:T routing.subtitle}" TextWrapping="Wrap" />
         </StackPanel>
-        <Button Grid.Column="1" Classes="primary" VerticalAlignment="Center" Content="{l:T common.save}" Command="{Binding SaveCommand}" />
+        <Button x:Name="SaveButton" Grid.Column="1" Classes="primary" VerticalAlignment="Center" Content="{l:T common.save}" Command="{Binding SaveCommand}" />
       </Grid>
 
-      <Border Classes="card">
+      <Border Classes="panel">
         <StackPanel Spacing="14">
           <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="{l:T routing.mesh}" FontWeight="Medium" />
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T routing.mesh}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T routing.mesh.hint}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding PreserveMesh}" />
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="{l:T routing.private}" FontWeight="Medium" />
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T routing.private}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T routing.private.hint}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding BypassPrivate}" />
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="{l:T routing.only}" FontWeight="Medium" />
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T routing.only}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T routing.only.hint}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding ProxyOnlyListed}" />
@@ -49,7 +50,7 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="card">
+      <Border Classes="section">
         <StackPanel Spacing="10">
           <TextBlock Classes="h3" Text="DNS" />
           <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
@@ -62,7 +63,7 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="card">
+      <Border Classes="section">
         <StackPanel Spacing="12">
           <TextBlock Classes="h3" Text="{l:T routing.rules}" />
           <TextBlock Classes="caps" Text="{l:T routing.direct}" />
