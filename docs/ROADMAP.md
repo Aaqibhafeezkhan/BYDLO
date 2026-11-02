@@ -12,7 +12,7 @@
 ## v0.2 — проверка и доработка
 
 - ✅ TgWsProxy без Python: ядро Flowseal tg-ws-proxy перенесено на C# и встроено в BYDLO ([#29](https://github.com/endercodezz/BYDLO/issues/29), этап 2).
-- Реализована упаковка остальных движков #29: sing-box/Xray, AmneziaWG без клиента на Windows/Linux, OpenVPN с DCO по согласию на Windows и статическим OpenSSL на Unix. Реальные подключения и установку DCO проверяет владелец; автоматические проверки их не запускают.
+- Реализован полный комплект [#29](https://github.com/endercodezz/BYDLO/issues/29): sing-box/Xray, AmneziaWG без клиента на Windows/Linux, OpenVPN с DCO по согласию на Windows и статическим OpenSSL на Unix; фоновые процессы без консоли, исходники и лицензии в комплекте. CI на GitHub собирает все шесть платформ, зеркало на Gitea — Linux x64 (#61); Windows на Linux-раннере — #60. Реальные подключения и установку DCO проверяет владелец; автоматические проверки их не запускают.
 - ✅ Проверено в реальной сети на Windows x64: Zapret (Flowseal) и TgWsProxy.
 - ✅ TgWsProxy: живые соединения в пуле и автоматический перезапуск слушателя после сна ([#51](https://github.com/endercodezz/BYDLO/issues/51)); проверено на Windows x64.
 - TgWsProxy: HTTP/2-мультиплексирование медиа через Cloudflare (`cf_h2` в оригинале).
