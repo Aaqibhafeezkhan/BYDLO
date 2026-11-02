@@ -40,6 +40,8 @@ jobs:
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/import-verification en --verify-import
       - name: Verify Zapret selection UI (headless, no engines or network)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/selection-verification en --verify-zapret-selection
+      - name: Verify desktop integration (headless, mock only, no OS registration)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-verification en --verify-desktop
       - uses: actions/upload-artifact@v4
         if: always()
         with:

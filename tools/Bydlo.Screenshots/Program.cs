@@ -17,7 +17,8 @@ var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
 if (args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
-    args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
+    args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) ||
+    Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
     Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
 }
@@ -39,6 +40,11 @@ var services = app.Services!;
 Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
 
 var shell = new MainViewModel(services);
+if (args.Contains("--verify-desktop", StringComparer.Ordinal))
+{
+    DesktopVerification.Run(shell, services, output);
+    return;
+}
 if (args.Contains("--verify-zapret-selection", StringComparer.Ordinal))
 {
     ZapretSelectionVerification.Run(shell, services, output);

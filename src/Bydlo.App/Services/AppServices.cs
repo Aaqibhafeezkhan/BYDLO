@@ -176,13 +176,20 @@ public sealed class AppServices
 
     public Task ShutdownAsync()
     {
-        lock (_shutdownGate) { return _shutdownTask ??= ShutdownCoreAsync(); }
+        lock (_shutdownGate)
+        {
+            if (_shutdownTask is null || _shutdownTask.IsFaulted || _shutdownTask.IsCanceled)
+            { _shutdownTask = ShutdownCoreAsync(); }
+            return _shutdownTask;
+        }
     }
 
     private async Task ShutdownCoreAsync()
     {
         _shutdownCancellation.Cancel();
-        try { await Connections.StopAllAsync().ConfigureAwait(false); }
-        finally { Http.Dispose(); _shutdownCancellation.Dispose(); }
+        await Connections.StopAllAsync().ConfigureAwait(false);
+        await SaveSettingsAsync().ConfigureAwait(false);
+        Http.Dispose();
+        _shutdownCancellation.Dispose();
     }
 }

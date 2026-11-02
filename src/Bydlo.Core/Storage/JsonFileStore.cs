@@ -48,12 +48,21 @@ internal static class JsonDefaults
     }
 }
 
+#pragma warning disable CA1001 // lives for the whole app lifetime, like ProfileStore below
 public sealed class SettingsStore(string path)
+#pragma warning restore CA1001
 {
+    private readonly SemaphoreSlim _gate = new(1, 1);
     public async Task<AppSettings> LoadAsync(CancellationToken ct = default) =>
         await JsonDefaults.ReadAsync<AppSettings>(path, ct).ConfigureAwait(false) ?? new AppSettings();
 
-    public Task SaveAsync(AppSettings settings, CancellationToken ct = default) => JsonDefaults.WriteAtomicAsync(path, settings, ct);
+    public async Task SaveAsync(AppSettings settings, CancellationToken ct = default)
+    {
+        // Rapid preference changes must not concurrently write or move the same temporary file.
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try { await JsonDefaults.WriteAtomicAsync(path, settings, ct).ConfigureAwait(false); }
+        finally { _gate.Release(); }
+    }
 }
 
 public sealed class Subscription

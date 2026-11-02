@@ -34,6 +34,9 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅). Mock-р�
 | Системный прокси на время подключения | 🧪 | 🗓 | 🗓 | ❌ |
 | Zapret | ✅ x64: winws + WinDivert; ARM64 ❌ | 🧪 x64/ARM64: nfqws + nftables | 🧪 Intel/Apple Silicon: tpws + PF, IPv4 TCP 80/443 | 🗓 [отдельная задача #21](https://github.com/endercodezz/BYDLO/issues/21) |
 | TgWsProxy (встроенный порт на C#, без Python) | ✅ | 🧪 | 🧪 | 🗓 |
+| Трей и меню сессий | 🧪 Avalonia TrayIcon | 🧪 нужен StatusNotifierItem/AppIndicator | 🧪 меню строки состояния | ❌ |
+| Автозапуск при входе (по выбору) | 🧪 HKCU Run | 🧪 XDG autostart | 🧪 LaunchAgent | ❌ |
+| Системные уведомления (отключаемые) | 🧪 Shell balloon | 🧪 notify-send + демон уведомлений | 🧪 osascript, разрешение ОС | ❌ |
 | Статистика трафика в реальном времени | sing-box ✅ (Clash API), TgWsProxy ✅ (встроенные счётчики), остальные 🗓 | так же | так же | 🗓 |
 
 ## Импорт
