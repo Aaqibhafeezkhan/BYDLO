@@ -14,7 +14,7 @@
 **PowerShell — обычный пользовательский запуск:**
 
 ```powershell
-git clone https://git.ywfl.dev/endercodezz/BYDLO.git
+git clone https://github.com/endercodezz/BYDLO.git
 cd BYDLO
 # Убрать флаги разработки только из текущей оболочки.
 Remove-Item Env:BYDLO_MOCK, Env:BYDLO_SAFE_DEV, Env:BYDLO_DATA_DIR -ErrorAction SilentlyContinue
@@ -26,7 +26,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 **bash — обычный пользовательский запуск:**
 
 ```bash
-git clone https://git.ywfl.dev/endercodezz/BYDLO.git
+git clone https://github.com/endercodezz/BYDLO.git
 cd BYDLO
 unset BYDLO_MOCK BYDLO_SAFE_DEV BYDLO_DATA_DIR
 dotnet restore BYDLO.slnx
@@ -108,11 +108,13 @@ dotnet run --project tools/Bydlo.BundleEngines -c Release -- win-x64 artifacts/w
 
 ## CI
 
-`.github/workflows/ci.yml`:
+`.github/workflows/ci.yml` работает в двух местах и выбирает набор задач по `github.server_url`:
 
-> **Временно:** CI работает на раннерах Gitea (git.ywfl.dev), где есть только Linux x64 (`ubuntu-latest`).
-> Тесты идут только на Ubuntu, публикуется только `linux-x64`; Windows, Linux ARM64 и macOS вернутся вместе
-> с подходящими раннерами или после возвращения на GitHub (#57). Задача **release** использует `gh` и на Gitea не работает.
+- **GitHub** (основной репозиторий) — полная матрица, описанная ниже, и черновики релизов.
+- **Зеркало на Gitea** ([git.ywfl.dev/endercodezz/BYDLO](https://git.ywfl.dev/endercodezz/BYDLO), раннеры
+  [@yawaflua](https://github.com/yawaflua)) — только Linux x64: тесты на `ubuntu-latest` и публикация `linux-x64`.
+  Там же CI сам ставит PowerShell и инструменты сборки, которых нет в образе, и использует artifact actions v3.
+  Релизы с Gitea не публикуются. Сборка Windows и тесты Windows-логики на Linux — #60.
 
 1. **test** — сборка и модульные тесты на Ubuntu, Windows и macOS (`BYDLO_SAFE_DEV=1`).
 2. **desktop** — самодостаточная публикация для шести платформ, упаковка закреплённых sing-box/Xray/Zapret, сборка AmneziaWG для Windows/Linux и OpenVPN для всех платформ; лицензии, соответствующие исходники и хеши. Сетевые движки не запускаются. Для Unix используются нативные x64/ARM64 runners.

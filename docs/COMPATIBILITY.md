@@ -33,7 +33,7 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 | Режим TUN (sing-box, нужны права администратора/root) | 🧪 | 🧪 | 🧪 | 🗓 (VpnService) |
 | Kill switch TUN (sing-box; отдельный TUN-процесс, без постоянных правил фаервола) | 🧪 | 🧪 | 🧪 | 🗓 |
 | Системный прокси на время подключения | 🧪 | 🗓 | 🗓 | ❌ |
-| Zapret | ✅ x64: winws + WinDivert; ARM64 ❌ | 🧪 x64/ARM64: nfqws + nftables | 🧪 Intel/Apple Silicon: tpws + PF, IPv4 TCP 80/443 | 🗓 [отдельная задача #21](https://git.ywfl.dev/endercodezz/BYDLO/issues/21) |
+| Zapret | ✅ x64: winws + WinDivert; ARM64 ❌ | 🧪 x64/ARM64: nfqws + nftables | 🧪 Intel/Apple Silicon: tpws + PF, IPv4 TCP 80/443 | 🗓 [отдельная задача #21](https://github.com/endercodezz/BYDLO/issues/21) |
 | TgWsProxy (встроенный порт на C#, без Python) | ✅ | 🧪 | 🧪 | 🗓 |
 | Трей и меню сессий | 🧪 Avalonia TrayIcon | 🧪 нужен StatusNotifierItem/AppIndicator | 🧪 меню строки состояния | ❌ |
 | Автозапуск при входе (по выбору) | 🧪 HKCU Run | 🧪 XDG autostart | 🧪 LaunchAgent | ❌ |
