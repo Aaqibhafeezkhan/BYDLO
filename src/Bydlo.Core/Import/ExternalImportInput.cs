@@ -9,6 +9,7 @@ public static class ExternalImportInput
     public static IReadOnlyList<string> Schemes { get; } = Array.AsReadOnly(new[]
     {
         "vless", "vmess", "trojan", "ss", "hy2", "hysteria2", "tuic", "wg", "wireguard", "socks", "socks5", "http", "https",
+        "anytls", "shadowtls", "naive+https", "naive+quic", "ssh",
     });
 
     public static string? LinkKind(string? text)

@@ -22,6 +22,7 @@ public sealed class ProfileImporter
         new ShadowsocksParser(),
         new Hysteria2Parser(),
         new TuicParser(),
+        new SingBoxUriParser(),
         new WireGuardUriParser(),
         new ProxyParser(),
     ];

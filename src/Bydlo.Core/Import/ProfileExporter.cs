@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Bydlo.Core.Models;
+using Bydlo.Core.Import.Parsers;
 
 namespace Bydlo.Core.Import;
 
@@ -9,7 +10,8 @@ public static class ProfileExporter
 {
     public static bool HasShareLink(ProtocolKind protocol) => protocol is
         ProtocolKind.Vless or ProtocolKind.Vmess or ProtocolKind.Trojan or ProtocolKind.Shadowsocks or
-        ProtocolKind.Hysteria2 or ProtocolKind.Tuic or ProtocolKind.Socks5 or ProtocolKind.Http;
+        ProtocolKind.Hysteria2 or ProtocolKind.Tuic or ProtocolKind.Socks5 or ProtocolKind.Http or
+        ProtocolKind.AnyTls or ProtocolKind.ShadowTls or ProtocolKind.Naive or ProtocolKind.Ssh;
 
     public static bool HasConfigFile(ProtocolKind protocol) => protocol is
         ProtocolKind.WireGuard or ProtocolKind.AmneziaWG or ProtocolKind.OpenVpn;
@@ -43,6 +45,33 @@ public static class ProfileExporter
         string auth;
         switch (p.Protocol)
         {
+            case ProtocolKind.AnyTls:
+            case ProtocolKind.ShadowTls:
+                scheme = p.Protocol == ProtocolKind.AnyTls ? "anytls" : "shadowtls";
+                auth = Escape(p.Protocol == ProtocolKind.AnyTls ? Required(secrets, Keys.Password) : secrets[SingBoxUriParser.ShadowPassword] ?? "");
+                Copy(Keys.Sni, Keys.Alpn, Keys.Fingerprint);
+                if (p.Option(Keys.AllowInsecure) == "true") { query["insecure"] = "1"; }
+                if (p.Protocol == ProtocolKind.ShadowTls)
+                {
+                    Copy("version", Keys.Method);
+                    query["ss_password"] = Required(secrets, Keys.Password);
+                }
+                break;
+            case ProtocolKind.Naive:
+                scheme = p.Option("quic") == "true" ? "naive+quic" : "naive+https";
+                auth = Escape(Required(secrets, Keys.Username)) + ":" + Escape(Required(secrets, Keys.Password));
+                Copy(Keys.Sni);
+                break;
+            case ProtocolKind.Ssh:
+                scheme = "ssh";
+                auth = Escape(Required(secrets, Keys.Username));
+                if (secrets[Keys.Password] is { } sshPassword) { auth += ":" + Escape(sshPassword); }
+                foreach (var key in new[] { SingBoxUriParser.PrivateKey, SingBoxUriParser.Passphrase })
+                {
+                    if (secrets[key] is { } value) { query[key] = value; }
+                }
+                Copy("host_key");
+                break;
             case ProtocolKind.Vless:
             case ProtocolKind.Trojan:
                 scheme = p.Protocol == ProtocolKind.Vless ? "vless" : "trojan";

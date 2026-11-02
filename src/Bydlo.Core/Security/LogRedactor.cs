@@ -59,7 +59,7 @@ public sealed partial class LogRedactor
     [GeneratedRegex(@"(?<scheme>[a-z][a-z0-9+.\-]{1,15})://[^\s/@]{3,}@", RegexOptions.IgnoreCase)]
     private static partial Regex UriCredentials();
 
-    [GeneratedRegex(@"(?<key>\b(?:password|passwd|pass|secret|private[_\- ]?key|presharedkey|pre_shared_key|psk|token|auth|uuid|id)\b[""']?)(?<sep>\s*[:=]\s*[""']?)[^\s""',;&}]+", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(?<key>\b(?:password|ss_password|shadow_password|private_key_passphrase|passwd|pass|secret|private[_\- ]?key|presharedkey|pre_shared_key|psk|token|auth|uuid|id)\b[""']?)(?<sep>\s*[:=]\s*[""']?)[^\s""',;&}]+", RegexOptions.IgnoreCase)]
     private static partial Regex KeyValueSecret();
 
     [GeneratedRegex(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b")]

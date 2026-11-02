@@ -14,6 +14,10 @@ public enum ProtocolKind
     WireGuard,
     AmneziaWG,
     OpenVpn,
+    AnyTls,
+    ShadowTls,
+    Naive,
+    Ssh,
 }
 
 /// <summary>Executable or library that actually carries traffic.</summary>

@@ -22,6 +22,7 @@ public sealed class SingBoxConfigBuilder
     {
         ProtocolKind.Vless, ProtocolKind.Vmess, ProtocolKind.Trojan, ProtocolKind.Shadowsocks,
         ProtocolKind.Hysteria2, ProtocolKind.Tuic, ProtocolKind.Socks5, ProtocolKind.Http, ProtocolKind.WireGuard,
+        ProtocolKind.AnyTls, ProtocolKind.ShadowTls, ProtocolKind.Naive, ProtocolKind.Ssh,
     };
 
     /// <summary>CGNAT / mesh-VPN ranges kept outside the tunnel when <see cref="RoutingSettings.PreserveMeshVpnRanges"/> is on.</summary>
@@ -54,6 +55,14 @@ public sealed class SingBoxConfigBuilder
         else
         {
             outbounds.Add(BuildOutbound(profile, secrets));
+            if (profile.Protocol == ProtocolKind.ShadowTls)
+            {
+                var shadow = new JsonObject { ["type"] = "shadowtls", ["tag"] = "shadowtls", ["server"] = profile.Host,
+                    ["server_port"] = profile.Port, ["version"] = int.Parse(profile.Option("version") ?? "3", System.Globalization.CultureInfo.InvariantCulture) };
+                if (secrets[SingBoxUriParser.ShadowPassword] is { } password) { shadow["password"] = password; }
+                AddTls(shadow, profile, defaultEnabled: true);
+                outbounds.Add(shadow);
+            }
         }
 
         outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
@@ -265,6 +274,32 @@ public sealed class SingBoxConfigBuilder
         var o = new JsonObject { ["tag"] = ProxyTag, ["server"] = p.Host, ["server_port"] = p.Port };
         switch (p.Protocol)
         {
+            case ProtocolKind.AnyTls:
+                o["type"] = "anytls";
+                o["password"] = Require(s, Keys.Password);
+                AddTls(o, p, defaultEnabled: true);
+                break;
+            case ProtocolKind.ShadowTls:
+                o["type"] = "shadowsocks";
+                o["method"] = p.Option(Keys.Method) ?? throw new InvalidOperationException("Missing cipher.");
+                o["password"] = Require(s, Keys.Password);
+                o["detour"] = "shadowtls";
+                break;
+            case ProtocolKind.Naive:
+                o["type"] = "naive";
+                o["username"] = Require(s, Keys.Username);
+                o["password"] = Require(s, Keys.Password);
+                o["quic"] = p.Option("quic") == "true";
+                o["tls"] = new JsonObject { ["enabled"] = true, ["server_name"] = p.Option(Keys.Sni) ?? p.Host };
+                break;
+            case ProtocolKind.Ssh:
+                o["type"] = "ssh";
+                o["user"] = Require(s, Keys.Username);
+                if (s[Keys.Password] is { } sshPassword) { o["password"] = sshPassword; }
+                if (s[SingBoxUriParser.PrivateKey] is { } key) { o["private_key"] = key; }
+                if (s[SingBoxUriParser.Passphrase] is { } passphrase) { o["private_key_passphrase"] = passphrase; }
+                if (p.Option("host_key") is { } hostKey) { o["host_key"] = new JsonArray(hostKey); }
+                break;
             case ProtocolKind.Vless:
                 o["type"] = "vless";
                 o["uuid"] = Require(s, Keys.Uuid);

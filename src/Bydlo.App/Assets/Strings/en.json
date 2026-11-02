@@ -1,4 +1,8 @@
 {
+  "protocol.anytls": "AnyTLS",
+  "protocol.shadowtls": "ShadowTLS",
+  "protocol.naive": "NaiveProxy",
+  "protocol.ssh": "SSH",
   "wizard.title": "Add server",
   "wizard.source.hint": "How did you receive your connection details?",
   "wizard.link": "Link or subscription",

@@ -6,6 +6,42 @@ namespace Bydlo.Tests;
 
 public class ImportTests
 {
+    [Theory]
+    [InlineData("anytls://secret%3Avalue@example.com:443?sni=tls.example&alpn=h2&insecure=1#Any", ProtocolKind.AnyTls)]
+    [InlineData("shadowtls://shadowsecret@example.com:443?version=3&method=aes-256-gcm&ss_password=sssecret&sni=tls.example#Shadow", ProtocolKind.ShadowTls)]
+    [InlineData("naive+quic://user:secret@example.com:443?sni=tls.example#Naive", ProtocolKind.Naive)]
+    [InlineData("ssh://user:secret@example.com:22?private_key=private%20key&private_key_passphrase=keypass&host_key=ssh-ed25519%20AAAA#SSH", ProtocolKind.Ssh)]
+    public void New_protocols_round_trip_without_exposing_credentials(string link, ProtocolKind protocol)
+    {
+        var first = One(link);
+        Assert.Equal(protocol, first.Profile.Protocol);
+        var second = One(ProfileExporter.ExportLink(first.Profile, first.Secrets));
+        Assert.Equal(first.Profile.Name, second.Profile.Name);
+        Assert.Equal(first.Profile.Host, second.Profile.Host);
+        Assert.Equal(first.Profile.Port, second.Profile.Port);
+        Assert.Equal(first.Profile.Options.OrderBy(x => x.Key), second.Profile.Options.OrderBy(x => x.Key));
+        Assert.Equal(first.Secrets.Values.OrderBy(x => x.Key), second.Secrets.Values.OrderBy(x => x.Key));
+        foreach (var secret in first.Secrets.Values.Values)
+            Assert.DoesNotContain(first.Profile.Options.Values, value => value.Contains(secret, StringComparison.Ordinal));
+        var config = new Bydlo.Core.Config.SingBoxConfigBuilder().Build(first.Profile, first.Secrets, new(new AppSettings()));
+        var outbound = config["outbounds"]!.AsArray()[0]!;
+        Assert.Equal(protocol == ProtocolKind.ShadowTls ? "shadowsocks" : protocol.ToString().ToLowerInvariant(), outbound["type"]!.GetValue<string>());
+        if (protocol == ProtocolKind.ShadowTls)
+            Assert.Equal("shadowtls", outbound["detour"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void New_link_secrets_are_redacted_from_logs_and_import_errors()
+    {
+        var link = "shadowtls://shadowsecret@example.com:443?ss_password=sssecret&method=aes-256-gcm";
+        var redacted = new Bydlo.Core.Security.LogRedactor().Redact(link);
+        Assert.DoesNotContain("shadowsecret", redacted);
+        Assert.DoesNotContain("sssecret", redacted);
+        var invalid = _importer.ImportText("shadowtls://shadowsecret@example.com:443?ss_password=sssecret");
+        Assert.DoesNotContain("shadowsecret", string.Join(' ', invalid.Errors));
+        Assert.DoesNotContain("sssecret", string.Join(' ', invalid.Errors));
+    }
+
     private readonly ProfileImporter _importer = new();
 
     private ImportedProfile One(string text)
