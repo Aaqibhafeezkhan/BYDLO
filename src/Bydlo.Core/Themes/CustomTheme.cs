@@ -42,10 +42,10 @@ public static partial class CustomTheme
     public const int MaxGalleryEntries = 100;
 
     /// <summary>
-    /// Default gallery location. Points at this fork; upstream uses the same
-    /// <c>themes/index.json</c> path in its own repository.
+    /// Default gallery location. Canonical repository file; forks serve their own copy
+    /// from the same relative path by overriding this constant.
     /// </summary>
-    public const string DefaultGalleryIndexUrl = "https://raw.githubusercontent.com/timrogoz5-afk/BYDLO-FORKI4/main/themes/index.json";
+    public const string DefaultGalleryIndexUrl = "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/index.json";
 
     /// <summary>Palette keys a custom theme may override. Mirrors Purple/Light/Oled.axaml minus shadows.</summary>
     public static readonly IReadOnlyList<string> ResourceKeys =

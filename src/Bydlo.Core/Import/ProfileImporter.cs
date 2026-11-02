@@ -163,9 +163,9 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
     /// Tries mirrors in order and returns the first one that yields profiles,
     /// with the URL that worked. Returns the last failure when all fail.
     /// </summary>
-    public async Task<(ImportResult Result, string? Url)> FetchFirstAsync(IEnumerable<string> urls, CancellationToken ct = default)
+    public async Task<(SubscriptionPreview Result, string? Url)> FetchFirstAsync(IEnumerable<string> urls, CancellationToken ct = default)
     {
-        var last = new ImportResult([], ["Subscription list is empty."]);
+        var last = new SubscriptionPreview(new ImportResult([], ["Subscription list is empty."]), new());
         foreach (var url in urls)
         {
             ct.ThrowIfCancellationRequested();
@@ -174,18 +174,18 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
                 continue;
             }
 
-            ImportResult result;
+            SubscriptionPreview result;
             try
             {
                 result = await FetchOneAsync(uri, ct).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
             {
-                last = new ImportResult([], [ex.Message]);
+                last = new(new ImportResult([], [ex.Message]), new());
                 continue;
             }
 
-            if (!result.IsEmpty)
+            if (!result.Import.IsEmpty)
             {
                 return (result, url);
             }
@@ -196,7 +196,7 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
         return (last, null);
     }
 
-    private async Task<ImportResult> FetchOneAsync(Uri uri, CancellationToken ct)
+    private async Task<SubscriptionPreview> FetchOneAsync(Uri uri, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.UserAgent.ParseAdd("BYDLO/0.1");

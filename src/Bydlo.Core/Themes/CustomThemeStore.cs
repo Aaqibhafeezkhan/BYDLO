@@ -35,6 +35,9 @@ public static class CustomThemeStore
         return result.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
+    public static bool Exists(string themesDirectory, string id) =>
+        File.Exists(Path.Combine(themesDirectory, FileName(id)));
+
     public static CustomThemeDocument? TryLoad(string themesDirectory, string id)
     {
         var path = Path.Combine(themesDirectory, FileName(id));

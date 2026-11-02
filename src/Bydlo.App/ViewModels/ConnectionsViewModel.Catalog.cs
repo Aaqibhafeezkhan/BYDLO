@@ -57,7 +57,8 @@ public sealed partial class ConnectionsViewModel
                 {
                     throw new EngineException("Real downloads are disabled.", localizationKey: "catalog.locked");
                 }
-                var (result, url) = await Services.Subscriptions.FetchFirstAsync(source.Urls, Services.ShutdownToken);
+                var (preview, url) = await Services.Subscriptions.FetchFirstAsync(source.Urls, Services.ShutdownToken);
+                var result = preview.Import;
                 if (result.IsEmpty)
                 {
                     Shell.ShowToast((result.Errors.Count > 0 ? result.Errors[0] : null) ?? L["import.none"], isError: true);
@@ -65,8 +66,8 @@ public sealed partial class ConnectionsViewModel
                 }
 
                 var row = CatalogSources.FirstOrDefault(r => r.Id == id);
-                var sub = await Services.Profiles.AddSubscriptionAsync(row?.Name ?? new Uri(url ?? source.Urls[0]).Host, url ?? source.Urls[0]);
-                await Services.Profiles.ReplaceSubscriptionProfilesAsync(sub.Id, result.Profiles);
+                var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(
+                    row?.Name ?? new Uri(url ?? source.Urls[0]).Host, url ?? source.Urls[0], result.Profiles);
                 Shell.ReloadProfiles();
                 Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, result.Profiles.Count));
                 OnShown();

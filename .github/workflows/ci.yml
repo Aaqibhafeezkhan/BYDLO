@@ -54,6 +54,8 @@ jobs:
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-verification en --verify-desktop
       - name: Verify bundled engine UI (headless, mock only, no driver setup)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verification en --mock --verify-bundled-engines
+      - name: Verify custom themes (headless, mock only, no network)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/theme-verification en --mock --verify-themes
       # Artifacts are kept on GitHub only: artifact actions v4 refuse to run on Gitea (it looks like GHES),
       # and GitHub fails the whole job if a step even references the deprecated v3.
       - uses: actions/upload-artifact@v4

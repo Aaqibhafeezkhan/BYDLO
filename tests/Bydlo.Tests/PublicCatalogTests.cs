@@ -37,8 +37,8 @@ public class PublicCatalogTests
             ["https://two.invalid/s"] = new(HttpStatusCode.OK) { Content = new StringContent(good) },
         }));
         var client = new SubscriptionClient(http, new ProfileImporter());
-        var (result, url) = await client.FetchFirstAsync(["https://one.invalid/s", "https://two.invalid/s"]);
-        Assert.False(result.IsEmpty);
+        var (preview, url) = await client.FetchFirstAsync(["https://one.invalid/s", "https://two.invalid/s"]);
+        Assert.False(preview.Import.IsEmpty);
         Assert.Equal("https://two.invalid/s", url);
     }
 
@@ -50,10 +50,10 @@ public class PublicCatalogTests
             ["https://one.invalid/s"] = new(HttpStatusCode.BadGateway),
         }));
         var client = new SubscriptionClient(http, new ProfileImporter());
-        var (result, url) = await client.FetchFirstAsync(["ftp://one.invalid/s", "https://one.invalid/s"]);
-        Assert.True(result.IsEmpty);
+        var (preview, url) = await client.FetchFirstAsync(["ftp://one.invalid/s", "https://one.invalid/s"]);
+        Assert.True(preview.Import.IsEmpty);
         Assert.Null(url);
-        Assert.NotEmpty(result.Errors);
+        Assert.NotEmpty(preview.Import.Errors);
     }
 
     private sealed class MapHandler(Dictionary<string, HttpResponseMessage> responses) : HttpMessageHandler

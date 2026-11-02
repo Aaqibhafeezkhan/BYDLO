@@ -17,6 +17,7 @@ var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
 if (args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
+    args.Contains("--verify-themes", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
@@ -45,6 +46,11 @@ if (args.Contains("--verify-wizard", StringComparer.Ordinal))
     return;
 }
 var shell = new MainViewModel(services);
+if (args.Contains("--verify-themes", StringComparer.Ordinal))
+{
+    ThemeVerification.Run(shell, output);
+    return;
+}
 if (args.Contains("--verify-backup", StringComparer.Ordinal))
 {
     BackupVerification.Run(shell, output);

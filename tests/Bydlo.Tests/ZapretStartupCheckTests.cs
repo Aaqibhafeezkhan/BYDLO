@@ -56,6 +56,23 @@ public class ZapretStartupCheckTests
         Assert.Equal(20, target.AverageMilliseconds);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Classify_reports_empty_id(string? saved) =>
+        Assert.Equal(SavedStrategyState.Empty, ZapretStartupCheck.Classify(saved, ["a.bat"]));
+
+    [Fact]
+    public void Classify_reports_missing_id_as_unavailable() =>
+        Assert.Equal(SavedStrategyState.Unavailable, ZapretStartupCheck.Classify("gone.bat", ["a.bat", "b.bat"]));
+
+    [Fact]
+    public void Classify_accepts_exact_saved_id_only()
+    {
+        Assert.Equal(SavedStrategyState.Ready, ZapretStartupCheck.Classify("a.bat", ["a.bat", "b.bat"]));
+        Assert.Equal(SavedStrategyState.Unavailable, ZapretStartupCheck.Classify("A.BAT", ["a.bat"]));
+    }
     [Fact]
     public async Task Check_runs_only_the_saved_strategy_and_restores_state()
     {

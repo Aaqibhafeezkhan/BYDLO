@@ -321,6 +321,7 @@
   "theme.custom.imported.ignored": "Theme installed: {0} ({1} unknown keys ignored)",
   "theme.custom.installed": "Theme installed: {0}",
   "theme.custom.broken": "This theme file is broken or too large.",
+  "theme.custom.ioerror": "Could not access the theme storage. Check permissions and disk space.",
   "theme.custom.lowcontrast": "Warning: text is hard to read on this background (contrast below 4.5:1).",
   "theme.custom.locked": "Theme downloads are disabled in Mock Mode and safe development.",
   "theme.custom.gallery.error": "Could not load the theme gallery. Check the connection and retry.",

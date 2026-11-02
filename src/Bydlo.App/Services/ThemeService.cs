@@ -137,21 +137,22 @@ public sealed class ThemeService
     /// <summary>WCAG AA check for the applied palette. Skipped (false) when a color cannot be measured.</summary>
     public static bool HasLowContrast(Application app)
     {
+        // Note: ResourceDictionary indexer does not search MergedDictionaries where palettes live.
         try
         {
-            if (app.Resources["TextBrush"] is not SolidColorBrush text ||
-                app.Resources["BgBrush"] is not SolidColorBrush bg)
+            if (app.Resources.TryGetResource("TextBrush", null, out var textValue) && textValue is SolidColorBrush text &&
+                app.Resources.TryGetResource("BgBrush", null, out var bgValue) && bgValue is SolidColorBrush bg)
             {
-                return false;
+                var ratio = CustomTheme.ContrastRatio(ToHex(text.Color), ToHex(bg.Color));
+                if (ratio >= 4.5 && app.Resources.TryGetResource("SurfaceBrush", null, out var surfaceValue) && surfaceValue is SolidColorBrush surface)
+                {
+                    ratio = Math.Min(ratio, CustomTheme.ContrastRatio(ToHex(text.Color), ToHex(surface.Color)));
+                }
+                return ratio < 4.5;
             }
-            var ratio = CustomTheme.ContrastRatio(ToHex(text.Color), ToHex(bg.Color));
-            if (ratio >= 4.5 && app.Resources["SurfaceBrush"] is SolidColorBrush surface)
-            {
-                ratio = Math.Min(ratio, CustomTheme.ContrastRatio(ToHex(text.Color), ToHex(surface.Color)));
-            }
-            return ratio < 4.5;
+            return false;
         }
-        catch (Exception ex) when (ex is CustomThemeException or KeyNotFoundException)
+        catch (Exception ex) when (ex is CustomThemeException)
         {
             return false;
         }

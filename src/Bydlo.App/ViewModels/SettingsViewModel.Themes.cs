@@ -106,6 +106,11 @@ public sealed partial class SettingsViewModel
             CustomThemeDocument doc;
             try { doc = CustomThemeStore.Save(ThemesDirectory, content); }
             catch (CustomThemeException) { Shell.ShowToast(L["theme.custom.broken"], isError: true); return; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Shell.ShowToast(L["theme.custom.ioerror"], isError: true);
+                return;
+            }
             ApplyCustomDocument(doc);
             if (doc.IgnoredKeys.Count > 0)
             {
@@ -140,7 +145,16 @@ public sealed partial class SettingsViewModel
     [RelayCommand]
     private void DeleteCustomTheme(string id)
     {
-        CustomThemeStore.Delete(ThemesDirectory, id);
+        if (!CustomThemeStore.Exists(ThemesDirectory, id))
+        {
+            RefreshCustomThemes();
+            return;
+        }
+        if (!CustomThemeStore.Delete(ThemesDirectory, id))
+        {
+            Shell.ShowToast(L["theme.custom.ioerror"], isError: true);
+            return;
+        }
         if (Services.Settings.CustomThemeId == id && Theme == ThemePreference.Custom)
         {
             Theme = ThemePreference.Purple;
@@ -192,6 +206,10 @@ public sealed partial class SettingsViewModel
             await stream.FlushAsync();
             Shell.ShowToast(L["theme.custom.exported"]);
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Shell.ShowToast(L["theme.custom.ioerror"], isError: true);
+        }
         finally { CustomThemesBusy = false; }
     }
 
@@ -238,6 +256,11 @@ public sealed partial class SettingsViewModel
             CustomThemeDocument doc;
             try { doc = CustomThemeStore.Save(ThemesDirectory, content); }
             catch (CustomThemeException) { Shell.ShowToast(L["theme.custom.broken"], isError: true); return; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Shell.ShowToast(L["theme.custom.ioerror"], isError: true);
+                return;
+            }
             ApplyCustomDocument(doc);
             GalleryThemes.Remove(entry);
             Shell.ShowToast(Loc.T("theme.custom.installed", doc.Name));
@@ -268,6 +291,8 @@ public sealed partial class SettingsViewModel
 
     private async Task<string?> DownloadCappedTextAsync(string url)
     {
+        // Stream with an early stop: without Content-Length a full ReadAsStringAsync
+        // could allocate an unbounded buffer before the 64 KiB check.
         try
         {
             using var response = await Services.Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, Services.ShutdownToken);
@@ -275,10 +300,21 @@ public sealed partial class SettingsViewModel
             {
                 return null;
             }
-            var text = await response.Content.ReadAsStringAsync(Services.ShutdownToken);
-            return Encoding.UTF8.GetByteCount(text) > CustomTheme.MaxFileBytes ? null : text;
+            using var stream = await response.Content.ReadAsStreamAsync(Services.ShutdownToken);
+            using var buffer = new MemoryStream();
+            var chunk = new byte[8192];
+            int count;
+            while ((count = await stream.ReadAsync(chunk, Services.ShutdownToken)) > 0)
+            {
+                if (buffer.Length + count > CustomTheme.MaxFileBytes)
+                {
+                    return null;
+                }
+                buffer.Write(chunk, 0, count);
+            }
+            return Encoding.UTF8.GetString(buffer.ToArray());
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or IOException)
         {
             return null;
         }

@@ -6,6 +6,9 @@ namespace Bydlo.Core.Diagnostics;
 /// </summary>
 public enum StartupCheckVerdict { Works, Partial, Failed }
 
+/// <summary>How the remembered strategy id relates to the installed strategies.</summary>
+public enum SavedStrategyState { Ready, Empty, Unavailable }
+
 public sealed record StartupCheckTargetResult(string Target, int Successes, int Total, double? AverageMilliseconds);
 
 public sealed record StartupCheckSummary(StartupCheckVerdict Verdict, int Successes, int Total, IReadOnlyList<StartupCheckTargetResult> Targets);
@@ -13,6 +16,12 @@ public sealed record StartupCheckSummary(StartupCheckVerdict Verdict, int Succes
 /// <summary>Pure summary of a single-strategy probe run. No processes, no network.</summary>
 public static class ZapretStartupCheck
 {
+    /// <summary>Empty when nothing was ever saved; Unavailable when the saved id is gone.</summary>
+    public static SavedStrategyState Classify(string? saved, IEnumerable<string> available) =>
+        string.IsNullOrWhiteSpace(saved) ? SavedStrategyState.Empty
+        : available.Contains(saved, StringComparer.Ordinal) ? SavedStrategyState.Ready
+        : SavedStrategyState.Unavailable;
+
     public static StartupCheckSummary Summarize(IReadOnlyList<ZapretCheck> checks)
     {
         var list = checks.ToArray();

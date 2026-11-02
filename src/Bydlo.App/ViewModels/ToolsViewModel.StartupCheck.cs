@@ -32,17 +32,17 @@ public sealed partial class ToolsViewModel
     private bool CanRecheckStartup() => !IsCheckingStartup && !IsSelecting;
 
     /// <summary>Automatic once-per-session run. Skips silently when a full selection is in progress.</summary>
-    private void MaybeRunStartupCheck()
+    private void MaybeRunStartupCheck(string? savedAtOpen)
     {
         if (_startupCheckDone) { return; }
         _startupCheckDone = true;
-        if (!IsSelecting) { _ = RunStartupCheckAsync(); }
+        if (!IsSelecting) { _ = RunStartupCheckAsync(savedAtOpen); }
     }
 
     [RelayCommand(CanExecute = nameof(CanRecheckStartup))]
-    private async Task RecheckStartup() => await RunStartupCheckAsync();
+    private async Task RecheckStartup() => await RunStartupCheckAsync(Services.Settings.Zapret.Strategy);
 
-    private async Task RunStartupCheckAsync()
+    private async Task RunStartupCheckAsync(string? savedId)
     {
         if (IsCheckingStartup || IsSelecting) { return; }
         IsCheckingStartup = true;
@@ -69,15 +69,16 @@ public sealed partial class ToolsViewModel
                 {
                     throw new EngineException("Zapret is missing.", localizationKey: "error.engine.zapret.missing");
                 }
-                saved = Services.Settings.Zapret.Strategy ?? "";
-                if (string.IsNullOrWhiteSpace(saved))
+                var state = ZapretStartupCheck.Classify(savedId, install.Strategies.Select(s => s.FileName));
+                if (state == SavedStrategyState.Empty)
                 {
                     throw new EngineException("No saved strategy.", localizationKey: "tools.startup.nosaved");
                 }
-                if (install.Strategies.All(s => s.FileName != saved))
+                if (state == SavedStrategyState.Unavailable)
                 {
                     throw new EngineException("Saved strategy is unavailable.", localizationKey: "tools.startup.unavailable");
                 }
+                saved = savedId!;
                 if (Shell.Zapret.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting)
                 {
                     throw new EngineException("Zapret is already running.", localizationKey: "tools.startup.running");
