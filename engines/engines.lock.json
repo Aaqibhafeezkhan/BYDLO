@@ -68,11 +68,10 @@
     },
     {
       "id": "tg-ws-proxy",
-      "version": "1.11.2",
+      "version": "1.11.4",
       "license": "MIT",
       "upstream": "https://github.com/Flowseal/tg-ws-proxy",
-      "$comment": "BYDLO runs the headless CLI (python package entry point 'tg-ws-proxy'), installed into a private virtualenv with pip from the pinned tag. Release binaries are tray GUI apps and are not used.",
-      "pip": "tg-ws-proxy @ git+https://github.com/Flowseal/tg-ws-proxy@v1.11.2",
+      "$comment": "Nothing is downloaded: BYDLO ships a native C# port of the proxy core (src/Bydlo.Engines/TgWsProxy) that follows this upstream release. Keep the version in sync with TgWsProxyEngine.UpstreamVersion.",
       "assets": {}
     }
   ]

@@ -238,14 +238,10 @@
                 <TextBlock Text="{l:T tools.tg.verbose}" VerticalAlignment="Center" />
                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding TgVerbose}" />
               </Grid>
-              <StackPanel Spacing="6">
-                <TextBlock Classes="caps" Text="{l:T tools.tg.runtime}" />
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBox Text="{Binding PythonPath}" Watermark="python" />
-                  <Button Grid.Column="1" Margin="8,0,0,0" Classes="ghost" Content="{l:T tools.tg.install}" Command="{Binding InstallTgRuntimeCommand}" IsEnabled="{Binding !IsInstalling}" />
-                </Grid>
-                <TextBlock Classes="faint" Text="{l:T tools.tg.runtime.hint}" TextWrapping="Wrap" />
-                <TextBox Text="{Binding TgCustomExe}" Watermark="{l:T tools.tg.custom}" />
+              <StackPanel Spacing="6" IsVisible="{Binding TgCfFallback}">
+                <TextBlock Classes="caps" Text="{l:T tools.tg.cfdomains}" />
+                <TextBox Text="{Binding TgCfDomains}" AcceptsReturn="True" MinHeight="44" FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
+                <TextBlock Classes="faint" Text="{l:T tools.tg.cfdomains.hint}" TextWrapping="Wrap" />
               </StackPanel>
               <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T common.save}" Command="{Binding SaveTgCommand}" />
             </StackPanel>

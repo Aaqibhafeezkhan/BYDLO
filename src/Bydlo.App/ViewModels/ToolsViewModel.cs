@@ -55,8 +55,7 @@ public sealed partial class ToolsViewModel : PageViewModel
         _tgFakeTls = s.TgWsProxy.FakeTlsDomain;
         _tgCfFallback = s.TgWsProxy.CfProxyFallback;
         _tgVerbose = s.TgWsProxy.Verbose;
-        _tgCustomExe = s.TgWsProxy.CustomExecutable ?? "";
-        _pythonPath = OperatingSystem.IsWindows() ? "python" : "python3";
+        _tgCfDomains = string.Join('\n', s.TgWsProxy.CfProxyDomains);
         LoadSelection();
         shell.PropertyChanged += OnShellChanged;
         L.PropertyChanged += (_, _) =>
@@ -140,13 +139,10 @@ public sealed partial class ToolsViewModel : PageViewModel
     private bool _tgVerbose;
 
     [ObservableProperty]
-    private string _tgCustomExe;
+    private string _tgCfDomains;
 
     [ObservableProperty]
     private string _tgLink = "";
-
-    [ObservableProperty]
-    private string _pythonPath;
 
     [ObservableProperty]
     private string _tgRuntimeInfo = "";
@@ -338,26 +334,6 @@ public sealed partial class ToolsViewModel : PageViewModel
         }
     }
 
-    [RelayCommand]
-    private async Task InstallTgRuntime()
-    {
-        IsInstalling = true;
-        TgRuntimeInfo = L["tools.tg.installing"];
-        try
-        {
-            var ok = await Shell.Guard(() => Services.TgRuntime.InstallAsync(PythonPath.Trim(), new Progress<string>(s => TgRuntimeInfo = s)));
-            if (ok)
-            {
-                Shell.ShowToast(L["tools.tg.installed"]);
-            }
-        }
-        finally
-        {
-            IsInstalling = false;
-            await RefreshTgAsync();
-        }
-    }
-
     private bool SaveTgSettings()
     {
         if (TgPort is < 1 or > 65535)
@@ -373,7 +349,7 @@ public sealed partial class ToolsViewModel : PageViewModel
         t.FakeTlsDomain = TgFakeTls.Trim();
         t.CfProxyFallback = TgCfFallback;
         t.Verbose = TgVerbose;
-        t.CustomExecutable = string.IsNullOrWhiteSpace(TgCustomExe) ? null : TgCustomExe.Trim();
+        t.CfProxyDomains = [.. TgCfDomains.Split('\n', ',', ' ').Select(x => x.Trim()).Where(x => x.Length > 0)];
         _ = Services.SaveSettingsAsync();
         return true;
     }
@@ -384,7 +360,7 @@ public sealed partial class ToolsViewModel : PageViewModel
         var t = Services.Settings.TgWsProxy;
         TgLink = TgLinkBuilder.Build(t.Host, t.Port, secret, t.FakeTlsDomain);
         var availability = await Services.Registry.Create(EngineKind.TgWsProxy, new AppSettings { TgWsProxy = t }).CheckAvailabilityAsync(Services.Settings);
-        TgRuntimeInfo = availability.IsReady ? Loc.T("tools.tg.runtime.ok", availability.ExecutablePath ?? "") : Loc.Error(availability.Message, availability.LocalizationKey);
+        TgRuntimeInfo = availability.IsReady ? L["tools.tg.runtime.builtin"] : Loc.Error(availability.Message, availability.LocalizationKey);
     }
 
     // ---------- Engines ----------

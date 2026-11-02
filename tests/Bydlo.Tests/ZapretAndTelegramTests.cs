@@ -75,13 +75,31 @@ public class ZapretAndTelegramTests
     }
 
     [Fact]
-    public void TgWsProxy_arguments_follow_cli()
+    public void TgWsProxy_options_follow_settings()
     {
-        var s = new TgWsProxySettings { Port = 1555, DcIps = ["4:149.154.167.220"], FakeTlsDomain = "a.com", CfProxyFallback = false, Verbose = true };
-        var args = TgWsProxyEngine.BuildArguments(s, "0123456789abcdef0123456789abcdef", null);
-        Assert.Equal(["--host", "127.0.0.1", "--port", "1555", "--secret", "0123456789abcdef0123456789abcdef", "--dc-ip", "4:149.154.167.220", "--fake-tls-domain", "a.com", "--no-cfproxy", "-v"], args);
+        var s = new TgWsProxySettings { Port = 1555, DcIps = ["4:149.154.167.220", " "], FakeTlsDomain = " a.com ", CfProxyFallback = false, Verbose = true, CfProxyDomains = ["Example.COM", "example.com", "bad_domain"] };
+        var o = TgWsProxyOptions.From(s, "0123456789abcdef0123456789abcdef");
+        Assert.Equal("127.0.0.1", o.Host);
+        Assert.Equal(1555, o.Port);
+        Assert.Equal(16, o.Secret.Length);
+        Assert.Equal("149.154.167.220", Assert.Single(o.DcRedirects).Value);
+        Assert.Equal("a.com", o.FakeTlsDomain);
+        Assert.False(o.CfProxyFallback);
+        Assert.True(o.Verbose);
+        Assert.Equal(new[] { "example.com" }, o.CfProxyDomains);
 
-        var cleared = TgWsProxyEngine.BuildArguments(new TgWsProxySettings { DcIps = [] }, "0123456789abcdef0123456789abcdef", null);
-        Assert.Contains("--dc-ip", cleared);
+        Assert.Empty(TgWsProxyOptions.From(new TgWsProxySettings { DcIps = [] }, "0123456789abcdef0123456789abcdef").DcRedirects);
+    }
+
+    [Theory]
+    [InlineData("4")]
+    [InlineData("x:149.154.167.220")]
+    [InlineData("4:149.154.167")]
+    [InlineData("4:::1")]
+    [InlineData("4:example.com")]
+    public void TgWsProxy_rejects_bad_dc_ip(string entry)
+    {
+        var ex = Assert.Throws<Bydlo.Core.Engines.EngineException>(() => TgWsProxyOptions.ParseDcIps([entry]));
+        Assert.Equal("error.engine.tg.dcip", ex.LocalizationKey);
     }
 }

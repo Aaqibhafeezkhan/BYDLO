@@ -4,6 +4,7 @@ using Bydlo.Core.Models;
 using Bydlo.Core.Processes;
 using Bydlo.Core.Security;
 using Bydlo.Engines.Installation;
+using Bydlo.Engines.TgWsProxy;
 using Bydlo.Platform;
 
 namespace Bydlo.Tests;
@@ -51,7 +52,7 @@ public class SecurityTests
         Assert.NotNull(engineLock.Find("sing-box"));
         Assert.NotNull(engineLock.Find("xray"));
         Assert.NotNull(engineLock.Find("zapret"));
-        Assert.NotNull(engineLock.Find("tg-ws-proxy")?.Pip);
+        Assert.Equal(TgWsProxyEngine.UpstreamVersion, engineLock.Find("tg-ws-proxy")?.Version);
         foreach (var asset in engineLock.Engines.SelectMany(e => e.Assets.Values))
         {
             Assert.StartsWith("https://github.com/", asset.Url, StringComparison.Ordinal);
