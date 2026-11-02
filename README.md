@@ -129,7 +129,15 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 - [Руководство по ручному тестированию](docs/TESTING.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Сторонние компоненты и лицензии](THIRD_PARTY_NOTICES.md)
-- [Правила для участников и агентов](CLAUDE.md) (на английском)
+- [Как помочь проекту](CONTRIBUTING.md)
+- [Правила для ИИ-агентов](CLAUDE.md) (на английском)
+
+## Как помочь
+
+Проект открыт для всех: исправления, переводы, тесты на реальной сети, новые движки и документация.
+Начните с [CONTRIBUTING.md](CONTRIBUTING.md) — там сборка, Mock-режим, правила сетевой безопасности и процесс
+issue → ветка → PR. Задачи для первого вклада помечены
+[`good first issue`](https://github.com/endercodezz/BYDLO/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 ## Благодарности
 

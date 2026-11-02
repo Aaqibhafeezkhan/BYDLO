@@ -1,0 +1,66 @@
+name: Ошибка
+description: Что-то работает не так, как ожидалось
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за сообщение! **Не публикуйте** ссылки на свои серверы, ключи, пароли и подписки — ни в тексте, ни в логах.
+  - type: textarea
+    id: what
+    attributes:
+      label: Что произошло
+      description: Что вы делали, что ожидали увидеть и что увидели на самом деле.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как воспроизвести
+      placeholder: |
+        1. Открыть …
+        2. Нажать …
+        3. Появляется …
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: ОС и архитектура
+      placeholder: Windows 11 x64 / Ubuntu 24.04 ARM64 / macOS 15 Apple Silicon
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Версия или коммит BYDLO
+      placeholder: v0.1.0 или a1b2c3d
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Где проблема
+      multiple: true
+      options:
+        - Подключение (локальный прокси)
+        - Подключение (TUN)
+        - Zapret
+        - TgWsProxy
+        - Импорт серверов и подписок
+        - Интерфейс
+        - Mock-режим
+        - Другое
+  - type: input
+    id: protocol
+    attributes:
+      label: Протокол и движок (если относится к подключению)
+      placeholder: VLESS REALITY через sing-box
+  - type: textarea
+    id: logs
+    attributes:
+      label: Фрагмент лога
+      description: |
+        Из `logs/bydlo.log` (путь к каталогу данных — в Настройки → Дополнительно) или вкладки «Логи» инструмента.
+        Учётные данные уже вырезаны, но проверьте текст перед отправкой.
+      render: text
