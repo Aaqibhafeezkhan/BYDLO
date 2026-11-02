@@ -21,6 +21,8 @@ public sealed class TgWsProxyServer : IAsyncDisposable
     private static readonly TimeSpan TcpBackoffMax = TimeSpan.FromHours(1);
     private static readonly TimeSpan ServerHelloDelayMin = TimeSpan.FromMilliseconds(8);
     private static readonly TimeSpan ServerHelloDelayMax = TimeSpan.FromMilliseconds(24);
+    private static readonly TimeSpan ListenerRestartDelay = TimeSpan.FromSeconds(1);
+    private const int ListenerRestartAttempts = 3;
 
     private readonly CancellationTokenSource _stop = new();
     private readonly TgWsProxyContext _context;
@@ -28,7 +30,7 @@ public sealed class TgWsProxyServer : IAsyncDisposable
     private readonly ConcurrentDictionary<Task, byte> _clients = new();
     private readonly ConcurrentDictionary<string, (int Failures, DateTimeOffset RetryAfter, bool Connecting)> _tcpBackoff = new();
     private readonly List<Task> _background = [];
-    private TcpListener? _listener;
+    private ITgListener? _listener;
     private int? _appDataLength;
     private int _disposed;
 
@@ -40,6 +42,8 @@ public sealed class TgWsProxyServer : IAsyncDisposable
     }
 
     public TgWsProxyStats Stats => _context.Stats;
+
+    internal WsPool Pool => _pool;
 
     /// <summary>Raised when the listener dies unexpectedly; the proxy no longer accepts connections.</summary>
     public event EventHandler<string>? Faulted;
@@ -63,7 +67,7 @@ public sealed class TgWsProxyServer : IAsyncDisposable
                 : $"Fake TLS profile: first encrypted record {_appDataLength} bytes");
         }
 
-        _listener = SystemTgNetwork.Listen(Options.Host, Options.Port);
+        _listener = _context.Network.Listen(Options.Host, Options.Port);
         LogBanner();
         _background.Add(Task.Run(AcceptLoopAsync, CancellationToken.None));
         _background.Add(Task.Run(() => _pool.MaintainAsync(_stop.Token), CancellationToken.None));
@@ -79,10 +83,9 @@ public sealed class TgWsProxyServer : IAsyncDisposable
         }
 
         await _stop.CancelAsync().ConfigureAwait(false);
-        _listener?.Stop();
+        _listener?.Dispose();
         await Task.WhenAll([.. _clients.Keys, .. _background]).WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         await _pool.CloseAsync().ConfigureAwait(false);
-        _listener?.Dispose();
         _context.Log(TgLogLevel.Info, "Stopped. Final stats: " + Stats.Summary());
         _stop.Dispose();
     }
@@ -522,35 +525,62 @@ public sealed class TgWsProxyServer : IAsyncDisposable
         var ct = _stop.Token;
         while (!ct.IsCancellationRequested)
         {
-            Socket socket;
+            Stream stream;
+            string label;
             try
             {
-                socket = await _listener!.AcceptSocketAsync(ct).ConfigureAwait(false);
+                (stream, label) = await _listener!.AcceptAsync(ct).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (Exception) when (ct.IsCancellationRequested)
             {
                 return;
             }
-            catch (Exception ex) when (ex is SocketException or ObjectDisposedException or InvalidOperationException)
+            catch (Exception ex)
             {
-                if (ct.IsCancellationRequested)
+                // E.g. after sleep or a network change: bind the port again instead of failing the tool.
+                _context.Log(TgLogLevel.Warning, "Listening socket died, restarting: " + ex.Message);
+                if (!await RestartListenerAsync(ct).ConfigureAwait(false))
                 {
+                    if (!ct.IsCancellationRequested)
+                    {
+                        Faulted?.Invoke(this, "TgWsProxy stopped accepting connections: " + ex.Message);
+                    }
+
                     return;
                 }
 
-                _context.Log(TgLogLevel.Error, "Listening socket died: " + ex.Message);
-                Faulted?.Invoke(this, "TgWsProxy stopped accepting connections: " + ex.Message);
-                return;
+                continue;
             }
 
-            socket.NoDelay = true;
-            socket.ReceiveBufferSize = Options.BufferSize;
-            socket.SendBufferSize = Options.BufferSize;
-            var label = socket.RemoteEndPoint?.ToString() ?? "?";
-            var task = HandleClientAsync(new NetworkStream(socket, ownsSocket: true), label);
+            var task = HandleClientAsync(stream, label);
             _clients.TryAdd(task, 0);
             _ = task.ContinueWith(t => _clients.TryRemove(t, out _), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
+    }
+
+    private async Task<bool> RestartListenerAsync(CancellationToken ct)
+    {
+        _listener?.Dispose();
+        for (var attempt = 1; attempt <= ListenerRestartAttempts; attempt++)
+        {
+            try
+            {
+                await Task.Delay(ListenerRestartDelay, _context.Time, ct).ConfigureAwait(false);
+                _listener = _context.Network.Listen(Options.Host, Options.Port);
+                _context.Log(TgLogLevel.Warning, $"Server restored, listening on {Options.Host}:{Options.Port}");
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _context.Log(TgLogLevel.Error, $"Failed to restart the listener (attempt {attempt}/{ListenerRestartAttempts}): {ex.Message}");
+            }
+        }
+
+        return false;
     }
 
     private async Task StatsLoopAsync()

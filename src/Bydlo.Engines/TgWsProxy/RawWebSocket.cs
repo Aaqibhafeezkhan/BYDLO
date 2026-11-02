@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Channels;
 
 namespace Bydlo.Engines.TgWsProxy;
 
@@ -13,6 +14,8 @@ internal sealed class WsHandshakeException(int statusCode, string statusLine) : 
 /// <summary>
 /// Minimal binary WebSocket client (RFC 6455) as used by Telegram's <c>/apiws</c> endpoint: masked binary frames out,
 /// fragmented messages reassembled in, ping answered, close echoed.
+/// A receive pump reads from the moment of the upgrade, so a pooled idle connection that the server pings or drops
+/// is noticed right away (<see cref="IsClosed"/>) instead of failing when a client gets it.
 /// </summary>
 internal sealed class RawWebSocket : IAsyncDisposable
 {
@@ -28,12 +31,17 @@ internal sealed class RawWebSocket : IAsyncDisposable
     private readonly Stream _stream;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly byte[] _header = new byte[14];
+    private readonly Channel<byte[]> _messages = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(16) { SingleReader = true, SingleWriter = true });
+    private readonly CancellationTokenSource _stopPump = new();
+    private readonly Task _pump;
     private MemoryStream? _fragments;
+    private Exception? _error;
     private int _closed;
 
     private RawWebSocket(Stream stream)
     {
         _stream = stream;
+        _pump = Task.Run(PumpAsync);
     }
 
     public bool IsClosed => Volatile.Read(ref _closed) != 0;
@@ -83,49 +91,15 @@ internal sealed class RawWebSocket : IAsyncDisposable
     /// <summary>Next binary message, or null once the server closed the connection.</summary>
     public async Task<byte[]?> ReceiveAsync(CancellationToken ct)
     {
-        while (!IsClosed)
+        while (await _messages.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
         {
-            var (opcode, payload, fin) = await ReadFrameAsync(ct).ConfigureAwait(false);
-            switch (opcode)
+            if (_messages.Reader.TryRead(out var message))
             {
-                case OpClose:
-                    Interlocked.Exchange(ref _closed, 1);
-                    try { await WriteFramesAsync([payload.AsMemory(0, Math.Min(2, payload.Length))], OpClose, ct, force: true).ConfigureAwait(false); }
-                    catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
-                    return null;
-                case OpPing:
-                    try { await WriteFramesAsync([payload], OpPong, ct).ConfigureAwait(false); }
-                    catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
-                    continue;
-                case OpPong:
-                    continue;
-                case OpContinuation or OpText or OpBinary:
-                    if (fin && _fragments is null)
-                    {
-                        return payload;
-                    }
-
-                    _fragments ??= new MemoryStream();
-                    _fragments.Write(payload);
-                    if (_fragments.Length > MaxMessageLength)
-                    {
-                        throw new IOException($"WebSocket message too large: {_fragments.Length} bytes.");
-                    }
-
-                    if (!fin)
-                    {
-                        continue;
-                    }
-
-                    var message = _fragments.ToArray();
-                    _fragments = null;
-                    return message;
-                default:
-                    continue;
+                return message;
             }
         }
 
-        return null;
+        return _error is { } error ? throw new IOException(error.Message, error) : null;
     }
 
     public async ValueTask DisposeAsync()
@@ -140,8 +114,72 @@ internal sealed class RawWebSocket : IAsyncDisposable
             catch (Exception ex) when (ex is IOException or ObjectDisposedException or OperationCanceledException or NotSupportedException) { }
         }
 
+        await _stopPump.CancelAsync().ConfigureAwait(false);
         try { await _stream.DisposeAsync().ConfigureAwait(false); }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
+        await _pump.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        _stopPump.Dispose();
+    }
+
+    /// <summary>Reads frames until close, end of stream or error; answers pings while the connection idles in the pool.</summary>
+    private async Task PumpAsync()
+    {
+        var ct = _stopPump.Token;
+        try
+        {
+            while (true)
+            {
+                var (opcode, payload, fin) = await ReadFrameAsync(ct).ConfigureAwait(false);
+                switch (opcode)
+                {
+                    case OpClose:
+                        Interlocked.Exchange(ref _closed, 1);
+                        try { await WriteFramesAsync([payload.AsMemory(0, Math.Min(2, payload.Length))], OpClose, ct, force: true).ConfigureAwait(false); }
+                        catch (Exception ex) when (ex is IOException or ObjectDisposedException or OperationCanceledException) { }
+                        return;
+                    case OpPing:
+                        try { await WriteFramesAsync([payload], OpPong, ct).ConfigureAwait(false); }
+                        catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
+                        continue;
+                    case OpContinuation or OpText or OpBinary:
+                        if (fin && _fragments is null)
+                        {
+                            await _messages.Writer.WriteAsync(payload, ct).ConfigureAwait(false);
+                            continue;
+                        }
+
+                        _fragments ??= new MemoryStream();
+                        _fragments.Write(payload);
+                        if (_fragments.Length > MaxMessageLength)
+                        {
+                            throw new IOException($"WebSocket message too large: {_fragments.Length} bytes.");
+                        }
+
+                        if (fin)
+                        {
+                            var message = _fragments.ToArray();
+                            _fragments = null;
+                            await _messages.Writer.WriteAsync(message, ct).ConfigureAwait(false);
+                        }
+
+                        continue;
+                    default:
+                        continue;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (Volatile.Read(ref _closed) == 0 && !ct.IsCancellationRequested)
+            {
+                _error = ex;
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _closed, 1);
+            _messages.Writer.TryComplete();
+        }
     }
 
     internal static byte[] BuildFrame(byte opcode, ReadOnlySpan<byte> data, bool mask)
