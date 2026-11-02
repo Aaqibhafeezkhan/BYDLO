@@ -9,6 +9,7 @@ using Bydlo.Engines.TgWsProxy;
 using Bydlo.Engines.WireGuard;
 using Bydlo.Engines.Xray;
 using Bydlo.Engines.Zapret;
+using Bydlo.Engines.Amnezia;
 
 namespace Bydlo.Engines;
 
@@ -21,7 +22,9 @@ public static class EngineRegistryFactory
         EngineLocator locator,
         IPrivilegeService privileges,
         Func<IEngine>? mockFactory = null,
-        IZapretFirewall? zapretFirewall = null)
+        IZapretFirewall? zapretFirewall = null,
+        IAmneziaNetwork? amneziaNetwork = null,
+        IOpenVpnDriver? openVpnDriver = null)
     {
         var registry = new EngineRegistry(mockFactory ?? (() => new MockEngine()));
         registry
@@ -29,8 +32,9 @@ public static class EngineRegistryFactory
                 () => new SingBoxTunGuard(runner, redactor, locator, privileges)), priority: 10)
             .Register(XrayEngine.Info, () => new XrayEngine(runner, redactor, locator), priority: 20)
             .Register(TunnelServiceEngine.WireGuardInfo, () => new TunnelServiceEngine(false, runner, redactor, locator, privileges), priority: 30)
-            .Register(TunnelServiceEngine.AmneziaInfo, () => new TunnelServiceEngine(true, runner, redactor, locator, privileges), priority: 10)
-            .Register(OpenVpnEngine.Info, () => new OpenVpnEngine(runner, redactor, locator, privileges), priority: 10)
+            .Register(AmneziaEngine.Info, () => new AmneziaEngine(runner, redactor, locator, privileges,
+                amneziaNetwork ?? throw new InvalidOperationException("AmneziaWG network service is not configured.")), priority: 10)
+            .Register(OpenVpnEngine.Info, () => new OpenVpnEngine(runner, redactor, locator, privileges, openVpnDriver), priority: 10)
             .Register(ZapretEngine.Info, () => new ZapretEngine(runner, redactor, locator, privileges, zapretFirewall))
             .Register(TgWsProxyEngine.Info, () => new TgWsProxyEngine(redactor));
         return registry;

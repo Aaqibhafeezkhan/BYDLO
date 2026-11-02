@@ -14,7 +14,11 @@ public sealed record EngineLockEntry(
     [property: JsonPropertyName("version")] string Version,
     [property: JsonPropertyName("license")] string License,
     [property: JsonPropertyName("upstream")] string Upstream,
-    [property: JsonPropertyName("assets")] Dictionary<string, EngineAsset> Assets);
+    [property: JsonPropertyName("assets")] Dictionary<string, EngineAsset> Assets)
+{
+    [JsonPropertyName("bundledExecutables")]
+    public Dictionary<string, string> BundledExecutables { get; init; } = [];
+}
 
 /// <summary>Pinned engine versions and digests from <c>engines/engines.lock.json</c> (embedded at build time).</summary>
 public sealed class EngineLock

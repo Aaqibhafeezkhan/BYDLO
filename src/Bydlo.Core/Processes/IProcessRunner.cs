@@ -18,6 +18,9 @@ public sealed record ProcessSpec
 
     /// <summary>Request SIGTERM on Unix before falling back to forced termination.</summary>
     public bool GracefulTermination { get; init; }
+
+    /// <summary>OpenVPN's documented Windows --service exit event; no system service is installed.</summary>
+    public string? WindowsExitEventName { get; init; }
 }
 
 /// <summary>A started child process.</summary>

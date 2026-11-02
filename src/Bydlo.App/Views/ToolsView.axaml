@@ -265,6 +265,16 @@
       <Expander Header="{l:T tools.engines}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="12">
           <TextBlock Classes="faint" Text="{l:T tools.engines.hint}" TextWrapping="Wrap" />
+          <Border Classes="tile" IsVisible="{Binding IsWindows}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{l:T tools.openvpn.driver.title}" FontWeight="Medium" />
+              <TextBlock Classes="muted" Text="{l:T tools.openvpn.driver.hint}" TextWrapping="Wrap" />
+              <CheckBox IsChecked="{Binding OpenVpnDriverConsent}">
+                <TextBlock Text="{l:T tools.openvpn.driver.consent}" TextWrapping="Wrap" />
+              </CheckBox>
+              <Button Classes="ghost" Content="{l:T tools.openvpn.driver.install}" Command="{Binding InstallOpenVpnDriverCommand}" IsEnabled="{Binding OpenVpnDriverConsent}" />
+            </StackPanel>
+          </Border>
           <ItemsControl ItemsSource="{Binding Engines}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:EngineRow">

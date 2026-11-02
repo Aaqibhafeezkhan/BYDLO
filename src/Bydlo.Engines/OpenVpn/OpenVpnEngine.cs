@@ -8,7 +8,7 @@ using Bydlo.Engines.SingBox;
 namespace Bydlo.Engines.OpenVpn;
 
 /// <summary>OpenVPN community client adapter (<c>openvpn --config</c>). Needs administrator rights for routes / adapters.</summary>
-public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator, IPrivilegeService privileges)
+public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator, IPrivilegeService privileges, IOpenVpnDriver? driver = null)
     : ProcessEngineBase(runner, redactor)
 {
     public static readonly EngineDescriptor Info = new()
@@ -29,6 +29,7 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
 
     private string? _authFile;
     private string? _configFile;
+    private EventWaitHandle? _exitEvent;
 
     public override EngineDescriptor Descriptor => Info;
 
@@ -51,6 +52,11 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
             return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "OpenVPN is not installed (openvpn.net/community-downloads).") { LocalizationKey = "error.engine.openvpn.missing" });
         }
 
+        if (locator.Platform.Os == OsFamily.Windows && driver?.IsInstalled != true)
+        {
+            return Task.FromResult(new EngineAvailability(AvailabilityStatus.NotInstalled, "Set up the bundled OpenVPN DCO driver in Tools → Engines.", exe) { LocalizationKey = "error.engine.openvpn.driver" });
+        }
+
         return Task.FromResult(privileges.IsElevated
             ? EngineAvailability.Ready(exe)
             : new EngineAvailability(AvailabilityStatus.NeedsElevation, "OpenVPN needs administrator rights.", exe) { LocalizationKey = "error.engine.openvpn.admin" });
@@ -62,6 +68,15 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
         _configFile = Path.Combine(request.WorkDirectory, "profile.ovpn");
         await SecureFile.WriteAsync(_configFile, raw, ct).ConfigureAwait(false);
         var args = new List<string> { "--config", _configFile, "--verb", "3", "--suppress-timestamps" };
+        if (locator.Platform.Os == OsFamily.Windows)
+        {
+            args.AddRange(["--windows-driver", "ovpn-dco", "--dev-node", "BYDLO-OpenVPN"]);
+        }
+        else
+        {
+            // No host-specific DCO module is required by the portable build.
+            args.Add("--disable-dco");
+        }
 
         if (request.Profile?.Option("authUserPass") == "true")
         {
@@ -77,7 +92,14 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
             args.AddRange(["--auth-user-pass", _authFile]);
         }
 
-        return new ProcessSpec { FileName = availability.ExecutablePath!, Arguments = args, WorkingDirectory = request.WorkDirectory, DisplayName = "openvpn" };
+        string? exitName = null;
+        if (OperatingSystem.IsWindows() && locator.Platform.Os == OsFamily.Windows)
+        {
+            exitName = "Local\\BYDLO-OpenVPN-" + Guid.NewGuid().ToString("N");
+            _exitEvent = new EventWaitHandle(false, EventResetMode.ManualReset, exitName);
+            args.AddRange(["--service", exitName, "0"]);
+        }
+        return new ProcessSpec { FileName = availability.ExecutablePath!, Arguments = args, WorkingDirectory = request.WorkDirectory, DisplayName = "openvpn", GracefulTermination = true, WindowsExitEventName = exitName };
     }
 
     protected override bool IsReadyLine(string line) => line.Contains("Initialization Sequence Completed", StringComparison.Ordinal);
@@ -89,6 +111,9 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
 
     protected override Task OnStoppingAsync()
     {
+        // The running child owns its own event handle; signal before closing the parent handle.
+        var exitEvent = Interlocked.Exchange(ref _exitEvent, null);
+        if (exitEvent is not null) { exitEvent.Set(); exitEvent.Dispose(); }
         if (_authFile is not null)
         {
             SecureFile.DeleteQuietly(_authFile);

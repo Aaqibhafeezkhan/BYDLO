@@ -31,12 +31,13 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
     private string? FindExecutable(string id, PlatformInfo platform, string root)
     {
         var entry = engineLock.Find(id);
-        if (entry is null || !entry.Assets.TryGetValue(platform.Rid, out var asset))
+        if (entry is null)
         {
             return null;
         }
-
-        var exe = Path.Combine(root, id, entry.Version, asset.Executable.Replace('/', Path.DirectorySeparatorChar));
+        var relative = entry.Assets.TryGetValue(platform.Rid, out var asset) ? asset.Executable : entry.BundledExecutables.GetValueOrDefault(platform.Rid);
+        if (relative is null) { return null; }
+        var exe = Path.Combine(root, id, entry.Version, relative.Replace('/', Path.DirectorySeparatorChar));
         return File.Exists(exe) ? exe : null;
     }
 

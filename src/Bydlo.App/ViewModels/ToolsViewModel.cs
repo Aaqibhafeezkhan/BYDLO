@@ -83,6 +83,26 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public bool IsWindows => PlatformInfo.Current.Os == OsFamily.Windows;
 
+    [ObservableProperty]
+    private bool _openVpnDriverConsent;
+
+    [RelayCommand]
+    private async Task InstallOpenVpnDriver()
+    {
+        if (!OpenVpnDriverConsent) { return; }
+        if (Services.IsMock || Bydlo.Core.Security.NetworkSafetyGuard.IsLocked)
+        { Shell.ShowToast(L["tools.openvpn.driver.mock"], isError: true); return; }
+        if (Services.Connections.Primary.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting)
+        { Shell.ShowToast(L["tools.openvpn.driver.stop"], isError: true); return; }
+        IsInstalling = true;
+        try
+        {
+            if (await Shell.Guard(() => Services.OpenVpnDriver.InstallAsync(OpenVpnDriverConsent)))
+            { OpenVpnDriverConsent = false; Shell.ShowToast(L["tools.openvpn.driver.done"]); }
+        }
+        finally { IsInstalling = false; await RefreshEnginesAsync(); }
+    }
+
     public bool CanInstallZapret => Services.Installer.HasAsset(IsWindows ? "zapret" : "zapret-native", PlatformInfo.Current);
 
     public bool SupportsGameFilter => PlatformInfo.Current.Os is OsFamily.Windows or OsFamily.Linux;

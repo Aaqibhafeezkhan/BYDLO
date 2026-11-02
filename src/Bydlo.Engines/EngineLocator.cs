@@ -4,7 +4,7 @@ using Bydlo.Engines.Installation;
 namespace Bydlo.Engines;
 
 /// <summary>
-/// Finds engine executables: explicit path from settings → BYDLO-managed install → PATH → well-known install folders
+/// Finds engine executables: explicit path from settings → bundled copy → BYDLO-managed install → PATH → well-known install folders
 /// (resolved from environment variables, never hardcoded drives).
 /// </summary>
 public class EngineLocator(EngineInstaller installer, PlatformInfo platform, string? bundleDirectory = null)
@@ -23,6 +23,11 @@ public class EngineLocator(EngineInstaller installer, PlatformInfo platform, str
         }
 
         var lockId = LockId(kind);
+        if (lockId is not null && BundledExecutable(lockId) is { } bundled)
+        {
+            return bundled;
+        }
+
         if (lockId is not null && installer.InstalledExecutable(lockId, platform) is { } managed)
         {
             return managed;
@@ -53,6 +58,8 @@ public class EngineLocator(EngineInstaller installer, PlatformInfo platform, str
         EngineKind.SingBox => "sing-box",
         EngineKind.Xray => "xray",
         EngineKind.Zapret => "zapret",
+        EngineKind.AmneziaWG => "amneziawg",
+        EngineKind.OpenVpn => "openvpn",
         _ => null,
     };
 
@@ -64,7 +71,7 @@ public class EngineLocator(EngineInstaller installer, PlatformInfo platform, str
             EngineKind.SingBox => [win ? "sing-box.exe" : "sing-box"],
             EngineKind.Xray => [win ? "xray.exe" : "xray"],
             EngineKind.WireGuard => win ? ["wireguard.exe"] : ["wg-quick"],
-            EngineKind.AmneziaWG => win ? ["amneziawg.exe"] : ["awg-quick"],
+            EngineKind.AmneziaWG => [win ? "bydlo-amneziawg.exe" : "bydlo-amneziawg"],
             EngineKind.OpenVpn => [win ? "openvpn.exe" : "openvpn"],
             _ => [],
         };

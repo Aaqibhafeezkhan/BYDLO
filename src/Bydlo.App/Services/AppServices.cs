@@ -40,8 +40,10 @@ public sealed class AppServices
         Installer = new EngineInstaller(Http, Lock, Paths.EnginesDirectory);
         Locator = new EngineLocator(Installer, PlatformInfo.Current);
         ZapretFirewall = new ZapretFirewall(Runner, Installer.UserDataDirectory);
+        AmneziaNetwork = new AmneziaNetwork(Runner, PlatformInfo.Current.Os, Paths.DataDirectory);
+        OpenVpnDriver = new OpenVpnDriver(Runner, Privileges, () => Locator.BundledExecutable("openvpn") is { } exe ? Path.GetDirectoryName(exe) : null);
         TgSecrets = new TgWsProxySecrets(Secrets);
-        Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, () => new MockEngine(), ZapretFirewall);
+        Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, () => new MockEngine(), ZapretFirewall, AmneziaNetwork, OpenVpnDriver);
         SystemProxy = SystemProxyFactory.Create();
         Connections = new ConnectionManager(Registry, Secrets, Paths, new ConflictDetector(new TcpPortChecker()), Log, SystemProxy);
         ConnectionCheck = new ConnectionCheckService();
@@ -83,6 +85,10 @@ public sealed class AppServices
     public EngineLocator Locator { get; }
 
     public ZapretFirewall ZapretFirewall { get; }
+
+    public AmneziaNetwork AmneziaNetwork { get; }
+
+    public OpenVpnDriver OpenVpnDriver { get; }
 
     public TgWsProxySecrets TgSecrets { get; }
 
@@ -130,6 +136,11 @@ public sealed class AppServices
         }
 
         await s.Profiles.LoadAsync().ConfigureAwait(false);
+        if (!s.IsMock && !NetworkSafetyGuard.IsLocked && s.Privileges.IsElevated && s.AmneziaNetwork.HasPendingRecovery)
+        {
+            try { s.Journal.KillOrphans("amneziawg"); await s.AmneziaNetwork.RemoveAsync().ConfigureAwait(false); }
+            catch (Exception ex) { s.Log.Error("amneziawg", "Network recovery failed: " + ex.Message); }
+        }
         if (!s.IsMock && !NetworkSafetyGuard.IsLocked && s.Privileges.IsElevated && s.ZapretFirewall.HasPendingRecovery)
         {
             try { await s.ZapretFirewall.RemoveAsync().ConfigureAwait(false); }

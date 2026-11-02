@@ -42,6 +42,8 @@ jobs:
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/selection-verification en --verify-zapret-selection
       - name: Verify desktop integration (headless, mock only, no OS registration)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-verification en --verify-desktop
+      - name: Verify bundled engine UI (headless, mock only, no driver setup)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verification en --mock --verify-bundled-engines
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -58,9 +60,9 @@ jobs:
         include:
           - { rid: win-x64, os: windows-latest }
           - { rid: win-arm64, os: windows-latest }
-          - { rid: linux-x64, os: ubuntu-latest }
-          - { rid: linux-arm64, os: ubuntu-latest }
-          - { rid: osx-x64, os: macos-latest }
+          - { rid: linux-x64, os: ubuntu-24.04 }
+          - { rid: linux-arm64, os: ubuntu-24.04-arm }
+          - { rid: osx-x64, os: macos-15-intel }
           - { rid: osx-arm64, os: macos-latest }
     steps:
       - uses: actions/checkout@v4
@@ -73,11 +75,21 @@ jobs:
           dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }}
           --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish/BYDLO-${{ matrix.rid }}
-      - name: Bundle pinned Zapret (download, verify, extract only)
+      - name: Bundle pinned sing-box, Xray and Zapret (never execute engines)
         shell: bash
         run: >
           dotnet run --project tools/Bydlo.BundleEngines -c Release --
           ${{ matrix.rid }} publish/BYDLO-${{ matrix.rid }} .
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.3'
+          cache: false
+      - name: Build and bundle AmneziaWG and OpenVPN (never execute engines)
+        shell: pwsh
+        run: ./scripts/build-bundled-engines.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
+      - name: Verify offline bundle contents and architecture (never execute engines)
+        shell: pwsh
+        run: ./scripts/verify-engine-bundle.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
       - name: Add notices
         shell: bash
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-${{ matrix.rid }}/
@@ -103,7 +115,7 @@ jobs:
           cd dist
           for d in BYDLO-*; do
             case "$d" in
-              *linux-*|*osx-*) find "$d" -type f \( -name BYDLO -o -name nfqws -o -name tpws \) -exec chmod 755 {} + ;;
+              *linux-*|*osx-*) find "$d" -type f \( -name BYDLO -o -name nfqws -o -name tpws -o -name sing-box -o -name xray -o -name bydlo-amneziawg -o -name openvpn \) -exec chmod 755 {} + ;;
             esac
             (cd "$d" && zip -qr "../$d.zip" .)
           done
