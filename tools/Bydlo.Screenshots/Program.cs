@@ -1,8 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Bydlo.App.ViewModels;
 using Bydlo.App.Views;
 using Bydlo.Core.Models;
@@ -74,8 +76,8 @@ void Shoot(string name, double width, double height)
     var window = new Window { Width = width, Height = height, Content = new MainView { DataContext = shell } };
     window.Show();
     Pump(400);
-    var frame = window.CaptureRenderedFrame();
-    frame?.Save(Path.Combine(output, name + ".png"));
+    using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException("No rendered frame: " + name);
+    frame.Save(Path.Combine(output, name + ".png"));
     window.Close();
     Console.WriteLine($"saved {name}.png");
 }
@@ -103,6 +105,33 @@ if (shell.Profiles.Count == 0)
 {
     Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
 }
+// Exercise the actual radio group: selecting either mode must update the shared setting.
+// This only changes app settings in the isolated screenshot data directory; no engine runs.
+var originalMode = services.Settings.Mode;
+var modeWindow = new Window { Width = 400, Height = 860, Content = new HomeView { DataContext = shell.Home } };
+modeWindow.Show();
+Pump(100);
+var modes = modeWindow.GetVisualDescendants().OfType<RadioButton>().Where(r => r.GroupName == "connectionMode").ToArray();
+if (modes.Length != 2) throw new InvalidOperationException("Connection mode controls are missing.");
+modes[1].IsChecked = true;
+Pump(50);
+if (services.Settings.Mode != ConnectionMode.Tun || shell.Home.IsProxy) throw new InvalidOperationException("Whole-device selection failed.");
+modes[0].IsChecked = true;
+Pump(50);
+if (services.Settings.Mode != ConnectionMode.LocalProxy || shell.Home.IsTun) throw new InvalidOperationException("Proxy selection failed.");
+shell.Home.IsTun = originalMode == ConnectionMode.Tun;
+modeWindow.Content = new SettingsView { DataContext = shell.Settings };
+Pump(100);
+var disclosure = modeWindow.GetVisualDescendants().OfType<Expander>().First();
+var disclosureButton = disclosure.GetVisualDescendants().OfType<ToggleButton>().First(t => t.Classes.Contains("disclosure"));
+disclosureButton.IsChecked = true;
+Pump(50);
+if (!disclosure.IsExpanded) throw new InvalidOperationException("Disclosure did not open.");
+disclosureButton.IsChecked = false;
+Pump(50);
+if (disclosure.IsExpanded) throw new InvalidOperationException("Disclosure did not close.");
+modeWindow.Close();
+Pump(4000); // Let the demo-import toast disappear before documenting the resting UI.
 
 foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled })
 {
@@ -111,6 +140,7 @@ foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, The
     Shoot($"home-{theme.ToString().ToLowerInvariant()}", 1180, 780);
 }
 
+services.Settings.Theme = ThemePreference.Purple;
 services.Theme.Apply(ThemePreference.Purple);
 
 // Simulated connection (Mock engine) for the "connected" state.
@@ -128,6 +158,7 @@ foreach (var page in new[] { "connections", "tools", "routing", "statistics", "s
     }
 
     Shoot(page, 1180, 900);
+    Shoot($"mobile-{page}", 400, 860);
 }
 
 shell.Navigate("home");
@@ -136,4 +167,13 @@ Shoot("home-minimum", 380, 700);
 Shoot("home-narrow-desktop", 900, 780);
 Shoot("home-navigation-breakpoint", MainView.CompactWidth, 780);
 Wait(services.Connections.StopAllAsync());
+Pump(100);
+services.Settings.MockScenario = MockScenario.FailOnConnect;
+Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+Pump(100);
+if (!shell.Home.IsError) throw new InvalidOperationException("Mock connection failure was not shown.");
+if (shell.HasVisibleToast && shell.Toast == shell.Home.Error) throw new InvalidOperationException("Duplicate connection error toast.");
+Shoot("home-error", 400, 860);
+Wait(services.Connections.StopAllAsync());
+services.Settings.MockScenario = MockScenario.Success;
 Console.WriteLine("done: " + output);

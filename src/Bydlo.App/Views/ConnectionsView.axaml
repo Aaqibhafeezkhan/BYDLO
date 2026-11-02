@@ -1,50 +1,55 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:st="using:Bydlo.Core.Storage"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.ConnectionsView"
              x:DataType="vm:ConnectionsViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="980" Margin="24,28,24,32" Spacing="18">
-      <StackPanel Spacing="4">
+    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
+      <StackPanel Spacing="8">
         <TextBlock Classes="h1" Text="{l:T nav.connections}" />
         <TextBlock Classes="muted" Text="{l:T connections.subtitle}" TextWrapping="Wrap" />
       </StackPanel>
 
       <!-- Import -->
-      <Border Classes="card">
+      <Border Classes="panel">
         <StackPanel Spacing="12">
           <TextBlock Classes="h3" Text="{l:T import.title}" />
           <WrapPanel>
             <Button Classes="primary" Margin="0,0,8,8" Command="{Binding PasteFromClipboardCommand}">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <PathIcon Data="{StaticResource IconPaste}" Width="16" Height="16" Foreground="White" />
-                <TextBlock Text="{l:T import.clipboard}" Foreground="White" />
+                <c:OutlineIcon Data="{StaticResource LinePaste}" Width="16" Height="16" Foreground="{DynamicResource OnPrimaryBrush}" />
+                <TextBlock Text="{l:T import.clipboard}" Foreground="{DynamicResource OnPrimaryBrush}" />
               </StackPanel>
             </Button>
             <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding ImportFromFileCommand}">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <PathIcon Data="{StaticResource IconFile}" Width="16" Height="16" />
+                <c:OutlineIcon Data="{StaticResource LineFile}" Width="16" Height="16" />
                 <TextBlock Text="{l:T import.file}" />
               </StackPanel>
             </Button>
             <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding ImportFromQrImageCommand}">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <PathIcon Data="{StaticResource IconQr}" Width="16" Height="16" />
+                <c:OutlineIcon Data="{StaticResource LineQr}" Width="16" Height="16" />
                 <TextBlock Text="{l:T import.qr}" />
               </StackPanel>
             </Button>
             <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <PathIcon Data="{StaticResource IconFlask}" Width="16" Height="16" />
+                <c:OutlineIcon Data="{StaticResource LineFlask}" Width="16" Height="16" />
                 <TextBlock Text="{l:T import.demo}" />
               </StackPanel>
             </Button>
           </WrapPanel>
+          <Expander Header="{l:T import.manual}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="12">
           <TextBox Text="{Binding ImportText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70" MaxHeight="160"
                    Watermark="{l:T import.placeholder}" FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
           <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T import.add}" Command="{Binding ImportFromTextCommand}" />
+            </StackPanel>
+          </Expander>
         </StackPanel>
       </Border>
 
@@ -53,22 +58,23 @@
         <TextBlock Classes="caps" Text="{l:T connections.profiles}" />
         <Border Classes="card" IsVisible="{Binding IsEmpty}">
           <StackPanel Spacing="6" HorizontalAlignment="Center">
-            <PathIcon Data="{StaticResource IconServers}" Width="34" Height="34" Foreground="{DynamicResource TextFaintBrush}" />
+            <c:OutlineIcon Data="{StaticResource LineServers}" Width="34" Height="34" Foreground="{DynamicResource TextFaintBrush}" />
             <TextBlock Classes="muted" Text="{l:T connections.empty}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
+        <Border Classes="panel" Padding="18,0" IsVisible="{Binding !IsEmpty}">
         <ItemsControl ItemsSource="{Binding Shell.Profiles}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ProfileItem">
-              <Border Classes="card" Padding="14" Margin="0,0,0,8">
+              <Border Classes="row profile-row" Classes.active="{Binding IsActive}">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                  <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}">
-                    <PathIcon Data="{StaticResource IconShield}" Foreground="{DynamicResource AccentBrush}" />
+                  <Border Width="40" Height="40" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
+                    <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource AccentBrush}" />
                   </Border>
                   <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                      <Border Classes="pill ok" Padding="7,1" IsVisible="{Binding IsActive}">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                      <Border Classes="pill ok" HorizontalAlignment="Left" Padding="7,1" IsVisible="{Binding IsActive}">
                         <TextBlock Text="{l:T status.connected}" FontSize="10" />
                       </Border>
                     </StackPanel>
@@ -76,7 +82,7 @@
                     <TextBlock Classes="faint" Text="{Binding Endpoint}" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                    <Button Classes="icon" Content="⋯" ToolTip.Tip="{l:T share.title}">
+                    <Button Classes="icon" Content="⋯" AutomationProperties.Name="{l:T share.title}" ToolTip.Tip="{l:T share.title}">
                       <Button.Flyout>
                         <Flyout>
                           <StackPanel Spacing="6">
@@ -90,20 +96,20 @@
                         </Flyout>
                       </Button.Flyout>
                     </Button>
-                    <Button Classes="icon" ToolTip.Tip="{l:T connections.favorite}"
+                    <Button Classes="icon" AutomationProperties.Name="{l:T connections.favorite}" ToolTip.Tip="{l:T connections.favorite}"
                             Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ToggleFavoriteCommand}" CommandParameter="{Binding}">
                       <Panel>
-                        <PathIcon Data="{StaticResource IconStar}" Width="16" Height="16" IsVisible="{Binding IsFavorite}" Foreground="{DynamicResource WarningBrush}" />
-                        <PathIcon Data="{StaticResource IconStar}" Width="16" Height="16" IsVisible="{Binding !IsFavorite}" Opacity="0.4" />
+                        <c:OutlineIcon Data="{StaticResource LineStar}" Width="16" Height="16" IsVisible="{Binding IsFavorite}" Foreground="{DynamicResource WarningBrush}" />
+                        <c:OutlineIcon Data="{StaticResource LineStar}" Width="16" Height="16" IsVisible="{Binding !IsFavorite}" Opacity="0.4" />
                       </Panel>
                     </Button>
-                    <Button Classes="icon" ToolTip.Tip="{l:T connections.delete}"
+                    <Button Classes="icon" AutomationProperties.Name="{l:T connections.delete}" ToolTip.Tip="{l:T connections.delete}"
                             Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteCommand}" CommandParameter="{Binding}">
-                      <PathIcon Data="{StaticResource IconDelete}" Width="16" Height="16" />
+                      <c:OutlineIcon Data="{StaticResource LineDelete}" Width="16" Height="16" />
                     </Button>
-                    <Button Classes="primary" Margin="6,0,0,0" Padding="12,7"
+                    <Button AutomationProperties.Name="{l:T home.connect}" Classes="ghost" Margin="6,0,0,0" Padding="10,8"
                             Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ConnectToCommand}" CommandParameter="{Binding}">
-                      <PathIcon Data="{StaticResource IconPower}" Width="15" Height="15" Foreground="White" />
+                      <c:OutlineIcon Data="{StaticResource LinePower}" Width="16" Height="16" />
                     </Button>
                   </StackPanel>
                 </Grid>
@@ -111,12 +117,12 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        </Border>
       </StackPanel>
 
       <!-- Subscriptions -->
-      <Border Classes="card">
+      <Expander Header="{l:T subs.title}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="12">
-          <TextBlock Classes="h3" Text="{l:T subs.title}" />
           <TextBlock Classes="faint" Text="{l:T subs.hint}" TextWrapping="Wrap" />
           <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
             <TextBox Text="{Binding SubscriptionUrl}" Watermark="https://…" />
@@ -130,12 +136,12 @@
                 <Border Classes="tile" Margin="0,0,0,6">
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Name}" FontWeight="Medium" />
                       <TextBlock Classes="faint" Text="{Binding LastUpdated, StringFormat='{}{0:g}'}" />
                     </StackPanel>
                     <Button Grid.Column="1" Classes="icon" ToolTip.Tip="{l:T subs.refresh}"
                             Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).RefreshSubscriptionCommand}" CommandParameter="{Binding}">
-                      <PathIcon Data="{StaticResource IconRefresh}" Width="16" Height="16" />
+                      <c:OutlineIcon Data="{StaticResource LineRefresh}" Width="16" Height="16" />
                     </Button>
                   </Grid>
                 </Border>
@@ -143,7 +149,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </StackPanel>
-      </Border>
+      </Expander>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

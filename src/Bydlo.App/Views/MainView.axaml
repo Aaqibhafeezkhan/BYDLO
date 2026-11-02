@@ -1,34 +1,27 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.MainView"
              x:DataType="vm:MainViewModel"
              Background="{DynamicResource BackdropBrush}">
   <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*" ClipToBounds="True">
-    <Panel Grid.RowSpan="3" Grid.ColumnSpan="2" IsHitTestVisible="False" ClipToBounds="True">
-      <Ellipse Width="800" Height="800" Fill="{DynamicResource GlowBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-350,-240,0" Opacity="0.6" />
-      <Ellipse Width="680" Height="680" Fill="{DynamicResource GlowBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="100,0,0,-380" Opacity="0.4" />
-    </Panel>
-
     <!-- Desktop sidebar -->
-    <Border Grid.RowSpan="3" Width="224" Margin="16,16,0,16" CornerRadius="28" BoxShadow="{DynamicResource GlassShadow}" IsVisible="{Binding !IsCompact}"
-            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource GlassEdgeBrush}" BorderThickness="1">
-      <DockPanel Margin="12,24,12,20">
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="10,0,6,34">
-          <Border Width="38" Height="38" CornerRadius="14" Background="{DynamicResource PrimaryGradientBrush}">
-            <PathIcon Data="{StaticResource IconShield}" Foreground="White" Width="18" Height="18" />
-          </Border>
+    <Border Grid.RowSpan="3" Width="220" IsVisible="{Binding !IsCompact}"
+            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="16,32,16,20">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="10,0,6,38">
+          <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource AccentBrush}" Width="25" Height="25" />
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="BYDLO" FontWeight="Black" FontSize="17" LetterSpacing="1.5" />
-            <TextBlock Classes="faint" Text="{l:T app.slogan}" FontSize="10.5" TextWrapping="Wrap" MaxWidth="150" />
+            <TextBlock Text="BYDLO" FontWeight="SemiBold" FontSize="18" LetterSpacing="0.3" />
           </StackPanel>
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom" Spacing="8">
           <Border Classes="pill warn" IsVisible="{Binding IsMock}" HorizontalAlignment="Left">
             <StackPanel Orientation="Horizontal" Spacing="6">
-              <PathIcon Data="{StaticResource IconFlask}" Width="12" Height="12" Foreground="{DynamicResource WarningBrush}" />
+              <c:OutlineIcon Data="{StaticResource LineFlask}" Width="12" Height="12" Foreground="{DynamicResource WarningBrush}" />
               <TextBlock Text="{l:T mock.badge}" />
             </StackPanel>
           </Border>
@@ -38,12 +31,12 @@
         <ItemsControl ItemsSource="{Binding NavItems}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:NavItem">
-              <RadioButton Classes="nav" GroupName="nav" Margin="0,0,0,7"
+              <RadioButton Classes="nav" GroupName="nav" Margin="0,0,0,4"
                            IsChecked="{Binding IsSelected, Mode=OneWay}"
                            Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NavigateCommand}"
                            CommandParameter="{Binding Key}">
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                  <PathIcon Data="{Binding IconKey, Converter={x:Static l:IconConverter.Instance}}" />
+                  <c:OutlineIcon Data="{Binding IconKey, Converter={x:Static l:IconConverter.Instance}}" />
                   <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                 </StackPanel>
               </RadioButton>
@@ -56,10 +49,8 @@
     <!-- Compact header -->
     <Grid Grid.Column="1" IsVisible="{Binding IsCompact}" ColumnDefinitions="Auto,*,Auto" Margin="16,14,16,0">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource PrimaryGradientBrush}">
-          <PathIcon Data="{StaticResource IconShield}" Foreground="White" Width="14" Height="14" />
-        </Border>
-        <TextBlock Text="BYDLO" FontWeight="Black" FontSize="16" LetterSpacing="1.5" VerticalAlignment="Center" />
+        <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource AccentBrush}" Width="22" Height="22" />
+        <TextBlock Text="BYDLO" FontWeight="Bold" FontSize="16" LetterSpacing="0" VerticalAlignment="Center" />
       </StackPanel>
       <Border Grid.Column="2" Classes="pill warn" IsVisible="{Binding IsMock}">
         <TextBlock Text="{l:T mock.badge}" />
@@ -67,16 +58,12 @@
     </Grid>
 
     <!-- Content -->
-    <TransitioningContentControl Grid.Row="1" Grid.Column="1" Content="{Binding CurrentPage}">
-      <TransitioningContentControl.PageTransition>
-        <CrossFade Duration="0:0:0.18" />
-      </TransitioningContentControl.PageTransition>
-    </TransitioningContentControl>
+    <ContentControl Grid.Row="1" Grid.Column="1" Content="{Binding CurrentPage}" />
 
     <!-- Compact bottom navigation -->
     <Border Grid.Row="2" Grid.Column="1" IsVisible="{Binding IsCompact}"
-            Margin="10,4,10,10" CornerRadius="24" BoxShadow="{DynamicResource GlassShadow}"
-            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource GlassEdgeBrush}" BorderThickness="1" Padding="5,6">
+            Margin="0"
+            Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="4,6">
       <ItemsControl ItemsSource="{Binding NavItems}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
@@ -88,7 +75,7 @@
                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NavigateCommand}"
                          CommandParameter="{Binding Key}">
               <StackPanel Spacing="3" HorizontalAlignment="Center">
-                <PathIcon Data="{Binding IconKey, Converter={x:Static l:IconConverter.Instance}}" HorizontalAlignment="Center" />
+                <c:OutlineIcon Data="{Binding IconKey, Converter={x:Static l:IconConverter.Instance}}" HorizontalAlignment="Center" />
                 <TextBlock Text="{Binding ShortTitle}" FontSize="10" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
               </StackPanel>
             </RadioButton>
@@ -101,20 +88,20 @@
     <Border Grid.Row="1" Grid.Column="1" Classes="banner" IsVisible="{Binding HasOrphans}"
             VerticalAlignment="Top" HorizontalAlignment="Center" Margin="16,12">
       <StackPanel Orientation="Horizontal" Spacing="12">
-        <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
+        <c:OutlineIcon Data="{StaticResource LineAlert}" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
         <TextBlock Text="{l:T orphans.text}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" />
         <Button Classes="ghost" Content="{l:T orphans.stop}" Command="{Binding CleanupOrphansCommand}" />
       </StackPanel>
     </Border>
 
     <!-- Toast -->
-    <Border Grid.Row="1" Grid.Column="1" IsVisible="{Binding Toast, Converter={x:Static ObjectConverters.IsNotNull}}"
+    <Border Grid.Row="1" Grid.Column="1" IsVisible="{Binding HasVisibleToast}"
             VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16,0,16,22" MaxWidth="560"
-            CornerRadius="14" Padding="16,11" BoxShadow="0 8 30 0 #40000000"
+            CornerRadius="8" Padding="16,11"
             Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
       <StackPanel Orientation="Horizontal" Spacing="10">
-        <PathIcon Data="{StaticResource IconAlert}" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding ToastIsError}" Width="16" Height="16" />
-        <PathIcon Data="{StaticResource IconInfo}" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding !ToastIsError}" Width="16" Height="16" />
+        <c:OutlineIcon Data="{StaticResource LineAlert}" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding ToastIsError}" Width="16" Height="16" />
+        <c:OutlineIcon Data="{StaticResource LineInfo}" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding !ToastIsError}" Width="16" Height="16" />
         <TextBlock Text="{Binding Toast}" TextWrapping="Wrap" MaxWidth="500" />
       </StackPanel>
     </Border>
@@ -123,18 +110,18 @@
       <StackPanel Spacing="10">
         <TextBlock Text="{Binding ClipboardOffer}" TextWrapping="Wrap" />
         <WrapPanel>
-          <Button Content="{l:T import.preview}" Command="{Binding AcceptClipboardOfferCommand}" Margin="0,0,8,0" />
-          <Button Content="{l:T import.dismiss}" Command="{Binding DismissClipboardOfferCommand}" />
+          <Button Classes="primary" Content="{l:T import.preview}" Command="{Binding AcceptClipboardOfferCommand}" Margin="0,0,8,0" />
+          <Button Classes="ghost" Content="{l:T import.dismiss}" Command="{Binding DismissClipboardOfferCommand}" />
         </WrapPanel>
       </StackPanel>
     </Border>
-    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" Margin="8" CornerRadius="24" Padding="24"
+    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" Margin="8" CornerRadius="12" Padding="24"
             IsVisible="{Binding IsDragOver}" IsHitTestVisible="False" BorderThickness="3"
             BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource Surface2Brush}" Opacity="0.94">
       <TextBlock Text="{l:T import.drop}" FontSize="24" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" />
     </Border>
     <Border Grid.RowSpan="3" Grid.ColumnSpan="2" Background="{DynamicResource BackdropBrush}" IsVisible="{Binding HasImportPreview}">
-      <Border Classes="card" MaxWidth="620" Margin="24" VerticalAlignment="Center" MaxHeight="650">
+      <Border Classes="panel" MaxWidth="620" Margin="24" VerticalAlignment="Center" MaxHeight="650">
         <Grid RowDefinitions="Auto,*,Auto">
           <TextBlock Classes="h2" Text="{l:T import.preview}" Margin="0,0,0,16" />
           <ScrollViewer Grid.Row="1" MaxHeight="420">
@@ -146,7 +133,7 @@
           </ScrollViewer>
           <WrapPanel Grid.Row="2" Margin="0,16,0,0" IsEnabled="{Binding !IsImportBusy}">
             <Button Classes="primary" Content="{l:T import.add}" Command="{Binding ConfirmImportCommand}" IsEnabled="{Binding CanConfirmImport}" Margin="0,0,8,0" />
-            <Button Content="{l:T import.dismiss}" Command="{Binding CancelImportCommand}" />
+            <Button Classes="ghost" Content="{l:T import.dismiss}" Command="{Binding CancelImportCommand}" />
           </WrapPanel>
         </Grid>
       </Border>
@@ -155,11 +142,11 @@
     <!-- First-run onboarding -->
     <Border Grid.RowSpan="3" Grid.ColumnSpan="2" IsVisible="{Binding IsOnboardingVisible}" Background="{DynamicResource ScrimBrush}">
       <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" VerticalContentAlignment="Center">
-        <Border Classes="card" MaxWidth="560" Margin="24" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <Border Classes="panel" MaxWidth="560" Margin="24" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center"
                 Background="{DynamicResource BgBrush}">
           <StackPanel Spacing="16">
-            <Border Width="56" Height="56" CornerRadius="18" Background="{DynamicResource PrimaryGradientBrush}">
-              <PathIcon Data="{StaticResource IconShield}" Foreground="White" Width="28" Height="28" />
+            <Border Width="56" Height="56" CornerRadius="18" Background="{DynamicResource PrimaryBrush}">
+              <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource OnPrimaryBrush}" Width="28" Height="28" />
             </Border>
             <TextBlock Classes="h1" Text="{l:T onboarding.title}" TextWrapping="Wrap" />
             <TextBlock Classes="muted" Text="{l:T onboarding.text}" TextWrapping="Wrap" />

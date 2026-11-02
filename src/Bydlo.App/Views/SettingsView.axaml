@@ -1,20 +1,21 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:m="using:Bydlo.Core.Models"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="980" Margin="24,28,24,32" Spacing="18">
+    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
       <TextBlock Classes="h1" Text="{l:T nav.settings}" />
 
       <!-- Appearance -->
-      <Border Classes="card">
+      <Border Classes="panel">
         <StackPanel Spacing="14">
-          <TextBlock Classes="h3" Text="{l:T settings.appearance}" />
+          <TextBlock Classes="h2" Text="{l:T settings.appearance}" />
           <TextBlock Classes="caps" Text="{l:T settings.theme}" />
-          <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="4" HorizontalAlignment="Left">
+          <Border Background="{DynamicResource Surface2Brush}" CornerRadius="8" Padding="4" HorizontalAlignment="Left">
             <WrapPanel>
               <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemePurple}"><TextBlock Text="{l:T theme.purple}" /></RadioButton>
               <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeLight}"><TextBlock Text="{l:T theme.light}" /></RadioButton>
@@ -33,46 +34,46 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="card">
+      <Border Classes="panel">
         <StackPanel Spacing="12">
           <TextBlock Classes="h3" Text="{l:T import.title}" />
           <ToggleSwitch Content="{l:T settings.clipboard}" IsChecked="{Binding SuggestClipboardLinks}" />
           <TextBlock Classes="faint" Text="{l:T settings.associations.hint}" TextWrapping="Wrap" />
           <WrapPanel IsEnabled="{Binding CanRegisterAssociations}">
-            <Button Content="{l:T settings.associations.register}" Command="{Binding RegisterAssociationsCommand}" Margin="0,0,8,8" />
-            <Button Content="{l:T settings.associations.remove}" Command="{Binding RemoveAssociationsCommand}" Margin="0,0,0,8" />
+            <Button Classes="ghost" Content="{l:T settings.associations.register}" Command="{Binding RegisterAssociationsCommand}" Margin="0,0,8,8" />
+            <Button Classes="ghost" Content="{l:T settings.associations.remove}" Command="{Binding RemoveAssociationsCommand}" Margin="0,0,0,8" />
           </WrapPanel>
         </StackPanel>
       </Border>
 
       <!-- Connection -->
-      <Border Classes="card">
+      <Border Classes="panel">
         <StackPanel Spacing="14">
-          <TextBlock Classes="h3" Text="{l:T settings.connection}" />
+          <TextBlock Classes="h2" Text="{l:T settings.connection}" />
           <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="{l:T settings.autoreconnect}" FontWeight="Medium" />
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T settings.autoreconnect}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T settings.autoreconnect.hint}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoReconnect}" />
           </Grid>
-          <Button Content="{l:T settings.killswitch.disable}" Command="{Binding DisableKillSwitchCommand}" HorizontalAlignment="Left" />
-          <Grid ColumnDefinitions="*,Auto">
+          <Button Classes="ghost" Content="{l:T settings.killswitch.disable}" Command="{Binding DisableKillSwitchCommand}" HorizontalAlignment="Left" />
+          <StackPanel Spacing="8">
             <StackPanel>
               <TextBlock Text="{l:T settings.check.service}" FontWeight="Medium" />
               <TextBlock Classes="faint" Text="{l:T settings.check.service.hint}" TextWrapping="Wrap" />
             </StackPanel>
-            <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:SettingsViewModel.CheckProviders}" SelectedItem="{Binding IpCheckProvider}" MinWidth="180">
+            <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.CheckProviders}" SelectedItem="{Binding IpCheckProvider}" MinWidth="180" HorizontalAlignment="Left">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="m:IpCheckProvider">
                   <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=check.provider.}" />
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-          </Grid>
+          </StackPanel>
           <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="{l:T settings.advanced.show}" FontWeight="Medium" />
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T settings.advanced.show}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T settings.advanced.hint}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowAdvanced}" />
@@ -81,7 +82,7 @@
       </Border>
 
       <!-- Advanced -->
-      <Border Classes="card" IsVisible="{Binding ShowAdvanced}">
+      <Border Classes="section" IsVisible="{Binding ShowAdvanced}">
         <StackPanel Spacing="14">
           <TextBlock Classes="h3" Text="{l:T common.advanced}" />
           <Border Classes="tile">
@@ -91,20 +92,20 @@
               <TextBlock Text="{l:T settings.killswitch.active}" IsVisible="{Binding KillSwitch}" TextWrapping="Wrap" />
               <StackPanel IsVisible="{Binding !KillSwitch}" Spacing="8">
                 <CheckBox IsChecked="{Binding KillSwitchAcknowledged}" Content="{l:T settings.killswitch.ack}" />
-                <Button Content="{l:T settings.killswitch.enable}" Command="{Binding EnableKillSwitchCommand}" HorizontalAlignment="Left" />
+                <Button Classes="ghost" Content="{l:T settings.killswitch.enable}" Command="{Binding EnableKillSwitchCommand}" HorizontalAlignment="Left" />
               </StackPanel>
             </StackPanel>
           </Border>
           <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="{l:T settings.port}" FontWeight="Medium" />
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T settings.port}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T settings.port.hint}" TextWrapping="Wrap" />
             </StackPanel>
             <NumericUpDown Grid.Column="1" Value="{Binding LocalPort}" Minimum="1024" Maximum="65535" FormatString="0" Width="140" />
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="{l:T settings.sysproxy}" FontWeight="Medium" />
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T settings.sysproxy}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T settings.sysproxy.hint}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding SetSystemProxy}" IsEnabled="{Binding SystemProxySupported}" />
@@ -113,8 +114,8 @@
           <Border Classes="tile">
             <StackPanel Spacing="10">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <PathIcon Data="{StaticResource IconFlask}" Foreground="{DynamicResource WarningBrush}" />
-                <TextBlock Text="{l:T settings.mock}" FontWeight="SemiBold" />
+                <c:OutlineIcon Data="{StaticResource LineFlask}" Foreground="{DynamicResource WarningBrush}" />
+                <TextBlock Text="{l:T settings.mock}" FontWeight="Medium" TextWrapping="Wrap" />
               </StackPanel>
               <TextBlock Classes="faint" Text="{l:T settings.mock.hint}" TextWrapping="Wrap" />
               <Grid ColumnDefinitions="*,Auto">
@@ -134,7 +135,7 @@
 
           <Border Classes="tile">
             <StackPanel Spacing="6">
-              <TextBlock Text="{l:T settings.system}" FontWeight="SemiBold" />
+              <TextBlock Text="{l:T settings.system}" FontWeight="Medium" TextWrapping="Wrap" />
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock Classes="muted" Text="{l:T settings.admin}" />
                 <TextBlock Text="{l:T common.yes}" IsVisible="{Binding IsElevated}" />
@@ -154,11 +155,11 @@
       </Border>
 
       <!-- About & credits -->
-      <Border Classes="card">
+      <Expander Header="{l:T settings.about}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="12">
           <StackPanel Orientation="Horizontal" Spacing="10">
-            <Border Width="38" Height="38" CornerRadius="11" Background="{DynamicResource PrimaryGradientBrush}">
-              <PathIcon Data="{StaticResource IconShield}" Foreground="White" />
+            <Border Width="38" Height="38" CornerRadius="8" Background="{DynamicResource PrimaryBrush}">
+              <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource OnPrimaryBrush}" />
             </Border>
             <StackPanel VerticalAlignment="Center">
               <TextBlock Text="{Binding Version, StringFormat='BYDLO {0}'}" FontWeight="Bold" />
@@ -174,7 +175,7 @@
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Spacing="1">
                       <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Name}" FontWeight="Medium" />
                         <TextBlock Classes="faint" Text="{Binding Author}" VerticalAlignment="Center" />
                       </StackPanel>
                       <TextBlock Classes="faint" Text="{Binding LocalizedRole}" TextWrapping="Wrap" />
@@ -183,7 +184,7 @@
                       <Border Classes="pill"><TextBlock Text="{Binding License}" /></Border>
                       <Button Classes="icon" ToolTip.Tip="{Binding Url}"
                               Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenUrlCommand}" CommandParameter="{Binding Url}">
-                        <PathIcon Data="{StaticResource IconLink}" Width="15" Height="15" />
+                        <c:OutlineIcon Data="{StaticResource LineLink}" Width="15" Height="15" />
                       </Button>
                     </StackPanel>
                   </Grid>
@@ -192,7 +193,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </StackPanel>
-      </Border>
+      </Expander>
     </StackPanel>
   </ScrollViewer>
 </UserControl>
