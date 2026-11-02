@@ -1,0 +1,31 @@
+name: Предложение
+description: Новая возможность или улучшение
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Проблема
+      description: Что сейчас неудобно или невозможно сделать?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Решение
+      description: Как это должно работать с точки зрения пользователя?
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Готово, когда
+      description: Критерии, по которым можно понять, что задача выполнена.
+      placeholder: |
+        - [ ] …
+        - [ ] Модульные тесты без сети и реальных движков
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы и ссылки
+      description: Как это сделано в других клиентах, ссылки на документацию протокола или оригинального проекта.
