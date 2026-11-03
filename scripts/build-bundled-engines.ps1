@@ -36,28 +36,26 @@ $env:GOTOOLCHAIN = 'local'
 $env:CGO_ENABLED = '0'
 $env:GOOS = if ($Rid.StartsWith('win-')) { 'windows' } elseif ($Rid.StartsWith('linux-')) { 'linux' } else { 'darwin' }
 $env:GOARCH = if ($Rid.EndsWith('arm64')) { 'arm64' } else { 'amd64' }
-if (!$Rid.StartsWith('osx-')) {
-    $awg = $engines | Where-Object id -eq 'amneziawg'
-    $awgDir = Join-Path $output "engines/amneziawg/$($awg.version)"
-    New-Item -ItemType Directory -Force $awgDir | Out-Null
-    $binary = if ($env:GOOS -eq 'windows') { 'bydlo-amneziawg.exe' } else { 'bydlo-amneziawg' }
-    & go -C (Join-Path $repo 'tools/amneziawg') mod verify
-    CheckExit 'Go module verification'
-    & go -C (Join-Path $repo 'tools/amneziawg') build -mod=readonly -trimpath -buildvcs=false -ldflags=-s -o (Join-Path $awgDir $binary) .
-    CheckExit 'AmneziaWG build'
-    $sourceDir = Join-Path $stage 'amneziawg-source'
-    New-Item -ItemType Directory -Force $sourceDir | Out-Null
-    Copy-Item (Join-Path $repo 'tools/amneziawg/*') $sourceDir -Exclude 'vendor' -Recurse -Force
-    Copy-Item (Join-Path $repo 'LICENSE') (Join-Path $sourceDir 'LICENSE-BYDLO') -Force
-    & go -C (Join-Path $repo 'tools/amneziawg') mod vendor -o (Join-Path $sourceDir 'vendor')
-    CheckExit 'AmneziaWG corresponding source'
-    & tar -czf (Join-Path $sources 'amneziawg-with-dependencies.tar.gz') -C $sourceDir .
-    CheckExit 'AmneziaWG source archive'
-    if ($env:GOOS -eq 'windows') {
-        $wintun = Fetch 'wintun'
-        Expand-Archive -LiteralPath $wintun -DestinationPath (Join-Path $stage 'wintun') -Force
-        Copy-Item (Join-Path $stage "wintun/wintun/bin/$($env:GOARCH)/wintun.dll") $awgDir -Force
-    }
+$awg = $engines | Where-Object id -eq 'amneziawg'
+$awgDir = Join-Path $output "engines/amneziawg/$($awg.version)"
+New-Item -ItemType Directory -Force $awgDir | Out-Null
+$binary = if ($env:GOOS -eq 'windows') { 'bydlo-amneziawg.exe' } else { 'bydlo-amneziawg' }
+& go -C (Join-Path $repo 'tools/amneziawg') mod verify
+CheckExit 'Go module verification'
+& go -C (Join-Path $repo 'tools/amneziawg') build -mod=readonly -trimpath -buildvcs=false -ldflags=-s -o (Join-Path $awgDir $binary) .
+CheckExit 'AmneziaWG build'
+$sourceDir = Join-Path $stage 'amneziawg-source'
+New-Item -ItemType Directory -Force $sourceDir | Out-Null
+Copy-Item (Join-Path $repo 'tools/amneziawg/*') $sourceDir -Exclude 'vendor' -Recurse -Force
+Copy-Item (Join-Path $repo 'LICENSE') (Join-Path $sourceDir 'LICENSE-BYDLO') -Force
+& go -C (Join-Path $repo 'tools/amneziawg') mod vendor -o (Join-Path $sourceDir 'vendor')
+CheckExit 'AmneziaWG corresponding source'
+& tar -czf (Join-Path $sources 'amneziawg-with-dependencies.tar.gz') -C $sourceDir .
+CheckExit 'AmneziaWG source archive'
+if ($env:GOOS -eq 'windows') {
+    $wintun = Fetch 'wintun'
+    Expand-Archive -LiteralPath $wintun -DestinationPath (Join-Path $stage 'wintun') -Force
+    Copy-Item (Join-Path $stage "wintun/wintun/bin/$($env:GOARCH)/wintun.dll") $awgDir -Force
 }
 
 $ovpn = $engines | Where-Object id -eq 'openvpn'

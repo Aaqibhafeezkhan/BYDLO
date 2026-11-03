@@ -163,6 +163,10 @@ jobs:
         with:
           path: .tmp/macos-openvpn-cache
           key: openvpn-osx-arm64-${{ steps.toolchain.outputs.fingerprint }}-${{ hashFiles('engines/*.lock.json', 'scripts/build-openvpn.sh', 'scripts/build-bundled-engines.ps1') }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.3'
+          cache: false
       - name: Build native engines
         shell: pwsh
         env:

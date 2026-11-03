@@ -26,7 +26,7 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 | SOCKS5 / HTTP(S) | sing-box / Xray | 🧪 | 🧪 | 🧪 | 🗓 |
 | WireGuard (в пространстве пользователя) | endpoint sing-box | 🧪 | 🧪 | 🧪 | 🗓 |
 | WireGuard (нативный туннель) | wireguard.exe / wg-quick | 🧪 | 🧪 | 🧪 | 🗓 |
-| AmneziaWG | встроенный amneziawg-go 3.1.20260828 | 🧪 Wintun | 🧪 userspace TUN | 🗓 | 🗓 |
+| AmneziaWG | встроенный amneziawg-go 3.1.20260828 | 🧪 Wintun | 🧪 userspace TUN | 🧪 utun | 🗓 |
 | OpenVPN | openvpn | 🧪 | 🧪 | 🧪 | 🗓 |
 | Cloudflare WARP | регистрация в приложении (кнопка) + импорт профиля WireGuard | 🧪 | 🧪 | 🧪 | 🗓 |
 
@@ -96,7 +96,7 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 | sing-box 1.14.3, Xray-core 26.10.21 | Упаковываются для всех пяти десктопных платформ с проверкой SHA-256. Загрузка по запросу остаётся запасным путём. |
 | Zapret: Flowseal 1.10.3 / bol-van 72.13 | Встроен в релизы Windows x64, Linux x64/ARM64 и macOS, только Apple Silicon; CI проверяет SHA-256. Загрузка по запросу и папка пользователя — резервные варианты. |
 | tg-ws-proxy 1.11.4 | Ничего не скачивается: ядро перенесено на C# и встроено в BYDLO. Без HTTP/2 для медиа через Cloudflare (`cf_h2`), без Cloudflare Worker и PROXY protocol |
-| AmneziaWG 3.1.20260828 | Windows x64/ARM64 и Linux x64/ARM64: собственный процесс-хост upstream Go-библиотеки, без официального клиента и awg-quick. Windows: встроен подписанный Wintun 0.14.1. macOS пока не реализован. |
+| AmneziaWG 3.1.20260828 | Windows x64/ARM64 и Linux x64/ARM64: собственный процесс-хост upstream Go-библиотеки, без официального клиента и awg-quick. Windows: встроен подписанный Wintun 0.14.1. macOS Apple Silicon использует utun. |
 | OpenVPN 2.7.8 | Все пять платформ: консольный движок. Windows: DLL и подписанный DCO 2.8.14 извлечены из закреплённого официального MSI; установка DCO и выделенного адаптера — отдельная команда с согласием и правами администратора. Linux/macOS: сборка со статическим OpenSSL 3.6.5; Linux также со статическим libcap-ng 0.9.6. |
 | Нативный WireGuard | Официальный клиент, установленный пользователем; для userspace WireGuard доступен встроенный sing-box. |
 
@@ -105,7 +105,7 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 Маршруты по умолчанию добавляются как две половины `/1`, исходные default routes сохраняются; маршрут к каждому
 серверу закрепляется до включения туннеля. Изменения привязаны к отдельному `bydlo-awg` и журналу восстановления.
 Хуки `PreUp/PostUp/PreDown/PostDown`, `Table`, `SaveConfig` и DNS-домены в `.conf` отклоняются.
-На macOS для AmneziaWG возвращается `NotImplemented`.
+На macOS AmneziaWG использует отдельный utun, временные маршруты и DNS активных сетевых служб. Журнал нужен для восстановления после сбоя. Реальное подключение проверяется владельцем вручную.
 
 OpenVPN 2.7 не поддерживает Wintun. BYDLO использует DCO; TAP-профили и несовместимые с DCO параметры
 на Windows не поддерживаются этой встроенной конфигурацией. Драйвер и адаптер остаются установленными после выхода;

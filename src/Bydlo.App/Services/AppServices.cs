@@ -40,7 +40,7 @@ public sealed class AppServices
         Installer = new EngineInstaller(Http, Lock, Paths.EnginesDirectory);
         Locator = new EngineLocator(Installer, PlatformInfo.Current);
         ZapretFirewall = new ZapretFirewall(Runner, Installer.UserDataDirectory);
-        AmneziaNetwork = new AmneziaNetwork(Runner, PlatformInfo.Current.Os, Paths.DataDirectory);
+        AmneziaNetwork = AmneziaNetworkFactory.Create(Runner, Paths);
         OpenVpnDriver = new OpenVpnDriver(Runner, Privileges, () => Locator.BundledExecutable("openvpn") is { } exe ? Path.GetDirectoryName(exe) : null);
         TgSecrets = new TgWsProxySecrets(Secrets);
         Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, () => new MockEngine(), ZapretFirewall, AmneziaNetwork, OpenVpnDriver);
@@ -86,7 +86,7 @@ public sealed class AppServices
 
     public ZapretFirewall ZapretFirewall { get; }
 
-    public AmneziaNetwork AmneziaNetwork { get; }
+    public IAmneziaNetwork AmneziaNetwork { get; }
 
     public OpenVpnDriver OpenVpnDriver { get; }
 

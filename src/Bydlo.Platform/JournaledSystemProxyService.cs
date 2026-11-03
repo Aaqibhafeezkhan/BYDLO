@@ -143,38 +143,14 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
     private async Task<(string Scope, string Key, string Value)[]> MacUpdatesAsync(string host, int port, CancellationToken ct)
     {
         var network = await RunAsync("scutil", false, ct, "--nwi").ConfigureAwait(false);
-        var interfaces = network.Split('\n', StringSplitOptions.TrimEntries)
-            .Where(line => line.StartsWith("Network interfaces:", StringComparison.Ordinal))
-            .SelectMany(line => line["Network interfaces:".Length..].Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .ToHashSet(StringComparer.Ordinal);
         var services = await RunAsync("networksetup", false, ct, "-listnetworkserviceorder").ConfigureAwait(false);
-        var settings = JsonSerializer.Serialize(new MacProxy(true, host, port, false));
-        var updates = new List<(string, string, string)>();
-        string? service = null;
-        foreach (var line in services.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-        {
-            const string marker = ", Device: ";
-            if (line.StartsWith("(Hardware Port:", StringComparison.Ordinal))
-            {
-                var offset = line.LastIndexOf(marker, StringComparison.Ordinal);
-                if (service is not null && offset >= 0 && interfaces.Contains(line[(offset + marker.Length)..].TrimEnd(')')))
-                {
-                    updates.Add((service, "web", settings));
-                    updates.Add((service, "secureweb", settings));
-                }
-                service = null;
-                continue;
-            }
-
-            var closing = line.IndexOf(')');
-            service = line.StartsWith('(') && closing > 1 && int.TryParse(line.AsSpan(1, closing - 1), out _)
-                ? line[(closing + 1)..].Trim() : null;
-        }
-        if (updates.Count == 0)
+        var active = MacNetworkServices.Active(network, services);
+        if (active.Count == 0)
         {
             throw new IOException("No active macOS network services are available.");
         }
-        return updates.ToArray();
+        var settings = JsonSerializer.Serialize(new MacProxy(true, host, port, false));
+        return active.SelectMany(service => new[] { (service, "web", settings), (service, "secureweb", settings) }).ToArray();
     }
 
     private async Task<string> ReadAsync(string scope, string key, CancellationToken ct)

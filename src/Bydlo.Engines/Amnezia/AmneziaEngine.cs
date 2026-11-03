@@ -18,10 +18,15 @@ public sealed class AmneziaEngine(IProcessRunner runner, LogRedactor redactor, E
     public static readonly EngineDescriptor Info = TunnelServiceEngine.AmneziaInfo with
     {
         License = "MIT (amneziawg-go); GPL-3.0+ (host); Wintun binary license (Windows)",
+        Platforms = new Dictionary<OsFamily, SupportLevel>(TunnelServiceEngine.AmneziaInfo.Platforms)
+        {
+            [OsFamily.MacOS] = SupportLevel.Implemented,
+        },
     };
 
     private AmneziaConfig? _config;
     private string? _configFile;
+    private string? _interfaceFile;
     public override EngineDescriptor Descriptor => Info;
     protected override bool AliveMeansReady => false;
     public override bool CanHandle(Profile profile) => profile.Protocol == ProtocolKind.AmneziaWG;
@@ -56,21 +61,35 @@ public sealed class AmneziaEngine(IProcessRunner runner, LogRedactor redactor, E
         }
         await ConfigureNetworkAsync(() => network.PrepareAsync(_config.Endpoints, ct)).ConfigureAwait(false);
         _configFile = Path.Combine(request.WorkDirectory, "amnezia.json");
-        await SecureFile.WriteAsync(_configFile, JsonSerializer.Serialize(new { Name = "bydlo-awg", MTU = _config.Mtu, UAPI = _config.Uapi }), ct).ConfigureAwait(false);
+        await SecureFile.WriteAsync(_configFile, JsonSerializer.Serialize(new { Name = network.TunnelName, MTU = _config.Mtu, UAPI = _config.Uapi }), ct).ConfigureAwait(false);
+        if (network.TunnelName == "utun")
+        {
+            _interfaceFile = Path.Combine(request.WorkDirectory, "utun-name");
+            SecureFile.DeleteQuietly(_interfaceFile);
+        }
         return new ProcessSpec
         {
             FileName = availability.ExecutablePath!, Arguments = [_configFile, Environment.ProcessId.ToString()],
+            Environment = _interfaceFile is null ? new Dictionary<string, string>() :
+                new Dictionary<string, string> { ["WG_TUN_NAME_FILE"] = _interfaceFile },
             WorkingDirectory = Path.GetDirectoryName(availability.ExecutablePath), DisplayName = "amneziawg", GracefulTermination = true,
         };
     }
 
     protected override Task OnStartedAsync(EngineStartRequest request, CancellationToken ct) =>
-        ConfigureNetworkAsync(() => network.ApplyAsync(_config!.Addresses, _config.Dns, _config.Routes, _config.Mtu, ct));
+        ConfigureNetworkAsync(async () =>
+        {
+            var name = _interfaceFile is null ? null : (await File.ReadAllTextAsync(_interfaceFile, ct).ConfigureAwait(false)).Trim();
+            await network.ApplyToInterfaceAsync(name, _config!.Addresses, _config.Dns, _config.Routes, _config.Mtu, ct)
+                .ConfigureAwait(false);
+        });
 
     protected override async Task OnStoppingAsync()
     {
         await network.RemoveAsync().ConfigureAwait(false);
         if (_configFile is not null) { SecureFile.DeleteQuietly(_configFile); }
+        if (_interfaceFile is not null) { SecureFile.DeleteQuietly(_interfaceFile); }
+        _interfaceFile = null;
         _configFile = null;
         _config = null;
     }

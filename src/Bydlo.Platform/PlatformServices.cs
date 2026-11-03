@@ -135,6 +135,13 @@ public static class SecretStoreFactory
     public static bool IsUsingSystemFallback(ISecretStore store) => store is MigratingSecretStore { UsingFallback: true };
 }
 
+public static class AmneziaNetworkFactory
+{
+    public static IAmneziaNetwork Create(IProcessRunner runner, IAppPaths paths) =>
+        OperatingSystem.IsMacOS() ? new MacAmneziaNetwork(runner, paths.DataDirectory)
+            : new AmneziaNetwork(runner, Bydlo.Core.Models.PlatformInfo.Current.Os, paths.DataDirectory);
+}
+
 public static class SystemProxyFactory
 {
     public static ISystemProxyService Create(IProcessRunner runner, IAppPaths paths)

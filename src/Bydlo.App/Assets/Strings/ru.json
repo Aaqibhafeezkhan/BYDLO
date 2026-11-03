@@ -583,7 +583,7 @@
   "error.engine.xray.tun": "Режим TUN с Xray не реализован. Используйте режим локального прокси или движок sing-box.",
   "error.engine.xray.missing": "Xray-core не установлен. Установите его в «Инструменты → Движки».",
   "error.engine.tunnel.admin": "Для создания туннеля нужны права администратора.",
-  "error.engine.amnezia.missing": "Отсутствует встроенный AmneziaWG. Скачайте полный релиз BYDLO для Windows или Linux.",
+  "error.engine.amnezia.missing": "Отсутствует встроенный AmneziaWG. Скачайте полный релиз BYDLO для своей платформы.",
   "error.engine.wireguard.missing": "Установите WireGuard (wireguard.com/install) или используйте движок sing-box.",
   "error.engine.tunnel.platform": "Поддержка нативного WireGuard / AmneziaWG на этой платформе запланирована.",
   "home.duration": "Время сеанса",
