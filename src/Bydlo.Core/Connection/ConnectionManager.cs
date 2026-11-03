@@ -35,6 +35,8 @@ public sealed record SessionSnapshot(
 
     /// <summary>Active relay chain, if the session carries chained traffic (issue #75).</summary>
     public ProxyChain? Chain { get; init; }
+    public ServerGroup? Group { get; init; }
+    public Profile? SelectedGroupProfile { get; init; }
 }
 
 /// <summary>
@@ -91,6 +93,47 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         () => NetworkSafetyGuard.EnsureAllowed("set the system proxy");
 
     public SessionSnapshot Primary => Snapshot(PrimaryKey);
+
+    /// <summary>Publishes a core-confirmed member; no probes or network operations occur here.</summary>
+    public void RefreshGroupSelection()
+    {
+        Session? session;
+        lock (_sessions) { _sessions.TryGetValue(PrimaryKey, out session); }
+        if (session?.Group is not null && session.Status == ConnectionStatus.Connected) { Publish(session); }
+    }
+
+    public async Task ConnectGroupAsync(ServerGroup group, IReadOnlyList<ChainHop> members, AppSettings settings, CancellationToken ct = default)
+    {
+        group = JsonSerializer.Deserialize<ServerGroup>(JsonSerializer.Serialize(group))!;
+        members = JsonSerializer.Deserialize<List<ChainHop>>(JsonSerializer.Serialize(members))!;
+        settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        Config.ServerGroupSupport.Validate(group, members, group.Engine);
+        var profiles = members.Select(m => m.Profile).ToList();
+        if (group.SubscriptionId is { } subscription && profiles.Any(p => p.SubscriptionId != subscription)
+            || group.SubscriptionId is null && !group.ProfileIds.SequenceEqual(profiles.Select(p => p.Id)))
+        { throw ServerGroup.Invalid(); }
+        var blocking = PreviewChainConflicts(profiles, settings).FirstOrDefault(i => i.Severity == ConflictSeverity.Blocking);
+        if (blocking is not null) { throw new EngineException(blocking.Message); }
+        var auth = await LoadLocalProxyAuthAsync(settings, profiles[0], ct).ConfigureAwait(false);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            // Validate engine selection before replacing a working connection.
+            var engine = _registry.CreateForChain(profiles, group.Engine, settings, _os);
+            try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
+            catch { await engine.DisposeAsync().ConfigureAwait(false); throw; }
+            var session = new Session(PrimaryKey, engine, profiles[0], members[0].Secrets, settings, auth,
+                group: group, groupMembers: members);
+            await StartSessionUnsafeAsync(session, ct).ConfigureAwait(false);
+            if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
+            {
+                EnsureSystemProxyAllowed();
+                await _systemProxy.SetAsync("127.0.0.1", group.Engine == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
+                session.SystemProxySet = true;
+            }
+        }
+        finally { _gate.Release(); }
+    }
 
     public async Task<IReadOnlyList<ActiveConnection>?> ListActiveConnectionsAsync(CancellationToken ct = default)
     {
@@ -427,6 +470,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 Secrets = session.Secrets,
                 LocalProxyAuth = session.LocalProxyAuth,
                 Chain = session.Hops,
+                Group = session.Group, GroupMembers = session.GroupMembers,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
                 RuleSetDirectory = Bydlo.Core.Routing.RoutingPresets.CacheDirectory(_paths.DataDirectory),
@@ -555,6 +599,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 Secrets = session.Secrets,
                 LocalProxyAuth = session.LocalProxyAuth,
                 Chain = session.Hops,
+                Group = session.Group, GroupMembers = session.GroupMembers,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
                 RuleSetDirectory = Bydlo.Core.Routing.RoutingPresets.CacheDirectory(_paths.DataDirectory),
@@ -605,8 +650,10 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
     private void Publish(Session session) => SessionChanged?.Invoke(this, session.ToSnapshot());
 
-    private sealed class Session(string key, IEngine engine, Profile? profile, ProfileSecrets secrets, AppSettings settings, LocalProxyAuth? lanAuth = null, ProxyChain? chain = null, IReadOnlyList<ChainHop>? hops = null)
+    private sealed class Session(string key, IEngine engine, Profile? profile, ProfileSecrets secrets, AppSettings settings, LocalProxyAuth? lanAuth = null, ProxyChain? chain = null, IReadOnlyList<ChainHop>? hops = null, ServerGroup? group = null, IReadOnlyList<ChainHop>? groupMembers = null)
     {
+        public ServerGroup? Group { get; } = group;
+        public IReadOnlyList<ChainHop>? GroupMembers { get; } = groupMembers;
         public string Key { get; } = key;
 
         public IEngine Engine { get; } = engine;
@@ -649,8 +696,16 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
         public bool CleanupPending { get; set; }
 
-        public SessionSnapshot ToSnapshot() =>
-            new(Key, Status, Profile, Engine.Descriptor.Kind, IsMock, ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort)
-            { ErrorLocalizationKey = ErrorLocalizationKey, CleanupPending = CleanupPending, Chain = Chain };
+        public SessionSnapshot ToSnapshot()
+        {
+            var selected = Status == ConnectionStatus.Connected && Engine is IServerGroupSource source
+                ? GroupMembers?.FirstOrDefault(m => m.Profile.Id == source.SelectedGroupProfileId)?.Profile : null;
+            return new(Key, Status, Group is null ? Profile : selected, Engine.Descriptor.Kind, IsMock,
+                ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort)
+            {
+                ErrorLocalizationKey = ErrorLocalizationKey, CleanupPending = CleanupPending, Chain = Chain,
+                Group = Group, SelectedGroupProfile = selected,
+            };
+        }
     }
 }

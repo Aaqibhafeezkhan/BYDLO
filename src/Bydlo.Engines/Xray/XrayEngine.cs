@@ -1,5 +1,7 @@
 using Bydlo.Platform;
 using Bydlo.Core.Routing;
+using Bydlo.Engines.Groups;
+using Grpc.Net.Client;
 using Bydlo.Core.Config;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
@@ -14,7 +16,7 @@ namespace Bydlo.Engines.Xray;
 /// Live traffic statistics are not wired up yet (Xray exposes them over gRPC only).
 /// </summary>
 public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator)
-    : ProcessEngineBase(runner, redactor)
+    : ProcessEngineBase(runner, redactor), IServerGroupSource
 {
     public static readonly EngineDescriptor Info = new()
     {
@@ -33,6 +35,10 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
     };
 
     private readonly XrayConfigBuilder _builder = new();
+    private GroupMonitor? _groupMonitor;
+    private GrpcChannel? _groupChannel;
+    private int _groupPort;
+    public Guid? SelectedGroupProfileId => _groupMonitor?.Selected;
 
     public override EngineDescriptor Descriptor => Info;
 
@@ -109,8 +115,10 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
                 throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
             }
         }
-        var ctx = new BuildContext(request.Settings, LocalProxyAuth: request.LocalProxyAuth);
-        var json = request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
+        _groupPort = request.Group is null ? 0 : SingBoxEngine.FindFreeLoopbackPort();
+        var ctx = new BuildContext(request.Settings, ClashApiPort: _groupPort == 0 ? null : _groupPort, LocalProxyAuth: request.LocalProxyAuth);
+        var json = request.Group is { } group ? _builder.BuildGroup(group, request.GroupMembers ?? [], ctx).ToJsonString()
+            : request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
         var configPath = Path.Combine(request.WorkDirectory, "xray.json");
         await SecureFile.WriteAsync(configPath, json, ct).ConfigureAwait(false);
         return new ProcessSpec
@@ -125,6 +133,28 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
     }
 
     protected override bool IsReadyLine(string line) => line.Contains("started", StringComparison.OrdinalIgnoreCase) && line.Contains("Xray", StringComparison.OrdinalIgnoreCase);
+
+    protected override Task OnStartedAsync(EngineStartRequest request, CancellationToken ct)
+    {
+        if (request.Group is { } group && request.GroupMembers is { } members)
+        {
+            _groupChannel = GrpcChannel.ForAddress($"http://127.0.0.1:{_groupPort}", new GrpcChannelOptions
+            {
+                HttpHandler = new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false },
+                MaxReceiveMessageSize = 1024 * 1024,
+            });
+            _groupMonitor = new GroupMonitor(group, members, new XrayGroupController(_groupChannel, members), false);
+            _groupMonitor.Start();
+        }
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnStoppingAsync()
+    {
+        if (_groupMonitor is { } monitor) { await monitor.DisposeAsync().ConfigureAwait(false); _groupMonitor = null; }
+        _groupChannel?.Dispose();
+        _groupChannel = null;
+    }
 
     protected override string? TryParseFatal(string line) =>
         line.Contains("Failed to start", StringComparison.OrdinalIgnoreCase) || line.Contains("failed to load config", StringComparison.OrdinalIgnoreCase) ? line : null;

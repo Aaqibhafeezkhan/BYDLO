@@ -12,7 +12,7 @@ namespace Bydlo.Core.Config;
 /// Generates Xray-core configuration. Used for transports sing-box lacks (XHTTP) and as an alternative engine
 /// for VLESS / VMess / Trojan / Shadowsocks / SOCKS / HTTP. Local proxy mode only.
 /// </summary>
-public sealed class XrayConfigBuilder
+public sealed partial class XrayConfigBuilder
 {
     public static readonly IReadOnlySet<ProtocolKind> Supported = new HashSet<ProtocolKind>
     {

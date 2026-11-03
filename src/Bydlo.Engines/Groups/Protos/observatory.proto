@@ -1,0 +1,11 @@
+syntax = "proto3";
+package xray.core.app.observatory.command;
+option csharp_namespace = "Bydlo.Engines.Groups.Rpc";
+// Wire-compatible subset of XTLS/Xray-core app/observatory/{config,command/command}.proto (MPL-2.0).
+// Source: https://github.com/XTLS/Xray-core/tree/v26.10.21/app/observatory
+// This file is subject to the Mozilla Public License, v. 2.0: https://mozilla.org/MPL/2.0/
+message OutboundStatus { bool alive = 1; int64 delay = 2; string outbound_tag = 4; int64 last_try_time = 6; }
+message ObservationResult { repeated OutboundStatus status = 1; }
+message GetOutboundStatusRequest {}
+message GetOutboundStatusResponse { ObservationResult status = 1; }
+service ObservatoryService { rpc GetOutboundStatus(GetOutboundStatusRequest) returns (GetOutboundStatusResponse); }

@@ -58,11 +58,13 @@
                       Width="48" Height="48" HorizontalAlignment="Left" Margin="0,0,0,16">
                 <c:OutlineIcon Data="{StaticResource LineShield}" Width="26" Height="26" />
               </Border>
+              <TextBlock Text="{Binding ActiveGroupServer}" IsVisible="{Binding IsGroupActive}" TextWrapping="Wrap" />
               <TextBlock x:Name="StatusTitle" Text="{Binding StatusText}" FontSize="38" FontWeight="Medium" LetterSpacing="-1"
                          HorizontalAlignment="Left" TextWrapping="Wrap" />
               <TextBlock Classes="muted" Text="{Binding Hint}" HorizontalAlignment="Left"
                          TextWrapping="Wrap" MaxWidth="460" Margin="0,8,0,20" FontSize="13" />
               <ComboBox Classes="server-picker" ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}"
+                        IsVisible="{Binding !UseGroup}"
                         HorizontalAlignment="Stretch" PlaceholderText="{l:T home.noprofiles}"
                         IsEnabled="{Binding !IsBusy}" AutomationProperties.Name="{l:T home.server}">
                 <ComboBox.ItemTemplate>
@@ -110,6 +112,14 @@
               </StackPanel>
               <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch" Margin="0,12,0,0">
                 <StackPanel Spacing="8">
+                  <CheckBox Content="{l:T group.use}" IsChecked="{Binding UseGroup}" />
+                  <ComboBox ItemsSource="{Binding ServerGroups}" SelectedItem="{Binding SelectedGroup}"
+                            HorizontalAlignment="Stretch" AutomationProperties.Name="{l:T group.title}" />
+                  <WrapPanel>
+                    <Button Classes="text-action" Content="{l:T group.new}" Command="{Binding NewGroupCommand}" />
+                    <Button Classes="text-action" Content="{l:T group.edit}" Command="{Binding EditGroupCommand}" />
+                    <Button Classes="text-action" Content="{l:T connections.delete}" Command="{Binding DeleteGroupCommand}" />
+                  </WrapPanel>
                   <TextBlock Classes="faint" Text="{l:T routing.preset.label}" TextWrapping="Wrap" />
               <ComboBox ItemsSource="{Binding RoutingPresetOptions}" SelectedIndex="{Binding RoutingPresetIndex}"
                         HorizontalAlignment="Center" IsEnabled="{Binding !IsBusy}"

@@ -6,8 +6,9 @@ namespace Bydlo.Core.Engines.Mock;
 /// TEST TOOL. Simulates connect / disconnect / traffic / errors without starting any process or touching the network.
 /// Never presented to users as a working connection: the UI shows a "MOCK" badge whenever it is used.
 /// </summary>
-public sealed class MockEngine : IEngine, IActiveConnectionSource
+public sealed class MockEngine : IEngine, IActiveConnectionSource, IServerGroupSource
 {
+    public Guid? SelectedGroupProfileId { get; private set; }
     public static readonly EngineDescriptor MockDescriptor = new()
     {
         Kind = EngineKind.Mock,
@@ -71,6 +72,8 @@ public sealed class MockEngine : IEngine, IActiveConnectionSource
 
     public async Task StartAsync(EngineStartRequest request, CancellationToken ct = default)
     {
+        SelectedGroupProfileId = request.Group is { } group && request.GroupMembers is { Count: > 0 } members
+            ? group.InitialProfileId(members) : null;
         // The mock simulates end-to-end traffic, so chains are structurally validated like everywhere else.
         if (request.Chain is { } chain && chain.Count < ChainValidator.MinHops)
         {

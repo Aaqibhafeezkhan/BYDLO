@@ -16,7 +16,7 @@ Environment.SetEnvironmentVariable("BYDLO_SAFE_DEV", "1");
 var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "screenshots"));
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
-if (args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
+if (args.Contains("--verify-server-groups", StringComparer.Ordinal) || args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
     args.Contains("--verify-updates", StringComparer.Ordinal) || args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-theme-gallery", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-rules", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) || args.Contains("--verify-connect-switch", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) || args.Contains("--verify-contributors", StringComparer.Ordinal) || args.Contains("--verify-elevation", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
@@ -64,6 +64,11 @@ if (args.Contains("--verify-wizard", StringComparer.Ordinal))
     return;
 }
 var shell = new MainViewModel(services);
+if (args.Contains("--verify-server-groups", StringComparer.Ordinal))
+{
+    ServerGroupVerification.Run(shell, output);
+    return;
+}
 if (args.Contains("--verify-theme-gallery", StringComparer.Ordinal))
 {
     ThemeVerification.RunGallery(shell, output);

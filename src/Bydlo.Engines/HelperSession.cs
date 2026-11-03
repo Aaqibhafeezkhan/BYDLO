@@ -67,7 +67,8 @@ public sealed class HelperSession(Func<Core.Models.EngineKind, IEngine> createEn
         }
         var logs = new List<string>();
         while (_logs.TryDequeue(out var line)) { logs.Add(line); }
-        return new HelperReply { State = _engine.State, Logs = [.. logs], Traffic = Interlocked.Exchange(ref _traffic, null) };
+        return new HelperReply { State = _engine.State, Logs = [.. logs], Traffic = Interlocked.Exchange(ref _traffic, null),
+            SelectedGroupProfileId = (_engine as IServerGroupSource)?.SelectedGroupProfileId };
     }
 
     private void OnLog(object? sender, string line)

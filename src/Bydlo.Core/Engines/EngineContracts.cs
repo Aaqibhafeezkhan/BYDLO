@@ -79,6 +79,8 @@ public sealed record LocalProxyAuth(string Username, string Password);
 
 public sealed record EngineStartRequest
 {
+    public ServerGroup? Group { get; init; }
+    public IReadOnlyList<ChainHop>? GroupMembers { get; init; }
     public Profile? Profile { get; init; }
 
     public ProfileSecrets Secrets { get; init; } = ProfileSecrets.Empty;
@@ -137,4 +139,10 @@ public sealed class EngineException(string message, Exception? inner = null, str
 public interface IReconnectableEngine
 {
     Task ReconnectAsync(EngineStartRequest request, CancellationToken ct = default);
+}
+
+/// <summary>Null means the core has not confirmed a selected member.</summary>
+public interface IServerGroupSource
+{
+    Guid? SelectedGroupProfileId { get; }
 }

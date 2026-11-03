@@ -107,6 +107,10 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
+      - name: Verify server groups (headless, mock only, no network)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/server-groups-verification ru --mock --verify-server-groups
       - name: Verify import flows (headless, no engines or network)
         run: |
           source scripts/env.sh
