@@ -1,9 +1,12 @@
 {
-  "id": "",
+  "id": "traffic-zero-bytes-0-3",
   "level": "info",
-  "title": { "en": "", "ru": "" },
-  "text": { "en": "", "ru": "" },
-  "url": "",
-  "hideFromVersion": "",
+  "title": { "en": "Known issue: traffic shows 0 bytes", "ru": "Известная проблема: трафик показывает 0 байт" },
+  "text": {
+    "en": "We know the traffic view shows 0 bytes even when the VPN works. The connection itself is fine; a fix is coming in 0.4.",
+    "ru": "Мы знаем, что экран трафика показывает 0 байт, даже когда VPN работает. Само подключение в порядке, исправление выйдет в 0.4."
+  },
+  "url": "https://github.com/endercodezz/BYDLO/issues/244",
+  "hideFromVersion": "0.4.0",
   "expires": ""
 }

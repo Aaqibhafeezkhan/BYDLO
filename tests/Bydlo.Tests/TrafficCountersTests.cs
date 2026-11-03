@@ -19,6 +19,19 @@ public class TrafficCountersTests
         Assert.False(SingBoxEngine.TryParseTrafficLine("not json", out _, out _));
         Assert.False(SingBoxEngine.TryParseTrafficLine("{\"up\":1}", out _, out _));
         Assert.False(SingBoxEngine.TryParseTrafficLine("", out _, out _));
+        Assert.False(SingBoxEngine.TryParseTrafficLine("{\"up\":\"x\",\"down\":1}", out _, out _));
+        Assert.False(SingBoxEngine.TryParseTrafficLine("{\"up\":null,\"down\":1}", out _, out _));
+        Assert.False(SingBoxEngine.TryParseTrafficLine("{\"up\":1.5,\"down\":1}", out _, out _));
+    }
+
+    [Fact]
+    public void Traffic_line_accepts_edge_numbers()
+    {
+        Assert.True(SingBoxEngine.TryParseTrafficLine("{\"up\":0,\"down\":0}", out var up0, out var down0));
+        Assert.Equal(0, up0);
+        Assert.True(SingBoxEngine.TryParseTrafficLine("{\"up\":-1,\"down\":9223372036854775807}", out var upNeg, out var downMax));
+        Assert.Equal(-1, upNeg);
+        Assert.Equal(long.MaxValue, downMax);
     }
 
     [Fact]

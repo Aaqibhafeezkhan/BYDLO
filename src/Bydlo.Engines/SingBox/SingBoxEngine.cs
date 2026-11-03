@@ -187,7 +187,7 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             down = doc.RootElement.GetProperty("down").GetInt64();
             return true;
         }
-        catch (Exception ex) when (ex is JsonException or KeyNotFoundException)
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
         {
             return false;
         }
