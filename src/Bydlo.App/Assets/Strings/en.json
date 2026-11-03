@@ -592,6 +592,7 @@
   "settings.killswitch.active": "Enabled for the next TUN connection. Local proxy mode is unaffected.",
   "settings.killswitch.next": "Kill switch will apply on the next TUN connection.",
   "settings.killswitch.recovery": "Could not stop the old TUN. Restart BYDLO with the same administrator/root rights and try again.",
+  "error.killswitch.dns": "Kill switch requires remote DNS through the proxy. Select an IP address and UDP, TCP, HTTPS, TLS or QUIC; direct DNS, system DNS and DNS hostnames are unavailable in this mode.",
   "error.killswitch.active": "A kill switch TUN is already active. Disconnect first.",
   "error.killswitch.tun": "The kill switch TUN stopped. Protection may be unavailable. Disconnect before connecting again.",
   "error.killswitch.engine": "Kill switch requires sing-box in TUN mode. Disable it in Settings to use this engine.",

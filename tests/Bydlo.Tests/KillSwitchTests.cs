@@ -66,6 +66,92 @@ public class KillSwitchTests
         Assert.Throws<InvalidOperationException>(() => builder.BuildKillSwitch(new AppSettings { Mode = ConnectionMode.Tun }, 2080));
     }
 
+    [Theory]
+    [InlineData(DnsTransport.Udp, "9.9.9.9", "udp")]
+    [InlineData(DnsTransport.Tcp, "9.9.9.9", "tcp")]
+    [InlineData(DnsTransport.Https, "2606:4700:4700::1111", "https")]
+    [InlineData(DnsTransport.Tls, "9.9.9.9", "tls")]
+    [InlineData(DnsTransport.Quic, "9.9.9.9", "quic")]
+    public void Strict_dns_preserves_transport_and_has_no_direct_fallback(DnsTransport transport, string address, string type)
+    {
+        var settings = Settings();
+        settings.Routing.RemoteDns = address;
+        settings.Routing.RemoteDnsTransport = transport;
+        settings.Routing.DirectDnsDomains = ["direct.invalid"];
+        var config = new SingBoxConfigBuilder().BuildKillSwitch(settings, 2080);
+        var dns = config["dns"]!;
+        var server = Assert.Single(dns["servers"]!.AsArray())!;
+        Assert.Equal(type, (string?)server["type"]);
+        Assert.Equal(address, (string?)server["server"]);
+        Assert.Equal("proxy", (string?)server["detour"]);
+        Assert.Null(server["domain_resolver"]);
+        Assert.Equal("remote", (string?)dns["final"]);
+        Assert.Equal("remote", (string?)config["route"]!["default_domain_resolver"]);
+        Assert.Empty(dns["rules"]!.AsArray());
+    }
+
+    [Theory]
+    [InlineData(DnsTransport.Tcp, "9.9.9.9", false)]
+    [InlineData(DnsTransport.Https, "1.1.1.1", false)]
+    [InlineData(DnsTransport.System, "1.1.1.1", true)]
+    [InlineData(DnsTransport.Tcp, "local", true)]
+    [InlineData(DnsTransport.Https, "", true)]
+    [InlineData(DnsTransport.Https, "dns.invalid", true)]
+    [InlineData((DnsTransport)999, "1.1.1.1", true)]
+    public async Task Unsupported_dns_is_rejected_before_either_process_starts(DnsTransport transport, string address, bool throughProxy)
+    {
+        var settings = Settings();
+        settings.Routing.RemoteDnsTransport = transport;
+        settings.Routing.RemoteDns = address;
+        settings.Routing.RemoteDnsThroughProxy = throughProxy;
+        var error = Assert.Throws<EngineException>(() => new SingBoxConfigBuilder().BuildKillSwitch(settings, 2080));
+        Assert.Equal("error.killswitch.dns", error.LocalizationKey);
+        var backend = new StubEngine();
+        await using var engine = new RetainedTunEngine(backend, () => throw new InvalidOperationException("Guard must not be created."));
+        error = await Assert.ThrowsAsync<EngineException>(() => engine.StartAsync(Request(settings)));
+        Assert.Equal("error.killswitch.dns", error.LocalizationKey);
+        Assert.Empty(backend.Starts);
+    }
+
+    [Theory]
+    [InlineData(DnsTransport.Tcp, false)]
+    [InlineData(DnsTransport.Https, true)]
+    public async Task Transport_dns_settings_survive_config_generation_and_reconnect(DnsTransport transport, bool directThroughProxy)
+    {
+        var backend = new StubEngine();
+        var guard = new StubEngine();
+        await using var engine = new RetainedTunEngine(backend, () => guard);
+        var request = Request() with { Profile = new Profile { Protocol = ProtocolKind.Socks5, Host = "vpn.invalid", Port = 1080 } };
+        request.Settings.Routing.RemoteDns = "9.9.9.9";
+        request.Settings.Routing.RemoteDnsTransport = transport;
+        request.Settings.Routing.DirectDns = "8.8.8.8";
+        request.Settings.Routing.DirectDnsTransport = DnsTransport.Tls;
+        request.Settings.Routing.DirectDnsThroughProxy = directThroughProxy;
+        await engine.StartAsync(request);
+        request.Settings.Routing.RemoteDnsTransport = DnsTransport.System;
+        request.Settings.Routing.RemoteDnsThroughProxy = false;
+        request.Settings.Routing.DirectDnsTransport = DnsTransport.Udp;
+        request.Settings.Routing.DirectDnsThroughProxy = !directThroughProxy;
+        await engine.ReconnectAsync(request);
+        Assert.Equal(2, backend.Starts.Count);
+        Assert.All(backend.Starts, start =>
+        {
+            var config = new SingBoxConfigBuilder().Build(start.Profile!, start.Secrets, new BuildContext(start.Settings));
+            var remote = config["dns"]!["servers"]![0]!;
+            Assert.Equal(transport.ToString().ToLowerInvariant(), (string?)remote["type"]);
+            Assert.Equal("9.9.9.9", (string?)remote["server"]);
+            Assert.Equal("proxy", (string?)remote["detour"]);
+            var direct = config["dns"]!["servers"]![1]!;
+            Assert.Equal("tls", (string?)direct["type"]);
+            Assert.Equal("8.8.8.8", (string?)direct["server"]);
+            Assert.Equal(directThroughProxy ? "proxy" : null, (string?)direct["detour"]);
+            Assert.False(start.Settings.Routing.BypassPrivateNetworks);
+            Assert.False(start.Settings.Routing.PreserveMeshVpnRanges);
+        });
+        var guardConfig = new SingBoxConfigBuilder().BuildKillSwitch(Assert.Single(guard.Starts).Settings, 2080);
+        Assert.Equal(transport.ToString().ToLowerInvariant(), (string?)guardConfig["dns"]!["servers"]![0]!["type"]);
+    }
+
     [Fact]
     public async Task Failure_and_retries_retain_the_same_tun_and_snapshot_settings()
     {
