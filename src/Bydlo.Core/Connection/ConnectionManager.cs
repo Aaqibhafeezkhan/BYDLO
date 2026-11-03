@@ -251,10 +251,25 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
             {
-                EnsureSystemProxyAllowed();
-                await _systemProxy.SetAsync("127.0.0.1",
-                    session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
-                session.SystemProxySet = true;
+                try
+                {
+                    EnsureSystemProxyAllowed();
+                    await _systemProxy.SetAsync("127.0.0.1",
+                        session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
+                    session.SystemProxySet = true;
+                }
+                catch (Exception ex)
+                {
+                    var message = _log.Redactor.Redact(ex.Message);
+                    _log.Error(PrimaryKey, message);
+                    try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
+                    catch (Exception stopError)
+                    {
+                        throw new AggregateException(message, stopError);
+                    }
+                    Fail(PrimaryKey, profile, settings, message, (ex as EngineException)?.LocalizationKey ?? "error.systemproxy.failed");
+                    throw ex as EngineException ?? new EngineException(message, ex, "error.systemproxy.failed");
+                }
             }
         }
         finally
@@ -302,10 +317,25 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
             {
-                EnsureSystemProxyAllowed();
-                await _systemProxy.SetAsync("127.0.0.1",
-                    session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
-                session.SystemProxySet = true;
+                try
+                {
+                    EnsureSystemProxyAllowed();
+                    await _systemProxy.SetAsync("127.0.0.1",
+                        session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
+                    session.SystemProxySet = true;
+                }
+                catch (Exception ex)
+                {
+                    var message = _log.Redactor.Redact(ex.Message);
+                    _log.Error(PrimaryKey, message);
+                    try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
+                    catch (Exception stopError)
+                    {
+                        throw new AggregateException(message, stopError);
+                    }
+                    Fail(PrimaryKey, exit, settings, message, (ex as EngineException)?.LocalizationKey ?? "error.systemproxy.failed");
+                    throw ex as EngineException ?? new EngineException(message, ex, "error.systemproxy.failed");
+                }
             }
         }
         finally
@@ -591,6 +621,30 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         {
             session.Status = ConnectionStatus.Error;
             Publish(session);
+            _ = ClearSystemProxyOnErrorAsync(session);
+        }
+    }
+
+    private async Task ClearSystemProxyOnErrorAsync(Session session)
+    {
+        if (!session.SystemProxySet)
+        {
+            return;
+        }
+
+        try
+        {
+            await _systemProxy.ClearAsync().ConfigureAwait(false);
+            session.SystemProxySet = false;
+            _log.Info(session.Key, "System proxy cleared after engine failure.");
+        }
+        catch (Exception ex)
+        {
+            session.CleanupPending = true;
+            session.Error = _log.Redactor.Redact(new AggregateException("System proxy cleanup failed.", ex).Message);
+            session.ErrorLocalizationKey = "error.engine.cleanup";
+            _log.Error(session.Key, session.Error);
+            Publish(session);
         }
     }
 
@@ -653,6 +707,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             {
                 session.Status = ConnectionStatus.Error;
                 Publish(session);
+                await ClearSystemProxyOnErrorAsync(session).ConfigureAwait(false);
             }
         }
         finally
