@@ -1,6 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:Bydlo.App.Controls">
+  <Styles.Resources>
+    <!-- Unified corner scale (issue #245): Small for pills/markers, Medium for cards/buttons/inputs, Large for dialogs/panels, XLarge for workspace. -->
+    <CornerRadius x:Key="RadiusSmall">6</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
+    <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+    <CornerRadius x:Key="RadiusXLarge">18</CornerRadius>
+  </Styles.Resources>
 
   <Style Selector="StackPanel.page">
     <Setter Property="MaxWidth" Value="1040" />
@@ -16,7 +23,7 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusLarge}" />
     <Setter Property="Padding" Value="20" />
   </Style>
   <Style Selector="TextBlock.display">
@@ -34,7 +41,7 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AccentSoftBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusXLarge}" />
     <Setter Property="Padding" Value="22" />
   </Style>
 
@@ -42,6 +49,7 @@
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     <Setter Property="BorderThickness" Value="3,0,0,0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusSmall}" />
     <Setter Property="Padding" Value="14,12" />
   </Style>
   <Style Selector="Border.session-strip.connected">
@@ -112,22 +120,22 @@
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
   </Style>
   <Style Selector="Border.card">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
     <Setter Property="Padding" Value="20" />
   </Style>
   <Style Selector="Border.tile">
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
     <Setter Property="Padding" Value="14,12" />
   </Style>
   <Style Selector="Border.pill">
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Padding" Value="10,4" />
     <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
@@ -168,7 +176,7 @@
     <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
   </Style>
   <Style Selector="Border.banner">
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
     <Setter Property="Padding" Value="14,10" />
     <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
   </Style>
@@ -186,7 +194,7 @@
 
   <!-- Buttons -->
   <Style Selector="Button">
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
     <Setter Property="Padding" Value="14,10" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="FontWeight" Value="Medium" />
@@ -232,10 +240,10 @@
     <Setter Property="Template">
       <ControlTemplate>
         <Grid>
-          <Border Name="bg" CornerRadius="8" Padding="14,11" Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
+          <Border Name="bg" CornerRadius="{DynamicResource RadiusMedium}" Padding="14,11" Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
             <ContentPresenter Content="{TemplateBinding Content}" />
           </Border>
-          <Border Name="marker" Width="2" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="1" Background="Transparent" />
+          <Border Name="marker" Width="2" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="{DynamicResource RadiusSmall}" Background="Transparent" />
         </Grid>
       </ControlTemplate>
     </Setter>
@@ -270,14 +278,14 @@
     <Setter Property="Padding" Value="2,7" />
   </Style>
   <Style Selector="Expander">
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
   </Style>
 
   <!-- Segmented choice (theme, mode) -->
   <Style Selector="RadioButton.segment">
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Name="bg" CornerRadius="8" Padding="12,9" Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
+        <Border Name="bg" CornerRadius="{DynamicResource RadiusMedium}" Padding="12,9" Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
           <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" />
         </Border>
       </ControlTemplate>
@@ -304,14 +312,14 @@
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
     <Setter Property="Padding" Value="10,8" />
   </Style>
   <Style Selector="ComboBox">
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
   </Style>
   <Style Selector="ToggleSwitch">
     <Setter Property="OnContent" Value="" />
@@ -337,7 +345,7 @@
   <Style Selector="ListBox.cards ListBoxItem">
     <Setter Property="Padding" Value="0" />
     <Setter Property="Margin" Value="0,0,0,8" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
   </Style>
   <Style Selector="ListBox.cards ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
@@ -376,7 +384,7 @@
   <Style Selector="NumericUpDown">
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
   </Style>
 
   <Style Selector="TextBlock.page-label">
@@ -394,14 +402,14 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusLarge}" />
     <Setter Property="Padding" Value="22" />
   </Style>
   <Style Selector="Border.connection-mark">
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource EdgeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
   </Style>
   <Style Selector="Border.connection-mark c|OutlineIcon"><Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" /></Style>
   <Style Selector="Border.connection-mark.connected c|OutlineIcon"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" /></Style>
@@ -411,10 +419,10 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
     <Setter Property="Padding" Value="3" />
   </Style>
-  <Style Selector="RadioButton.mode /template/ Border#bg"><Setter Property="Padding" Value="12,6" /><Setter Property="CornerRadius" Value="5" /></Style>
+  <Style Selector="RadioButton.mode /template/ Border#bg"><Setter Property="Padding" Value="12,6" /><Setter Property="CornerRadius" Value="{DynamicResource RadiusSmall}" /></Style>
   <Style Selector="RadioButton.mode:checked /template/ Border#bg"><Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" /></Style>
   <Style Selector="RadioButton.mode TextBlock"><Setter Property="FontSize" Value="12" /></Style>
   <Style Selector="RadioButton.nav:checked /template/ Border#marker"><Setter Property="Background" Value="{DynamicResource AccentBrush}" /></Style>
@@ -424,11 +432,11 @@
   <Style Selector="ComboBox.server-picker">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource EdgeBrush}" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusLarge}" />
     <Setter Property="Padding" Value="16,10" />
     <Setter Property="MinHeight" Value="52" />
   </Style>
-  <Style Selector="Button.connect-action"><Setter Property="CornerRadius" Value="7" /><Setter Property="HorizontalAlignment" Value="Stretch" /></Style>
+  <Style Selector="Button.connect-action"><Setter Property="CornerRadius" Value="{DynamicResource RadiusSmall}" /><Setter Property="HorizontalAlignment" Value="Stretch" /></Style>
   <Style Selector="Button.text-action">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
@@ -453,7 +461,7 @@
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Name="header" Padding="0,13" BorderThickness="0,0,0,1" BorderBrush="Transparent" CornerRadius="6">
+        <Border Name="header" Padding="0,13" BorderThickness="0,0,0,1" BorderBrush="Transparent" CornerRadius="{DynamicResource RadiusSmall}">
           <Grid ColumnDefinitions="*,Auto">
             <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center" Margin="0,0,16,0" />
             <c:OutlineIcon Name="chevron" Grid.Column="1" Width="14" Height="14" Data="{StaticResource LineChevron}" RenderTransformOrigin="50%,50%" />
@@ -503,15 +511,15 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
   </Style>
   <Style Selector=".desktop Border.connection-workspace">
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
-    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusLarge}" />
     <Setter Property="Padding" Value="20" />
   </Style>
   <Style Selector=".desktop Border.session-strip">
-    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusSmall}" />
     <Setter Property="Padding" Value="18,16" />
   </Style>
   <Style Selector=".desktop Button.connect-action">
