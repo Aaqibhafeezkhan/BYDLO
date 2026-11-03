@@ -16,7 +16,7 @@ Environment.SetEnvironmentVariable("BYDLO_SAFE_DEV", "1");
 var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "screenshots"));
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
-if (args.Contains("--verify-overhaul", StringComparer.Ordinal))
+if (args.Contains("--verify-overhaul", StringComparer.Ordinal) || args.Contains("--verify-settings-navigation", StringComparer.Ordinal))
 {
     Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
 }
@@ -24,6 +24,11 @@ if (args.Contains("--verify-server-groups", StringComparer.Ordinal) || args.Cont
     args.Contains("--verify-updates", StringComparer.Ordinal) || args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-theme-gallery", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-rules", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) || args.Contains("--verify-connect-switch", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) || args.Contains("--verify-contributors", StringComparer.Ordinal) || args.Contains("--verify-elevation", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
+{
+    Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
+}
+
+if (args.Contains("--verify-disclosure", StringComparer.Ordinal))
 {
     Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
 }
@@ -62,12 +67,23 @@ if (args.Contains("--export-brand-icon", StringComparer.Ordinal))
     return;
 }
 
+if (args.Contains("--verify-disclosure", StringComparer.Ordinal))
+{
+    DisclosureVerification.Run(new MainViewModel(services), output);
+    return;
+}
+
 if (args.Contains("--verify-wizard", StringComparer.Ordinal))
 {
     WizardVerification.Run(services, output);
     return;
 }
 var shell = new MainViewModel(services);
+if (args.Contains("--verify-settings-navigation", StringComparer.Ordinal))
+{
+    SettingsNavigationVerification.Run(shell, output);
+    return;
+}
 if (args.Contains("--verify-overhaul", StringComparer.Ordinal))
 {
     OverhaulVerification.Run(shell, output);

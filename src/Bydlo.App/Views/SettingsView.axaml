@@ -13,6 +13,13 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="MinHeight" Value="36" />
     </Style>
+    <Style Selector="WrapPanel#CategoryButtons Button.active">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="BorderThickness" Value="3,0,0,0" />
+    </Style>
   </UserControl.Styles>
   <Border Classes="workspace" VerticalAlignment="Stretch">
     <Grid RowDefinitions="Auto,*" Margin="20,22,20,0">
@@ -34,7 +41,7 @@
               </WrapPanel>
             </ScrollViewer>
             <ComboBox x:Name="CompactCategory" HorizontalAlignment="Stretch" PlaceholderText="{l:T settings.section.jump}"
-                      AutomationProperties.Name="{l:T settings.section.jump}" SelectionChanged="OnCategorySelected">
+                      AutomationProperties.Name="{l:T settings.section.jump}" SelectedIndex="0" SelectionChanged="OnCategorySelected">
               <ComboBoxItem Tag="AppearanceSection" Content="{l:T settings.appearance}" />
               <ComboBoxItem Tag="ImportSection" Content="{l:T settings.section.import}" />
               <ComboBoxItem Tag="DesktopSection" Content="{l:T settings.desktop}" />
@@ -49,8 +56,12 @@
             </WrapPanel>
           </StackPanel>
         </Border>
-        <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Classes="page" Margin="0,0,0,24">
+        <Grid x:Name="SettingsContent" Grid.Row="1" RowDefinitions="Auto,*">
+          <Border Classes="page-heading" Margin="0,0,0,12">
+            <TextBlock Classes="h2" x:CompileBindings="False" Text="{Binding #CompactCategory.SelectedItem.Content}" />
+          </Border>
+        <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" ScrollChanged="OnSettingsScrolled" SizeChanged="OnScrollSizeChanged">
+          <StackPanel x:Name="SettingsSections" Classes="page" Margin="0">
 
       <v:AppearanceSettingsView x:Name="AppearanceSection" />
 
@@ -145,7 +156,7 @@
       </Expander>
 
       <!-- About & credits -->
-      <Expander x:Name="AboutSection" Header="{l:T settings.about}" HorizontalAlignment="Stretch">
+      <Expander x:Name="AboutSection" Header="{l:T settings.about}" HorizontalAlignment="Stretch" SizeChanged="OnScrollSizeChanged">
         <StackPanel Spacing="12">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <Image Source="{StaticResource BrandLogo}" Width="38" Height="38" />
@@ -200,8 +211,10 @@
           </ItemsControl>
         </StackPanel>
       </Expander>
+            <Border x:Name="ScrollTail" IsHitTestVisible="False" />
           </StackPanel>
         </ScrollViewer>
+        </Grid>
       </Grid>
     </Grid>
   </Border>

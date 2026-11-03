@@ -132,6 +132,10 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/wizard-verification ru --mock --verify-wizard
+      - name: Verify disclosure hit areas (headless, mock only, no network)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/disclosure-verification ru --mock --verify-disclosure
       - name: Verify simple home and settings (headless, mock only, no network)
         run: |
           source scripts/env.sh
@@ -140,6 +144,10 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/contributors-verification ru --mock --verify-contributors
+      - name: Verify settings section navigation (headless, mock only, no network)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/settings-navigation-verification ru --mock --verify-settings-navigation
       - name: Verify Zapret selection UI (headless, no engines or network)
         run: |
           source scripts/env.sh
