@@ -1,0 +1,52 @@
+name: Auto-merge
+
+# Turns on GitHub's native auto-merge for pull requests from trusted maintainers into the default branch.
+# GitHub then merges only after every rule of the default-branch ruleset passes, required CI checks included;
+# the merge is made as github-actions[bot], which is not a ruleset bypass actor. Source branches are removed
+# by the repository setting "Automatically delete head branches". Every other pull request stays manual.
+#
+# pull_request_target runs this file from the base branch with a write token. It must never check out,
+# build or run code from the pull request, and must never interpolate PR text (title, branch name) into a shell.
+
+on:
+  pull_request_target:
+    # Not synchronize: new commits keep an already enabled auto-merge, so pushes need no extra runs.
+    types: [opened, reopened, ready_for_review, edited]
+
+permissions: {}
+
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  enable:
+    name: Enable auto-merge
+    # GitHub only (the Gitea mirror also reads .github/workflows); same-repository branches only, so fork
+    # PRs stay manual; author and the user who triggered the event must both be trusted; no drafts; skip if
+    # auto-merge is already on; for "edited" react only when the PR was retargeted.
+    # Trusted numeric account ids (stable across renames): 156020274 endercodezz, 330476880 pifagor4ikh.
+    if: >-
+      github.server_url == 'https://github.com'
+      && github.event.pull_request.base.ref == github.event.repository.default_branch
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && contains(fromJSON('[156020274, 330476880]'), github.event.pull_request.user.id)
+      && contains(fromJSON('[156020274, 330476880]'), github.event.sender.id)
+      && !github.event.pull_request.draft
+      && github.event.pull_request.auto_merge == null
+      && github.event.pull_request.state == 'open'
+      && (github.event.action != 'edited' || github.event.changes.base != null)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Enable auto-merge (merge commit)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # --match-head-commit pins the request to the commit that triggered this run.
+        run: gh pr merge "$PR_NUMBER" --auto --merge --match-head-commit "$HEAD_SHA"

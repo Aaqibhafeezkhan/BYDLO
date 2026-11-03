@@ -146,6 +146,31 @@ macOS поддерживается только на Apple Silicon; упаков
 Упаковщики поддерживают пять целевых платформ. Сборки Windows на Linux отслеживаются в #60;
 для Unix-сборки OpenVPN сейчас нужен хост целевой ОС и архитектуры.
 
+### Автоматический merge
+
+`.github/workflows/auto-merge.yml` включает встроенный auto-merge GitHub (способ — merge commit) только для PR,
+которые открыли `endercodezz` или `pifagor4ikh` из ветки этого же репозитория в ветку по умолчанию (`main`).
+Аккаунты сверяются по числовому id, а не по логину. Событие тоже должен вызвать один из этих двоих. Черновики,
+PR из форков, PR других авторов и ботов остаются на ручное рассмотрение.
+
+- Workflow срабатывает на `opened`, `reopened`, `ready_for_review` и на `edited` только при смене целевой ветки.
+  Если auto-merge уже включён, задача пропускается. На новые коммиты (`synchronize`) workflow не запускается.
+- Используется `pull_request_target`: файл берётся из `main`, код PR не скачивается и не выполняется.
+  Токен получает только `contents: write` и `pull-requests: write`, запрос привязан к коммиту из события
+  (`--match-head-commit`). На зеркале Gitea задача не выполняется.
+- Merge выполняет GitHub, когда PR выполняет все правила ruleset `main`, включая обязательные проверки CI.
+  Merge делает `github-actions[bot]`, который не может обходить ruleset.
+  Исходную ветку удаляет настройка репозитория **Automatically delete head branches**.
+- Merge, сделанный токеном `GITHUB_TOKEN`, не запускает новых workflow. Поэтому после auto-merge CI
+  для `push` в `main` не запускается: проверка уже прошла в PR.
+
+Нужные настройки репозитория (Settings → General): **Allow auto-merge** и **Automatically delete head branches**.
+В ruleset `main` должно быть правило **Require status checks to pass** с источником GitHub Actions и проверками
+`Build & test (ubuntu-latest)`, `Build & test (windows-latest)`, `Cross-build AmneziaWG for macOS ARM64`,
+`Publish win-x64`, `Publish win-arm64`, `Publish linux-x64`, `Publish linux-arm64`, `Publish osx-arm64`.
+Без этого правила GitHub смержит PR сразу, не дожидаясь CI. Если переименовать задачи в `ci.yml`,
+обновите и этот список. Отключить auto-merge для отдельного PR: `gh pr merge <номер> --disable-auto`.
+
 ### Ручная проверка Apple Silicon перед релизом
 
 В GitHub Actions выберите **CI → Run workflow** и нужную ветку. Через CLI:
