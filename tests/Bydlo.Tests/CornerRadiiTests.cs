@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Bydlo.Tests;
 
 /// <summary>Issue #245: unified corner radii scale, no hardcoded CornerRadius.</summary>
@@ -18,48 +20,24 @@ public class CornerRadiiTests
     public void No_hardcoded_corner_radius_outside_scale()
     {
         var root = RepositoryRoot();
-        var files = new[]
-        {
-            Path.Combine(root, "src", "Bydlo.App", "Themes", "Styles.axaml"),
-            Path.Combine(root, "src", "Bydlo.App", "Views", "MainView.axaml"),
-            Path.Combine(root, "src", "Bydlo.App", "Views", "ConnectionsView.axaml"),
-            Path.Combine(root, "src", "Bydlo.App", "Views", "ToolsView.axaml"),
-            Path.Combine(root, "src", "Bydlo.App", "Views", "AppearanceSettingsView.axaml"),
-            Path.Combine(root, "src", "Bydlo.App", "Views", "RoutingView.axaml"),
-        };
+        var files = Directory.EnumerateFiles(Path.Combine(root, "src", "Bydlo.App"), "*.axaml", SearchOption.AllDirectories).ToList();
+        Assert.True(files.Count >= 10);
+        var bareAttribute = new Regex(@"CornerRadius\s*=\s*""\d", RegexOptions.Compiled);
+        var bareSetter = new Regex(@"Property\s*=\s*""CornerRadius""\s+Value\s*=\s*""\d", RegexOptions.Compiled);
         foreach (var file in files)
         {
-            var text = File.ReadAllText(file);
-            // Find CornerRadius="N" or Value="N" on a CornerRadius setter with a bare number.
-            foreach (var line in text.Split('\n'))
+            foreach (var line in File.ReadLines(file))
             {
                 if (!line.Contains("CornerRadius", StringComparison.Ordinal))
                 {
                     continue;
                 }
-                // Resource definitions themselves contain <CornerRadius x:Key=...
                 if (line.Contains("x:Key=\"Radius", StringComparison.Ordinal))
                 {
                     continue;
                 }
-                Assert.DoesNotContain("CornerRadius=\"8\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"12\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"18\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"10\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"7\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"6\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"5\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"3\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"2\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("CornerRadius=\"1\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("Value=\"8\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("Value=\"12\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("Value=\"18\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("Value=\"10\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("Value=\"7\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("Value=\"6\"", line, StringComparison.Ordinal);
-                Assert.DoesNotContain("Value=\"5\"", line, StringComparison.Ordinal);
-                // Every remaining CornerRadius usage must reference the scale.
+                Assert.False(bareAttribute.IsMatch(line), $"Hardcoded CornerRadius in {Path.GetFileName(file)}: {line.Trim()}");
+                Assert.False(bareSetter.IsMatch(line), $"Hardcoded CornerRadius setter in {Path.GetFileName(file)}: {line.Trim()}");
                 Assert.Contains("Radius", line, StringComparison.Ordinal);
             }
         }
