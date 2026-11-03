@@ -222,33 +222,44 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
 
     private async Task<SubscriptionPreview> FetchOneAsync(Uri uri, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.UserAgent.ParseAdd(AppVersion.UserAgent);
-        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
+        // ResponseHeadersRead ends HttpClient's timeout at the headers; keep the same
+        // per-mirror budget active until the subscription body has been read.
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(http.Timeout);
+        try
         {
-            return new(new ImportResult([], [$"Subscription server returned HTTP {(int)response.StatusCode}."]), new());
-        }
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.UserAgent.ParseAdd(AppVersion.UserAgent);
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return new(new ImportResult([], [$"Subscription server returned HTTP {(int)response.StatusCode}."]), new());
+            }
 
-        if (response.Content.Headers.ContentLength > MaxBytes)
-        {
-            return new(new ImportResult([], ["Subscription is too large."]), new());
-        }
+            if (response.Content.Headers.ContentLength > MaxBytes)
+            {
+                return new(new ImportResult([], ["Subscription is too large."]), new());
+            }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-        using var buffer = new MemoryStream();
-        var chunk = new byte[8192];
-        int count;
-        while ((count = await stream.ReadAsync(chunk, ct).ConfigureAwait(false)) > 0)
-        {
-            if (buffer.Length + count > MaxBytes)
-            { return new(new ImportResult([], ["Subscription is too large."]), new()); }
-            buffer.Write(chunk, 0, count);
+            await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
+            using var buffer = new MemoryStream();
+            var chunk = new byte[8192];
+            int count;
+            while ((count = await stream.ReadAsync(chunk, timeout.Token).ConfigureAwait(false)) > 0)
+            {
+                if (buffer.Length + count > MaxBytes)
+                { return new(new ImportResult([], ["Subscription is too large."]), new()); }
+                buffer.Write(chunk, 0, count);
+            }
+            buffer.Position = 0;
+            using var reader = new StreamReader(buffer);
+            var body = await reader.ReadToEndAsync(timeout.Token).ConfigureAwait(false);
+            var metadata = SubscriptionMetadata.Parse(response.Headers.TryGetValues("subscription-userinfo", out var info) ? info.FirstOrDefault() : null);
+            return new(importer.ImportText(body), metadata);
         }
-        buffer.Position = 0;
-        using var reader = new StreamReader(buffer);
-        var body = await reader.ReadToEndAsync(ct).ConfigureAwait(false);
-        var metadata = SubscriptionMetadata.Parse(response.Headers.TryGetValues("subscription-userinfo", out var info) ? info.FirstOrDefault() : null);
-        return new(importer.ImportText(body), metadata);
+        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested && timeout.IsCancellationRequested)
+        {
+            throw new TaskCanceledException("Subscription request timed out.", new TimeoutException("Subscription request timed out.", ex));
+        }
     }
 }

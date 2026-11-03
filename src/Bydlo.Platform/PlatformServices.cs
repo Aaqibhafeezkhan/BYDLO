@@ -150,7 +150,7 @@ public static class SystemProxyFactory
     {
         if (OperatingSystem.IsWindows())
         {
-            return new WindowsSystemProxyService();
+            return new WindowsSystemProxyService(paths.DataDirectory);
         }
         if (OperatingSystem.IsMacOS())
         {

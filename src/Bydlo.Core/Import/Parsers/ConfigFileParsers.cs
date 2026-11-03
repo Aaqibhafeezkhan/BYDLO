@@ -174,7 +174,7 @@ public sealed class WireGuardUriParser : IProfileParser
     }
 }
 
-/// <summary>OpenVPN <c>.ovpn</c> client configurations (kept verbatim and passed to the OpenVPN binary).</summary>
+/// <summary>OpenVPN <c>.ovpn</c> client configurations, validated before storing their original text.</summary>
 public sealed class OpenVpnParser : IProfileParser
 {
     public bool CanParse(string input)
@@ -186,6 +186,8 @@ public sealed class OpenVpnParser : IProfileParser
 
     public ImportedProfile Parse(string input)
     {
+        try { Security.OpenVpnConfigPolicy.Validate(input); }
+        catch (InvalidDataException) { throw new ImportException("import.openvpn.unsafe"); }
         string? host = null;
         var port = 1194;
         var proto = "udp";

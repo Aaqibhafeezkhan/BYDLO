@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Bydlo.App.Services;
+using Bydlo.Core.Connection;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Import;
@@ -230,13 +231,24 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     [RelayCommand]
     private async Task ConnectTo(ProfileItem item)
     {
+        // MainViewModel.Primary is a snapshot refreshed on the UI thread, so ToggleConnection
+        // could misread it mid-switch. Disconnect and connect explicitly instead (issue #141).
+        var alreadyActive = Shell.Home.IsConnected
+            && Shell.Primary.Chain is null
+            && Shell.Primary.Profile?.Id == item.Id;
         Shell.SelectedProfile = item;
         Shell.SelectedChain = null;
         Shell.Navigate("home");
-        if (!Shell.Home.IsConnected)
+        if (alreadyActive)
         {
-            await Shell.Home.ToggleConnectionCommand.ExecuteAsync(null);
+            return;
         }
+        await Shell.Guard(() => Services.Connections.DisconnectAsync());
+        foreach (var w in Services.Connections.PreviewConflicts(item.Profile, Services.EffectiveSettings).Where(i => i.Severity == ConflictSeverity.Warning))
+        {
+            Shell.ShowToast(w.Message);
+        }
+        await Shell.Guard(() => Services.Connections.ConnectAsync(item.Profile, Services.EffectiveSettings));
     }
 
     [RelayCommand]
@@ -347,7 +359,8 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         }
         else
         {
-            Shell.ShowToast((result.Errors.Count > 0 ? result.Errors[0] : null) ?? L["import.none"], isError: true);
+            var error = result.Errors.Count > 0 ? result.Errors[0] : null;
+            Shell.ShowToast(error == "import.openvpn.unsafe" ? L[error] : error ?? L["import.none"], isError: true);
         }
 
         OnPropertyChanged(nameof(IsEmpty));

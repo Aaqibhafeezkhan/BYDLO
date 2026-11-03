@@ -138,6 +138,10 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/share-verification ru --mock --verify-share
+      - name: Verify connection switching (headless, mock only, no network)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connect-switch-verification ru --mock --verify-connect-switch
       # Artifacts are kept on GitHub only: artifact actions v4 refuse to run on Gitea (it looks like GHES),
       # and GitHub fails the whole job if a step even references the deprecated v3.
       - uses: actions/upload-artifact@v4
@@ -284,6 +288,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify release tag matches app version
+        # Manual runs rehearse packaging from a branch; only real tags must match Directory.Build.props.
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(grep -oPm1 '(?<=<Version>)[^<]+' Directory.Build.props)
+          echo "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "Invalid release tag '${GITHUB_REF_NAME}': expected vX.Y.Z" >&2; exit 1; }
+          test "${GITHUB_REF_NAME}" = "v${version}" || { echo "Release tag '${GITHUB_REF_NAME}' does not match app version 'v${version}' from Directory.Build.props" >&2; exit 1; }
+          echo "Release ${GITHUB_REF_NAME} matches app version."
       - uses: actions/download-artifact@v4
         with:
           path: dist

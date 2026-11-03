@@ -22,7 +22,7 @@ public sealed partial class ProfileStore
         {
             ChainValidator.ThrowIfInvalid(chain, FindStored);
             ThrowIfUnchainable(chain);
-            var next = new ProfileDocument { Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains, chain] };
+            var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains, chain] };
             await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
             _doc = next;
             return chain;
@@ -94,17 +94,6 @@ public sealed partial class ProfileStore
         {
             _gate.Release();
         }
-    }
-
-    /// <summary>Detaches a deleted profile from every chain; drops chains that fall below two hops.</summary>
-    private void DetachFromChainsUnsafe(Guid profileId)
-    {
-        foreach (var chain in _doc.Chains)
-        {
-            chain.ProfileIds.RemoveAll(id => id == profileId);
-        }
-
-        _doc.Chains.RemoveAll(c => c.ProfileIds.Count < ChainValidator.MinHops);
     }
 
     /// <summary>Every hop must be chainable by at least one common engine (sing-box or Xray).</summary>

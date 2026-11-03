@@ -33,7 +33,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var incoming = new ProfileDocument { Profiles = data.Profiles.Select(p => p.Profile).ToList(), Subscriptions = data.Subscriptions.Select(s => s.Subscription).ToList() };
+            var incoming = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = data.Profiles.Select(p => p.Profile).ToList(), Subscriptions = data.Subscriptions.Select(s => s.Subscription).ToList() };
             if (mode == BackupImportMode.Merge)
             {
                 incoming.Profiles.InsertRange(0, _doc.Profiles.Where(p => incoming.Profiles.All(i => i.Id != p.Id)));
@@ -57,7 +57,7 @@ public sealed partial class ProfileStore
             foreach (var sub in data.Subscriptions)
             { writes.Add(SubscriptionSecretId(sub.Subscription.Id), new ProfileSecrets { Values = { ["url"] = sub.Url } }); }
             if (mode == BackupImportMode.Replace || data.ToolSecrets.Values.Count > 0)
-            { RestoreToolSecrets(writes, data.ToolSecrets); }
+            { RestoreToolSecrets(writes, data.ToolSecrets, mode); }
             var obsolete = mode == BackupImportMode.Replace
                 ? _doc.Profiles.Select(p => p.Id.ToString()).Concat(_doc.Subscriptions.Select(s => SubscriptionSecretId(s.Id))).Where(id => !writes.ContainsKey(id)).ToList()
                 : [];
@@ -96,14 +96,20 @@ public sealed partial class ProfileStore
         return bag;
     }
 
-    /// <summary>Splits the backup bag back into per-tool secret records.</summary>
-    private static void RestoreToolSecrets(Dictionary<string, ProfileSecrets> writes, ProfileSecrets bag)
+    /// <summary>Splits the backup bag back into per-tool secret records. Merge touches only keys present in the archive; Replace clears missing ones.</summary>
+    private static void RestoreToolSecrets(Dictionary<string, ProfileSecrets> writes, ProfileSecrets bag, BackupImportMode mode)
     {
-        var tg = new ProfileSecrets();
-        if (bag["secret"] is { } secret) { tg.Values["secret"] = secret; }
-        writes.Add(ConnectionManager.TgWsProxySecretId, tg);
-        var lan = new ProfileSecrets();
-        if (bag["localproxy-password"] is { } password) { lan.Values["password"] = password; }
-        writes.Add(ConnectionManager.LocalProxySecretId, lan);
+        if (mode == BackupImportMode.Replace || bag["secret"] is not null)
+        {
+            var tg = new ProfileSecrets();
+            if (bag["secret"] is { } secret) { tg.Values["secret"] = secret; }
+            writes.Add(ConnectionManager.TgWsProxySecretId, tg);
+        }
+        if (mode == BackupImportMode.Replace || bag["localproxy-password"] is not null)
+        {
+            var lan = new ProfileSecrets();
+            if (bag["localproxy-password"] is { } password) { lan.Values["password"] = password; }
+            writes.Add(ConnectionManager.LocalProxySecretId, lan);
+        }
     }
 }
