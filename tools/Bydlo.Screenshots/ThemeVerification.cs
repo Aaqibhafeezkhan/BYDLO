@@ -129,7 +129,7 @@ internal static class ThemeVerification
                     }
                 }
                 var settings = descendants.OfType<SettingsView>().Single();
-                var scroll = (ScrollViewer)settings.Content!;
+                var scroll = settings.FindControl<ScrollViewer>("SettingsScroll")!;
                 var fetch = descendants.OfType<Button>().Single(b => ReferenceEquals(b.Command, shell.Settings.FetchGalleryCommand));
                 var position = fetch.TranslatePoint(new Point(), (Visual)scroll.Content!);
                 scroll.Offset = new Vector(0, position!.Value.Y - 16);
@@ -138,7 +138,7 @@ internal static class ThemeVerification
 
         entries.Clear();
         var dir = CustomThemeStore.ThemesDirectory(shell.Services.Paths.DataDirectory);
-        foreach (var id in new[] { "ocean", "forest" })
+        foreach (var id in new[] { "ocean", "forest", "dirty" })
         {
             CustomThemeStore.Save(dir, File.ReadAllText(RepositoryFile("themes", id + ".json")));
             shell.Settings.ApplyCustomThemeCommand.Execute(id);
@@ -153,7 +153,7 @@ internal static class ThemeVerification
             }
             shell.Settings.DeleteCustomThemeCommand.Execute(id);
         }
-        Console.WriteLine("Gallery metadata, single fake HTTP request, and Ocean / Forest renders passed in Mock Mode.");
+        Console.WriteLine("Gallery metadata, single fake HTTP request, and Ocean / Forest / Dirty renders passed in Mock Mode.");
     }
 
     private static void Shoot(MainViewModel shell, string output, string name, int width, Action<Window>? arrange = null)
