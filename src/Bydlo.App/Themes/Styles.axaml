@@ -4,6 +4,7 @@
 
   <Style Selector="StackPanel.page">
     <Setter Property="MaxWidth" Value="1040" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="Margin" Value="20,24,20,28" />
     <Setter Property="Spacing" Value="20" />
   </Style>
@@ -481,6 +482,7 @@
   <Style Selector="RadioButton:disabled"><Setter Property="Opacity" Value="0.60" /></Style>
   <Style Selector=".desktop Border.workspace">
     <Setter Property="MaxWidth" Value="1080" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
   <Style Selector=".desktop Border.workspace > StackPanel.page">
