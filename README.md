@@ -152,6 +152,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 - [Совместимость протоколов и платформ](docs/COMPATIBILITY.md)
 - [Редактирование профилей и учётные данные OpenVPN](docs/PROFILE_EDITOR.md)
 - [Руководство по ручному тестированию](docs/TESTING.md)
+- [Интерфейс BYDLO и проверка в Mock Mode](docs/DESKTOP-UX.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Сторонние компоненты и лицензии](THIRD_PARTY_NOTICES.md)
 - [Как помочь проекту](CONTRIBUTING.md)

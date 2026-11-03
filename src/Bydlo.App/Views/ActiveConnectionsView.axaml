@@ -15,21 +15,23 @@
       <ItemsControl ItemsSource="{Binding FilteredConnections}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="e:ActiveConnection">
-            <Border Classes="tile" Padding="12" Margin="0,2">
+            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,12">
               <StackPanel Spacing="4">
-                <TextBlock Text="{Binding Host}" FontWeight="Medium" TextWrapping="Wrap" />
-                <StackPanel Spacing="2">
+                <TextBlock Text="{Binding Host}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <WrapPanel>
+                <StackPanel Spacing="2" MinWidth="132" Margin="0,0,16,6">
                   <TextBlock Classes="faint" Text="{l:T stats.connections.process}" />
                   <TextBlock Text="{Binding Process}" TextWrapping="Wrap" />
                 </StackPanel>
-                <StackPanel Spacing="2">
+                <StackPanel Spacing="2" MinWidth="132" Margin="0,0,16,6">
                   <TextBlock Classes="faint" Text="{l:T stats.connections.rule}" />
                   <TextBlock Text="{Binding Rule}" TextWrapping="Wrap" />
                 </StackPanel>
-                <StackPanel Spacing="2">
+                <StackPanel Spacing="2" MinWidth="132" Margin="0,0,16,6">
                   <TextBlock Classes="faint" Text="{l:T stats.connections.outbound}" />
                   <TextBlock Text="{Binding Outbound}" TextWrapping="Wrap" />
                 </StackPanel>
+                </WrapPanel>
                 <WrapPanel>
                   <TextBlock Text="{l:T stats.down}" Margin="0,0,6,0" />
                   <TextBlock Text="{Binding DownloadBytes, Converter={x:Static l:ByteCountConverter.Instance}}" Margin="0,0,12,0" />

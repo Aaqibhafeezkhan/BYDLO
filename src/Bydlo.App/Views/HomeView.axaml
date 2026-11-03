@@ -1,224 +1,227 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:Bydlo.App.ViewModels"
-             xmlns:l="using:Bydlo.App.Services"
-             xmlns:c="using:Bydlo.App.Controls"
-             x:Class="Bydlo.App.Views.HomeView"
-             x:DataType="vm:HomeViewModel">
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:vm="using:Bydlo.App.ViewModels"
+  xmlns:l="using:Bydlo.App.Services"
+  xmlns:c="using:Bydlo.App.Controls"
+  x:Class="Bydlo.App.Views.HomeView"
+  x:DataType="vm:HomeViewModel">
   <ScrollViewer>
     <Border Classes="workspace">
-    <StackPanel Classes="page">
-      <StackPanel Classes="home-intro" Spacing="6">
-        <TextBlock Classes="h1" Text="{l:T nav.home}" TextWrapping="Wrap" />
-        <TextBlock Classes="muted" Text="{l:T home.welcome.hint}" TextWrapping="Wrap" />
-
-      </StackPanel>
-      <Grid x:Name="Landing" ColumnDefinitions="*,20,300" RowDefinitions="Auto,Auto">
-        <StackPanel>
-          <Border Classes="connection-workspace" IsVisible="{Binding IsEmpty}">
-            <StackPanel Spacing="16">
-              <Border Classes="connection-mark" Width="48" Height="48" HorizontalAlignment="Left">
-                <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource AccentBrush}" />
-              </Border>
-              <TextBlock Classes="display" Text="{l:T home.empty.title}" TextWrapping="Wrap" />
-              <TextBlock Classes="muted" Text="{l:T home.empty.text}" TextWrapping="Wrap" />
-              <Button Classes="primary" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
-                <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />
-              </Button>
-              <Button Classes="ghost" Content="{l:T catalog.title}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="catalog" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-              <Expander Header="{l:T home.import.options}" HorizontalAlignment="Stretch">
-                <StackPanel Spacing="8">
-                  <Grid ColumnDefinitions="*,12,*">
-                    <Button Classes="source-card" Command="{Binding Shell.OpenImportCommand}" CommandParameter="file" Padding="12">
-                      <StackPanel Spacing="8">
-                        <c:OutlineIcon Data="{StaticResource LineFolder}" HorizontalAlignment="Left" />
-                        <TextBlock Text="{l:T home.import.file}" TextWrapping="Wrap" />
-                      </StackPanel>
-                    </Button>
-                    <Button Grid.Column="2" Classes="source-card" Command="{Binding Shell.OpenImportCommand}" CommandParameter="qr" Padding="12">
-                      <StackPanel Spacing="8">
-                        <c:OutlineIcon Data="{StaticResource LineQr}" HorizontalAlignment="Left" />
-                        <TextBlock Text="{l:T home.import.qr}" TextWrapping="Wrap" />
-                      </StackPanel>
-                    </Button>
-                  </Grid>
-                  <TextBlock Classes="faint" Text="{l:T home.import.drop}" TextWrapping="Wrap" />
-                  <WrapPanel>
-                    <Button Classes="text-action" Content="{l:T home.import.clipboard}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="clipboard" Margin="0,0,12,4" />
-                    <Button Classes="text-action" Content="{l:T home.import.subscription}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="subscription" />
-                  </WrapPanel>
-                </StackPanel>
-              </Expander>
-            </StackPanel>
-          </Border>
-          <Border Classes="connection-workspace" IsVisible="{Binding !IsEmpty}">
-            <StackPanel HorizontalAlignment="Stretch">
-              <Border Classes="session-strip" Classes.connected="{Binding IsConnected}" Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                  <StackPanel Spacing="3" AutomationProperties.LiveSetting="Polite">
-                    <TextBlock x:Name="StatusTitle" Classes="display" Text="{Binding StatusText}" TextWrapping="Wrap" />
-                    <TextBlock Classes="muted" Text="{Binding Hint}" TextWrapping="Wrap" />
-                  </StackPanel>
-                  <Border Grid.Column="1" Classes="connection-mark status-icon" Classes.connected="{Binding IsConnected}"
-                          Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}" Width="36" Height="36" VerticalAlignment="Top">
-                    <c:OutlineIcon Data="{StaticResource LineShield}" Width="20" Height="20" />
-                  </Border>
-                </Grid>
-              </Border>
-              <TextBlock Classes="caps" Text="{l:T home.server}" Margin="0,16,0,6" />
-              <ComboBox Classes="server-picker" ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}"
-                        HorizontalAlignment="Stretch" PlaceholderText="{l:T home.noprofiles}"
-                        IsEnabled="{Binding !IsBusy}" AutomationProperties.Name="{l:T home.server}">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ProfileItem">
-                    <Grid ColumnDefinitions="Auto,*" Margin="0,2">
-                      <c:OutlineIcon Data="{StaticResource LineServers}" Width="22" Height="22" Margin="0,0,14,0" Foreground="{DynamicResource TextMutedBrush}" />
-                      <StackPanel Grid.Column="1" Spacing="3">
-                        <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="14" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Classes="faint" Text="{Binding Details}" TextTrimming="CharacterEllipsis" />
-                      </StackPanel>
-                    </Grid>
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <Button Classes="text-action" Content="{l:T import.title}" Command="{Binding Shell.NavigateCommand}" CommandParameter="connections"
-                      HorizontalAlignment="Center" Margin="0,10,0,0" IsVisible="{Binding !HasProfiles}" />
-              <Border Classes="pill ok" IsVisible="{Binding IsChainActive}" HorizontalAlignment="Center" Margin="0,10,0,0" Padding="10,4">
-                <TextBlock Text="{Binding ActiveChainName}" FontSize="12" TextTrimming="CharacterEllipsis" />
-              </Border>
-              <Button Classes="text-action" Content="{l:T home.best}" Command="{Binding BestServerCommand}"
-                      HorizontalAlignment="Left" Margin="0,4,0,0" IsVisible="{Binding HasProfiles}" />
-              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" Margin="0,4,0,0">
-                <Border Classes="mode-switch">
-                  <StackPanel Orientation="Horizontal">
-                    <RadioButton Classes="segment mode" GroupName="connectionMode" IsChecked="{Binding IsProxy}" IsEnabled="{Binding !IsBusy}">
-                      <TextBlock Text="{l:T home.mode.proxy}" />
-                    </RadioButton>
-                    <RadioButton Classes="segment mode" GroupName="connectionMode" IsChecked="{Binding IsWholeDevice}" IsEnabled="{Binding !IsBusy}">
-                      <TextBlock Text="{l:T home.mode.device}" />
-                    </RadioButton>
-                  </StackPanel>
+      <StackPanel Classes="page">
+        <Grid RowDefinitions="Auto,Auto" RowSpacing="20">
+          <StackPanel>
+            <Border Classes="connection-workspace" IsVisible="{Binding IsEmpty}">
+              <StackPanel Spacing="16">
+                <Border Classes="connection-mark" Width="48" Height="48" HorizontalAlignment="Left">
+                  <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource AccentBrush}" />
                 </Border>
-                <Button Classes="icon" ToolTip.Tip="{Binding ModeHint}" AutomationProperties.Name="{l:T home.mode}" Command="{Binding ToggleModeHintCommand}">
-                  <c:OutlineIcon Data="{StaticResource LineInfo}" Width="16" Height="16" />
+                <TextBlock Classes="display" Text="{l:T home.empty.title}" TextWrapping="Wrap" />
+                <TextBlock Classes="muted" Text="{l:T home.empty.text}" TextWrapping="Wrap" />
+                <WrapPanel Classes="empty-actions" ItemSpacing="8" LineSpacing="8">
+                <Button Classes="primary" Command="{Binding Shell.OpenAddServerCommand}" HorizontalContentAlignment="Center">
+                  <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />
                 </Button>
+                <Button Classes="ghost" Content="{l:T catalog.title}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="catalog" HorizontalContentAlignment="Center" />
+                </WrapPanel>
+                <Expander Header="{l:T home.import.options}" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,12,*">
+                      <Button Classes="source-card" Command="{Binding Shell.OpenImportCommand}" CommandParameter="file" Padding="12">
+                        <StackPanel Spacing="8">
+                          <c:OutlineIcon Data="{StaticResource LineFolder}" HorizontalAlignment="Left" />
+                          <TextBlock Text="{l:T home.import.file}" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </Button>
+                      <Button Grid.Column="2" Classes="source-card" Command="{Binding Shell.OpenImportCommand}" CommandParameter="qr" Padding="12">
+                        <StackPanel Spacing="8">
+                          <c:OutlineIcon Data="{StaticResource LineQr}" HorizontalAlignment="Left" />
+                          <TextBlock Text="{l:T home.import.qr}" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </Button>
+                    </Grid>
+                    <TextBlock Classes="faint" Text="{l:T home.import.drop}" TextWrapping="Wrap" />
+                    <WrapPanel>
+                      <Button Classes="text-action" Content="{l:T home.import.clipboard}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="clipboard" Margin="0,0,12,4" />
+                      <Button Classes="text-action" Content="{l:T home.import.subscription}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="subscription" />
+                    </WrapPanel>
+                  </StackPanel>
+                </Expander>
               </StackPanel>
-              <Border MinHeight="48" HorizontalAlignment="Stretch" Margin="0,10,0,12">
-                <Button Classes="primary connect-action" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        Command="{Binding ToggleConnectionCommand}" AutomationProperties.Name="{Binding ButtonText}">
-                  <StackPanel Orientation="Horizontal" Spacing="10">
-                    <c:OutlineIcon Data="{StaticResource LinePower}" Width="20" Height="20" Foreground="{DynamicResource OnPrimaryBrush}" />
-                    <TextBlock Text="{Binding ButtonText}" Foreground="{DynamicResource OnPrimaryBrush}" FontWeight="Medium" FontSize="15" />
-                  </StackPanel>
-                </Button>
-              </Border>
-              <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,0,0,12" AutomationProperties.LiveSetting="Assertive">
-                <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
-              </Border>
-              <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch" Margin="0,12,0,0">
-                <StackPanel Spacing="8">
-                  <TextBlock Classes="faint" Text="{l:T routing.preset.label}" TextWrapping="Wrap" />
-              <ComboBox ItemsSource="{Binding RoutingPresetOptions}" SelectedIndex="{Binding RoutingPresetIndex}"
-                        HorizontalAlignment="Center" IsEnabled="{Binding !IsBusy}"
-                        AutomationProperties.Name="{l:T routing.preset.label}" />
-                  <Button Classes="text-action" Content="{l:T nav.routing}" Command="{Binding Shell.NavigateCommand}" CommandParameter="routing" />
-                </StackPanel>
-              </Expander>
-              <TextBlock Classes="faint" Text="{Binding ModeHint}" IsVisible="{Binding ShowModeHint}" TextAlignment="Center" TextWrapping="Wrap" Margin="12,12,12,0" />
-              <StackPanel Spacing="8" IsVisible="{Binding IsTun}" Margin="0,12,0,0">
-                <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
-                <Button Classes="ghost" Content="{l:T settings.admin.restart}" Command="{Binding Shell.Settings.RestartElevatedCommand}" IsVisible="{Binding Shell.Settings.CanRestartElevated}" HorizontalAlignment="Center" />
-              </StackPanel>
-
-            <Border Classes="readout" Margin="0,16,0,0">
-              <Grid ColumnDefinitions="*,*,*">
-                <StackPanel Spacing="7" HorizontalAlignment="Center">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <c:OutlineIcon Data="{StaticResource LineDown}" Width="13" Height="13" />
-                    <TextBlock Classes="faint" Text="{l:T stats.down}" />
-                  </StackPanel>
-                  <TextBlock Classes="metric" Text="{Binding DownSpeed}" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Spacing="7" HorizontalAlignment="Center">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <c:OutlineIcon Data="{StaticResource LineUp}" Width="13" Height="13" />
-                    <TextBlock Classes="faint" Text="{l:T stats.up}" />
-                  </StackPanel>
-                  <TextBlock Classes="metric" Text="{Binding UpSpeed}" />
-                </StackPanel>
-                <StackPanel Grid.Column="2" Spacing="7" HorizontalAlignment="Center">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <c:OutlineIcon Data="{StaticResource LineClock}" Width="13" Height="13" />
-                    <TextBlock Classes="faint" Text="{l:T home.duration}" />
-                  </StackPanel>
-                  <TextBlock Classes="metric" Text="{Binding Elapsed}" />
-                </StackPanel>
-              </Grid>
             </Border>
-            </StackPanel>
-          </Border>
-          <Expander Header="{l:T home.check}" IsVisible="{Binding IsConnected}" HorizontalAlignment="Stretch" Margin="0,4,0,0">
-            <StackPanel Spacing="12">
-              <Button Classes="ghost" Content="{Binding CheckButtonText}" Command="{Binding CheckConnectionCommand}" IsEnabled="{Binding CanRunCheck}" HorizontalAlignment="Left" />
-              <TextBlock Classes="faint" Text="{Binding CheckDisabledReason}" IsVisible="{Binding CheckDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
-              <StackPanel Spacing="8" IsVisible="{Binding HasCheckResult}">
-                <TextBlock Classes="caps" Text="{l:T home.check.ip}" />
-                <TextBlock Text="{Binding CheckIp}" FontWeight="Medium" />
-                <TextBlock Classes="caps" Text="{l:T home.check.country}" />
-                <TextBlock Text="{Binding CheckCountry}" TextWrapping="Wrap" />
-                <TextBlock Classes="caps" Text="{l:T home.check.latency}" />
-                <TextBlock Text="{Binding CheckLatency}" />
+            <Border Classes="connection-workspace" IsVisible="{Binding !IsEmpty}">
+              <StackPanel HorizontalAlignment="Stretch">
+                <Border Classes="session-strip" Classes.connected="{Binding IsConnected}" Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}">
+                  <Grid x:Name="SessionControls" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="16">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                      <StackPanel Grid.Column="1" Spacing="3" AutomationProperties.LiveSetting="Polite">
+                        <TextBlock x:Name="StatusTitle" Classes="display" Text="{Binding StatusText}" TextWrapping="Wrap" />
+                        <TextBlock Classes="muted" Text="{Binding Hint}" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <Border Classes="connection-mark status-icon" Classes.connected="{Binding IsConnected}"
+                        Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}" Width="36" Height="36" VerticalAlignment="Top">
+                        <c:OutlineIcon Data="{StaticResource LineShield}" Width="20" Height="20" />
+                      </Border>
+                    </Grid>
+                    <Border x:Name="SessionAction" Grid.Column="1" MinHeight="48" VerticalAlignment="Center">
+                      <Button Classes="primary connect-action" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding ToggleConnectionCommand}" AutomationProperties.Name="{Binding ButtonText}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                          <c:OutlineIcon Data="{StaticResource LinePower}" Width="20" Height="20" Foreground="{DynamicResource OnPrimaryBrush}" />
+                          <TextBlock Text="{Binding ButtonText}" Foreground="{DynamicResource OnPrimaryBrush}" FontWeight="Medium" FontSize="15" />
+                        </StackPanel>
+                      </Button>
+                    </Border>
+                  </Grid>
+                </Border>
+                <Grid x:Name="ConnectionFields" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="24" Margin="0,14,0,0">
+                  <StackPanel>
+                    <TextBlock FontWeight="SemiBold" Text="{l:T home.server}" Margin="0,0,0,6" />
+                    <ComboBox Classes="server-picker" ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}"
+                      HorizontalAlignment="Stretch" PlaceholderText="{l:T home.noprofiles}"
+                      IsEnabled="{Binding !IsBusy}" AutomationProperties.Name="{l:T home.server}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProfileItem">
+                          <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+                            <c:OutlineIcon Data="{StaticResource LineServers}" Width="22" Height="22" Margin="0,0,14,0" Foreground="{DynamicResource TextMutedBrush}" />
+                            <StackPanel Grid.Column="1" Spacing="3">
+                              <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="14" TextTrimming="CharacterEllipsis" />
+                              <TextBlock Classes="faint" Text="{Binding Details}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                          </Grid>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Classes="text-action" Content="{l:T import.title}" Command="{Binding Shell.NavigateCommand}" CommandParameter="connections"
+                      HorizontalAlignment="Center" Margin="0,10,0,0" IsVisible="{Binding !HasProfiles}" />
+                    <Border Classes="pill ok" IsVisible="{Binding IsChainActive}" HorizontalAlignment="Center" Margin="0,10,0,0" Padding="10,4">
+                      <TextBlock Text="{Binding ActiveChainName}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                    </Border>
+                    <Button Classes="text-action" Content="{l:T home.best}" Command="{Binding BestServerCommand}"
+                      HorizontalAlignment="Left" Margin="0,4,0,0" IsVisible="{Binding HasProfiles}" />
+                  </StackPanel>
+                  <StackPanel x:Name="ConnectionScope" Grid.Column="1">
+                    <TextBlock FontWeight="SemiBold" Text="{l:T home.mode}" Margin="0,0,0,6" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left">
+                      <Border Classes="mode-switch">
+                        <StackPanel Orientation="Horizontal">
+                          <RadioButton Classes="segment mode" GroupName="connectionMode" IsChecked="{Binding IsProxy}" IsEnabled="{Binding !IsBusy}">
+                            <TextBlock Text="{l:T home.mode.proxy}" />
+                          </RadioButton>
+                          <RadioButton Classes="segment mode" GroupName="connectionMode" IsChecked="{Binding IsWholeDevice}" IsEnabled="{Binding !IsBusy}">
+                            <TextBlock Text="{l:T home.mode.device}" />
+                          </RadioButton>
+                        </StackPanel>
+                      </Border>
+                      <Button Classes="icon" ToolTip.Tip="{Binding ModeHint}" AutomationProperties.Name="{l:T home.mode}" Command="{Binding ToggleModeHintCommand}">
+                        <c:OutlineIcon Data="{StaticResource LineInfo}" Width="16" Height="16" />
+                      </Button>
+                    </StackPanel>
+                  </StackPanel>
+                </Grid>
+                <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,0,0,12" AutomationProperties.LiveSetting="Assertive">
+                  <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+                </Border>
+                <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch" Margin="0,12,0,0">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="faint" Text="{l:T routing.preset.label}" TextWrapping="Wrap" />
+                    <ComboBox ItemsSource="{Binding RoutingPresetOptions}" SelectedIndex="{Binding RoutingPresetIndex}"
+                      HorizontalAlignment="Center" IsEnabled="{Binding !IsBusy}"
+                      AutomationProperties.Name="{l:T routing.preset.label}" />
+                    <Button Classes="text-action" Content="{l:T nav.routing}" Command="{Binding Shell.NavigateCommand}" CommandParameter="routing" />
+                  </StackPanel>
+                </Expander>
+                <TextBlock Classes="faint" Text="{Binding ModeHint}" IsVisible="{Binding ShowModeHint}" TextAlignment="Center" TextWrapping="Wrap" Margin="12,12,12,0" />
+                <StackPanel Spacing="8" IsVisible="{Binding IsTun}" Margin="0,12,0,0">
+                  <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
+                  <Button Classes="ghost" Content="{l:T settings.admin.restart}" Command="{Binding Shell.Settings.RestartElevatedCommand}" IsVisible="{Binding Shell.Settings.CanRestartElevated}" HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <Border Classes="readout" IsVisible="{Binding IsConnected}" Margin="0,16,0,0">
+                  <Grid ColumnDefinitions="*,*,*">
+                    <StackPanel Spacing="7" HorizontalAlignment="Center">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:OutlineIcon Data="{StaticResource LineDown}" Width="13" Height="13" />
+                        <TextBlock Classes="faint" Text="{l:T stats.down}" />
+                      </StackPanel>
+                      <TextBlock Classes="metric" Text="{Binding DownSpeed}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="7" HorizontalAlignment="Center">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:OutlineIcon Data="{StaticResource LineUp}" Width="13" Height="13" />
+                        <TextBlock Classes="faint" Text="{l:T stats.up}" />
+                      </StackPanel>
+                      <TextBlock Classes="metric" Text="{Binding UpSpeed}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="7" HorizontalAlignment="Center">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:OutlineIcon Data="{StaticResource LineClock}" Width="13" Height="13" />
+                        <TextBlock Classes="faint" Text="{l:T home.duration}" />
+                      </StackPanel>
+                      <TextBlock Classes="metric" Text="{Binding Elapsed}" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
               </StackPanel>
-              <Border Classes="banner bad" IsVisible="{Binding HasCheckError}"><TextBlock Text="{Binding CheckError}" TextWrapping="Wrap" /></Border>
-            </StackPanel>
-          </Expander>
-        </StackPanel>
-        <StackPanel x:Name="QuickTools" Grid.Column="2" Spacing="10">
-          <TextBlock Classes="h2" Text="{l:T home.tools.title}" TextWrapping="Wrap" />
-        <Button x:Name="ToolShortcut" Classes="quiet" Command="{Binding Shell.NavigateCommand}" CommandParameter="tools" HorizontalAlignment="Left" Margin="0,2,0,0">
-          <TextBlock Text="{l:T home.tools.shortcut}" TextWrapping="Wrap" />
-        </Button>
-          <TextBlock Classes="faint" Text="{l:T home.tools.hint}" TextWrapping="Wrap" />
-          <Border Classes="panel" Padding="16,0">
-            <StackPanel>
-              <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,14">
-                <c:OutlineIcon Data="{StaticResource LineBolt}" Margin="0,0,12,0" />
-                <StackPanel Grid.Column="1" Spacing="3" Margin="0,0,12,0">
-                  <TextBlock Text="{l:T home.zapret.title}" TextWrapping="Wrap" FontWeight="Medium" FontSize="13" />
-                  <TextBlock Classes="faint" Text="{l:T home.zapret.hint}" TextWrapping="Wrap" />
-                  <TextBlock Classes="faint" Text="{Binding ZapretState}" TextWrapping="Wrap" />
+            </Border>
+            <Expander Header="{l:T home.check}" IsVisible="{Binding IsConnected}" HorizontalAlignment="Stretch" Margin="0,4,0,0">
+              <StackPanel Spacing="12">
+                <Button Classes="ghost" Content="{Binding CheckButtonText}" Command="{Binding CheckConnectionCommand}" IsEnabled="{Binding CanRunCheck}" HorizontalAlignment="Left" />
+                <TextBlock Classes="faint" Text="{Binding CheckDisabledReason}" IsVisible="{Binding CheckDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+                <StackPanel Spacing="8" IsVisible="{Binding HasCheckResult}">
+                  <TextBlock Classes="caps" Text="{l:T home.check.ip}" />
+                  <TextBlock Text="{Binding CheckIp}" FontWeight="Medium" />
+                  <TextBlock Classes="caps" Text="{l:T home.check.country}" />
+                  <TextBlock Text="{Binding CheckCountry}" TextWrapping="Wrap" />
+                  <TextBlock Classes="caps" Text="{l:T home.check.latency}" />
+                  <TextBlock Text="{Binding CheckLatency}" />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="2" IsEnabled="{Binding !Shell.Tools.IsSelecting}" IsChecked="{Binding ZapretOn, Mode=OneWay}" Command="{Binding ToggleZapretCommand}" AutomationProperties.Name="Zapret" />
-              </Grid>
-              <Border Height="1" Background="{DynamicResource LineBrush}" />
-              <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="0,14">
-                <c:OutlineIcon Data="{StaticResource LineSend}" Margin="0,0,12,0" />
-                <StackPanel Grid.Column="1" Spacing="3" Margin="0,0,12,0">
-                  <TextBlock Text="{l:T home.tg.title}" TextWrapping="Wrap" FontWeight="Medium" FontSize="13" />
-                  <TextBlock Classes="faint" Text="{l:T home.tg.hint}" TextWrapping="Wrap" />
-                  <TextBlock Classes="faint" Text="{Binding TgState}" TextWrapping="Wrap" />
-                </StackPanel>
-                <Button Grid.Row="1" Grid.Column="1" Classes="text-action" Content="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkCommand}" IsVisible="{Binding TgOn}" Margin="0,8,0,0"
-                        AutomationProperties.Name="{l:T tools.tg.copy}" ToolTip.Tip="{l:T tools.tg.copy}" />
-                <ToggleSwitch Grid.Column="2" IsChecked="{Binding TgOn, Mode=OneWay}" Command="{Binding ToggleTgCommand}" AutomationProperties.Name="{l:T tools.tg.toggle}" />
-                <Button Grid.Row="1" Grid.Column="2" Classes="icon" HorizontalAlignment="Right"
-                        Command="{Binding Shell.Tools.OpenInTelegramCommand}" IsEnabled="{Binding Shell.Tools.CanOpenInTelegram}"
-                        ToolTip.Tip="{l:T tools.tg.open}" AutomationProperties.Name="{l:T tools.tg.open}">
-                  <c:OutlineIcon Data="{StaticResource LineSend}" Width="16" Height="16" />
-                </Button>
-              </Grid>
-            </StackPanel>
-          </Border>
-          <Border Classes="banner bad" IsVisible="{Binding Shell.Tools.ZapretError, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <TextBlock Text="{Binding Shell.Tools.ZapretError}" TextWrapping="Wrap" />
-          </Border>
-          <Border Classes="banner bad" IsVisible="{Binding Shell.Tools.TgError, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <TextBlock Text="{Binding Shell.Tools.TgError}" TextWrapping="Wrap" />
-          </Border>
-          <Button Classes="text-action" Content="{l:T common.advanced}" Command="{Binding Shell.NavigateCommand}" CommandParameter="tools" />
-        </StackPanel>
-      </Grid>
-    </StackPanel>
+                <Border Classes="banner bad" IsVisible="{Binding HasCheckError}"><TextBlock Text="{Binding CheckError}" TextWrapping="Wrap" /></Border>
+              </StackPanel>
+            </Expander>
+          </StackPanel>
+          <StackPanel Grid.Row="1" Spacing="8">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBlock Classes="h2" Text="{l:T home.tools.title}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              <Button Grid.Column="1" x:Name="ToolShortcut" Classes="text-action" Content="{l:T home.tools.configure}" Command="{Binding Shell.NavigateCommand}" CommandParameter="tools" />
+            </Grid>
+            <Border Classes="utility-list" Padding="14,0">
+              <StackPanel>
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,14">
+                  <c:OutlineIcon Data="{StaticResource LineBolt}" Margin="0,0,12,0" />
+                  <StackPanel Grid.Column="1" Spacing="3" Margin="0,0,12,0">
+                    <TextBlock Text="{l:T home.zapret.title}" TextWrapping="Wrap" FontWeight="Medium" FontSize="13" />
+                    <TextBlock Classes="faint" Text="{l:T home.zapret.hint}" TextWrapping="Wrap" />
+                    <TextBlock Classes="faint" Text="{Binding ZapretState}" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="2" IsEnabled="{Binding !Shell.Tools.IsSelecting}" IsChecked="{Binding ZapretOn, Mode=OneWay}" Command="{Binding ToggleZapretCommand}" AutomationProperties.Name="{l:T home.zapret.title}" />
+                </Grid>
+                <Border Height="1" Background="{DynamicResource LineBrush}" />
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="0,14">
+                  <c:OutlineIcon Data="{StaticResource LineSend}" Margin="0,0,12,0" />
+                  <StackPanel Grid.Column="1" Spacing="3" Margin="0,0,12,0">
+                    <TextBlock Text="{l:T home.tg.title}" TextWrapping="Wrap" FontWeight="Medium" FontSize="13" />
+                    <TextBlock Classes="faint" Text="{l:T home.tg.hint}" TextWrapping="Wrap" />
+                    <TextBlock Classes="faint" Text="{Binding TgState}" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Button Grid.Row="1" Grid.Column="1" Classes="text-action" Content="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkCommand}" IsVisible="{Binding TgOn}" Margin="0,8,0,0"
+                    AutomationProperties.Name="{l:T tools.tg.copy}" ToolTip.Tip="{l:T tools.tg.copy}" />
+                  <ToggleSwitch Grid.Column="2" IsChecked="{Binding TgOn, Mode=OneWay}" Command="{Binding ToggleTgCommand}" AutomationProperties.Name="{l:T tools.tg.toggle}" />
+                  <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Classes="text-action" HorizontalAlignment="Left"
+                    Command="{Binding Shell.Tools.OpenInTelegramCommand}" IsVisible="{Binding Shell.Tools.CanOpenInTelegram}"
+                    ToolTip.Tip="{l:T tools.tg.open}" AutomationProperties.Name="{l:T tools.tg.open}" Content="{l:T tools.tg.open}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+            <Border Classes="banner bad" IsVisible="{Binding Shell.Tools.ZapretError, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <TextBlock Text="{Binding Shell.Tools.ZapretError}" TextWrapping="Wrap" />
+            </Border>
+            <Border Classes="banner bad" IsVisible="{Binding Shell.Tools.TgError, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <TextBlock Text="{Binding Shell.Tools.TgError}" TextWrapping="Wrap" />
+            </Border>
+
+          </StackPanel>
+        </Grid>
+      </StackPanel>
     </Border>
   </ScrollViewer>
 </UserControl>

@@ -92,6 +92,9 @@ public sealed partial class MainViewModel : ViewModelBase
             new("contributors", "nav.contributors", "LineUsers", Contributors),
         ];
         PrimaryNavItems = NavItems.Where(item => item.Key is not ("routing" or "statistics" or "contributors")).ToArray();
+        ConnectionNavItems = PrimaryNavItems.Where(item => item.Key != "settings").ToArray();
+        NetworkNavItems = NavItems.Where(item => item.Key is "routing" or "statistics").ToArray();
+        SettingsNav = PrimaryNavItems.Single(item => item.Key == "settings");
         _currentNav = NavItems[0];
         _currentNav.IsSelected = true;
 
@@ -196,7 +199,10 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public IReadOnlyList<NavItem> NavItems { get; }
     public IReadOnlyList<NavItem> PrimaryNavItems { get; }
-    public bool IsSettingsDetail => CurrentNav.Key is "routing" or "statistics";
+    public IReadOnlyList<NavItem> ConnectionNavItems { get; }
+    public IReadOnlyList<NavItem> NetworkNavItems { get; }
+    public NavItem SettingsNav { get; }
+    public bool IsSettingsDetail => IsCompact && CurrentNav.Key is "routing" or "statistics" or "contributors";
 
     public static IReadOnlyList<string> OnboardingLanguages { get; } = ["auto", "en", "ru"];
 
@@ -232,6 +238,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private NavItem _currentNav;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSettingsDetail))]
     private bool _isCompact;
 
     [ObservableProperty]
@@ -287,14 +294,21 @@ public sealed partial class MainViewModel : ViewModelBase
 
     partial void OnCurrentNavChanged(NavItem value)
     {
-        foreach (var n in NavItems)
-        {
-            n.IsSelected = n == value || (n.Key == "settings" && IsSettingsDetail);
-        }
-
+        UpdateNavigationSelection();
         OnPropertyChanged(nameof(CurrentPage));
         OnPropertyChanged(nameof(IsSettingsDetail));
         value.Page.OnShown();
+    }
+
+    partial void OnIsCompactChanged(bool value) => UpdateNavigationSelection();
+
+    private void UpdateNavigationSelection()
+    {
+        var selected = IsSettingsDetail ? SettingsNav : CurrentNav;
+        foreach (var item in NavItems)
+        {
+            item.IsSelected = item == selected;
+        }
     }
 
     partial void OnSelectedProfileChanged(ProfileItem? value)

@@ -22,6 +22,7 @@ internal static class OverhaulVerification
             shell.FinishOnboardingCommand.Execute(null);
         }
 
+        Capture(shell, output, "home-empty-1180", 1180);
         Capture(shell, output, "home-empty-380", 380);
         Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
         shell.Toast = null;
@@ -76,12 +77,39 @@ internal static class OverhaulVerification
             }
         }
 
+        shell.Navigate("connections");
+        foreach (var (tab, name) in new[] { (1, "chains"), (2, "subscriptions") })
+        {
+            Capture(shell, output, $"connections-{name}-1180", 1180, window =>
+            {
+                var library = window.GetVisualDescendants().OfType<TabControl>().Single();
+                library.SelectedIndex = tab;
+                Pump();
+                Require(library.SelectedItem is TabItem { IsSelected: true },
+                    $"The {name} workspace is reachable from the library tabs.");
+            });
+        }
+
         shell.Navigate("home");
         Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
         Pump();
         Require(shell.Home.IsConnected, "The primary action connects through MockEngine.");
         Capture(shell, output, "home-connected-380", 380);
+        Capture(shell, output, "home-connected-Oled-1180", 1180);
+        shell.Settings.Theme = ThemePreference.Light;
+        Capture(shell, output, "home-connected-Light-1180", 1180);
         Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+
+        foreach (var width in new[] { 759, 760, 884, 1024 })
+        {
+            Capture(shell, output, $"home-resize-{width}", width, window =>
+            {
+                var connect = window.GetVisualDescendants().OfType<Button>()
+                    .Single(button => ReferenceEquals(button.Command, shell.Home.ToggleConnectionCommand));
+                Require(connect.IsEffectivelyVisible && connect.IsEffectivelyEnabled && connect.Focus(),
+                    "The connection action remains reachable at the layout breakpoint.");
+            });
+        }
 
         shell.Settings.ReduceMotion = false;
         Capture(shell, output, "motion-standard", 380, window =>
@@ -93,6 +121,8 @@ internal static class OverhaulVerification
             var expanders = window.GetVisualDescendants().OfType<Expander>();
             Require(expanders.Any() && expanders.All(control => control.ContentTransition is null),
                 "Reduced motion removes disclosure transitions.");
+            Require(window.GetVisualDescendants().OfType<ToggleSwitch>().All(control => control.KnobTransitions is null),
+                "Reduced motion removes toggle transitions.");
         });
         Console.WriteLine("Overhaul verification passed: layout matrix, server search, mock connection, reduced motion.");
     }

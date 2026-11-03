@@ -1,38 +1,38 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Color x:Key="AccentColor">#285967</Color>
-  <Color x:Key="PrimaryColor">#285967</Color>
-  <SolidColorBrush x:Key="BgBrush" Color="#F5F7F7" />
-  <SolidColorBrush x:Key="SidebarBrush" Color="#E9EEEE" />
+  <Color x:Key="AccentColor">#222222</Color>
+  <Color x:Key="PrimaryColor">#191919</Color>
+  <SolidColorBrush x:Key="BgBrush" Color="#F5F5F5" />
+  <SolidColorBrush x:Key="SidebarBrush" Color="#EDEDED" />
   <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="Surface2Brush" Color="#ECF0F0" />
-  <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#E3E9EA" />
-  <SolidColorBrush x:Key="LineBrush" Color="#D7DFE0" />
-  <SolidColorBrush x:Key="AccentBrush" Color="#285967" />
-  <SolidColorBrush x:Key="PrimaryBrush" Color="#285967" />
-  <SolidColorBrush x:Key="AccentSoftBrush" Color="#E0EAEB" />
-  <SolidColorBrush x:Key="TextBrush" Color="#202A2D" />
-  <SolidColorBrush x:Key="TextMutedBrush" Color="#516063" />
-  <SolidColorBrush x:Key="TextFaintBrush" Color="#58676A" />
-  <SolidColorBrush x:Key="SuccessBrush" Color="#317956" />
-  <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E7F2EB" />
-  <SolidColorBrush x:Key="WarningBrush" Color="#896722" />
-  <SolidColorBrush x:Key="WarningSoftBrush" Color="#F7EFDD" />
-  <SolidColorBrush x:Key="DangerBrush" Color="#B34350" />
-  <SolidColorBrush x:Key="DangerSoftBrush" Color="#F9E9EC" />
+  <SolidColorBrush x:Key="Surface2Brush" Color="#F1F1F1" />
+  <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#E8E8E8" />
+  <SolidColorBrush x:Key="LineBrush" Color="#D8D8D8" />
+  <SolidColorBrush x:Key="AccentBrush" Color="#222222" />
+  <SolidColorBrush x:Key="PrimaryBrush" Color="#191919" />
+  <SolidColorBrush x:Key="AccentSoftBrush" Color="#E4E4E4" />
+  <SolidColorBrush x:Key="TextBrush" Color="#171717" />
+  <SolidColorBrush x:Key="TextMutedBrush" Color="#4C4C4C" />
+  <SolidColorBrush x:Key="TextFaintBrush" Color="#606060" />
+  <SolidColorBrush x:Key="SuccessBrush" Color="#242424" />
+  <SolidColorBrush x:Key="SuccessSoftBrush" Color="#EBEBEB" />
+  <SolidColorBrush x:Key="WarningBrush" Color="#444444" />
+  <SolidColorBrush x:Key="WarningSoftBrush" Color="#EFEFEF" />
+  <SolidColorBrush x:Key="DangerBrush" Color="#262626" />
+  <SolidColorBrush x:Key="DangerSoftBrush" Color="#EAEAEA" />
   <SolidColorBrush x:Key="OnPrimaryBrush" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="BackdropBrush" Color="#F5F7F7" />
+  <SolidColorBrush x:Key="BackdropBrush" Color="#F5F5F5" />
   <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent" />
-  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#E3E9EA" />
-  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#ECF0F0" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#E8E8E8" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#F1F1F1" />
   <SolidColorBrush x:Key="ExpanderContentBackground" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPressed" Color="Transparent" />
-  <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#336775" />
-  <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#204A56" />
-  <SolidColorBrush x:Key="ButtonEdgeBrush" Color="#386775" />
-  <SolidColorBrush x:Key="NavActiveBrush" Color="#DDE8E9" />
-  <SolidColorBrush x:Key="EdgeBrush" Color="#CBD6D8" />
+  <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#353535" />
+  <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#080808" />
+  <SolidColorBrush x:Key="ButtonEdgeBrush" Color="#303030" />
+  <SolidColorBrush x:Key="NavActiveBrush" Color="#DEDEDE" />
+  <SolidColorBrush x:Key="EdgeBrush" Color="#929292" />
   <SolidColorBrush x:Key="ScrimBrush" Color="#66000000" />
 </ResourceDictionary>

@@ -245,6 +245,12 @@
   "onboarding.appearance": "Язык и оформление",
 
   "nav.home.short": "Главная",
+  "nav.group.network": "Сеть",
+  "settings.section.import": "Импорт и подписки",
+  "settings.section.advanced": "Расширенные",
+  "settings.section.backup": "Копии данных",
+  "settings.section.about": "О BYDLO",
+  "settings.section.jump": "Перейти к разделу",
   "nav.home": "Главная",
   "nav.connections.short": "Серверы",
   "nav.connections": "Подключения",
@@ -773,5 +779,13 @@
   "home.tg.title": "Telegram · TG WS Proxy",
   "home.tg.hint": "Включите прокси и откройте Telegram кнопкой рядом.",
   "home.tg.open": "Подключить в Telegram",
-  "home.tools.shortcut": "Включить Zapret или Telegram-прокси"
+  "home.tools.shortcut": "Включить Zapret или Telegram-прокси",
+  "stats.waiting": "Подключитесь к серверу, чтобы увидеть трафик.",
+  "routing.exceptions": "Исключения для трафика",
+  "routing.apply.next": "Вступит в силу при следующем подключении.",
+  "chain.hops.minimum": "Добавьте минимум два сервера. Трафик входит через первый и выходит через последний.",
+  "chain.hop.remove": "Убрать сервер из цепочки",
+  "home.tools.configure": "Настроить",
+  "tools.diagnostics": "Диагностика",
+  "subs.empty": "Подписок пока нет."
 }

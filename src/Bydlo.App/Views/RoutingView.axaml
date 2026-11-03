@@ -15,196 +15,200 @@
       <Setter Property="FontSize" Value="12" />
     </Style>
   </UserControl.Styles>
-  <ScrollViewer>
-    <Border Classes="workspace">
-    <StackPanel Classes="page">
-      <Border Classes="page-heading">
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="page-heading" Margin="20,12,20,0" MaxWidth="880">
       <Grid x:Name="PageHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-        <StackPanel Spacing="4">
+        <StackPanel Spacing="4" Margin="0,0,12,0">
           <TextBlock Classes="h1" Text="{l:T nav.routing}" />
-          <TextBlock Classes="muted" Text="{l:T routing.subtitle}" TextWrapping="Wrap" />
+          <TextBlock Classes="muted" Text="{l:T routing.apply.next}" TextWrapping="Wrap" />
         </StackPanel>
         <Button x:Name="SaveButton" Grid.Column="1" Classes="primary" VerticalAlignment="Center" Content="{l:T common.save}" Command="{Binding SaveCommand}" />
       </Grid>
-      </Border>
+    </Border>
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Classes="page" MaxWidth="880">
+        <Border Classes="panel">
+          <StackPanel Spacing="14">
+            <TextBlock Classes="h2" Text="{l:T routing.preset.label}" />
+            <ComboBox ItemsSource="{Binding PresetOptions}" SelectedIndex="{Binding PresetIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{l:T routing.preset.label}" />
+            <ComboBox ItemsSource="{Binding Countries}" SelectedIndex="{Binding CountryIndex}"
+                      IsVisible="{Binding IsLocalPreset}" HorizontalAlignment="Stretch" />
+            <Button IsEnabled="{Binding CanDownloadPreset}" Command="{Binding DownloadPresetCommand}">
+              <TextBlock Text="{l:T routing.preset.download}" TextWrapping="Wrap" />
+            </Button>
+            <TextBlock Classes="faint" Text="{l:T routing.preset.singbox}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
 
-      <Border Classes="panel">
-        <StackPanel Spacing="14">
-          <TextBlock Classes="h2" Text="{l:T routing.preset.label}" />
-          <ComboBox ItemsSource="{Binding PresetOptions}" SelectedIndex="{Binding PresetIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{l:T routing.preset.label}" />
-          <ComboBox ItemsSource="{Binding Countries}" SelectedIndex="{Binding CountryIndex}"
-                    IsVisible="{Binding IsLocalPreset}" HorizontalAlignment="Stretch" />
-          <Button IsEnabled="{Binding CanDownloadPreset}" Command="{Binding DownloadPresetCommand}">
-            <TextBlock Text="{l:T routing.preset.download}" TextWrapping="Wrap" />
-          </Button>
-          <TextBlock Classes="faint" Text="{l:T routing.preset.singbox}" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Margin="0,0,18,0">
-              <TextBlock Text="{l:T routing.mesh}" FontWeight="Medium" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Text="{l:T routing.mesh.hint}" TextWrapping="Wrap" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding PreserveMesh}" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Margin="0,0,18,0">
-              <TextBlock Text="{l:T routing.private}" FontWeight="Medium" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Text="{l:T routing.private.hint}" TextWrapping="Wrap" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding BypassPrivate}" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Margin="0,0,18,0">
-              <TextBlock Text="{l:T routing.only}" FontWeight="Medium" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Text="{l:T routing.only.hint}" TextWrapping="Wrap" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ProxyOnlyListed}" />
-          </Grid>
-        </StackPanel>
-      </Border>
+        <Border Classes="section">
+          <StackPanel Spacing="14">
+            <TextBlock Classes="h2" Text="{l:T routing.exceptions}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Margin="0,0,18,0">
+                <TextBlock Text="{l:T routing.mesh}" FontWeight="Medium" TextWrapping="Wrap" />
+                <TextBlock Classes="faint" Text="{l:T routing.mesh.hint}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding PreserveMesh}" AutomationProperties.Name="{l:T routing.mesh}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Margin="0,0,18,0">
+                <TextBlock Text="{l:T routing.private}" FontWeight="Medium" TextWrapping="Wrap" />
+                <TextBlock Classes="faint" Text="{l:T routing.private.hint}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding BypassPrivate}" AutomationProperties.Name="{l:T routing.private}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Margin="0,0,18,0">
+                <TextBlock Text="{l:T routing.only}" FontWeight="Medium" TextWrapping="Wrap" />
+                <TextBlock Classes="faint" Text="{l:T routing.only.hint}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding ProxyOnlyListed}" AutomationProperties.Name="{l:T routing.only}" />
+            </Grid>
+          </StackPanel>
+        </Border>
 
-      <Border Classes="section">
-        <StackPanel Spacing="10">
-          <TextBlock Classes="h2" Text="DNS" />
-          <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
-            <TextBlock Classes="caps" Text="{l:T routing.dns.remote}" Margin="0,0,0,6" />
-            <TextBox Grid.Row="1" Text="{Binding RemoteDns}" Watermark="1.1.1.1" />
-            <TextBlock Grid.Column="2" Classes="caps" Text="{l:T routing.dns.direct}" Margin="0,0,0,6" />
-            <TextBox Grid.Column="2" Grid.Row="1" Text="{Binding DirectDns}" Watermark="local" />
-          </Grid>
-          <TextBlock Classes="faint" Text="{l:T routing.dns.hint}" TextWrapping="Wrap" />
-          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="8">
-              <TextBlock Text="{l:T routing.dns.remote}" />
-              <ComboBox ItemsSource="{Binding DnsTransports}" SelectedIndex="{Binding RemoteDnsTransport}" />
-              <CheckBox Content="{l:T routing.dns.tunnel}" IsChecked="{Binding RemoteDnsThroughProxy}" />
-              <TextBox Text="{Binding RemoteDnsDomains}" Watermark="{l:T routing.dns.domains}" />
-              <TextBox Text="{Binding RemoteDnsRuleSets}" Watermark="{l:T routing.dns.sets}" />
-              <TextBlock Text="{l:T routing.dns.direct}" />
-              <ComboBox ItemsSource="{Binding DnsTransports}" SelectedIndex="{Binding DirectDnsTransport}" />
-              <CheckBox Content="{l:T routing.dns.tunnel}" IsChecked="{Binding DirectDnsThroughProxy}" />
-              <TextBox Text="{Binding DirectDnsDomains}" Watermark="{l:T routing.dns.domains}" />
-              <TextBox Text="{Binding DirectDnsRuleSets}" Watermark="{l:T routing.dns.sets}" />
-              <CheckBox Content="{l:T routing.dns.fakeip}" IsChecked="{Binding FakeIp}" IsEnabled="{Binding IsTunMode}" />
-              <TextBox Text="{Binding FakeIpExceptions}" Watermark="{l:T routing.dns.exceptions}" IsEnabled="{Binding IsTunMode}" />
-              <TextBlock Classes="faint" Text="{l:T routing.dns.xray}" TextWrapping="Wrap" />
-            </StackPanel>
-          </Expander>
-        </StackPanel>
-      </Border>
+        <Border Classes="section">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="DNS" />
+            <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
+              <TextBlock Classes="caps" Text="{l:T routing.dns.remote}" TextWrapping="Wrap" Margin="0,0,0,6" />
+              <TextBox Grid.Row="1" Text="{Binding RemoteDns}" AutomationProperties.Name="{l:T routing.dns.remote}" Watermark="1.1.1.1" />
+              <TextBlock Grid.Column="2" Classes="caps" Text="{l:T routing.dns.direct}" TextWrapping="Wrap" Margin="0,0,0,6" />
+              <TextBox Grid.Column="2" Grid.Row="1" Text="{Binding DirectDns}" AutomationProperties.Name="{l:T routing.dns.direct}" Watermark="local" />
+            </Grid>
+            <TextBlock Classes="faint" Text="{l:T routing.dns.hint}" TextWrapping="Wrap" />
+            <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
+              <StackPanel Spacing="8">
+                <TextBlock Text="{l:T routing.dns.remote}" />
+                <ComboBox ItemsSource="{Binding DnsTransports}" SelectedIndex="{Binding RemoteDnsTransport}" />
+                <CheckBox Content="{l:T routing.dns.tunnel}" IsChecked="{Binding RemoteDnsThroughProxy}" />
+                <TextBox Text="{Binding RemoteDnsDomains}" Watermark="{l:T routing.dns.domains}" />
+                <TextBox Text="{Binding RemoteDnsRuleSets}" Watermark="{l:T routing.dns.sets}" />
+                <TextBlock Text="{l:T routing.dns.direct}" />
+                <ComboBox ItemsSource="{Binding DnsTransports}" SelectedIndex="{Binding DirectDnsTransport}" />
+                <CheckBox Content="{l:T routing.dns.tunnel}" IsChecked="{Binding DirectDnsThroughProxy}" />
+                <TextBox Text="{Binding DirectDnsDomains}" Watermark="{l:T routing.dns.domains}" />
+                <TextBox Text="{Binding DirectDnsRuleSets}" Watermark="{l:T routing.dns.sets}" />
+                <CheckBox Content="{l:T routing.dns.fakeip}" IsChecked="{Binding FakeIp}" IsEnabled="{Binding IsTunMode}" />
+                <TextBox Text="{Binding FakeIpExceptions}" Watermark="{l:T routing.dns.exceptions}" IsEnabled="{Binding IsTunMode}" />
+                <TextBlock Classes="faint" Text="{l:T routing.dns.xray}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Expander>
+          </StackPanel>
+        </Border>
 
-      <Border Classes="section">
-        <StackPanel Spacing="12">
-          <TextBlock Classes="h2" Text="{l:T routing.rules}" />
-          <TextBlock Classes="caps" Text="{l:T routing.direct}" />
-          <TextBox Classes="list" Text="{Binding DirectDomains}" Watermark="example.ru&#x0a;gosuslugi.ru" />
-          <TextBlock Classes="caps" Text="{l:T routing.proxy}" />
-          <TextBox Classes="list" Text="{Binding ProxyDomains}" Watermark="youtube.com" />
-          <TextBlock Classes="caps" Text="{l:T routing.block}" />
-          <TextBox Classes="list" Text="{Binding BlockDomains}" Watermark="ads.example.com" />
-          <Expander Header="{l:T common.advanced}" IsExpanded="{Binding ShowRuleEditor}" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="10">
-              <Button Content="{l:T profile.dpi.defaults}" Command="{Binding EditDpiDefaultsCommand}" />
-              <Expander x:Name="SourceEditor" Header="{l:T routing.sources.title}" HorizontalAlignment="Stretch">
-                <StackPanel Spacing="10">
-                  <TextBlock Classes="faint" Text="{l:T routing.sources.hint}" TextWrapping="Wrap" />
-                  <TextBlock Classes="caps" Text="{l:T routing.sources.builtin}" />
-                  <ItemsControl ItemsSource="{Binding BuiltInSources}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="r:RuleSetSource">
-                        <Expander Header="{Binding Tag}" HorizontalAlignment="Stretch">
+        <Border Classes="section">
+          <StackPanel Spacing="12">
+            <TextBlock Classes="h2" Text="{l:T routing.rules}" />
+            <TextBlock Classes="caps" Text="{l:T routing.direct}" />
+            <TextBox Classes="list" Text="{Binding DirectDomains}" AutomationProperties.Name="{l:T routing.direct}" Watermark="example.ru&#x0a;gosuslugi.ru" />
+            <TextBlock Classes="caps" Text="{l:T routing.proxy}" />
+            <TextBox Classes="list" Text="{Binding ProxyDomains}" AutomationProperties.Name="{l:T routing.proxy}" Watermark="youtube.com" />
+            <TextBlock Classes="caps" Text="{l:T routing.block}" />
+            <TextBox Classes="list" Text="{Binding BlockDomains}" AutomationProperties.Name="{l:T routing.block}" Watermark="ads.example.com" />
+            <Expander Header="{l:T common.advanced}" IsExpanded="{Binding ShowRuleEditor}" HorizontalAlignment="Stretch">
+              <StackPanel Spacing="10">
+                <Button Content="{l:T profile.dpi.defaults}" Command="{Binding EditDpiDefaultsCommand}" />
+                <Expander x:Name="SourceEditor" Header="{l:T routing.sources.title}" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="faint" Text="{l:T routing.sources.hint}" TextWrapping="Wrap" />
+                    <TextBlock Classes="caps" Text="{l:T routing.sources.builtin}" />
+                    <ItemsControl ItemsSource="{Binding BuiltInSources}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="r:RuleSetSource">
+                          <Expander Header="{Binding Tag}" HorizontalAlignment="Stretch">
+                            <StackPanel Spacing="4">
+                              <TextBlock Text="{Binding Url}" TextWrapping="Wrap" />
+                              <TextBlock Text="{Binding Sha256}" TextWrapping="Wrap" />
+                              <TextBlock Text="{Binding MaxBytes}" />
+                            </StackPanel>
+                          </Expander>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="caps" Text="{l:T routing.sources.custom}" />
+                    <ListBox ItemsSource="{Binding RuleSetSources}" SelectedItem="{Binding SelectedSource}" MaxHeight="180">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="r:RuleSetSource">
                           <StackPanel Spacing="4">
-                            <TextBlock Text="{Binding Url}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding Sha256}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding MaxBytes}" />
+                            <TextBlock Text="{Binding Tag}" />
+                            <TextBlock Classes="faint" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Url}" />
                           </StackPanel>
-                        </Expander>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <TextBlock Classes="caps" Text="{l:T routing.sources.custom}" />
-                  <ListBox ItemsSource="{Binding RuleSetSources}" SelectedItem="{Binding SelectedSource}" MaxHeight="180">
-                    <ListBox.ItemTemplate>
-                      <DataTemplate x:DataType="r:RuleSetSource">
-                        <StackPanel Spacing="4">
-                          <TextBlock Text="{Binding Tag}" />
-                          <TextBlock Classes="faint" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Url}" />
-                        </StackPanel>
-                      </DataTemplate>
-                    </ListBox.ItemTemplate>
-                  </ListBox>
-                  <TextBlock Text="{l:T routing.sources.tag}" />
-                  <TextBox x:Name="SourceTagInput" Text="{Binding SourceTag}" Watermark="geosite-custom / geosite.dat / geoip.dat" />
-                  <TextBlock Text="{l:T routing.sources.url}" />
-                  <TextBox Text="{Binding SourceUrl}" Watermark="https://" />
-                  <TextBlock Text="SHA-256" />
-                  <TextBox Text="{Binding SourceHash}" />
-                  <TextBlock Text="{l:T routing.sources.size}" />
-                  <TextBox Text="{Binding SourceMaxBytes}" />
-                  <WrapPanel>
-                    <Button Content="{l:T routing.sources.save}" Command="{Binding SaveSourceCommand}" />
-                    <Button Content="{l:T routing.rules.remove}" Command="{Binding RemoveSourceCommand}" />
-                  </WrapPanel>
-                </StackPanel>
-              </Expander>
-              <TextBlock Classes="caps" Text="{l:T routing.rules.ordered}" />
-              <ComboBox ItemsSource="{Binding RuleConditions}" SelectedIndex="{Binding RuleConditionIndex}" />
-              <TextBox Text="{Binding RuleValue}" Watermark="{l:T routing.rules.value}" />
-              <ComboBox ItemsSource="{Binding RuleActions}" SelectedIndex="{Binding RuleActionIndex}" />
-              <Button Content="{l:T routing.rules.add}" Command="{Binding AddRuleCommand}" />
-              <ListBox x:Name="RuleList" ItemsSource="{Binding OrderedRules}" SelectedItem="{Binding SelectedRule}" MaxHeight="240">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="r:OrderedRoutingRule">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <Border Padding="4" Cursor="SizeAll" PointerPressed="OnRuleDragStart"
-                              ToolTip.Tip="{l:T routing.rules.drag}">
-                        <TextBlock Text="⋮⋮" />
-                      </Border>
-                      <TextBlock Text="{Binding Condition, Converter={x:Static l:RoutingRuleLabelConverter.Instance}}" />
-                      <TextBlock Text="{Binding Value}" />
-                      <TextBlock Text="{Binding Action, Converter={x:Static l:RoutingRuleLabelConverter.Instance}}" />
-                    </StackPanel>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-              <WrapPanel>
-                <Button Content="{l:T routing.rules.up}" Command="{Binding MoveRuleUpCommand}" />
-                <Button Content="{l:T routing.rules.down}" Command="{Binding MoveRuleDownCommand}" />
-                <Button Content="{l:T routing.rules.edit}" Command="{Binding UpdateRuleCommand}" />
-                <Button Content="{l:T routing.rules.remove}" Command="{Binding RemoveRuleCommand}" />
-                <Button Content="{l:T routing.rules.import}" Command="{Binding ImportRulesCommand}" />
-                <Button Content="{l:T routing.rules.export}" Command="{Binding ExportRulesCommand}" />
-              </WrapPanel>
-              <TextBlock Classes="caps" Text="{l:T routing.cidr}" />
-              <TextBox Classes="list" Text="{Binding DirectCidrs}" Watermark="192.0.2.0/24" />
-              <TextBlock Classes="caps" Text="{l:T routing.process}" />
-              <TextBox Classes="list" Text="{Binding DirectProcesses}" Watermark="game.exe" />
-              <TextBlock Classes="faint" Text="{l:T routing.process.hint}" TextWrapping="Wrap" />
-              <StackPanel IsVisible="{Binding HasApplicationPicker}" IsEnabled="{Binding IsTunMode}" Spacing="8">
-                <Button Command="{Binding FindApplicationsCommand}" Content="{l:T routing.process.find}" />
-                <TextBox Text="{Binding ApplicationSearch}" Watermark="{l:T routing.process.search}" />
-                <ComboBox x:Name="ApplicationPicker" ItemsSource="{Binding MatchingApplications}" SelectedItem="{Binding SelectedApplication}"
-                          HorizontalAlignment="Stretch">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:RoutingViewModel+ApplicationRow">
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="{l:T routing.sources.tag}" />
+                    <TextBox x:Name="SourceTagInput" Text="{Binding SourceTag}" Watermark="geosite-custom / geosite.dat / geoip.dat" />
+                    <TextBlock Text="{l:T routing.sources.url}" />
+                    <TextBox Text="{Binding SourceUrl}" Watermark="https://" />
+                    <TextBlock Text="SHA-256" />
+                    <TextBox Text="{Binding SourceHash}" />
+                    <TextBlock Text="{l:T routing.sources.size}" />
+                    <TextBox Text="{Binding SourceMaxBytes}" />
+                    <WrapPanel>
+                      <Button Content="{l:T routing.sources.save}" Command="{Binding SaveSourceCommand}" />
+                      <Button Content="{l:T routing.rules.remove}" Command="{Binding RemoveSourceCommand}" />
+                    </WrapPanel>
+                  </StackPanel>
+                </Expander>
+                <TextBlock Classes="caps" Text="{l:T routing.rules.ordered}" />
+                <ComboBox ItemsSource="{Binding RuleConditions}" SelectedIndex="{Binding RuleConditionIndex}" />
+                <TextBox Text="{Binding RuleValue}" Watermark="{l:T routing.rules.value}" />
+                <ComboBox ItemsSource="{Binding RuleActions}" SelectedIndex="{Binding RuleActionIndex}" />
+                <Button Content="{l:T routing.rules.add}" Command="{Binding AddRuleCommand}" />
+                <ListBox x:Name="RuleList" ItemsSource="{Binding OrderedRules}" SelectedItem="{Binding SelectedRule}" MaxHeight="240">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="r:OrderedRoutingRule">
                       <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Image Width="16" Height="16" Source="{Binding Icon}" />
-                        <TextBlock Text="{Binding Name}" />
+                        <Border Padding="4" Cursor="SizeAll" PointerPressed="OnRuleDragStart"
+                                ToolTip.Tip="{l:T routing.rules.drag}">
+                          <TextBlock Text="⋮⋮" />
+                        </Border>
+                        <TextBlock Text="{Binding Condition, Converter={x:Static l:RoutingRuleLabelConverter.Instance}}" />
+                        <TextBlock Text="{Binding Value}" />
+                        <TextBlock Text="{Binding Action, Converter={x:Static l:RoutingRuleLabelConverter.Instance}}" />
                       </StackPanel>
                     </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-                <Button Command="{Binding AddApplicationCommand}" Content="{l:T routing.process.add}" />
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <WrapPanel>
+                  <Button Content="{l:T routing.rules.up}" Command="{Binding MoveRuleUpCommand}" />
+                  <Button Content="{l:T routing.rules.down}" Command="{Binding MoveRuleDownCommand}" />
+                  <Button Content="{l:T routing.rules.edit}" Command="{Binding UpdateRuleCommand}" />
+                  <Button Content="{l:T routing.rules.remove}" Command="{Binding RemoveRuleCommand}" />
+                  <Button Content="{l:T routing.rules.import}" Command="{Binding ImportRulesCommand}" />
+                  <Button Content="{l:T routing.rules.export}" Command="{Binding ExportRulesCommand}" />
+                </WrapPanel>
+                <TextBlock Classes="caps" Text="{l:T routing.cidr}" />
+                <TextBox Classes="list" Text="{Binding DirectCidrs}" AutomationProperties.Name="{l:T routing.cidr}" Watermark="192.0.2.0/24" />
+                <TextBlock Classes="caps" Text="{l:T routing.process}" />
+                <TextBox Classes="list" Text="{Binding DirectProcesses}" AutomationProperties.Name="{l:T routing.process}" Watermark="game.exe" />
+                <TextBlock Classes="faint" Text="{l:T routing.process.hint}" TextWrapping="Wrap" />
+                <StackPanel IsVisible="{Binding HasApplicationPicker}" IsEnabled="{Binding IsTunMode}" Spacing="8">
+                  <Button Command="{Binding FindApplicationsCommand}" Content="{l:T routing.process.find}" />
+                  <TextBox Text="{Binding ApplicationSearch}" Watermark="{l:T routing.process.search}" />
+                  <ComboBox x:Name="ApplicationPicker" ItemsSource="{Binding MatchingApplications}" SelectedItem="{Binding SelectedApplication}"
+                            HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:RoutingViewModel+ApplicationRow">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <Image Width="16" Height="16" Source="{Binding Icon}" />
+                          <TextBlock Text="{Binding Name}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Button Command="{Binding AddApplicationCommand}" Content="{l:T routing.process.add}" />
+                </StackPanel>
+                <CheckBox IsChecked="{Binding ProxyOnlyListedProcesses}" IsEnabled="{Binding IsTunMode}"
+                          Content="{l:T routing.process.only}" />
+                <TextBlock IsVisible="{Binding !IsTunMode}" Classes="faint"
+                           Text="{l:T routing.process.tun}" TextWrapping="Wrap" />
               </StackPanel>
-              <CheckBox IsChecked="{Binding ProxyOnlyListedProcesses}" IsEnabled="{Binding IsTunMode}"
-                        Content="{l:T routing.process.only}" />
-              <TextBlock IsVisible="{Binding !IsTunMode}" Classes="faint"
-                         Text="{l:T routing.process.tun}" TextWrapping="Wrap" />
-            </StackPanel>
-          </Expander>
-        </StackPanel>
-      </Border>
-      <Button Classes="primary" Content="{l:T common.save}" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
-    </StackPanel>
-    </Border>
-  </ScrollViewer>
+            </Expander>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
 </UserControl>

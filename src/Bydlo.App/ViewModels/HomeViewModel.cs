@@ -245,11 +245,11 @@ public sealed partial class HomeViewModel : PageViewModel
 
     public bool ZapretOn => Shell.Zapret.CleanupPending || Shell.Zapret.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
-    public string ZapretState => ToolState(Shell.Zapret, L["status.disconnected"]);
+    public string ZapretState => ToolState(Shell.Zapret, L["status.stopped"]);
 
     public bool TgOn => Shell.Tg.CleanupPending || Shell.Tg.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
-    public string TgState => ToolState(Shell.Tg, L["status.disconnected"]);
+    public string TgState => ToolState(Shell.Tg, L["status.stopped"]);
 
     [RelayCommand]
     private async Task ToggleConnection()

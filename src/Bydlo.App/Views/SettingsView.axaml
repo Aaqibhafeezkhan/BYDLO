@@ -7,34 +7,66 @@
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
-  <ScrollViewer>
-    <Border Classes="workspace">
-    <StackPanel Classes="page">
-      <Border Classes="page-heading settings-heading">
-        <StackPanel Spacing="10">
-          <TextBlock Classes="h1" Text="{l:T nav.settings}" />
-          <WrapPanel>
-            <Button Classes="ghost" Content="{l:T settings.appearance}" Tag="AppearanceSection" Click="ScrollToSection" Margin="0,0,6,4" />
-            <Button Classes="ghost" Content="{l:T settings.connection}" Tag="ConnectionSection" Click="ScrollToSection" Margin="0,0,6,4" />
-            <Button Classes="ghost" Content="{l:T backup.title}" Tag="BackupSettings" Click="ScrollToSection" Margin="0,0,6,4" />
-            <Button Classes="quiet" Content="{l:T nav.routing}" Command="{Binding Shell.NavigateCommand}" CommandParameter="routing" Margin="0,0,6,4" />
-            <Button Classes="quiet" Content="{l:T nav.statistics}" Command="{Binding Shell.NavigateCommand}" CommandParameter="statistics" Margin="0,0,6,4" />
-          </WrapPanel>
-        </StackPanel>
+  <UserControl.Styles>
+    <Style Selector="WrapPanel#CategoryButtons Button">
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="MinHeight" Value="36" />
+    </Style>
+  </UserControl.Styles>
+  <Border Classes="workspace" VerticalAlignment="Stretch">
+    <Grid RowDefinitions="Auto,*" Margin="20,22,20,0">
+      <Border Classes="page-heading settings-heading" Margin="0,0,0,12">
+        <TextBlock Classes="h1" Text="{l:T nav.settings}" />
       </Border>
+      <Grid x:Name="SettingsLayout" Grid.Row="1" RowDefinitions="Auto,*" ColumnDefinitions="*,0">
+        <Border x:Name="CategoryIndex" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,0,0,8" Margin="0,0,0,12">
+          <StackPanel Spacing="4">
+            <ScrollViewer x:Name="CategoryScroll" IsVisible="False" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <WrapPanel x:Name="CategoryButtons" Orientation="Vertical" ItemWidth="169">
+              <Button Classes="quiet" Content="{l:T settings.appearance}" Tag="AppearanceSection" Click="ScrollToSection" />
+              <Button Classes="quiet" Content="{l:T settings.section.import}" Tag="ImportSection" Click="ScrollToSection" />
+              <Button Classes="quiet" Content="{l:T settings.desktop}" Tag="DesktopSection" Click="ScrollToSection" />
+              <Button Classes="quiet" Content="{l:T settings.connection}" Tag="ConnectionSection" Click="ScrollToSection" />
+              <Button Classes="quiet" Content="{l:T settings.section.advanced}" Tag="AdvancedSection" Click="ScrollToSection" />
+              <Button Classes="quiet" Content="{l:T settings.section.backup}" Tag="BackupSettings" Click="ScrollToSection" />
+              <Button Classes="quiet" Content="{l:T settings.section.about}" Tag="AboutSection" Click="ScrollToSection" />
+              </WrapPanel>
+            </ScrollViewer>
+            <ComboBox x:Name="CompactCategory" HorizontalAlignment="Stretch" PlaceholderText="{l:T settings.section.jump}"
+                      AutomationProperties.Name="{l:T settings.section.jump}" SelectionChanged="OnCategorySelected">
+              <ComboBoxItem Tag="AppearanceSection" Content="{l:T settings.appearance}" />
+              <ComboBoxItem Tag="ImportSection" Content="{l:T settings.section.import}" />
+              <ComboBoxItem Tag="DesktopSection" Content="{l:T settings.desktop}" />
+              <ComboBoxItem Tag="ConnectionSection" Content="{l:T settings.connection}" />
+              <ComboBoxItem Tag="AdvancedSection" Content="{l:T settings.section.advanced}" />
+              <ComboBoxItem Tag="BackupSettings" Content="{l:T settings.section.backup}" />
+              <ComboBoxItem Tag="AboutSection" Content="{l:T settings.section.about}" />
+            </ComboBox>
+            <WrapPanel IsVisible="{Binding Shell.IsCompact}">
+              <Button Classes="quiet" Content="{l:T nav.routing}" Command="{Binding Shell.NavigateCommand}" CommandParameter="routing" />
+              <Button Classes="quiet" Content="{l:T nav.statistics}" Command="{Binding Shell.NavigateCommand}" CommandParameter="statistics" />
+            </WrapPanel>
+          </StackPanel>
+        </Border>
+        <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Classes="page" Margin="0,0,0,24">
 
       <v:AppearanceSettingsView x:Name="AppearanceSection" />
 
-      <Border Classes="panel">
+      <Border x:Name="ImportSection" Classes="panel">
         <StackPanel Spacing="12">
-          <TextBlock Classes="h3" Text="{l:T import.title}" />
-          <ToggleSwitch Content="{l:T settings.clipboard}" IsChecked="{Binding SuggestClipboardLinks}" />
+          <TextBlock Classes="h2" Text="{l:T settings.section.import}" />
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{l:T settings.clipboard}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,18,0" />
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.clipboard}" IsChecked="{Binding SuggestClipboardLinks}" />
+          </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Margin="0,0,18,0">
               <TextBlock Text="{l:T subs.auto}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T subs.auto.hint}" TextWrapping="Wrap" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding SubscriptionAutoUpdate}" />
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T subs.auto}" IsChecked="{Binding SubscriptionAutoUpdate}" />
           </Grid>
           <StackPanel Spacing="6" IsVisible="{Binding SubscriptionAutoUpdate}">
             <TextBlock Text="{l:T subs.interval}" />
@@ -43,25 +75,25 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="panel">
+      <Border x:Name="DesktopSection" Classes="panel">
         <StackPanel Spacing="12">
           <TextBlock Classes="h2" Text="{l:T settings.desktop}" />
           <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding AutostartSupported}">
             <TextBlock Text="{l:T settings.desktop.autostart}" TextWrapping="Wrap" Margin="0,0,18,0" VerticalAlignment="Center" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartWithSystem}" />
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.desktop.autostart}" IsChecked="{Binding StartWithSystem}" />
           </Grid>
           <TextBlock Classes="faint" Text="{l:T settings.desktop.autostart.hint}" TextWrapping="Wrap" />
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="{l:T settings.desktop.connect}" TextWrapping="Wrap" Margin="0,0,18,0" VerticalAlignment="Center" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ConnectOnStartup}" />
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.desktop.connect}" IsChecked="{Binding ConnectOnStartup}" />
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="{l:T settings.desktop.tray}" TextWrapping="Wrap" Margin="0,0,18,0" VerticalAlignment="Center" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding MinimizeToTray}" />
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.desktop.tray}" IsChecked="{Binding MinimizeToTray}" />
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="{l:T settings.desktop.notifications}" TextWrapping="Wrap" Margin="0,0,18,0" VerticalAlignment="Center" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowNotifications}" />
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.desktop.notifications}" IsChecked="{Binding ShowNotifications}" />
           </Grid>
         </StackPanel>
       </Border>
@@ -77,13 +109,13 @@
               <TextBlock Text="{l:T settings.autoreconnect}" FontWeight="Medium" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T settings.autoreconnect.hint}" TextWrapping="Wrap" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoReconnect}" />
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.autoreconnect}" IsChecked="{Binding AutoReconnect}" />
           </Grid>
           <Button Classes="ghost" Content="{l:T settings.killswitch.disable}" Command="{Binding DisableKillSwitchCommand}" IsVisible="{Binding KillSwitch}" HorizontalAlignment="Left" />
         </StackPanel>
       </Border>
 
-      <v:AdvancedSettingsView />
+      <v:AdvancedSettingsView x:Name="AdvancedSection" />
 
       <!-- Backup -->
       <Expander x:Name="BackupSettings" Header="{l:T backup.title}" HorizontalAlignment="Stretch">
@@ -113,7 +145,7 @@
       </Expander>
 
       <!-- About & credits -->
-      <Expander Header="{l:T settings.about}" HorizontalAlignment="Stretch">
+      <Expander x:Name="AboutSection" Header="{l:T settings.about}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="12">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <Image Source="{StaticResource BrandLogo}" Width="38" Height="38" />
@@ -130,7 +162,7 @@
                   <TextBlock Text="{l:T settings.update.auto}" FontWeight="Medium" TextWrapping="Wrap" />
                   <TextBlock Classes="faint" Text="{l:T settings.update.auto.hint}" TextWrapping="Wrap" />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CheckForUpdates}" />
+                <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.update.auto}" IsChecked="{Binding CheckForUpdates}" />
               </Grid>
               <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" />
               <WrapPanel>
@@ -168,7 +200,9 @@
           </ItemsControl>
         </StackPanel>
       </Expander>
-    </StackPanel>
-    </Border>
-  </ScrollViewer>
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+    </Grid>
+  </Border>
 </UserControl>

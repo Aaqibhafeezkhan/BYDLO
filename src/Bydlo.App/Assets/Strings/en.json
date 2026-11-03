@@ -245,6 +245,12 @@
   "onboarding.appearance": "Language and appearance",
 
   "nav.home.short": "Home",
+  "nav.group.network": "Network",
+  "settings.section.import": "Import and feeds",
+  "settings.section.advanced": "Advanced",
+  "settings.section.backup": "Backup",
+  "settings.section.about": "About BYDLO",
+  "settings.section.jump": "Jump to a section",
   "nav.home": "Home",
   "nav.connections.short": "Servers",
   "nav.connections": "Connections",
@@ -773,5 +779,13 @@
   "home.tg.title": "Telegram · TG WS Proxy",
   "home.tg.hint": "Turn on the proxy, then open Telegram with the button beside it.",
   "home.tg.open": "Connect in Telegram",
-  "home.tools.shortcut": "Enable Zapret or Telegram proxy"
+  "home.tools.shortcut": "Enable Zapret or Telegram proxy",
+  "stats.waiting": "Connect to a server to see live traffic.",
+  "routing.exceptions": "Traffic exceptions",
+  "routing.apply.next": "Applies on the next connection.",
+  "chain.hops.minimum": "Add at least two servers. Traffic enters through the first and exits through the last.",
+  "chain.hop.remove": "Remove server from chain",
+  "home.tools.configure": "Tool settings",
+  "tools.diagnostics": "Diagnostics",
+  "subs.empty": "No subscriptions added yet."
 }

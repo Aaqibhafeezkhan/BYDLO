@@ -321,6 +321,15 @@
     <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
   </Style>
 
+  <Style Selector="ToggleSwitch">
+    <Setter Property="KnobTransitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector=".motion ToggleSwitch">
+    <Setter Property="KnobTransitions">
+      <Transitions><DoubleTransition Property="Canvas.Left" Duration="0:0:0.12" /></Transitions>
+    </Setter>
+  </Style>
+
   <!-- List items -->
   <Style Selector="ListBox.cards">
     <Setter Property="Background" Value="Transparent" />
@@ -353,7 +362,7 @@
     <Setter Property="Background" Value="{DynamicResource PrimaryPressedBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource OnPrimaryBrush}" />
   </Style>
-  <Style Selector="Button:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+  <Style Selector="Button:disabled"><Setter Property="Opacity" Value="0.60" /></Style>
   <Style Selector="Button:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     <Setter Property="BorderThickness" Value="2" />
@@ -469,7 +478,7 @@
       </ControlTemplate>
     </Setter>
   </Style>
-  <Style Selector="RadioButton:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+  <Style Selector="RadioButton:disabled"><Setter Property="Opacity" Value="0.60" /></Style>
   <Style Selector=".desktop Border.workspace">
     <Setter Property="MaxWidth" Value="1080" />
     <Setter Property="VerticalAlignment" Value="Top" />
@@ -490,33 +499,32 @@
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Padding" Value="0" />
   </Style>
-  <Style Selector=".desktop Border.workspace StackPanel.home-intro, .desktop Border.workspace Border.status-icon">
-    <Setter Property="IsVisible" Value="False" />
+  <Style Selector="Border.utility-list">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
   </Style>
-  <Style Selector=".desktop Border.workspace Border.profile-row">
-    <Setter Property="Padding" Value="0,10" />
+  <Style Selector=".desktop Border.connection-workspace">
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="20" />
   </Style>
-  <Style Selector=".desktop Border.workspace Border.panel">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0,1,0,0" />
-    <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="Padding" Value="0,14,0,6" />
+  <Style Selector=".desktop Border.session-strip">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="18,16" />
   </Style>
-  <Style Selector=".desktop Border.workspace Border.connection-workspace">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Padding" Value="0" />
-  </Style>
-  <Style Selector=".desktop Border.workspace Border.session-strip">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Padding" Value="12,0,0,2" />
-  </Style>
-  <Style Selector=".desktop Border.workspace Border.connection-mark">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-  </Style>
-  <Style Selector=".desktop Border.workspace Button.connect-action">
+  <Style Selector=".desktop Button.connect-action">
     <Setter Property="HorizontalAlignment" Value="Left" />
-    <Setter Property="MinWidth" Value="204" />
+    <Setter Property="MinWidth" Value="186" />
+  </Style>
+  <Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+  </Style>
+  <Style Selector="ToggleSwitch:checked /template/ Ellipse#SwitchKnobOn">
+    <Setter Property="Fill" Value="{DynamicResource OnPrimaryBrush}" />
+  </Style>
+  <Style Selector=".desktop WrapPanel.empty-actions">
+    <Setter Property="HorizontalAlignment" Value="Left" />
   </Style>
 </Styles>

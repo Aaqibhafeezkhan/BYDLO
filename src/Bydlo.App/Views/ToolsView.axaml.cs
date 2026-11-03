@@ -10,16 +10,13 @@ public sealed partial class ToolsView : UserControl
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
-        var split = e.NewSize.Width >= 940;
-        ToolWorkspace.ColumnDefinitions = new ColumnDefinitions(split ? "*,16,*" : "*");
-        Grid.SetRow(TelegramWorkspace, split ? 0 : 1);
-        Grid.SetColumn(TelegramWorkspace, split ? 2 : 0);
-        var compact = split || e.NewSize.Width < 640;
+        var compact = e.NewSize.Width < 640;
         foreach (var actions in new[] { ZapretActions, TgActions })
         {
-            Grid.SetColumn(actions, compact ? 1 : 2);
+            Grid.SetColumn(actions, compact ? 0 : 2);
+            Grid.SetColumnSpan(actions, compact ? 3 : 1);
             Grid.SetRow(actions, compact ? 1 : 0);
-            actions.Margin = compact ? new Thickness(12, 12, 0, 0) : default;
+            actions.Margin = compact ? new Thickness(0, 12, 0, 0) : default;
         }
     }
 }

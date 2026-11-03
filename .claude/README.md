@@ -10,8 +10,11 @@
 | `skills/add-engine/SKILL.md` | skill | Checklist for adding a protocol / engine adapter. |
 | `skills/dependency-audit/SKILL.md` | skill | Read-only audit of dependencies and upstream engines; manual invocation only (`/dependency-audit`). |
 | `skills/frontend-design/SKILL.md` | skill | Anthropic frontend-design 1.1.1. Design direction, typography, accessibility and visual critique for Avalonia views. Apache-2.0 terms are included beside the skill. |
+| `skills/avalonia-desktop-ux/SKILL.md` | skill | BYDLO workflow for desktop UX, Avalonia accessibility, reduced motion and visual verification using the existing Mock Mode harness. |
 
 Claude Code discovers project skills in `.claude/skills/`; they need no entry in the hook settings.
+
+The desktop UX skill uses Avalonia and W3C documentation as reference material and contains no installer, executable files or added dependencies. The community Avalonia-skills collection was reviewed for comparison. Its installer writes outside the checkout, and its generic testing example assumes different harness setup, so this project uses its own workflow.
 
 Hooks are Bash scripts. On Windows they need Git Bash (or another bash) on `PATH`.
 If a client does not execute registered hooks, run `bash scripts/check.sh` manually.
