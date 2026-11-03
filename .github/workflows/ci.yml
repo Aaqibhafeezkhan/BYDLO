@@ -179,8 +179,19 @@ jobs:
         shell: bash
         run: |
           source scripts/env.sh
-          dotnet run --project tools/Bydlo.BundleEngines -c Release -- \
-            ${{ matrix.rid }} publish/BYDLO-${{ matrix.rid }} .
+          # Release downloads can return transient HTTP 5xx errors. Each attempt still
+          # verifies pinned SHA-256 hashes; a persistent failure must fail the job.
+          for attempt in 1 2 3; do
+            if dotnet run --project tools/Bydlo.BundleEngines -c Release -- \
+              ${{ matrix.rid }} publish/BYDLO-${{ matrix.rid }} .; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            echo "::warning::Engine bundling failed (attempt $attempt/3); retrying."
+            sleep "$((attempt * 10))"
+          done
       - uses: actions/setup-go@v6
         if: ${{ !matrix.managedOnly }}
         with:
