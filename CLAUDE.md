@@ -122,10 +122,13 @@ Android is not part of v0.1 (planned; see docs/ROADMAP.md).
 ## 6. Git
 
 - Default branch: `main` for this repository; for future automation never hardcode the branch name or remote URL — detect them.
+- Integration branch: `developer`. Every PR targets `developer`; branch from `developer`, not `main`.
+  After fixes, the maintainer merges `developer` into `main` with a separate PR. Never open a feature PR into `main`.
+  Both branches share the same protection ruleset (PR required, required CI checks, no force push, no deletion).
 - The initial version was committed directly as `Initial commit` (no issue, no PR — one-time exception).
 - **After the Initial commit**, every independent task follows: issue → dedicated branch → implement → checks →
-  PR with `Closes #<issue>`. Create/publish PRs only when the maintainer asks. Never open a PR without an issue.
-  Merge only with explicit permission. Check conflicts with the main branch before publishing.
+  PR into `developer` with `Closes #<issue>`. Create/publish PRs only when the maintainer asks. Never open a PR without an issue.
+  Merge only with explicit permission. Check conflicts with `developer` before publishing.
 - Detect the hosting: GitHub → `gh`, Gitea → `tea`.
 - Branch names describe the task; never use `codex` (any case) in branch names.
 - Never push without permission.
