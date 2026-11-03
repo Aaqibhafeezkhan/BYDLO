@@ -37,6 +37,7 @@
   <StreamGeometry x:Key="LineServers">M5 3H19A2 2 0 0 1 21 5V9A2 2 0 0 1 19 11H5A2 2 0 0 1 3 9V5A2 2 0 0 1 5 3Z M5 13H19A2 2 0 0 1 21 15V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V15A2 2 0 0 1 5 13Z M7 7H7.1 M7 17H7.1 M12 7H17 M12 17H17</StreamGeometry>
   <StreamGeometry x:Key="LineTools">M14 6A6 6 0 0 0 6 14L2.5 17.5A2.8 2.8 0 0 0 6.5 21.5L10 18A6 6 0 0 0 18 10L14 14L10 10Z</StreamGeometry>
   <StreamGeometry x:Key="LineRouting">M12 21V13 M12 13L5 6 M12 13L19 6 M3 10V4H9 M15 4H21V10</StreamGeometry>
+  <StreamGeometry x:Key="LineUsers">M9 11A4 4 0 1 0 9 3A4 4 0 1 0 9 11Z M2 21V19A5 5 0 0 1 7 14H11A5 5 0 0 1 16 19V21 M16 3.5A4 4 0 0 1 16 10.5 M19 14.5A5 5 0 0 1 22 19V21</StreamGeometry>
   <StreamGeometry x:Key="LineStats">M3 3V21H21 M7 16L11 11L15 14L21 6</StreamGeometry>
   <StreamGeometry x:Key="LineSettings">M4 6H20 M4 12H20 M4 18H20 M8 3V9 M16 9V15 M10 15V21</StreamGeometry>
   <StreamGeometry x:Key="LinePower">M12 3V11 M7 5.7A8 8 0 1 0 17 5.7</StreamGeometry>

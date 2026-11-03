@@ -31,13 +31,23 @@
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom" Spacing="8">
+          <!-- Contributors page entry (issue #168); the list itself comes from GitHub, never hardcoded. -->
+          <RadioButton x:Name="ContributorsNavButton" Classes="nav" GroupName="nav"
+                       IsChecked="{Binding ContributorsNav.IsSelected, Mode=OneWay}"
+                       Command="{Binding NavigateCommand}" CommandParameter="contributors"
+                       AutomationProperties.Name="{Binding ContributorsNav.Title}">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <c:OutlineIcon Data="{StaticResource LineUsers}" />
+              <TextBlock Text="{Binding ContributorsNav.Title}" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
           <Border Classes="pill warn" IsVisible="{Binding IsMock}" HorizontalAlignment="Left">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <c:OutlineIcon Data="{StaticResource LineFlask}" Width="12" Height="12" Foreground="{DynamicResource WarningBrush}" />
               <TextBlock Text="{l:T mock.badge}" />
             </StackPanel>
           </Border>
-          <TextBlock Classes="faint" Text="v0.1.0 · GPL-3.0" Margin="4,0" />
+          <TextBlock Classes="faint" Text="{Binding Settings.Version, StringFormat='v{0} · GPL-3.0'}" Margin="4,0" />
         </StackPanel>
 
         <ItemsControl ItemsSource="{Binding PrimaryNavItems}">
@@ -192,7 +202,6 @@
                 <TextBlock Classes="caps" Text="{l:T settings.theme}" />
                 <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="4" HorizontalAlignment="Left">
                   <WrapPanel>
-                    <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemePurple}"><TextBlock Text="{l:T theme.purple}" /></RadioButton>
                     <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemeLight}"><TextBlock Text="{l:T theme.light}" /></RadioButton>
                     <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemeOled}"><TextBlock Text="{l:T theme.oled}" /></RadioButton>
                     <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemeSystem}"><TextBlock Text="{l:T theme.system}" /></RadioButton>

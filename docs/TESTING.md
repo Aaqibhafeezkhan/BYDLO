@@ -146,7 +146,7 @@ dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verificat
 3. Настройки → Дополнительно → сценарий Mock = *Ошибка при подключении*: появляется баннер с ошибкой.
 4. Сценарий = *Сбой через ~20 с*: статус становится «Переподключение…», затем снова «Подключено» (автопереподключение).
 5. Включите Zapret / TgWsProxy на главной: оба показывают «Работает» независимо от туннеля.
-6. Переключите темы (фиолетовая / светлая / OLED / системная) и язык (RU / EN); сузьте окно до ширины меньше 760 px — появится нижняя навигация.
+6. Переключите темы (светлая / чёрная / системная; фиолетовую установите из галереи тем) и язык (RU / EN); сузьте окно до ширины меньше 760 px — появится нижняя навигация.
 
 ### Проверка интерфейса без сетевых движков
 
@@ -163,6 +163,13 @@ dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verificat
 ```powershell
 . ./scripts/env.ps1
 dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/update-notification ru --verify-updates
+```
+
+Вкладка участников (#168) проверяется так же, без сети: пункт в углу боковой панели, пустой список,
+пример из семи участников и открытие из настроек в узком окне:
+
+```powershell
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/contributors-verification ru --mock --verify-contributors
 ```
 
 Для полного обновления галереи README в PowerShell запустите:

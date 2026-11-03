@@ -172,7 +172,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("Material Design Icons", "Pictogrammers", "Apache-2.0", "https://github.com/Templarian/MaterialDesign", "Icons"),
     ];
 
-    public string Version => typeof(SettingsViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.1.0";
+    public string Version => Bydlo.Core.AppVersion.Current;
 
     public string DataDirectory => Services.Paths.DataDirectory;
 
@@ -337,8 +337,6 @@ public sealed partial class SettingsViewModel : PageViewModel
         });
     }
 
-    public bool ThemePurple { get => Theme == ThemePreference.Purple; set { if (value) { Theme = ThemePreference.Purple; } } }
-
     public bool ThemeLight { get => Theme == ThemePreference.Light; set { if (value) { Theme = ThemePreference.Light; } } }
 
     public bool ThemeOled { get => Theme == ThemePreference.Oled; set { if (value) { Theme = ThemePreference.Oled; } } }
@@ -350,8 +348,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         Services.Settings.Theme = value;
         if (value == ThemePreference.Custom && !ApplyStoredCustom())
         {
-            // The custom file is gone: fall back to Purple instead of a half-applied UI.
-            Theme = ThemePreference.Purple;
+            // The custom file is gone: fall back to System instead of a half-applied UI.
+            Theme = ThemePreference.System;
             return;
         }
         if (value != ThemePreference.Custom)
@@ -360,7 +358,6 @@ public sealed partial class SettingsViewModel : PageViewModel
             UpdateWarning(false);
         }
         Persist();
-        OnPropertyChanged(nameof(ThemePurple));
         OnPropertyChanged(nameof(ThemeLight));
         OnPropertyChanged(nameof(ThemeOled));
         OnPropertyChanged(nameof(ThemeSystem));
