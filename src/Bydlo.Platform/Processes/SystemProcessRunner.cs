@@ -1,7 +1,8 @@
+using Bydlo.Core.Processes;
 using System.Diagnostics;
 using Bydlo.Core.Security;
 
-namespace Bydlo.Core.Processes;
+namespace Bydlo.Platform.Processes;
 
 /// <summary>Real process runner. Refuses network-affecting processes while the safety lock is active.</summary>
 public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProcessRunner

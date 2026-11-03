@@ -11,7 +11,7 @@ public sealed record InstallProgress(string Stage, double? Fraction);
 /// Downloads pinned engine releases, verifies SHA-256 against <see cref="EngineLock"/> and extracts them into
 /// BYDLO's private engines directory. Never installs system services, drivers or anything outside that folder.
 /// </summary>
-public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, string enginesDirectory)
+public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, string enginesDirectory, PlatformInfo? hostPlatform = null)
 {
     public string? PinnedVersion(string id) => engineLock.Find(id)?.Version;
 
@@ -95,16 +95,16 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
         File.Delete(archive);
 
         var exe = Path.Combine(target, asset.Executable.Replace('/', Path.DirectorySeparatorChar));
-        if (!OperatingSystem.IsWindows())
+        if (platform.Os != OsFamily.Windows)
         {
-            File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute);
+            Bydlo.Platform.NativeFiles.MakeExecutable(exe);
         }
 
         progress?.Report(new InstallProgress("done", 1));
         return exe;
     }
 
-    private static async Task MoveDirectoryAsync(string source, string destination, CancellationToken ct)
+    private async Task MoveDirectoryAsync(string source, string destination, CancellationToken ct)
     {
         // Windows file scanners can briefly retain extracted files without FILE_SHARE_DELETE.
         // Retry only its transient access/sharing failures, never suppress a permanent error.
@@ -112,7 +112,7 @@ public sealed class EngineInstaller(HttpClient http, EngineLock engineLock, stri
         {
             ct.ThrowIfCancellationRequested();
             try { Directory.Move(source, destination); return; }
-            catch (IOException ex) when (OperatingSystem.IsWindows() && attempt < 6 && (ex.HResult & 0xffff) is 5 or 32 or 33)
+            catch (IOException ex) when ((hostPlatform ?? PlatformInfo.Current).Os == OsFamily.Windows && attempt < 6 && (ex.HResult & 0xffff) is 5 or 32 or 33)
             { await Task.Delay(TimeSpan.FromMilliseconds(50 * (attempt + 1)), ct).ConfigureAwait(false); }
         }
     }

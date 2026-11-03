@@ -263,7 +263,7 @@ public class BundledEngineTests
     {
         var runner = new FakeProcessRunner { StartupOutput = { "Initialization Sequence Completed" } };
         var driver = new FakeDriver();
-        var engine = new OpenVpnEngine(runner, new LogRedactor(), new FakeLocator(new(OsFamily.Windows, CpuArch.X64)), new FakePrivileges(true), driver);
+        var engine = new OpenVpnEngine(runner, new LogRedactor(), new FakeLocator(new(OsFamily.Windows, CpuArch.X64)), new FakePrivileges(true), driver, new FakeExitEvents());
         Assert.Equal("error.engine.openvpn.driver", (await engine.CheckAvailabilityAsync(new())).LocalizationKey);
         Assert.Empty(runner.Completed);
         driver.IsInstalled = true;
