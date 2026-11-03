@@ -66,6 +66,11 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
     {
         ChainGuards.ThrowIfChained(EngineKind.OpenVpn, request);
         var raw = request.Secrets[Keys.RawConfig] ?? throw new EngineException("Profile has no stored .ovpn configuration.");
+        try { OpenVpnConfigPolicy.Validate(raw); }
+        catch (InvalidDataException)
+        {
+            throw new EngineException("Unsafe or unsupported OpenVPN configuration.", localizationKey: "import.openvpn.unsafe");
+        }
         _configFile = Path.Combine(request.WorkDirectory, "profile.ovpn");
         await SecureFile.WriteAsync(_configFile, raw, ct).ConfigureAwait(false);
         var args = new List<string> { "--config", _configFile, "--verb", "3", "--suppress-timestamps" };

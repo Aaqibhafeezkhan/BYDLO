@@ -199,7 +199,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         if (_preparation?.IsCancellationRequested == true) { return; }
         if (result.IsEmpty)
         {
-            ErrorKey = result.Errors.FirstOrDefault(error => error is "import.clash.invalid" or "import.json.unsafe")
+            ErrorKey = result.Errors.FirstOrDefault(error => error is "import.clash.invalid" or "import.json.unsafe" or "import.openvpn.unsafe")
                 ?? "wizard.error.input";
             return;
         }
