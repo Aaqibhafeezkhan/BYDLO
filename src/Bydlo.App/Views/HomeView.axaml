@@ -118,6 +118,10 @@
                 </StackPanel>
               </Expander>
               <TextBlock Classes="faint" Text="{Binding ModeHint}" IsVisible="{Binding ShowModeHint}" TextAlignment="Center" TextWrapping="Wrap" Margin="12,12,12,0" />
+              <StackPanel Spacing="8" IsVisible="{Binding IsTun}" Margin="0,12,0,0">
+                <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
+                <Button Classes="ghost" Content="{l:T settings.admin.restart}" Command="{Binding Shell.Settings.RestartElevatedCommand}" IsVisible="{Binding Shell.Settings.CanRestartElevated}" HorizontalAlignment="Center" />
+              </StackPanel>
               <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,20,0,0">
                 <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
               </Border>

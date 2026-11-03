@@ -22,7 +22,7 @@ namespace Bydlo.App.Services;
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "ShutdownAsync owns the asynchronous application lifetime and disposes its resources.")]
 public sealed class AppServices
 {
-    private AppServices(string[] args)
+    private AppServices(string[] args, IPrivilegeService? privileges)
     {
         Args = args;
         ForcedMock = AppSettings.IsMockForced(args, Environment.GetEnvironmentVariable("BYDLO_MOCK"));
@@ -31,7 +31,7 @@ public sealed class AppServices
         Secrets = SecretStoreFactory.Create(Paths, ForcedMock);
         SettingsStore = new SettingsStore(Paths.SettingsFile);
         Profiles = new ProfileStore(Paths.ProfilesFile, Secrets);
-        Privileges = new PrivilegeService();
+        Privileges = privileges ?? new PrivilegeService();
         Journal = new ProcessJournal(Paths.JournalFile);
         Runner = new SystemProcessRunner(Journal);
         Http = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
@@ -131,9 +131,9 @@ public sealed class AppServices
     /// <summary>Settings passed to engines (Mock Mode forced by the command line wins).</summary>
     public AppSettings EffectiveSettings => Settings.WithMockMode(IsMock);
 
-    public static async Task<AppServices> CreateAsync(string[] args)
+    public static async Task<AppServices> CreateAsync(string[] args, IPrivilegeService? privileges = null)
     {
-        var s = new AppServices(args);
+        var s = new AppServices(args, privileges);
         var firstRun = !File.Exists(s.Paths.SettingsFile);
         s.Settings = await s.SettingsStore.LoadAsync().ConfigureAwait(false);
         if (firstRun)
