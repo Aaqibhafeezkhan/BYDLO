@@ -659,6 +659,7 @@
   "error.engine.tunnel.admin": "Creating a tunnel needs administrator rights.",
   "error.engine.amnezia.missing": "Bundled AmneziaWG is missing. Download a complete BYDLO release for your platform.",
   "error.engine.wireguard.missing": "Install WireGuard (wireguard.com/install) or use the sing-box engine.",
+  "error.engine.wireguard.unsafe": "The native WireGuard configuration contains an unsupported directive. Remove scripts and unsupported options before connecting.",
   "error.engine.tunnel.platform": "Native WireGuard / AmneziaWG on this platform is planned.",
   "home.duration": "Session time",
   "import.manual": "Enter configuration manually",

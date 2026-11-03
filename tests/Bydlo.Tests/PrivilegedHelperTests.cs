@@ -42,6 +42,27 @@ public sealed class PrivilegedHelperTests
     }
 
     [Fact]
+    public async Task Stop_requires_remote_confirmation_and_retains_failed_lease_for_retry()
+    {
+        var remote = new FakeOperations { StopReply = new HelperReply { State = EngineState.Failed, Error = "helper.error" } };
+        await using var engine = new HelperEngine(new FakeHelperEngine(), () => remote, () => true);
+        // Attach the fake established lease without invoking privileged startup.
+        const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        typeof(HelperEngine).GetField("_remote", fields)!.SetValue(engine, remote);
+        typeof(HelperEngine).GetField("_usingRemote", fields)!.SetValue(engine, true);
+
+        await Assert.ThrowsAsync<EngineException>(() => engine.StopAsync());
+        Assert.Equal(EngineState.Failed, engine.State);
+        Assert.False(remote.Disposed);
+
+        remote.StopReply = new HelperReply { State = EngineState.Stopped };
+        await engine.StopAsync();
+        Assert.Equal(EngineState.Stopped, engine.State);
+        Assert.True(remote.Disposed);
+        Assert.Equal(2, remote.Requests.Count(request => request.Operation == HelperOperation.Stop));
+    }
+
+    [Fact]
     public async Task Protocol_RoundTripsProfileSecretsOnlyInMemory()
     {
         using var stream = new MemoryStream();
@@ -225,11 +246,13 @@ public sealed class PrivilegedHelperTests
 
     private sealed class FakeOperations : IPrivilegedOperations
     {
+        public HelperReply StopReply { get; set; } = new() { State = EngineState.Stopped };
         public bool Disposed { get; private set; }
         public List<HelperRequest> Requests { get; } = [];
         public Task<HelperReply> SendAsync(HelperRequest request, CancellationToken ct = default)
         {
             Requests.Add(request);
+            if (request.Operation == HelperOperation.Stop) { return Task.FromResult(StopReply); }
             return Task.FromResult(new HelperReply { Availability = EngineAvailability.Ready("bundled") });
         }
         public ValueTask DisposeAsync() { Disposed = true; return ValueTask.CompletedTask; }

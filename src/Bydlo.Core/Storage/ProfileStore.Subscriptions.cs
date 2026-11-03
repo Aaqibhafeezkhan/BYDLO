@@ -114,11 +114,11 @@ public sealed partial class ProfileStore
             }
             catch
             {
-                await DeleteRefreshSecretsAsync(staged).ConfigureAwait(false);
+                await DeleteUnreferencedSecretsAsync(staged.Select(id => id.ToString())).ConfigureAwait(false);
                 throw;
             }
 
-            await DeleteRefreshSecretsAsync(removedIds).ConfigureAwait(false);
+            await DeleteUnreferencedSecretsAsync(removedIds.Select(id => id.ToString())).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
     }
@@ -167,11 +167,11 @@ public sealed partial class ProfileStore
         values.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
             .Select(pair => KeyValuePair.Create(pair.Key.ToUpperInvariant(), pair.Value));
 
-    private async Task DeleteRefreshSecretsAsync(IEnumerable<Guid> ids)
+    private async Task DeleteUnreferencedSecretsAsync(IEnumerable<string> ids)
     {
         foreach (var id in ids)
         {
-            try { await secrets.DeleteAsync(id.ToString(), CancellationToken.None).ConfigureAwait(false); }
+            try { await secrets.DeleteAsync(id, CancellationToken.None).ConfigureAwait(false); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or EngineException)
             {
                 // An unreferenced secret is safer than rolling back an already committed document.

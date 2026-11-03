@@ -16,6 +16,16 @@ public sealed class TunnelServiceEngine : IEngine
 {
     public const string InterfaceName = "bydlo-wg";
 
+    private static readonly HashSet<string> InterfaceKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "PrivateKey", "ListenPort", "FwMark", "Address", "DNS", "MTU", "Table", "SaveConfig",
+    };
+
+    private static readonly HashSet<string> PeerKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "PublicKey", "PresharedKey", "AllowedIPs", "Endpoint", "PersistentKeepalive",
+    };
+
     public static readonly EngineDescriptor WireGuardInfo = new()
     {
         Kind = EngineKind.WireGuard,
@@ -119,6 +129,7 @@ public sealed class TunnelServiceEngine : IEngine
             }
 
             var raw = request.Secrets[Keys.RawConfig] ?? throw new EngineException("Profile has no stored configuration.");
+            ValidateNativeConfig(raw);
             foreach (var secret in request.Secrets.Values.Values)
             {
                 _redactor.RegisterSecret(secret);
@@ -147,6 +158,28 @@ public sealed class TunnelServiceEngine : IEngine
             Cleanup();
             Set(EngineState.Failed, ex.Message);
             throw ex as EngineException ?? new EngineException(ex.Message, ex);
+        }
+    }
+
+    private void ValidateNativeConfig(string config)
+    {
+        HashSet<string>? keys = null;
+        foreach (var raw in config.Split('\n'))
+        {
+            var line = raw.Split('#', 2)[0].Trim();
+            if (line.Length == 0) { continue; }
+            if (line.Equals("[Interface]", StringComparison.OrdinalIgnoreCase)) { keys = InterfaceKeys; continue; }
+            if (line.Equals("[Peer]", StringComparison.OrdinalIgnoreCase)) { keys = PeerKeys; continue; }
+
+            var separator = line.IndexOf('=');
+            var key = separator > 0 ? line[..separator].Trim() : "";
+            if (keys?.Contains(key) != true &&
+                !(keys == InterfaceKeys && Descriptor.Kind == EngineKind.AmneziaWG &&
+                    Bydlo.Core.Import.Parsers.WireGuardConfig.AmneziaKeys.Contains(key, StringComparer.OrdinalIgnoreCase)))
+            {
+                throw new EngineException("Unsupported directive in native WireGuard configuration.",
+                    localizationKey: "error.engine.wireguard.unsafe");
+            }
         }
     }
 

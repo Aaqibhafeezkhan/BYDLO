@@ -44,7 +44,11 @@ internal static class HelperServer
         {
             await foreach (var stream in HelperListener.AcceptAsync(owner, ct).ConfigureAwait(false))
             {
-                foreach (var finished in sessions.Where(t => t.IsCompleted)) { await finished.ConfigureAwait(false); }
+                foreach (var finished in sessions.Where(t => t.IsCompleted))
+                {
+                    try { await finished.ConfigureAwait(false); }
+                    catch (Exception) { Console.Error.WriteLine("A helper session failed to finish cleanup."); }
+                }
                 sessions.RemoveAll(t => t.IsCompleted);
                 if (sessions.Count >= 4) { await stream.DisposeAsync().ConfigureAwait(false); continue; }
                 sessions.Add(ServeAsync(stream, registry, paths.SessionsDirectory, ct));
@@ -74,7 +78,7 @@ internal static class HelperServer
                 {
                     // Never serialize exceptions: they may contain credentials, configs or privileged paths.
                     await HelperProtocol.WriteAsync(pipe, new HelperReply { State = EngineState.Failed, Error = "helper.error" }, deadline.Token).ConfigureAwait(false);
-                    break;
+                    // Keep the authenticated lease available for cleanup retries.
                 }
             }
         }
