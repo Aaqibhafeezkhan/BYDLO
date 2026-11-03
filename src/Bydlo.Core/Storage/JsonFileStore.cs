@@ -311,6 +311,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
             {
                 _doc.Profiles.Remove(old);
                 await secrets.DeleteAsync(old.Id.ToString(), ct).ConfigureAwait(false);
+                DetachFromChainsUnsafe(old.Id);
             }
             _doc.Subscriptions.RemoveAll(s => s.Id == subscriptionId);
             await secrets.DeleteAsync(SubscriptionSecretId(subscriptionId), ct).ConfigureAwait(false);

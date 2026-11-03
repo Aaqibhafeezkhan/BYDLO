@@ -69,6 +69,54 @@ public sealed class SubscriptionTests
     }
 
     [Fact]
+    public async Task Remove_subscription_detaches_all_deleted_profiles_from_persisted_chains()
+    {
+        var file = Path.Combine(TestDirs.New("sub-remove-chains"), "profiles.json");
+        var secrets = new InMemorySecretStore();
+        var store = new ProfileStore(file, secrets);
+        var first = Import("trojan://first-password@first.example:443#First");
+        var second = Import("trojan://second-password@second.example:443#Second");
+        var sub = await store.AddSubscriptionWithProfilesAsync("Removed", "https://sub.example/token", [first, second]);
+        var entry = Import("trojan://entry-password@entry.example:443#Entry");
+        var exit = Import("trojan://exit-password@exit.example:443#Exit");
+        var other = Import("trojan://other-password@other.example:443#Other");
+        var otherSub = await store.AddSubscriptionWithProfilesAsync("Kept", "https://other.example/token", [other]);
+        await store.AddAsync([entry, exit]);
+
+        await store.AddChainAsync("Too short", [entry.Profile.Id, first.Profile.Id]);
+        await store.AddChainAsync("All removed", [first.Profile.Id, second.Profile.Id]);
+        var shortened = await store.AddChainAsync("Shortened", [first.Profile.Id, entry.Profile.Id, second.Profile.Id, exit.Profile.Id], EngineKind.Xray);
+        var untouched = await store.AddChainAsync("Untouched", [exit.Profile.Id, other.Profile.Id]);
+
+        await store.RemoveSubscriptionAsync(sub.Id);
+
+        AssertRemainingState(store);
+        var reloaded = new ProfileStore(file, secrets);
+        await reloaded.LoadAsync();
+        AssertRemainingState(reloaded);
+        Assert.Null(await reloaded.GetSubscriptionUrlAsync(sub.Id));
+        Assert.Empty((await secrets.LoadAsync(first.Profile.Id.ToString())).Values);
+        Assert.Empty((await secrets.LoadAsync(second.Profile.Id.ToString())).Values);
+        Assert.Equal("https://other.example/token", await reloaded.GetSubscriptionUrlAsync(otherSub.Id));
+        Assert.Equal("entry-password", (await secrets.LoadAsync(entry.Profile.Id.ToString()))[Keys.Password]);
+        Assert.Equal("exit-password", (await secrets.LoadAsync(exit.Profile.Id.ToString()))[Keys.Password]);
+        Assert.Equal("other-password", (await secrets.LoadAsync(other.Profile.Id.ToString()))[Keys.Password]);
+
+        void AssertRemainingState(ProfileStore actual)
+        {
+            Assert.Equal(otherSub.Id, Assert.Single(actual.Subscriptions).Id);
+            Assert.Equal(new[] { other.Profile.Id, entry.Profile.Id, exit.Profile.Id }, actual.Profiles.Select(p => p.Id));
+            Assert.Equal(2, actual.Chains.Count);
+            var kept = Assert.Single(actual.Chains, c => c.Id == shortened.Id);
+            Assert.Equal("Shortened", kept.Name);
+            Assert.Equal(EngineKind.Xray, kept.PreferredEngine);
+            Assert.Equal(new[] { entry.Profile.Id, exit.Profile.Id }, kept.ProfileIds);
+            Assert.Equal(untouched.ProfileIds, Assert.Single(actual.Chains, c => c.Id == untouched.Id).ProfileIds);
+            Assert.All(actual.Chains.SelectMany(c => c.ProfileIds), id => Assert.Contains(actual.Profiles, p => p.Id == id));
+        }
+    }
+
+    [Fact]
     public async Task Refresh_preserves_settings_and_chain_order_across_reordering_and_removed_hop()
     {
         var file = Path.Combine(TestDirs.New("sub-identity"), "profiles.json");
