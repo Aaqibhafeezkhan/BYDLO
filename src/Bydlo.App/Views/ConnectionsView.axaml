@@ -8,6 +8,7 @@
   <UserControl.Styles>
     <Style Selector="Grid.connection-library">
       <Setter Property="MaxWidth" Value="1016" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
       <Setter Property="Margin" Value="20,24,20,0" />
     </Style>
     <Style Selector=".desktop Grid.connection-library">
