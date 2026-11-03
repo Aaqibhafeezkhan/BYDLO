@@ -4,7 +4,7 @@
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
 <i>One app. Every protocol. Zero bullshit.</i></p>
 
-<p align="center"><img src="docs/images/issue-110-home-purple-1180.png" width="880" alt="Главный экран BYDLO: импорт, Zapret и Telegram-прокси"></p>
+<p align="center"><img src="docs/images/home-purple-9541745d6150.png" width="880" alt="Главный экран BYDLO: импорт, Zapret и Telegram-прокси"></p>
 
 BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
@@ -49,23 +49,23 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 Скриншоты сняты на русском языке в Mock Mode; подключение и трафик на них имитируются.
 
 <p align="center">
-  <img src="docs/images/issue-110-home-light-1180.png" width="48%" alt="Главный экран: светлая тема">
-  <img src="docs/images/issue-110-home-oled-1180.png" width="48%" alt="Главный экран: OLED-тема">
+  <img src="docs/images/home-light-7aca239315ce.png" width="48%" alt="Главный экран: светлая тема">
+  <img src="docs/images/home-oled-9ec9b6ae8fc0.png" width="48%" alt="Главный экран: OLED-тема">
 </p>
 <p align="center">
-  <img src="docs/images/connections-ac6d3998a92c.png" width="48%" alt="Подключения: импорт и список серверов">
-  <img src="docs/images/issue-92-tools.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
+  <img src="docs/images/connections-69a32ddff54f.png" width="48%" alt="Подключения: импорт и список серверов">
+  <img src="docs/images/tools-d5900adc97c5.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
 </p>
 <p align="center">
-  <img src="docs/images/routing-83854b574e37.png" width="48%" alt="Маршрутизация: режимы, DNS и правила">
-  <img src="docs/images/statistics-c46269290ae0.png" width="48%" alt="Статистика: скорость, трафик и журнал">
+  <img src="docs/images/routing-c3c80b7721d8.png" width="48%" alt="Маршрутизация: режимы, DNS и правила">
+  <img src="docs/images/statistics-8cf86a998e5e.png" width="48%" alt="Статистика: скорость, трафик и журнал">
 </p>
 <p align="center">
-  <img src="docs/images/issue-92-settings.png" width="70%" alt="Настройки приложения">
+  <img src="docs/images/settings-c32aae72a1c1.png" width="70%" alt="Настройки приложения">
 </p>
 <p align="center">
-  <img src="docs/images/issue-110-home-purple-380.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
-  <img src="docs/images/mobile-connections-959746190e9b.png" width="260" alt="Узкое окно: список серверов">
+  <img src="docs/images/mobile-home-1b038ba9ca7b.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
+  <img src="docs/images/mobile-connections-c00d5317b89c.png" width="260" alt="Узкое окно: список серверов">
 </p>
 
 ## Платформы
@@ -164,6 +164,13 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 Начните с [CONTRIBUTING.md](CONTRIBUTING.md) — там сборка, Mock-режим, правила сетевой безопасности и процесс
 issue → ветка → PR. Задачи для первого вклада помечены
 [`good first issue`](https://github.com/endercodezz/BYDLO/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+
+## Поддержать нас
+
+Поддержать разработку BYDLO можно переводом **Tether (USDT)** в сети **TRON (TRC-20)** на любой из адресов:
+
+- `TJQ3sBdoZFnT1Zvsgb4DwtibqU2uuHZSdh`
+- `THJR1m7gu37LWtz5VqrSjU4jd9xFZ9mCgF`
 
 ## Благодарности
 
