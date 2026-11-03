@@ -102,7 +102,7 @@ if (!$PrebuiltOnly) {
     $inputs = Get-Content (Join-Path $repo 'engines/bundle-inputs.lock.json') -Raw | ConvertFrom-Json -AsHashtable
     $requiredSources += @('openssl-source.tar.gz', 'amneziawg-with-dependencies.tar.gz',
         [IO.Path]::GetFileName(([uri]$inputs['openvpn-source'].url).AbsolutePath),
-        'build-openvpn.sh', 'build-bundled-engines.ps1', 'openvpn-cache.ps1', 'native-build-cache.ps1')
+        'build-openvpn.sh', 'build-bundled-engines.ps1', 'openvpn-cache.ps1', 'native-build-cache.ps1', 'extract-openvpn-msi.ps1')
 }
 foreach ($name in $requiredSources) {
     if (!(Test-Path -LiteralPath (Join-Path $output "engines/sources/$name") -PathType Leaf)) {

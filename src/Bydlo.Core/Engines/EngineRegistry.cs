@@ -1,3 +1,4 @@
+using Bydlo.Core.Config;
 using Bydlo.Core.Models;
 
 namespace Bydlo.Core.Engines;
@@ -66,13 +67,18 @@ public sealed class EngineRegistry
         return Create(kind, settings);
     }
 
-    /// <summary>Chain-capable engine kinds able to carry every hop on the given OS, best first.</summary>
+    /// <summary>Chain-capable engine kinds able to carry every hop on the given OS, best first. Raw JSON configs are never chainable (issue #187).</summary>
     public IReadOnlyList<EngineKind> CandidatesForChain(IReadOnlyList<Profile> hops, OsFamily os)
     {
         var required = hops.Select(ProtocolNeeds).Where(r => r is not null).Distinct().ToList();
         return [.. _engines
             .Where(e => !e.Descriptor.IsTool && (e.Descriptor.Kind is EngineKind.SingBox or EngineKind.Xray))
-            .Where(e => hops.All(h => h.Protocol is not (ProtocolKind.SingBoxConfig or ProtocolKind.XrayConfig) && e.Descriptor.Protocols.Contains(h.Protocol)))
+            .Where(e => hops.All(h => e.Descriptor.Kind switch
+            {
+                EngineKind.SingBox => SingBoxConfigBuilder.ChainSupported.Contains(h.Protocol),
+                EngineKind.Xray => XrayConfigBuilder.ChainSupported.Contains(h.Protocol),
+                _ => false,
+            }))
             .Where(e => e.Descriptor.SupportOn(os) != SupportLevel.Unsupported)
             .Where(e => required.Count == 0 || required.Count == 1 && required[0] == e.Descriptor.Kind)
             .OrderBy(e => e.Descriptor.SupportOn(os) == SupportLevel.Implemented ? 0 : 1)

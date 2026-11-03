@@ -9,6 +9,7 @@
     <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
     <Protobuf Include="Groups/Protos/*.proto" GrpcServices="Client" />
     <ProjectReference Include="..\Bydlo.Core\Bydlo.Core.csproj" />
+    <ProjectReference Include="..\Bydlo.Platform\Bydlo.Platform.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\..\engines\engines.lock.json" LogicalName="engines.lock.json" />

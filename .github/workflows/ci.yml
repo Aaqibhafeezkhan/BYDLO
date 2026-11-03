@@ -81,6 +81,10 @@ jobs:
         if: github.server_url == 'https://github.com'
         shell: pwsh
         run: ./scripts/test-engine-bundle.ps1
+      - name: Windows cross-build self-test (synthetic PE/MSI trees, no engines)
+        if: github.server_url == 'https://github.com'
+        shell: pwsh
+        run: ./scripts/test-windows-cross-build.ps1
       - name: Build
         run: |
           source scripts/env.sh
@@ -163,7 +167,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"windows-latest"},{"rid":"win-arm64","os":"windows-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-arm64","os":"ubuntu-24.04","managedOnly":true}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"}]') }}
+        include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"ubuntu-latest"},{"rid":"win-arm64","os":"ubuntu-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-arm64","os":"ubuntu-24.04","managedOnly":true}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"},{"rid":"win-x64","os":"ubuntu-latest"},{"rid":"win-arm64","os":"ubuntu-latest"}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -174,10 +178,10 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }} \
-            --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            --self-contained true -p:WarningsAsErrors=CA1416 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
             -o publish/BYDLO-${{ matrix.rid }}
           dotnet publish src/Bydlo.Helper/Bydlo.Helper.csproj -c Release -r ${{ matrix.rid }} \
-            --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            --self-contained true -p:WarningsAsErrors=CA1416 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
             -o publish/BYDLO-${{ matrix.rid }}/helper
       - name: Bundle pinned sing-box, Xray and Zapret (never execute engines)
         shell: bash
@@ -227,10 +231,20 @@ jobs:
             # Without ICU, PowerShell refuses to start unless globalization is invariant.
             ldconfig -p | grep -q libicu || echo "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1" >> "$GITHUB_ENV"
           fi
+      - name: Install read-only MSI extractor on Linux
+        if: startsWith(matrix.rid, 'win-')
+        run: |
+          sudo=; [ "$(id -u)" = 0 ] || sudo=sudo
+          $sudo apt-get update -qq
+          $sudo apt-get install -y -qq --no-install-recommends msitools
       - name: Build and bundle AmneziaWG and OpenVPN (never execute engines)
         if: ${{ !matrix.managedOnly }}
         shell: pwsh
         run: ./scripts/build-bundled-engines.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
+      - name: Verify Windows cross-build fixtures on Linux
+        if: startsWith(matrix.rid, 'win-')
+        shell: pwsh
+        run: ./scripts/test-windows-cross-build.ps1
       - name: Verify offline bundle contents and architecture (never execute engines)
         shell: pwsh
         run: ./scripts/verify-engine-bundle.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}' -PrebuiltOnly:$${{ matrix.managedOnly == true }}
@@ -243,6 +257,37 @@ jobs:
         with:
           name: ${{ matrix.managedOnly && 'managed-osx-arm64' || format('BYDLO-{0}', matrix.rid) }}
           path: publish/BYDLO-${{ matrix.rid }}
+
+  windows-parity:
+    name: Compare Windows/Linux engine bytes (${{ matrix.rid }})
+    if: github.server_url == 'https://github.com'
+    needs: desktop
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [win-x64, win-arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.3'
+          cache: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: BYDLO-${{ matrix.rid }}
+          path: artifacts/windows-cross
+      - name: Bundle on Windows using pinned lessmsi (never execute engines)
+        shell: pwsh
+        run: |
+          . ./scripts/env.ps1
+          dotnet run --project tools/Bydlo.BundleEngines -c Release -- '${{ matrix.rid }}' artifacts/windows-native .
+          if ($LASTEXITCODE -ne 0) { throw 'Prebuilt engine bundling failed' }
+          ./scripts/build-bundled-engines.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory artifacts/windows-native
+          ./scripts/compare-engine-payload.ps1 -CrossBundle artifacts/windows-cross -NativeBundle artifacts/windows-native
 
   macos:
     name: Verify and bundle macOS Apple Silicon
@@ -301,7 +346,7 @@ jobs:
     name: Verify release archives
     # Manual runs rehearse release packaging without creating a tag or draft release.
     if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
-    needs: [desktop, macos]
+    needs: [desktop, windows-parity, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

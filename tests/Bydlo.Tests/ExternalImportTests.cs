@@ -96,7 +96,7 @@ public class ExternalImportTests
     [Fact]
     public void Windows_command_quotes_both_executable_and_input()
     {
-        var path = Path.GetFullPath(Path.Combine("folder with spaces", "BYDLO.exe"));
+        var path = @"C:\folder with spaces\BYDLO.exe";
         Assert.Equal($"\"{path}\" \"%1\"", WindowsImportAssociations.OpenCommand(path));
         Assert.Throws<ArgumentException>(() => WindowsImportAssociations.OpenCommand("BYDLO.exe"));
         Assert.Throws<ArgumentException>(() => WindowsImportAssociations.OpenCommand(path + "\"extra"));

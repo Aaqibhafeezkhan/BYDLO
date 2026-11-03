@@ -96,11 +96,11 @@ public sealed partial class ProfileStore
         }
     }
 
-    /// <summary>Every hop must be chainable by at least one common engine (sing-box or Xray).</summary>
+    /// <summary>Every hop must be chainable by at least one common engine (sing-box or Xray). Raw JSON configs have no chain branch (issue #187).</summary>
     private void ThrowIfUnchainable(ProxyChain chain)
     {
         var protocols = chain.ProfileIds.Select(id => FindStored(id)!.Protocol).ToList();
-        var ok = protocols.All(SingBoxConfigBuilder.Supported.Contains) || protocols.All(XrayConfigBuilder.Supported.Contains);
+        var ok = protocols.All(SingBoxConfigBuilder.ChainSupported.Contains) || protocols.All(XrayConfigBuilder.ChainSupported.Contains);
         if (!ok)
         {
             throw new EngineException("These servers cannot be chained with one engine.", localizationKey: "error.chain.engine");

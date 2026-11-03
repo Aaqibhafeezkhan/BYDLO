@@ -234,6 +234,58 @@ public class ChainTests
         Assert.Equal("error.chain.engine", ex.LocalizationKey);
     }
 
+    private static ImportedProfile SingBoxJsonHop() => Assert.Single(new ProfileImporter().ImportText(
+        """{"inbounds":[{"type":"mixed","listen":"0.0.0.0","listen_port":2222}],"outbounds":[{"type":"trojan","tag":"remote","server":"proxy.invalid","server_port":443,"password":"hidden"}]}""").Profiles);
+
+    private static ImportedProfile XrayJsonHop() => Assert.Single(new ProfileImporter().ImportText(
+        """{"inbounds":[{"protocol":"http","listen":"0.0.0.0","port":2222}],"outbounds":[{"protocol":"trojan","tag":"remote","settings":{"servers":[{"address":"proxy.invalid","port":443,"password":"hidden"}]}}]}""").Profiles);
+
+    [Theory]
+    [InlineData(ProtocolKind.SingBoxConfig)]
+    [InlineData(ProtocolKind.XrayConfig)]
+    public void Builders_reject_raw_json_hops_with_chain_engine_error(ProtocolKind json)
+    {
+        var raw = json == ProtocolKind.SingBoxConfig ? SingBoxJsonHop() : XrayJsonHop();
+        var hops = new List<ChainHop> { Hop("trojan://pw@one.example.com:443"), new ChainHop(raw.Profile, raw.Secrets) };
+        var singBoxError = Assert.Throws<EngineException>(() =>
+            new SingBoxConfigBuilder().BuildChain(hops, new BuildContext(new AppSettings())));
+        Assert.Equal("error.chain.engine", singBoxError.LocalizationKey);
+        var xrayError = Assert.Throws<EngineException>(() =>
+            new XrayConfigBuilder().BuildChain(hops, new BuildContext(new AppSettings())));
+        Assert.Equal("error.chain.engine", xrayError.LocalizationKey);
+    }
+
+    [Theory]
+    [InlineData(ProtocolKind.SingBoxConfig)]
+    [InlineData(ProtocolKind.XrayConfig)]
+    public async Task Store_refuses_to_save_chain_with_raw_json_hop(ProtocolKind json)
+    {
+        var store = NewStore();
+        await store.LoadAsync();
+        var raw = json == ProtocolKind.SingBoxConfig ? SingBoxJsonHop() : XrayJsonHop();
+        var plain = Import("trojan://pw@two.example.com:443");
+        await store.AddAsync([new ImportedProfile(raw.Profile, raw.Secrets), plain]);
+        var ex = await Assert.ThrowsAsync<EngineException>(() => store.AddChainAsync("Json relay", [raw.Profile.Id, plain.Profile.Id]));
+        Assert.Equal("error.chain.engine", ex.LocalizationKey);
+        Assert.Empty(store.Chains);
+    }
+
+    [Theory]
+    [InlineData(ProtocolKind.SingBoxConfig)]
+    [InlineData(ProtocolKind.XrayConfig)]
+    public void Registry_reports_no_chain_engine_for_raw_json_hops(ProtocolKind json)
+    {
+        var registry = new EngineRegistry(() => new MockEngine())
+            .Register(new EngineDescriptor { Kind = EngineKind.SingBox, DisplayName = "sb", Upstream = "", License = "", Protocols = SingBoxConfigBuilder.Supported, Platforms = new Dictionary<OsFamily, SupportLevel> { [OsFamily.Windows] = SupportLevel.Implemented } }, () => new MockEngine(), 10)
+            .Register(new EngineDescriptor { Kind = EngineKind.Xray, DisplayName = "x", Upstream = "", License = "", Protocols = XrayConfigBuilder.Supported, Platforms = new Dictionary<OsFamily, SupportLevel> { [OsFamily.Windows] = SupportLevel.Implemented } }, () => new MockEngine(), 20);
+        var raw = (json == ProtocolKind.SingBoxConfig ? SingBoxJsonHop() : XrayJsonHop()).Profile;
+        var plain = Hop("trojan://pw@two.example.com:443").Profile;
+        Assert.Empty(registry.CandidatesForChain([raw, plain], OsFamily.Windows));
+        var error = Assert.Throws<EngineException>(() =>
+            registry.CreateForChain([raw, plain], null, new AppSettings(), OsFamily.Windows));
+        Assert.Equal("error.chain.engine", error.LocalizationKey);
+    }
+
     [Fact]
     public void Xray_chain_uses_proxy_settings_between_hops()
     {
@@ -303,6 +355,69 @@ public class ChainTests
         var hops = new List<ChainHop> { Hop("trojan://pw@one.example.com:443") };
         await Assert.ThrowsAsync<EngineException>(() =>
             manager.ConnectChainAsync(Chain(hops[0].Profile.Id, Guid.NewGuid()), hops, new AppSettings { MockMode = true }));
+    }
+
+    [Fact]
+    public async Task Store_update_rejects_raw_json_hop_and_keeps_saved_chain()
+    {
+        var store = NewStore();
+        await store.LoadAsync();
+        var first = Import("trojan://pw@one.example.com:443");
+        var second = Import("trojan://pw@two.example.com:443");
+        var raw = SingBoxJsonHop();
+        await store.AddAsync([first, second, new ImportedProfile(raw.Profile, raw.Secrets)]);
+        var chain = await store.AddChainAsync("Relay", [first.Profile.Id, second.Profile.Id]);
+
+        var updated = new ProxyChain { Id = chain.Id, Name = "Relay", ProfileIds = [first.Profile.Id, raw.Profile.Id] };
+        var ex = await Assert.ThrowsAsync<EngineException>(() => store.UpdateChainAsync(updated));
+        Assert.Equal("error.chain.engine", ex.LocalizationKey);
+        Assert.Equal([first.Profile.Id, second.Profile.Id], Assert.Single(store.Chains).ProfileIds);
+    }
+
+    [Fact]
+    public async Task Connect_reports_chain_engine_error_for_legacy_json_chain()
+    {
+        var registry = new EngineRegistry(() => new MockEngine())
+            .Register(new EngineDescriptor { Kind = EngineKind.SingBox, DisplayName = "sb", Upstream = "", License = "", Protocols = SingBoxConfigBuilder.Supported, Platforms = new Dictionary<OsFamily, SupportLevel> { [OsFamily.Windows] = SupportLevel.Implemented } }, () => new MockEngine(), 10)
+            .Register(new EngineDescriptor { Kind = EngineKind.Xray, DisplayName = "x", Upstream = "", License = "", Protocols = XrayConfigBuilder.Supported, Platforms = new Dictionary<OsFamily, SupportLevel> { [OsFamily.Windows] = SupportLevel.Implemented } }, () => new MockEngine(), 20);
+        await using var manager = new ConnectionManager(
+            registry,
+            new InMemorySecretStore(),
+            new RootedAppPaths(TestDirs.New("cm-chain-json")),
+            new ConflictDetector(new FakePorts()),
+            new LogHub(new LogRedactor()),
+            os: OsFamily.Windows);
+        // A chain saved before the fix (or restored from an old backup) has no save-time
+        // rejection to rely on: connecting must fail with a clear error, not NotSupportedException.
+        var raw = SingBoxJsonHop();
+        var plain = Hop("trojan://pw@two.example.com:443");
+        var chain = new ProxyChain { Name = "Legacy", ProfileIds = [raw.Profile.Id, plain.Profile.Id] };
+        var hops = new List<ChainHop> { new(raw.Profile, raw.Secrets), plain };
+        var error = await Assert.ThrowsAsync<EngineException>(() =>
+            manager.ConnectChainAsync(chain, hops, new AppSettings { MockMode = false }));
+        Assert.Equal("error.chain.engine", error.LocalizationKey);
+    }
+
+    [Theory]
+    [InlineData(BackupImportMode.Merge)]
+    [InlineData(BackupImportMode.Replace)]
+    public async Task Backup_restore_drops_chains_with_raw_json_hops(BackupImportMode mode)
+    {
+        var folder = TestDirs.New("backup-json-chains");
+        var store = NewStoreAt(folder);
+        await store.LoadAsync();
+        var plain = Import("trojan://pw@one.example.com:443");
+        var raw = SingBoxJsonHop();
+        await store.AddAsync([plain, new ImportedProfile(raw.Profile, raw.Secrets)]);
+
+        var snapshot = await store.CaptureBackupAsync(new AppSettings());
+        snapshot.Chains.Add(new ProxyChain { Name = "Json", ProfileIds = [plain.Profile.Id, raw.Profile.Id] });
+
+        var target = NewStoreAt(TestDirs.New("backup-json-chains-target"));
+        await target.LoadAsync();
+        await target.RestoreBackupAsync(snapshot, mode);
+        Assert.Empty(target.Chains);
+        Assert.Equal(2, target.Profiles.Count);
     }
 
     [Theory]

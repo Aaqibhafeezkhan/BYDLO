@@ -377,6 +377,9 @@
   "subs.auto": "Auto-update subscriptions",
   "subs.auto.hint": "Refreshes lists whose data is older than the interval. Only on explicit schedule; disabled in Mock Mode and safe development.",
   "subs.interval": "Update interval (hours)",
+  "subs.mode.follow": "New servers: added automatically",
+  "subs.mode.selected": "New servers: ignored (only selected)",
+  "subs.mode.toggle": "Switch mode",
 
   "catalog.title": "Public servers",
   "catalog.hint": "Preview servers from community subscriptions.",

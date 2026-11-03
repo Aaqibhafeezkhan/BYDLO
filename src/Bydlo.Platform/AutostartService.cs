@@ -1,22 +1,23 @@
-using System.Runtime.Versioning;
 using System.Security;
-using Microsoft.Win32;
+using Bydlo.Core.Models;
 
 namespace Bydlo.Platform;
 
 /// <summary>Opt-in, per-user login registration. Never requires administrator privileges.</summary>
-public sealed class AutostartService
+public sealed class AutostartService(PlatformInfo? platform = null, string? executable = null, IWindowsRegistrationStore? registrations = null)
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private readonly string? _executable = Environment.ProcessPath;
+    private readonly string? _executable = executable ?? Environment.ProcessPath;
+    private readonly PlatformInfo _platform = platform ?? PlatformInfo.Current;
 
-    public bool IsSupported => (OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) &&
-        _executable is not null && !Path.GetFileNameWithoutExtension(_executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
+    public bool IsSupported => (_platform.Os is OsFamily.Windows or OsFamily.Linux or OsFamily.MacOS) &&
+        _executable is not null && !Path.GetFileNameWithoutExtension(new Bydlo.Core.Platform.TargetPathRules(_platform.Os).FileName(_executable))
+            .Equals("dotnet", StringComparison.OrdinalIgnoreCase);
 
     public void SetEnabled(bool enabled)
     {
         if (!IsSupported) { throw new PlatformNotSupportedException(); }
-        if (OperatingSystem.IsWindows())
+        if (_platform.Os == OsFamily.Windows)
         {
             SetWindows(enabled);
             return;
@@ -25,7 +26,7 @@ public sealed class AutostartService
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string path;
         string content;
-        if (OperatingSystem.IsMacOS())
+        if (_platform.Os == OsFamily.MacOS)
         {
             path = Path.Combine(home, "Library", "LaunchAgents", "org.bydlo.desktop.plist");
             content = MacRegistration(_executable!);
@@ -46,13 +47,15 @@ public sealed class AutostartService
         else { File.Delete(path); }
     }
 
-    [SupportedOSPlatform("windows")]
     private void SetWindows(bool enabled)
     {
-        using var key = Registry.CurrentUser.CreateSubKey(RunKey);
-        if (enabled) { key.SetValue("BYDLO", $"\"{_executable}\" --autostart"); }
-        else { key.DeleteValue("BYDLO", throwOnMissingValue: false); }
+        var store = registrations ?? CreateNativeRegistrations();
+        if (enabled) { store.Set(RunKey, "BYDLO", $"\"{_executable}\" --autostart"); }
+        else { store.DeleteValue(RunKey, "BYDLO"); }
     }
+
+    private static WindowsRegistrationStore CreateNativeRegistrations() => OperatingSystem.IsWindows()
+        ? new WindowsRegistrationStore() : throw new PlatformNotSupportedException();
 
     internal static string LinuxRegistration(string executable)
     {

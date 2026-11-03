@@ -136,6 +136,20 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     }
 
     [RelayCommand]
+    private async Task ToggleSubscriptionMode(SubscriptionRow row)
+    {
+        var next = row.Snapshot.Mode == SubscriptionMode.SelectedOnly
+            ? SubscriptionMode.FollowAll
+            : SubscriptionMode.SelectedOnly;
+        await Shell.Guard(async () =>
+        {
+            await Services.Profiles.SetSubscriptionModeAsync(row.Id, next);
+            OnShown();
+            Shell.ShowToast(L["toast.saved"]);
+        });
+    }
+
+    [RelayCommand]
     private async Task RenameSubscription(SubscriptionRow row)
     {
         var name = (row.Name ?? "").Trim();

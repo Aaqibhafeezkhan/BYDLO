@@ -19,6 +19,14 @@ public sealed partial class XrayConfigBuilder
         ProtocolKind.Vless, ProtocolKind.Vmess, ProtocolKind.Trojan, ProtocolKind.Shadowsocks, ProtocolKind.Socks5, ProtocolKind.Http, ProtocolKind.XrayConfig,
     };
 
+    /// <summary>
+    /// Relay chains are generated hop by hop: every hop needs a dedicated outbound branch.
+    /// Imported raw JSON configs (<see cref="ProtocolKind.XrayConfig"/>) have no such branch
+    /// and can never be chained (issue #187).
+    /// </summary>
+    public static readonly IReadOnlySet<ProtocolKind> ChainSupported = new HashSet<ProtocolKind>(
+        Supported.Where(p => p != ProtocolKind.XrayConfig));
+
     public string BuildJson(Profile profile, ProfileSecrets secrets, BuildContext ctx) =>
         Build(profile, secrets, ctx).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
 
@@ -45,7 +53,7 @@ public sealed partial class XrayConfigBuilder
 
         foreach (var hop in hops)
         {
-            if (!Supported.Contains(hop.Profile.Protocol))
+            if (!ChainSupported.Contains(hop.Profile.Protocol))
             {
                 throw new Engines.EngineException($"The {hop.Profile.Protocol} hop cannot be chained by Xray.", localizationKey: "error.chain.engine");
             }

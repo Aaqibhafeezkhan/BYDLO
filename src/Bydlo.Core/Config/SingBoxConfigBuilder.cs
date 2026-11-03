@@ -26,6 +26,14 @@ public sealed partial class SingBoxConfigBuilder
         ProtocolKind.AnyTls, ProtocolKind.ShadowTls, ProtocolKind.Naive, ProtocolKind.Ssh, ProtocolKind.SingBoxConfig,
     };
 
+    /// <summary>
+    /// Relay chains are generated hop by hop: every hop needs a dedicated outbound branch.
+    /// Imported raw JSON configs (<see cref="ProtocolKind.SingBoxConfig"/>) have no such branch
+    /// and can never be chained (issue #187).
+    /// </summary>
+    public static readonly IReadOnlySet<ProtocolKind> ChainSupported = new HashSet<ProtocolKind>(
+        Supported.Where(p => p != ProtocolKind.SingBoxConfig));
+
     /// <summary>CGNAT / mesh-VPN ranges kept outside the tunnel when <see cref="RoutingSettings.PreserveMeshVpnRanges"/> is on.</summary>
     public static readonly string[] MeshVpnRanges = ["100.64.0.0/10", "fd7a:115c:a1e3::/48"];
 
@@ -66,7 +74,7 @@ public sealed partial class SingBoxConfigBuilder
 
         foreach (var hop in hops)
         {
-            if (!Supported.Contains(hop.Profile.Protocol))
+            if (!ChainSupported.Contains(hop.Profile.Protocol))
             {
                 throw new Engines.EngineException($"The {hop.Profile.Protocol} hop cannot be chained by sing-box.", localizationKey: "error.chain.engine");
             }
