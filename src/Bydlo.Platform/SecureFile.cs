@@ -12,12 +12,7 @@ public static class SecureFile
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         if (OperatingSystem.IsWindows())
         {
-            // Create empty first, restrict ACL, then write secrets so they never sit in a world-readable file.
-            await using (var empty = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-            }
-            RestrictWindowsFile(path);
-            await File.WriteAllTextAsync(path, content, ct).ConfigureAwait(false);
+            await WriteWindowsFileAsync(path, content, RestrictWindowsFile, ct).ConfigureAwait(false);
             return;
         }
 
@@ -30,6 +25,17 @@ public static class SecureFile
         await using var fs = new FileStream(path, options);
         await using var writer = new StreamWriter(fs);
         await writer.WriteAsync(content.AsMemory(), ct).ConfigureAwait(false);
+    }
+
+    internal static async Task WriteWindowsFileAsync(string path, string content,
+        Action<string> restrictAccess, CancellationToken ct)
+    {
+        // Create empty first, restrict ACL, then write secrets so they never sit in a world-readable file.
+        await using (var empty = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+        }
+        restrictAccess(path);
+        await File.WriteAllTextAsync(path, content, ct).ConfigureAwait(false);
     }
 
     public static void DeleteQuietly(string path)
@@ -54,13 +60,12 @@ public static class SecureFile
     {
         var security = new FileSecurity();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-        var current = WindowsIdentity.GetCurrent();
-        if (current?.User is { } owner)
-        {
-            security.SetOwner(owner);
-            security.AddAccessRule(new FileSystemAccessRule(owner,
-                FileSystemRights.FullControl, AccessControlType.Allow));
-        }
+        using var current = WindowsIdentity.GetCurrent();
+        var user = current.User ?? throw new UnauthorizedAccessException("Cannot identify the current Windows user.");
+        // Only replace the DACL. Setting the owner also requests WRITE_OWNER, which a
+        // non-elevated token may lack even when the file already belongs to this user.
+        security.AddAccessRule(new FileSystemAccessRule(user,
+            FileSystemRights.FullControl, AccessControlType.Allow));
         security.AddAccessRule(new FileSystemAccessRule(
             new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
             FileSystemRights.FullControl, AccessControlType.Allow));
