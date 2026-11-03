@@ -659,6 +659,7 @@
   "error.engine.tunnel.admin": "Для создания туннеля нужны права администратора.",
   "error.engine.amnezia.missing": "Отсутствует встроенный AmneziaWG. Скачайте полный релиз BYDLO для своей платформы.",
   "error.engine.wireguard.missing": "Установите WireGuard (wireguard.com/install) или используйте движок sing-box.",
+  "error.engine.wireguard.unsafe": "Конфигурация нативного WireGuard содержит неподдерживаемую директиву. Удалите скрипты и неподдерживаемые параметры перед подключением.",
   "error.engine.tunnel.platform": "Поддержка нативного WireGuard / AmneziaWG на этой платформе запланирована.",
   "home.duration": "Время сеанса",
   "import.manual": "Ввести конфигурацию вручную",

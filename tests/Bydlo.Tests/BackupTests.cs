@@ -174,7 +174,7 @@ public sealed class BackupTests
         var first = Data();
         await store.RestoreBackupAsync(first, BackupImportMode.Replace);
         var next = Data();
-        // Force failure after incoming credentials were saved and obsolete credentials deleted.
+        // Force failure after incoming credentials were saved, before obsolete credentials are deleted.
         Directory.CreateDirectory(path + ".tmp");
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => store.RestoreBackupAsync(next, BackupImportMode.Replace));
         await store.LoadAsync();
@@ -229,13 +229,35 @@ public sealed class BackupTests
         Assert.Null((await store.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId))["password"]);
     }
 
+    [Fact]
+    public async Task Rollback_continues_after_one_credential_cannot_be_restored()
+    {
+        var path = Path.Combine(TestDirs.New("backup-partial-rollback"), "profiles.json");
+        var secrets = new FailingSecretStore();
+        var store = new ProfileStore(path, secrets);
+        var first = new Profile { Name = "First" };
+        var second = new Profile { Name = "Second" };
+        ProfileSecrets Password(string value) => new() { Values = { [Keys.Password] = value } };
+        await store.AddAsync([new(first, Password("old-first")), new(second, Password("old-second"))]);
+        var archive = new BackupData { Profiles = [new(first, Password("new-first")), new(second, Password("new-second"))] };
+        Directory.CreateDirectory(path + ".tmp");
+        secrets.RejectedPassword = "old-first";
+
+        var error = await Assert.ThrowsAsync<AggregateException>(() => store.RestoreBackupAsync(archive, BackupImportMode.Merge));
+        Assert.Equal(2, error.InnerExceptions.Count);
+        Assert.Equal("old-second", (await secrets.LoadAsync(second.Id.ToString()))[Keys.Password]);
+    }
+
     private sealed class FailingSecretStore : ISecretStore
     {
         private readonly InMemorySecretStore _inner = new();
         public int SavesUntilFailure { get; set; } = -1;
+        public string? RejectedPassword { get; set; }
         public string ProtectionDescription => "Test";
         public Task SaveAsync(string id, ProfileSecrets secrets, CancellationToken ct = default)
         {
+            if (RejectedPassword is not null && secrets[Keys.Password] == RejectedPassword)
+            { throw new IOException("Simulated rollback failure."); }
             if (SavesUntilFailure == 0) { SavesUntilFailure = -1; throw new IOException("Simulated storage failure."); }
             if (SavesUntilFailure > 0) { SavesUntilFailure--; }
             return _inner.SaveAsync(id, secrets, ct);

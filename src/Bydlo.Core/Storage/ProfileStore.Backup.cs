@@ -61,26 +61,44 @@ public sealed partial class ProfileStore
             var obsolete = mode == BackupImportMode.Replace
                 ? _doc.Profiles.Select(p => p.Id.ToString()).Concat(_doc.Subscriptions.Select(s => SubscriptionSecretId(s.Id))).Where(id => !writes.ContainsKey(id)).ToList()
                 : [];
+            incoming.PendingSecretDeletes = incoming.PendingSecretDeletes
+                .Concat(obsolete).Except(writes.Keys, StringComparer.Ordinal).ToList();
             var original = new Dictionary<string, ProfileSecrets>();
-            foreach (var id in writes.Keys.Concat(obsolete))
+            foreach (var id in writes.Keys)
             { original.Add(id, await secrets.LoadAsync(id, ct).ConfigureAwait(false)); }
+            var attempted = new List<string>();
             try
             {
-                foreach (var (id, value) in writes) { await secrets.SaveAsync(id, value, ct).ConfigureAwait(false); }
-                foreach (var id in obsolete) { await secrets.DeleteAsync(id, ct).ConfigureAwait(false); }
+                foreach (var (id, value) in writes)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    attempted.Add(id);
+                    await secrets.SaveAsync(id, value, ct).ConfigureAwait(false);
+                }
                 await JsonDefaults.WriteAtomicAsync(path, incoming, ct).ConfigureAwait(false);
                 _doc = incoming;
             }
-            catch
+            catch (Exception failure)
             {
-                // A cancelled import must still restore credentials, using an uncancelled token.
-                foreach (var (id, value) in original)
+                var errors = new List<Exception> { failure };
+                foreach (var id in attempted)
                 {
-                    if (value.Values.Count == 0) { await secrets.DeleteAsync(id, CancellationToken.None).ConfigureAwait(false); }
-                    else { await secrets.SaveAsync(id, value, CancellationToken.None).ConfigureAwait(false); }
+                    try
+                    {
+                        var value = original[id];
+                        if (value.Values.Count == 0) { await secrets.DeleteAsync(id, CancellationToken.None).ConfigureAwait(false); }
+                        else { await secrets.SaveAsync(id, value, CancellationToken.None).ConfigureAwait(false); }
+                    }
+                    catch (Exception rollbackFailure) { errors.Add(rollbackFailure); }
+                }
+                if (errors.Count > 1)
+                {
+                    throw new AggregateException("Backup restore and credential rollback failed.", errors);
                 }
                 throw;
             }
+
+            await DeleteUnreferencedSecretsAsync(obsolete).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
     }

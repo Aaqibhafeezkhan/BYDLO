@@ -11,6 +11,23 @@ namespace Bydlo.Tests;
 public class TunnelServiceEngineTests
 {
     [Theory]
+    [InlineData(OsFamily.Linux, "PreUp")]
+    [InlineData(OsFamily.MacOS, "pOsTdOwN")]
+    [InlineData(OsFamily.Windows, "PostUp")]
+    public async Task Native_engine_rejects_stored_script_hooks_before_launch(OsFamily os, string directive)
+    {
+        var runner = new FakeProcessRunner();
+        await using var engine = CreateEngine(runner, os);
+        var request = Request();
+        request.Secrets.Values[Keys.RawConfig] += $"\n{directive} = audit-inert-marker";
+
+        var error = await Assert.ThrowsAsync<EngineException>(() => engine.StartAsync(request));
+        Assert.Equal("error.engine.wireguard.unsafe", error.LocalizationKey);
+        Assert.Empty(runner.Completed);
+        Assert.Empty(Directory.EnumerateFiles(request.WorkDirectory));
+    }
+
+    [Theory]
     [InlineData(OsFamily.Windows, "exit")]
     [InlineData(OsFamily.Windows, "exception")]
     [InlineData(OsFamily.Windows, "cancel")]

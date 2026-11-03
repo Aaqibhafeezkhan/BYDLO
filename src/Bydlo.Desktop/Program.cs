@@ -16,8 +16,9 @@ internal static class Program
             return;
         }
 
+        var dataDirectory = Bydlo.Platform.AppPathsFactory.Create().DataDirectory;
         using var activation = OperatingSystem.IsWindows() ? new WindowsActivationBroker(
-            Bydlo.Platform.AppPathsFactory.Create().DataDirectory, Bydlo.App.App.PendingActivations.Enqueue) : null;
+            dataDirectory, Bydlo.App.App.PendingActivations.Enqueue) : null;
         if (activation is { IsPrimary: false })
         {
             try
@@ -32,6 +33,25 @@ internal static class Program
             return;
         }
 
+        // Keep the lock file in place. Deleting it would let another process lock a different inode.
+        FileStream? dataLock = null;
+        if (!OperatingSystem.IsWindows())
+        {
+            try
+            {
+                Directory.CreateDirectory(dataDirectory);
+                dataLock = new FileStream(Path.Combine(dataDirectory, "desktop.lock"),
+                    FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine("BYDLO could not lock its data directory: " + ex.Message);
+                Environment.ExitCode = 1;
+                return;
+            }
+        }
+
+        using var exclusiveDataAccess = dataLock;
         activation?.Listen();
         Bydlo.App.App.Args = args;
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
