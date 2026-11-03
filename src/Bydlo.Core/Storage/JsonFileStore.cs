@@ -96,6 +96,9 @@ internal sealed class ProfileDocument
     public List<Subscription> Subscriptions { get; set; } = [];
 
     public List<ProxyChain> Chains { get; set; } = [];
+
+    // IDs only: retain failed secret cleanup across retries and restarts.
+    public List<string> PendingSecretDeletes { get; set; } = [];
 }
 
 /// <summary>Profile list persisted as JSON; secrets are delegated to <see cref="ISecretStore"/>.</summary>
@@ -118,6 +121,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
         _doc.Profiles ??= [];
         _doc.Subscriptions ??= [];
         _doc.Chains ??= [];
+        _doc.PendingSecretDeletes ??= [];
     }
 
     public async Task<IReadOnlyList<Profile>> AddAsync(IEnumerable<ImportedProfile> imported, Guid? subscriptionId = null, CancellationToken ct = default)
@@ -139,7 +143,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     added.Add(item.Profile);
                 }
-                var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. added], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
+                var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles, .. added], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
                 await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
                 _doc = next;
             }
@@ -171,7 +175,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
                 return;
             }
 
-            var next = new ProfileDocument { Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
+            var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
             next.Profiles[index] = profile;
             var id = profile.Id.ToString();
             var previous = updatedSecrets is null ? null : await secrets.LoadAsync(id, ct).ConfigureAwait(false);
@@ -204,12 +208,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (_doc.Profiles.RemoveAll(p => p.Id == id) > 0)
-            {
-                await secrets.DeleteAsync(id.ToString(), ct).ConfigureAwait(false);
-                DetachFromChainsUnsafe(id);
-                await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
-            }
+            await RemoveProfilesAsync([id], null, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -266,7 +265,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
                     item.Profile.SubscriptionId = sub.Id;
                     sub.SourceOptions!.Add(item.Profile.Id, new(item.Profile.Options, StringComparer.OrdinalIgnoreCase));
                 }
-                var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. profiles.Select(p => p.Profile)], Subscriptions = [.. _doc.Subscriptions, sub], Chains = [.. _doc.Chains] };
+                var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles, .. profiles.Select(p => p.Profile)], Subscriptions = [.. _doc.Subscriptions, sub], Chains = [.. _doc.Chains] };
                 await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
                 _doc = next;
             }
@@ -307,15 +306,8 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            foreach (var old in _doc.Profiles.Where(p => p.SubscriptionId == subscriptionId).ToList())
-            {
-                _doc.Profiles.Remove(old);
-                await secrets.DeleteAsync(old.Id.ToString(), ct).ConfigureAwait(false);
-                DetachFromChainsUnsafe(old.Id);
-            }
-            _doc.Subscriptions.RemoveAll(s => s.Id == subscriptionId);
-            await secrets.DeleteAsync(SubscriptionSecretId(subscriptionId), ct).ConfigureAwait(false);
-            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+            var ids = _doc.Profiles.Where(p => p.SubscriptionId == subscriptionId).Select(p => p.Id).ToHashSet();
+            await RemoveProfilesAsync(ids, subscriptionId, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -324,4 +316,39 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
     }
 
     private static string SubscriptionSecretId(Guid id) => $"subscription:{id}";
+
+    // Caller holds _gate. Publish a detached snapshot before deleting any credentials.
+    private async Task RemoveProfilesAsync(HashSet<Guid> ids, Guid? subscriptionId, CancellationToken ct)
+    {
+        var next = new ProfileDocument
+        {
+            Version = _doc.Version,
+            Profiles = _doc.Profiles.Where(p => !ids.Contains(p.Id)).ToList(),
+            Subscriptions = _doc.Subscriptions.Where(s => s.Id != subscriptionId).ToList(),
+            Chains = _doc.Chains.Select(c => new ProxyChain
+            {
+                Id = c.Id, Name = c.Name, PreferredEngine = c.PreferredEngine, AddedAt = c.AddedAt, IsFavorite = c.IsFavorite,
+                ProfileIds = c.ProfileIds.Where(id => !ids.Contains(id)).ToList(),
+            }).Where(c => c.ProfileIds.Count >= ChainValidator.MinHops).ToList(),
+            PendingSecretDeletes = _doc.PendingSecretDeletes
+                .Concat(ids.Select(id => id.ToString()))
+                .Concat(subscriptionId is { } subId ? [SubscriptionSecretId(subId)] : Array.Empty<string>())
+                .Distinct(StringComparer.Ordinal).ToList(),
+        };
+        await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+        _doc = next;
+
+        // Once committed, caller cancellation must not interrupt cleanup. Keep the persisted
+        // queue on any failure, so another removal (including after restart) can retry it.
+        var active = next.Profiles.Select(p => p.Id.ToString())
+            .Concat(next.Subscriptions.Select(s => SubscriptionSecretId(s.Id))).ToHashSet(StringComparer.Ordinal);
+        foreach (var secretId in next.PendingSecretDeletes.Where(id => !active.Contains(id)))
+        {
+            await secrets.DeleteAsync(secretId, CancellationToken.None).ConfigureAwait(false);
+        }
+        var pending = next.PendingSecretDeletes;
+        next.PendingSecretDeletes = [];
+        try { await JsonDefaults.WriteAtomicAsync(path, next, CancellationToken.None).ConfigureAwait(false); }
+        catch { next.PendingSecretDeletes = pending; throw; }
+    }
 }
