@@ -12,9 +12,9 @@ BYDLO не изобретает протоколы заново: он управ
 AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-discord-youtube) и
 [tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) от Flowseal — через один понятный интерфейс.
 
-> **Статус: v0.1 — первая публичная версия.** Приложение собирается, его логика покрыта изолированными тестами,
-> для агентских проверок интерфейса используется явный Mock-режим. Реальные туннели авторы **ещё не проверили** на всех платформах —
-> см. [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) и [docs/TESTING.md](docs/TESTING.md).
+> **Статус: v0.1 — первая публичная версия.** Логика покрыта изолированными тестами, а реальные подключения мейнтейнер
+> проверяет вручную: Zapret и TgWsProxy уже работают в реальной сети на Windows x64. Что проверено на каждой платформе,
+> а что ещё ждёт ручного прогона, — в [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) и [docs/TESTING.md](docs/TESTING.md).
 
 ## Возможности
 

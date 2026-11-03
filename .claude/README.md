@@ -8,6 +8,7 @@
 | `hooks/stop-build-check.sh` | Stop | Build + isolated unit tests via `scripts/check.sh` (safety lock on). Skips when nothing changed. |
 | `skills/safe-check/SKILL.md` | skill | How to build and test safely. |
 | `skills/add-engine/SKILL.md` | skill | Checklist for adding a protocol / engine adapter. |
+| `skills/dependency-audit/SKILL.md` | skill | Read-only audit of dependencies and upstream engines; manual invocation only (`/dependency-audit`). |
 
 Hooks are Bash scripts. On Windows they need Git Bash (or another bash) on `PATH`.
 If a client does not execute registered hooks, run `bash scripts/check.sh` manually.
