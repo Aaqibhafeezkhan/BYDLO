@@ -78,7 +78,7 @@ public sealed partial class GitHubContributorsClient(Func<HttpMessageHandler>? h
             NetworkSafetyGuard.EnsureAllowed("load contributors");
         }
         using var http = new HttpClient(handlerFactory?.Invoke() ?? new SocketsHttpHandler()) { Timeout = TimeSpan.FromSeconds(15) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("BYDLO/0.1");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd(AppVersion.UserAgent);
         http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         using var response = await http.GetAsync(ContributorsUrl, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();

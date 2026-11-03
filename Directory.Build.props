@@ -8,7 +8,7 @@
     <WarningsAsErrors>$(WarningsAsErrors);nullable;CA1416</WarningsAsErrors>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Product>BYDLO</Product>
     <Company>BYDLO contributors</Company>
     <Copyright>Copyright © BYDLO contributors</Copyright>

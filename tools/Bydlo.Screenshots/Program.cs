@@ -647,15 +647,15 @@ if (disclosure.IsExpanded) throw new InvalidOperationException("Disclosure did n
 modeWindow.Close();
 Pump(4000); // Let the demo-import toast disappear before documenting the resting UI.
 
-foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled })
+foreach (var theme in new[] { ThemePreference.Light, ThemePreference.Oled })
 {
     services.Theme.Apply(theme);
     shell.Navigate("home");
     Shoot($"home-{theme.ToString().ToLowerInvariant()}", 1180, 780);
 }
 
-services.Settings.Theme = ThemePreference.Purple;
-services.Theme.Apply(ThemePreference.Purple);
+services.Settings.Theme = ThemePreference.Oled;
+services.Theme.Apply(ThemePreference.Oled);
 
 // Simulated connection (Mock engine) for the "connected" state.
 services.Settings.MockScenario = MockScenario.Success;
