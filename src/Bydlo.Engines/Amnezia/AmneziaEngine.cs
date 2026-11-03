@@ -100,10 +100,13 @@ public sealed class AmneziaEngine(IProcessRunner runner, LogRedactor redactor, E
         return Dns.GetHostAddressesAsync(host, ct);
     }
 
-    private static async Task ConfigureNetworkAsync(Func<Task> action)
+    private async Task ConfigureNetworkAsync(Func<Task> action)
     {
         try { await action().ConfigureAwait(false); }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
-        { throw new EngineException("AmneziaWG network setup failed; check privileges, system tools and the recovery journal.", ex, "error.engine.amnezia.network"); }
+        {
+            throw new EngineException("AmneziaWG network setup failed; check privileges, system tools and the recovery journal.", ex,
+                network.TunnelName == "utun" ? "error.engine.amnezia.macos.network" : "error.engine.amnezia.network");
+        }
     }
 }

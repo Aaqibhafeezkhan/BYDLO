@@ -48,7 +48,8 @@ internal sealed class MacAmneziaNetwork(IProcessRunner runner, string directory,
         }
         catch
         {
-            Release();
+            // Failed recovery still belongs to this session until cleanup is retried.
+            if (!HasPendingRecovery) { Release(); }
             throw;
         }
         finally { _gate.Release(); }

@@ -411,6 +411,7 @@
   "error.engine.wireguard.reserved": "The WireGuard 'reserved' option must be three bytes, e.g. '1,2,3'.",
   "error.engine.amnezia.legacy": "The custom AmneziaWG path selects an old client. Clear that path or select the bundled bydlo-amneziawg host.",
   "error.engine.amnezia.network": "AmneziaWG network setup failed. Check administrator rights, system tools and the recovery journal; an existing bydlo-awg interface or reserved route can also block setup.",
+  "error.engine.amnezia.macos.network": "AmneziaWG network setup failed on macOS. Check root privileges, ifconfig, route, networksetup and the recovery journal amnezia-macos-network.json. Retry disconnecting to restore saved DNS and peer routes.",
   "tools.engines.downloading": "Downloading",
   "tools.engines.installed": "{0} installed.",
   "engine.ready": "Ready",
