@@ -485,6 +485,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
                 ?? throw new InvalidDataException("Subscription not found.");
             if (sub.Mode == mode)
