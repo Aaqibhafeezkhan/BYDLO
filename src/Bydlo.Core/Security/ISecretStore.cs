@@ -2,7 +2,7 @@ using Bydlo.Core.Models;
 
 namespace Bydlo.Core.Security;
 
-/// <summary>Platform-protected storage for credentials (DPAPI on Windows, encrypted file elsewhere).</summary>
+/// <summary>Platform-protected credentials (DPAPI, Keychain, Secret Service or encrypted-file fallback).</summary>
 public interface ISecretStore
 {
     /// <summary>Human readable description of the protection, shown in Settings → Advanced.</summary>

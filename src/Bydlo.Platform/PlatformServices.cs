@@ -113,23 +113,25 @@ public static class SecretStoreFactory
             return new DpapiSecretStore(directory);
         }
 
-        var fallback = new AesFileSecretStore(directory);
-        if (isolated || NetworkSafetyGuard.IsLocked)
+        return CreatePortable(paths, isolated || NetworkSafetyGuard.IsLocked, scope =>
+            OperatingSystem.IsMacOS() ? new MacKeychainBackend(scope)
+                : OperatingSystem.IsLinux() && !OperatingSystem.IsAndroid() ? new LinuxSecretBackend(scope) : null);
+    }
+
+    // Backend creation is deferred so isolated runs never access the user's system vault.
+    internal static ISecretStore CreatePortable(IAppPaths paths, bool isolated,
+        Func<string, ISystemSecretBackend?> createBackend)
+    {
+        var fallback = new AesFileSecretStore(Path.Combine(paths.DataDirectory, "secrets"));
+        if (isolated)
         {
             return fallback;
         }
 
         var scope = "BYDLO-" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(Path.GetFullPath(paths.DataDirectory))));
-        if (OperatingSystem.IsMacOS())
-        {
-            return new MigratingSecretStore(new MacKeychainBackend(scope), fallback);
-        }
-        if (OperatingSystem.IsLinux())
-        {
-            return new MigratingSecretStore(new LinuxSecretBackend(scope), fallback);
-        }
-        return fallback;
+        var backend = createBackend(scope);
+        return backend is null ? fallback : new MigratingSecretStore(backend, fallback);
     }
 
     public static bool IsUsingSystemFallback(ISecretStore store) => store is MigratingSecretStore { UsingFallback: true };

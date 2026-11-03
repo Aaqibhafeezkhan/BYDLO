@@ -3,6 +3,7 @@
   "import.clash.skipped": "Proxy #{0} is unsupported or invalid.",
   "import.json.unsafe": "The JSON configuration contains unsupported or unsafe settings.",
   "settings.secrets.locked": "Unlock the system credential store to access this secret.",
+  "settings.secrets.missing": "This secret is missing from system credential storage. Restore a backup or import the profile again.",
   "settings.secrets.fallback": "System credential storage is unavailable. Using encrypted files.",
   "profile.dpi.title": "TLS and multiplexing",
   "profile.dpi.defaults": "Default TLS and mux settings",
