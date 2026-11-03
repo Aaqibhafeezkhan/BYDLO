@@ -534,7 +534,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         try
         {
             if (await Bydlo.Core.Platform.ElevatedRestart.TryAsync(Services.Privileges, Services.Args,
-                Environment.ProcessId, Services.Connections.StopAllAsync))
+                Environment.ProcessId, Services.Connections.StopAllAsync, Services.ForcedMock, Services.Paths.DataDirectory))
             {
                 Environment.Exit(0);
             }

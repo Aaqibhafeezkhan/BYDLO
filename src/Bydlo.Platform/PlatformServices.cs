@@ -10,9 +10,15 @@ public static class AppPathsFactory
 {
     public const string DataDirVariable = "BYDLO_DATA_DIR";
 
-    public static IAppPaths Create()
+    public static IAppPaths Create(IReadOnlyList<string>? args = null)
     {
-        var overrideDir = Environment.GetEnvironmentVariable(DataDirVariable);
+        var directoryArgument = args?.LastOrDefault(a => a.StartsWith(ElevatedRestart.DataDirectoryArgument, StringComparison.Ordinal));
+        var overrideDir = directoryArgument is null ? Environment.GetEnvironmentVariable(DataDirVariable)
+            : directoryArgument[ElevatedRestart.DataDirectoryArgument.Length..];
+        if (directoryArgument is not null && string.IsNullOrWhiteSpace(overrideDir))
+        {
+            throw new ArgumentException("The data directory argument must not be empty.", nameof(args));
+        }
         if (!string.IsNullOrWhiteSpace(overrideDir))
         {
             return Ensure(new RootedAppPaths(Path.GetFullPath(overrideDir)));
@@ -75,10 +81,11 @@ public sealed class PrivilegeService : IPrivilegeService
 {
     public bool IsElevated => Environment.IsPrivilegedProcess;
 
-    public bool CanRestartElevated => OperatingSystem.IsWindows();
+    public bool CanRestartElevated => OperatingSystem.IsWindows() && !NetworkSafetyGuard.IsLocked;
 
     public bool TryRestartElevated(IReadOnlyList<string> args)
     {
+        if (NetworkSafetyGuard.IsLocked) { return false; }
         if (!OperatingSystem.IsWindows() || Environment.ProcessPath is not { } exe)
         {
             return false;
