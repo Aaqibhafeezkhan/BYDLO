@@ -102,6 +102,7 @@ public static class BackupArchive
         settings.OnboardingCompleted = current.OnboardingCompleted;
         // Custom theme files live next to the data directory and are not part of the backup.
         settings.CustomThemeId = current.CustomThemeId;
+        settings.MigrateLegacyTheme();
         if (settings.Theme == ThemePreference.Custom && settings.CustomThemeId is null)
         {
             settings.Theme = ThemePreference.System;

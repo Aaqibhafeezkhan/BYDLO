@@ -3,6 +3,8 @@ namespace Bydlo.Core.Models;
 public enum ThemePreference
 {
     System,
+
+    /// <summary>Legacy built-in theme; now a gallery JSON theme. Migrated to <see cref="System"/> on load (issue #134).</summary>
     Purple,
     Light,
     Oled,
@@ -44,7 +46,7 @@ public sealed class AppSettings
 
     public bool SuggestClipboardLinks { get; set; } = true;
 
-    /// <summary>Fresh installs follow the OS (Light or Black); saved choices, Purple included, are kept as stored.</summary>
+    /// <summary>Fresh installs follow the OS (Light or Black).</summary>
     public ThemePreference Theme { get; set; } = ThemePreference.System;
 
     /// <summary>Installed custom theme id (file <c>themes/&lt;id&gt;.json</c>). Used only when <see cref="Theme"/> is Custom.</summary>
@@ -114,6 +116,20 @@ public sealed class AppSettings
     public bool CheckForUpdates { get; set; } = true;
 
     public DateTimeOffset? LastUpdateCheck { get; set; }
+
+    /// <summary>
+    /// Purple is no longer built in (issue #134): it is installed from the theme gallery like any other JSON theme.
+    /// Settings and backups from earlier versions that stored it switch to System. Returns true when changed.
+    /// </summary>
+    public bool MigrateLegacyTheme()
+    {
+        if (Theme != ThemePreference.Purple)
+        {
+            return false;
+        }
+        Theme = ThemePreference.System;
+        return true;
+    }
 
     /// <summary>Unacknowledged stable release, retained across startup check intervals.</summary>
     public Diagnostics.GitHubRelease? PendingUpdate { get; set; }

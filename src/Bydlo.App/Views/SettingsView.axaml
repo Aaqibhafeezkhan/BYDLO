@@ -61,7 +61,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
           <Expander x:Name="CustomThemesExpander" Header="{l:T theme.custom.title}" HorizontalAlignment="Stretch"
-                    IsExpanded="{Binding IsCustomGroupActive, Mode=OneWay}">
+                    IsExpanded="{Binding ThemeCustom, Mode=OneWay}">
             <StackPanel Spacing="10">
               <TextBlock Classes="muted" Text="{l:T theme.custom.hint}" TextWrapping="Wrap" />
               <Border Classes="banner" IsVisible="{Binding HasCustomThemeWarning}">
@@ -83,7 +83,7 @@
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                           <Button Classes="ghost" Content="{l:T theme.custom.apply}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyCustomThemeCommand}" CommandParameter="{Binding Id}" />
-                          <Button Classes="ghost" Content="{l:T theme.custom.delete}" IsVisible="{Binding CanDelete}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}" CommandParameter="{Binding Id}" />
+                          <Button Classes="ghost" Content="{l:T theme.custom.delete}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}" CommandParameter="{Binding Id}" />
                         </StackPanel>
                       </Grid>
                     </Border>

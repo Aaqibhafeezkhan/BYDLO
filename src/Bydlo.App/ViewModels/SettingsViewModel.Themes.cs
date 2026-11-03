@@ -11,23 +11,16 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Bydlo.App.ViewModels;
 
-/// <summary>Theme in the custom group with the active marker (issue #41); built-in Purple cannot be deleted (issue #134).</summary>
-public sealed class CustomThemeRow(string id, string name, string author, bool isActive, bool isBuiltIn = false) : ObservableObject
+/// <summary>Installed custom theme with the active marker (issue #41).</summary>
+public sealed class CustomThemeRow(CustomThemeDocument doc, bool isActive) : ObservableObject
 {
-    public CustomThemeRow(CustomThemeDocument doc, bool isActive)
-        : this(doc.Id, doc.Name, doc.Author, isActive)
-    {
-    }
+    public string Id => doc.Id;
 
-    public string Id => id;
+    public string Name => doc.Name;
 
-    public string Name => name;
-
-    public string Author => author;
+    public string Author => doc.Author;
 
     public bool IsActive => isActive;
-
-    public bool CanDelete => !isBuiltIn;
 }
 
 /// <summary>One downloadable theme from the repository gallery.</summary>
@@ -46,13 +39,7 @@ public sealed class GalleryThemeRow(ThemeGalleryEntry entry)
 public sealed partial class SettingsViewModel
 {
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
-    /// <summary>Row id of the built-in Purple theme; the colon keeps it apart from installed theme ids.</summary>
-    public const string BuiltInPurpleId = "builtin:purple";
-
     public bool ThemeCustom => Theme == ThemePreference.Custom;
-
-    /// <summary>Purple and installed JSON themes are listed together, outside the base theme switch.</summary>
-    public bool IsCustomGroupActive => Theme is ThemePreference.Purple or ThemePreference.Custom;
 
     public ObservableCollection<CustomThemeRow> InstalledThemes { get; } = [];
 
@@ -69,8 +56,7 @@ public sealed partial class SettingsViewModel
     public void RefreshCustomThemes()
     {
         var active = Theme == ThemePreference.Custom ? Services.Settings.CustomThemeId : null;
-        var purple = new CustomThemeRow(BuiltInPurpleId, L["theme.purple"], L["theme.builtin"], Theme == ThemePreference.Purple, isBuiltIn: true);
-        InstalledThemes.ReplaceWith(CustomThemeStore.ListAll(ThemesDirectory).Select(d => new CustomThemeRow(d, d.Id == active)).Prepend(purple));
+        InstalledThemes.ReplaceWith(CustomThemeStore.ListAll(ThemesDirectory).Select(d => new CustomThemeRow(d, d.Id == active)));
         UpdateContrastWarning();
     }
 
@@ -150,11 +136,6 @@ public sealed partial class SettingsViewModel
     [RelayCommand]
     private void ApplyCustomTheme(string id)
     {
-        if (id == BuiltInPurpleId)
-        {
-            Theme = ThemePreference.Purple;
-            return;
-        }
         var doc = CustomThemeStore.TryLoad(ThemesDirectory, id);
         if (doc is null) { Shell.ShowToast(L["theme.custom.broken"], isError: true); return; }
         ApplyCustomDocument(doc);
@@ -186,7 +167,6 @@ public sealed partial class SettingsViewModel
     [RelayCommand]
     private void DeleteCustomTheme(string id)
     {
-        if (id == BuiltInPurpleId) { return; }
         if (!CustomThemeStore.Exists(ThemesDirectory, id))
         {
             RefreshCustomThemes();

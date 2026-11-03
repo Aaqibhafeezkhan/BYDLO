@@ -14,7 +14,8 @@ public sealed class BackupTests
 
     [Theory]
     [InlineData(ThemePreference.Custom, ThemePreference.System)]
-    [InlineData(ThemePreference.Purple, ThemePreference.Purple)]
+    [InlineData(ThemePreference.Purple, ThemePreference.System)]
+    [InlineData(ThemePreference.Oled, ThemePreference.Oled)]
     public void Restored_theme_without_local_custom_file_follows_system(ThemePreference stored, ThemePreference expected)
     {
         var data = Data();

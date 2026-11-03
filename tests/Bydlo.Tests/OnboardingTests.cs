@@ -17,16 +17,25 @@ public class OnboardingTests
     }
 
     [Fact]
-    public void Fresh_install_follows_system_theme_and_saved_purple_is_kept()
+    public void Fresh_install_follows_system_theme()
     {
         Assert.Equal(ThemePreference.System, new AppSettings().Theme);
         Assert.Equal(ThemePreference.System, JsonSerializer.Deserialize<AppSettings>("{}", JsonDefaults.Options)!.Theme);
-        // Users of earlier versions keep the stored choice; Purple moved to the custom group, not away (issue #134).
-        var saved = JsonSerializer.Deserialize<AppSettings>("""{"Theme":"Purple"}""", JsonDefaults.Options)!;
-        Assert.Equal(ThemePreference.Purple, saved.Theme);
-        Assert.Contains("\"Purple\"", JsonSerializer.Serialize(saved, JsonDefaults.Options), StringComparison.Ordinal);
-        var oled = JsonSerializer.Deserialize<AppSettings>("""{"Theme":"Oled"}""", JsonDefaults.Options)!;
-        Assert.Equal(ThemePreference.Oled, oled.Theme);
+    }
+
+    [Theory]
+    [InlineData("Purple", ThemePreference.System)]
+    [InlineData("Oled", ThemePreference.Oled)]
+    [InlineData("Light", ThemePreference.Light)]
+    [InlineData("System", ThemePreference.System)]
+    public async Task Saved_theme_loads_and_legacy_purple_switches_to_system(string stored, ThemePreference expected)
+    {
+        // Purple is now a gallery JSON theme (issue #134); it is never installed automatically.
+        var path = Path.Combine(TestDirs.New("settings"), "settings.json");
+        await File.WriteAllTextAsync(path, $$"""{"Theme":"{{stored}}","CustomThemeId":null}""");
+        var settings = await new SettingsStore(path).LoadAsync();
+        Assert.Equal(expected, settings.Theme);
+        Assert.Null(settings.CustomThemeId);
     }
 
     [Fact]

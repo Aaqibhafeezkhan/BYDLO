@@ -53,8 +53,12 @@ public sealed class SettingsStore(string path)
 #pragma warning restore CA1001
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
-    public async Task<AppSettings> LoadAsync(CancellationToken ct = default) =>
-        await JsonDefaults.ReadAsync<AppSettings>(path, ct).ConfigureAwait(false) ?? new AppSettings();
+    public async Task<AppSettings> LoadAsync(CancellationToken ct = default)
+    {
+        var settings = await JsonDefaults.ReadAsync<AppSettings>(path, ct).ConfigureAwait(false) ?? new AppSettings();
+        settings.MigrateLegacyTheme();
+        return settings;
+    }
 
     public async Task SaveAsync(AppSettings settings, CancellationToken ct = default)
     {

@@ -46,8 +46,6 @@ public sealed partial class SettingsViewModel : PageViewModel
     public SettingsViewModel(MainViewModel shell)
         : base(shell)
     {
-        // The built-in Purple row carries a localized name.
-        Loc.Instance.PropertyChanged += (_, _) => RefreshCustomThemes();
         var s = Services.Settings;
         _theme = s.Theme;
         _language = s.Language;
@@ -362,7 +360,6 @@ public sealed partial class SettingsViewModel : PageViewModel
         OnPropertyChanged(nameof(ThemeOled));
         OnPropertyChanged(nameof(ThemeSystem));
         OnPropertyChanged(nameof(ThemeCustom));
-        OnPropertyChanged(nameof(IsCustomGroupActive));
         RefreshCustomThemes();
     }
 

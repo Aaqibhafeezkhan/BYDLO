@@ -1,5 +1,11 @@
 [
   {
+    "id": "purple",
+    "name": "Purple",
+    "author": "BYDLO",
+    "url": "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/purple.json"
+  },
+  {
     "id": "ocean",
     "name": "Ocean",
     "author": "BYDLO",
