@@ -89,7 +89,7 @@ public sealed partial class HomeViewModel : PageViewModel
             return Shell.Primary.Engine switch
             {
                 EngineKind.SingBox => Loc.T("home.hint.proxy", Shell.Primary.LocalProxyPort),
-                EngineKind.Xray => Loc.T("home.hint.proxy.xray", Shell.Primary.LocalProxyPort, Shell.Primary.LocalProxyPort + 1),
+                EngineKind.Xray => Loc.T("home.hint.proxy.xray", Shell.Primary.LocalProxyPort, Bydlo.Core.Connection.ProxyPorts.HttpPort(Shell.Primary.LocalProxyPort, EngineKind.Xray)),
                 _ => L["home.hint.connected"],
             };
         }

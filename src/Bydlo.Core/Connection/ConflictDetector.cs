@@ -31,6 +31,27 @@ public sealed class ConflictDetector(IPortChecker ports)
                 $"Local proxy port {settings.LocalProxyPort} is already in use. Change it in Settings → Advanced."));
         }
 
+        if (usesLocalInbound && Bydlo.Core.Config.XrayConfigBuilder.Supported.Contains(profile.Protocol))
+        {
+            var httpPort = settings.LocalProxyPort + 1;
+            if (httpPort is < 1 or > 65535)
+            {
+                issues.Add(new(ConflictSeverity.Blocking, "port.local-proxy",
+                    $"Local proxy port {settings.LocalProxyPort} is invalid for Xray (HTTP port out of range). Use a port ≤ {ProxyPorts.MaxLocalProxyPort}."));
+            }
+            else if (ports.IsTcpPortInUse(httpPort))
+            {
+                issues.Add(new(ConflictSeverity.Blocking, "port.local-proxy-http",
+                    $"Local proxy HTTP port {httpPort} (Xray) is already in use. Change it in Settings → Advanced."));
+            }
+
+            if (tgRunning && httpPort == settings.TgWsProxy.Port)
+            {
+                issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash",
+                    $"TgWsProxy already listens on port {settings.TgWsProxy.Port}."));
+            }
+        }
+
         if (tgRunning && settings.LocalProxyPort == settings.TgWsProxy.Port)
         {
             issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash",
@@ -92,6 +113,11 @@ public sealed class ConflictDetector(IPortChecker ports)
         if (primaryConnected && settings.LocalProxyPort == port)
         {
             issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash", $"Port {port} is used by the active tunnel."));
+        }
+
+        if (primaryConnected && settings.LocalProxyPort + 1 == port)
+        {
+            issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash", $"Port {port} is used by the active tunnel (Xray HTTP)."));
         }
 
         return issues;
