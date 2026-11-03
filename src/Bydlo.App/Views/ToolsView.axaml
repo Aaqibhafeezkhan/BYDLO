@@ -98,14 +98,17 @@
 
               <Expander Header="{l:T tools.zapret.lists}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
                 <StackPanel Spacing="10">
-                  <ComboBox AutomationProperties.Name="{l:T tools.zapret.lists}" ItemsSource="{x:Static vm:ToolsViewModel.UserLists}" SelectedItem="{Binding SelectedList}" HorizontalAlignment="Stretch">
+                  <Border Classes="banner" IsVisible="{Binding !CanEditZapretLists}">
+                    <TextBlock Text="{l:T tools.zapret.lists.helper}" TextWrapping="Wrap" />
+                  </Border>
+                  <ComboBox IsEnabled="{Binding CanEditZapretLists}" AutomationProperties.Name="{l:T tools.zapret.lists}" ItemsSource="{x:Static vm:ToolsViewModel.UserLists}" SelectedItem="{Binding SelectedList}" HorizontalAlignment="Stretch">
                     <ComboBox.ItemTemplate>
                       <DataTemplate x:DataType="z:ZapretUserList">
                         <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=list.}" />
                       </DataTemplate>
                     </ComboBox.ItemTemplate>
                   </ComboBox>
-                  <TextBox Text="{Binding ListText}" AutomationProperties.Name="{l:T tools.zapret.lists}" AcceptsReturn="True" MinHeight="140" MaxHeight="300"
+                  <TextBox IsEnabled="{Binding CanEditZapretLists}" Text="{Binding ListText}" AutomationProperties.Name="{l:T tools.zapret.lists}" AcceptsReturn="True" MinHeight="140" MaxHeight="300"
                            FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
                   <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T common.save}" Command="{Binding SaveListCommand}" />
                 </StackPanel>
