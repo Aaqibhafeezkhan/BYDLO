@@ -70,6 +70,23 @@ public class StartupElevationTests
         Assert.Contains("RunElevatedOnStartup", vm, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Decline_keeps_limited_mode_and_filters_parent_argument()
+    {
+        var root = RepositoryRoot();
+        var app = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "App.axaml.cs"));
+        // Startup elevation filters the handoff marker so it does not accumulate across restarts.
+        Assert.Contains("ParentArgument", app, StringComparison.Ordinal);
+        Assert.Contains("ShouldElevateOnStartup", app, StringComparison.Ordinal);
+        // On decline/failure there is no Exit: the app continues with limited features.
+        Assert.Contains("TryRestartElevated", app, StringComparison.Ordinal);
+        Assert.Contains("Environment.Exit(0)", app, StringComparison.Ordinal);
+        // The Exit above is inside the success branch; the fallthrough continues startup.
+        var exitIndex = app.IndexOf("Environment.Exit(0)", StringComparison.Ordinal);
+        var tail = app.Substring(exitIndex);
+        Assert.Contains("return;", tail, StringComparison.Ordinal);
+    }
+
     private static string RepositoryRoot()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
