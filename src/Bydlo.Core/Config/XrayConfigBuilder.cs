@@ -220,14 +220,7 @@ public sealed class XrayConfigBuilder
                 new JsonObject { ["tag"] = "block", ["protocol"] = "blackhole" }]),
             ["routing"] = new JsonObject { ["domainStrategy"] = "IPIfNonMatch", ["rules"] = rules },
         };
-        if (routing.RemoteDnsTransport != DnsTransport.Https || routing.RemoteDns != "1.1.1.1"
-            || routing.DirectDnsTransport != DnsTransport.Udp || routing.DirectDns != "local"
-            || !routing.RemoteDnsThroughProxy || routing.DirectDnsThroughProxy
-            || routing.RemoteDnsDomains.Count + routing.DirectDnsDomains.Count +
-                routing.RemoteDnsRuleSets.Count + routing.DirectDnsRuleSets.Count > 0)
-        {
-            root["dns"] = BuildDns(routing, rules, proxyTag);
-        }
+        root["dns"] = BuildDns(routing, rules, proxyTag);
 
         if (ctx.ClashApiPort is { } statsPort)
         {
@@ -242,13 +235,35 @@ public sealed class XrayConfigBuilder
         return root;
     }
 
-    private static JsonObject BuildDns(RoutingSettings routing, JsonArray routeRules, string proxyTag)
+    /// <summary>Checks active DNS options before an engine process is prepared.</summary>
+    public static void ValidateDnsSettings(RoutingSettings routing)
     {
         if (routing.RemoteDnsRuleSets.Count + routing.DirectDnsRuleSets.Count > 0)
         {
             throw new EngineException("routing.dns.xray", localizationKey: "routing.dns.xray");
         }
 
+        Validate(routing.RemoteDns, routing.RemoteDnsTransport, routing.RemoteDnsThroughProxy);
+        if (routing.DirectDomains.Count + routing.DirectDnsDomains.Count > 0)
+        {
+            Validate(routing.DirectDns, routing.DirectDnsTransport, routing.DirectDnsThroughProxy);
+        }
+
+        static void Validate(string host, DnsTransport transport, bool throughProxy)
+        {
+            if (transport == DnsTransport.System || host is "local" or "") { return; }
+            if (transport == DnsTransport.Tls || transport == DnsTransport.Quic && throughProxy
+                || transport == DnsTransport.Udp && !System.Net.IPAddress.TryParse(host, out _)
+                || !Enum.IsDefined(transport))
+            {
+                throw new EngineException("routing.dns.xray", localizationKey: "routing.dns.xray");
+            }
+        }
+    }
+
+    private static JsonObject BuildDns(RoutingSettings routing, JsonArray routeRules, string proxyTag)
+    {
+        ValidateDnsSettings(routing);
         var localDomains = routing.DirectDomains.Concat(routing.DirectDnsDomains).Distinct().ToArray();
         var servers = new JsonArray();
         if (localDomains.Length > 0)
