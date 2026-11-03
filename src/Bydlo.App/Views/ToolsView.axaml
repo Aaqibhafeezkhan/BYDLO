@@ -21,7 +21,7 @@
               <c:OutlineIcon Data="{StaticResource LineBolt}" Foreground="{DynamicResource TextMutedBrush}" />
             </Border>
             <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-              <TextBlock Classes="h2" Text="Zapret" />
+              <TextBlock Classes="h2" Text="{l:T home.zapret.title}" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T tools.zapret.desc}" TextWrapping="Wrap" />
             </StackPanel>
             <StackPanel x:Name="ZapretActions" Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
@@ -43,139 +43,145 @@
               <Button Classes="ghost" Content="{l:T settings.admin.restart}" Command="{Binding RestartElevatedCommand}" IsVisible="{Binding ShowRestartElevated}" HorizontalAlignment="Left" />
             </StackPanel>
           </Border>
-          <TextBlock Classes="muted" Text="{Binding ZapretInfo}" TextWrapping="Wrap" />
+          <Button Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CancelSelectionCommand}" IsVisible="{Binding IsSelecting}" HorizontalAlignment="Left" />
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsSelecting}" />
+          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="16">
+              <TextBlock Classes="muted" Text="{Binding ZapretInfo}" TextWrapping="Wrap" />
 
-          <StackPanel Spacing="6">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Classes="faint" Text="{l:T tools.startup.title}" VerticalAlignment="Center" TextWrapping="Wrap" />
-              <Button Grid.Column="1" Classes="ghost" Content="{l:T tools.startup.recheck}" Command="{Binding RecheckStartupCommand}" />
-            </Grid>
-            <TextBlock Classes="muted" Text="{l:T tools.startup.scope}" TextWrapping="Wrap" />
-            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsCheckingStartup}" />
-            <TextBlock Text="{Binding StartupCheckStatus}" TextWrapping="Wrap" IsVisible="{Binding HasStartupCheckStatus}" />
-            <Expander Header="{l:T tools.startup.details}" IsVisible="{Binding HasStartupCheckDetails}">
-              <ScrollViewer MaxHeight="200">
-                <SelectableTextBlock Classes="mono" Text="{Binding StartupCheckDetails}" TextWrapping="Wrap" />
-              </ScrollViewer>
-            </Expander>
-          </StackPanel>
-
-          <Expander Header="{l:T tools.setup}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
-            <StackPanel Spacing="12">
-          <WrapPanel>
-            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding InstallZapretCommand}" IsEnabled="{Binding !IsInstalling}" IsVisible="{Binding CanInstallZapret}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <c:OutlineIcon Data="{StaticResource LineDownload}" Width="16" Height="16" />
-                <TextBlock Text="{l:T tools.zapret.download}" />
-              </StackPanel>
-            </Button>
-            <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding BrowseZapretCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <c:OutlineIcon Data="{StaticResource LineFolder}" Width="16" Height="16" />
-                <TextBlock Text="{l:T tools.zapret.choose}" />
-              </StackPanel>
-            </Button>
-          </WrapPanel>
-
-          <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
-            <TextBlock Classes="caps" Text="{l:T tools.zapret.strategy}" Margin="0,0,0,6" />
-            <ComboBox Grid.Row="1" ItemsSource="{Binding Strategies}" SelectedItem="{Binding SelectedStrategy}" HorizontalAlignment="Stretch">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="z:ZapretStrategy">
-                  <TextBlock Text="{Binding DisplayName}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-            <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.zapret.game}" IsVisible="{Binding SupportsGameFilter}" Margin="0,0,0,6" />
-            <ComboBox Grid.Column="2" Grid.Row="1" IsVisible="{Binding SupportsGameFilter}" ItemsSource="{x:Static vm:ToolsViewModel.GameFilterModes}" SelectedItem="{Binding GameFilter}" HorizontalAlignment="Stretch">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="x:String">
-                  <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=game.}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </Grid>
-          <TextBlock Classes="faint" Text="{l:T tools.zapret.tcpts}" IsVisible="{Binding IsWindows}" TextWrapping="Wrap" />
-
-          <TextBlock Classes="faint" Text="{Binding ZapretPlatformNote}" TextWrapping="Wrap" />
-
-            </StackPanel>
-          </Expander>
-
-          <StackPanel Spacing="10">
-            <TextBlock Classes="h2" Text="{l:T tools.select.title}" />
-            <TextBlock Classes="muted" Text="{l:T tools.select.warning}" TextWrapping="Wrap" />
-            <Expander Header="{l:T tools.select.scope}">
-              <TextBlock Classes="muted" Text="{l:T tools.select.details}" TextWrapping="Wrap" />
-            </Expander>
-            <Expander Header="{l:T tools.select.targets}" IsEnabled="{Binding !IsSelecting}">
-              <TextBox Text="{Binding TestTargets}" AcceptsReturn="True" MinHeight="80" MaxHeight="180" />
-            </Expander>
-            <WrapPanel>
-              <Button Margin="0,0,8,8" Classes="primary" Content="{l:T tools.select.title}" Command="{Binding SelectZapretCommand}" />
-              <Button Margin="0,0,8,8" Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CancelSelectionCommand}" IsVisible="{Binding IsSelecting}" />
-              <Button Margin="0,0,8,8" Classes="ghost" Content="{l:T tools.select.apply}" Command="{Binding ApplySelectionCommand}" IsEnabled="{Binding CanApplySelection}" />
-            </WrapPanel>
-            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsSelecting}" />
-            <SelectableTextBlock Text="{Binding SelectionStatus}" TextWrapping="Wrap" />
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-              <StackPanel Spacing="6" MinWidth="620">
-                <Grid ColumnDefinitions="2*,*,*,*,*,*">
-                  <TextBlock Classes="caps" Text="{l:T tools.zapret.strategy}" />
-                  <TextBlock Grid.Column="1" Classes="caps" Text="{l:T tools.select.success}" />
-                  <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.select.errors}" />
-                  <TextBlock Grid.Column="3" Classes="caps" Text="{l:T tools.select.timeouts}" TextWrapping="Wrap" Margin="0,0,8,0" />
-                  <TextBlock Grid.Column="4" Classes="caps" Text="{l:T tools.select.latency}" />
-                  <TextBlock Grid.Column="5" Classes="caps" Text="{l:T tools.select.verdict}" />
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="faint" Text="{l:T tools.startup.title}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                  <Button Grid.Column="1" Classes="ghost" Content="{l:T tools.startup.recheck}" Command="{Binding RecheckStartupCommand}" />
                 </Grid>
-                <ItemsControl ItemsSource="{Binding SelectionResults}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ZapretResultRow">
-                      <Grid ColumnDefinitions="2*,*,*,*,*,*" Margin="0,4">
-                        <TextBlock Text="{Binding Strategy}" TextWrapping="Wrap" />
-                        <TextBlock Grid.Column="1" Text="{Binding Successes}" />
-                        <TextBlock Grid.Column="2" Text="{Binding Errors}" />
-                        <TextBlock Grid.Column="3" Text="{Binding Timeouts}" />
-                        <TextBlock Grid.Column="4" Text="{Binding Latency}" />
-                        <TextBlock Grid.Column="5" Text="{Binding Verdict}" TextWrapping="Wrap" />
-                      </Grid>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <TextBlock Classes="muted" Text="{l:T tools.startup.scope}" TextWrapping="Wrap" />
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsCheckingStartup}" />
+                <TextBlock Text="{Binding StartupCheckStatus}" TextWrapping="Wrap" IsVisible="{Binding HasStartupCheckStatus}" />
+                <Expander Header="{l:T tools.startup.details}" IsVisible="{Binding HasStartupCheckDetails}">
+                  <ScrollViewer MaxHeight="200">
+                    <SelectableTextBlock Classes="mono" Text="{Binding StartupCheckDetails}" TextWrapping="Wrap" />
+                  </ScrollViewer>
+                </Expander>
               </StackPanel>
-            </ScrollViewer>
-            <Expander Header="{l:T tools.logs}">
-              <ScrollViewer MaxHeight="240">
-                <SelectableTextBlock Classes="mono" Text="{Binding SelectionLog}" TextWrapping="Wrap" />
-              </ScrollViewer>
-            </Expander>
-          </StackPanel>
 
-          <Expander Header="{l:T tools.zapret.lists}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
-            <StackPanel Spacing="10">
-              <ComboBox ItemsSource="{x:Static vm:ToolsViewModel.UserLists}" SelectedItem="{Binding SelectedList}" HorizontalAlignment="Stretch">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="z:ZapretUserList">
-                    <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=list.}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <TextBox Text="{Binding ListText}" AcceptsReturn="True" MinHeight="140" MaxHeight="300"
-                       FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
-              <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T common.save}" Command="{Binding SaveListCommand}" />
+              <Expander Header="{l:T tools.setup}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
+                <StackPanel Spacing="12">
+              <WrapPanel>
+                <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding InstallZapretCommand}" IsEnabled="{Binding !IsInstalling}" IsVisible="{Binding CanInstallZapret}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:OutlineIcon Data="{StaticResource LineDownload}" Width="16" Height="16" />
+                    <TextBlock Text="{l:T tools.zapret.download}" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding BrowseZapretCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:OutlineIcon Data="{StaticResource LineFolder}" Width="16" Height="16" />
+                    <TextBlock Text="{l:T tools.zapret.choose}" />
+                  </StackPanel>
+                </Button>
+              </WrapPanel>
+
+              <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
+                <TextBlock Classes="caps" Text="{l:T tools.zapret.strategy}" Margin="0,0,0,6" />
+                <ComboBox Grid.Row="1" ItemsSource="{Binding Strategies}" SelectedItem="{Binding SelectedStrategy}" HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="z:ZapretStrategy">
+                      <TextBlock Text="{Binding DisplayName}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.zapret.game}" IsVisible="{Binding SupportsGameFilter}" Margin="0,0,0,6" />
+                <ComboBox Grid.Column="2" Grid.Row="1" IsVisible="{Binding SupportsGameFilter}" ItemsSource="{x:Static vm:ToolsViewModel.GameFilterModes}" SelectedItem="{Binding GameFilter}" HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=game.}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+              <TextBlock Classes="faint" Text="{l:T tools.zapret.tcpts}" IsVisible="{Binding IsWindows}" TextWrapping="Wrap" />
+
+              <TextBlock Classes="faint" Text="{Binding ZapretPlatformNote}" TextWrapping="Wrap" />
+
+                </StackPanel>
+              </Expander>
+
+              <StackPanel Spacing="10">
+                <TextBlock Classes="h2" Text="{l:T tools.select.title}" />
+                <TextBlock Classes="muted" Text="{l:T tools.select.warning}" TextWrapping="Wrap" />
+                <Expander Header="{l:T tools.select.scope}">
+                  <TextBlock Classes="muted" Text="{l:T tools.select.details}" TextWrapping="Wrap" />
+                </Expander>
+                <Expander Header="{l:T tools.select.targets}" IsEnabled="{Binding !IsSelecting}">
+                  <TextBox Text="{Binding TestTargets}" AcceptsReturn="True" MinHeight="80" MaxHeight="180" />
+                </Expander>
+                <WrapPanel>
+                  <Button Margin="0,0,8,8" Classes="primary" Content="{l:T tools.select.title}" Command="{Binding SelectZapretCommand}" />
+                  <Button Margin="0,0,8,8" Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CancelSelectionCommand}" IsVisible="{Binding IsSelecting}" />
+                  <Button Margin="0,0,8,8" Classes="ghost" Content="{l:T tools.select.apply}" Command="{Binding ApplySelectionCommand}" IsEnabled="{Binding CanApplySelection}" />
+                </WrapPanel>
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsSelecting}" />
+                <SelectableTextBlock Text="{Binding SelectionStatus}" TextWrapping="Wrap" />
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                  <StackPanel Spacing="6" MinWidth="620">
+                    <Grid ColumnDefinitions="2*,*,*,*,*,*">
+                      <TextBlock Classes="caps" Text="{l:T tools.zapret.strategy}" />
+                      <TextBlock Grid.Column="1" Classes="caps" Text="{l:T tools.select.success}" />
+                      <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.select.errors}" />
+                      <TextBlock Grid.Column="3" Classes="caps" Text="{l:T tools.select.timeouts}" TextWrapping="Wrap" Margin="0,0,8,0" />
+                      <TextBlock Grid.Column="4" Classes="caps" Text="{l:T tools.select.latency}" />
+                      <TextBlock Grid.Column="5" Classes="caps" Text="{l:T tools.select.verdict}" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding SelectionResults}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ZapretResultRow">
+                          <Grid ColumnDefinitions="2*,*,*,*,*,*" Margin="0,4">
+                            <TextBlock Text="{Binding Strategy}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Column="1" Text="{Binding Successes}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Errors}" />
+                            <TextBlock Grid.Column="3" Text="{Binding Timeouts}" />
+                            <TextBlock Grid.Column="4" Text="{Binding Latency}" />
+                            <TextBlock Grid.Column="5" Text="{Binding Verdict}" TextWrapping="Wrap" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </ScrollViewer>
+                <Expander Header="{l:T tools.logs}">
+                  <ScrollViewer MaxHeight="240">
+                    <SelectableTextBlock Classes="mono" Text="{Binding SelectionLog}" TextWrapping="Wrap" />
+                  </ScrollViewer>
+                </Expander>
+              </StackPanel>
+
+              <Expander Header="{l:T tools.zapret.lists}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
+                <StackPanel Spacing="10">
+                  <ComboBox ItemsSource="{x:Static vm:ToolsViewModel.UserLists}" SelectedItem="{Binding SelectedList}" HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="z:ZapretUserList">
+                        <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=list.}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <TextBox Text="{Binding ListText}" AcceptsReturn="True" MinHeight="140" MaxHeight="300"
+                           FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
+                  <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T common.save}" Command="{Binding SaveListCommand}" />
+                </StackPanel>
+              </Expander>
+
+              <Expander Header="{l:T tools.logs}" HorizontalAlignment="Stretch">
+                <Border Classes="tile" MaxHeight="220">
+                  <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding ZapretLog}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String"><SelectableTextBlock Classes="mono" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </Border>
+              </Expander>
             </StackPanel>
-          </Expander>
-
-          <Expander Header="{l:T tools.logs}" HorizontalAlignment="Stretch">
-            <Border Classes="tile" MaxHeight="220">
-              <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding ZapretLog}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="x:String"><SelectableTextBlock Classes="mono" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
-            </Border>
           </Expander>
         </StackPanel>
       </Border>
@@ -188,7 +194,7 @@
               <c:OutlineIcon Data="{StaticResource LineSend}" Foreground="{DynamicResource TextMutedBrush}" />
             </Border>
             <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-              <TextBlock Classes="h2" Text="TgWsProxy" />
+              <TextBlock Classes="h2" Text="{l:T home.tg.title}" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T tools.tg.desc}" TextWrapping="Wrap" />
             </StackPanel>
             <StackPanel x:Name="TgActions" Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
@@ -208,6 +214,11 @@
             <TextBlock Text="{Binding TgError}" TextWrapping="Wrap" />
           </Border>
 
+          <Button Classes="primary" Content="{l:T home.tg.open}" Command="{Binding OpenInTelegramCommand}" IsVisible="{Binding TgRunning}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+          <Button Classes="ghost" Content="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}" IsVisible="{Binding TgRunning}" HorizontalAlignment="Left" />
+
+          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="12">
           <Border Classes="tile">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Classes="mono" Text="{Binding TgLink}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -225,8 +236,6 @@
             </Grid>
           </Border>
 
-          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="12">
           <Grid ColumnDefinitions="2*,12,*" RowDefinitions="Auto,Auto">
             <TextBlock Classes="caps" Text="{l:T tools.tg.host}" Margin="0,0,0,6" />
             <TextBox Grid.Row="1" Text="{Binding TgHost}" />

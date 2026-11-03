@@ -10,33 +10,6 @@
     <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
       <TextBlock Classes="h1" Text="{l:T nav.settings}" />
 
-      <!-- Backup -->
-      <Border Classes="panel">
-        <StackPanel Spacing="12" IsEnabled="{Binding !BackupBusy}">
-          <TextBlock Classes="h2" Text="{l:T backup.title}" />
-          <TextBlock Classes="faint" Text="{l:T backup.hint}" TextWrapping="Wrap" />
-          <TextBox Text="{Binding BackupPassword}" PasswordChar="●" Watermark="{l:T backup.password}" />
-          <TextBox Text="{Binding BackupPasswordConfirmation}" PasswordChar="●" Watermark="{l:T backup.password.confirm}" />
-          <WrapPanel>
-            <Button Classes="ghost" Content="{l:T backup.export}" Command="{Binding ExportBackupCommand}" Margin="0,0,8,8" />
-            <Button Classes="ghost" Content="{l:T backup.import}" Command="{Binding OpenBackupCommand}" Margin="0,0,0,8" />
-          </WrapPanel>
-          <StackPanel IsVisible="{Binding HasBackupPreview}" Spacing="12">
-            <TextBlock Classes="h3" Text="{l:T backup.preview}" />
-            <ToggleSwitch IsChecked="{Binding BackupReplace}">
-              <TextBlock Text="{l:T backup.replace}" TextWrapping="Wrap" />
-            </ToggleSwitch>
-            <ScrollViewer MaxHeight="300">
-              <TextBlock Text="{Binding BackupPreviewText}" TextWrapping="Wrap" />
-            </ScrollViewer>
-            <WrapPanel>
-              <Button Content="{l:T backup.apply}" Command="{Binding ApplyBackupCommand}" Margin="0,0,8,8" />
-              <Button Classes="ghost" Content="{l:T backup.cancel}" Command="{Binding CancelBackupCommand}" Margin="0,0,0,8" />
-            </WrapPanel>
-          </StackPanel>
-        </StackPanel>
-      </Border>
-
       <!-- Appearance -->
       <Border Classes="panel">
         <StackPanel Spacing="14">
@@ -51,6 +24,13 @@
             </WrapPanel>
           </Border>
           <TextBlock Classes="caps" Text="{l:T settings.language}" />
+          <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding Language}" MinWidth="220">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=lang.}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
           <Expander Header="{l:T theme.custom.title}" HorizontalAlignment="Stretch">
             <StackPanel Spacing="10">
               <TextBlock Classes="muted" Text="{l:T theme.custom.hint}" TextWrapping="Wrap" />
@@ -104,13 +84,6 @@
               </ItemsControl>
             </StackPanel>
           </Expander>
-          <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding Language}" MinWidth="220">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="x:String">
-                <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=lang.}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
         </StackPanel>
       </Border>
 
@@ -129,11 +102,6 @@
             <TextBlock Text="{l:T subs.interval}" />
             <NumericUpDown Value="{Binding SubscriptionUpdateIntervalHours}" Minimum="1" Maximum="168" FormatString="0" Width="140" HorizontalAlignment="Left" />
           </StackPanel>
-          <TextBlock Classes="faint" Text="{l:T settings.associations.hint}" TextWrapping="Wrap" />
-          <WrapPanel IsEnabled="{Binding CanRegisterAssociations}">
-            <Button Classes="ghost" Content="{l:T settings.associations.register}" Command="{Binding RegisterAssociationsCommand}" Margin="0,0,8,8" />
-            <Button Classes="ghost" Content="{l:T settings.associations.remove}" Command="{Binding RemoveAssociationsCommand}" Margin="0,0,0,8" />
-          </WrapPanel>
         </StackPanel>
       </Border>
 
@@ -171,7 +139,18 @@
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoReconnect}" />
           </Grid>
-          <Button Classes="ghost" Content="{l:T settings.killswitch.disable}" Command="{Binding DisableKillSwitchCommand}" HorizontalAlignment="Left" />
+          <Button Classes="ghost" Content="{l:T settings.killswitch.disable}" Command="{Binding DisableKillSwitchCommand}" IsVisible="{Binding KillSwitch}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+
+      <!-- Advanced -->
+      <Expander x:Name="AdvancedSettings" Header="{l:T common.advanced}" IsExpanded="{Binding ShowAdvanced, Mode=TwoWay}" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="faint" Text="{l:T settings.associations.hint}" TextWrapping="Wrap" />
+          <WrapPanel IsEnabled="{Binding CanRegisterAssociations}">
+            <Button Classes="ghost" Content="{l:T settings.associations.register}" Command="{Binding RegisterAssociationsCommand}" Margin="0,0,8,8" />
+            <Button Classes="ghost" Content="{l:T settings.associations.remove}" Command="{Binding RemoveAssociationsCommand}" Margin="0,0,0,8" />
+          </WrapPanel>
           <StackPanel Spacing="8">
             <StackPanel>
               <TextBlock Text="{l:T settings.check.service}" FontWeight="Medium" />
@@ -185,20 +164,6 @@
               </ComboBox.ItemTemplate>
             </ComboBox>
           </StackPanel>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Margin="0,0,18,0">
-              <TextBlock Text="{l:T settings.advanced.show}" FontWeight="Medium" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Text="{l:T settings.advanced.hint}" TextWrapping="Wrap" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowAdvanced}" />
-          </Grid>
-        </StackPanel>
-      </Border>
-
-      <!-- Advanced -->
-      <Border Classes="section" IsVisible="{Binding ShowAdvanced}">
-        <StackPanel Spacing="14">
-          <TextBlock Classes="h3" Text="{l:T common.advanced}" />
           <Border Classes="tile">
             <StackPanel Spacing="10">
               <TextBlock Text="{l:T settings.killswitch}" FontWeight="SemiBold" />
@@ -290,7 +255,34 @@
             </StackPanel>
           </Border>
         </StackPanel>
-      </Border>
+      </Expander>
+
+      <!-- Backup -->
+      <Expander x:Name="BackupSettings" Header="{l:T backup.title}" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="12" IsEnabled="{Binding !BackupBusy}">
+          <TextBlock Classes="h2" Text="{l:T backup.title}" />
+          <TextBlock Classes="faint" Text="{l:T backup.hint}" TextWrapping="Wrap" />
+          <TextBox Text="{Binding BackupPassword}" PasswordChar="●" Watermark="{l:T backup.password}" />
+          <TextBox Text="{Binding BackupPasswordConfirmation}" PasswordChar="●" Watermark="{l:T backup.password.confirm}" />
+          <WrapPanel>
+            <Button Classes="ghost" Content="{l:T backup.export}" Command="{Binding ExportBackupCommand}" Margin="0,0,8,8" />
+            <Button Classes="ghost" Content="{l:T backup.import}" Command="{Binding OpenBackupCommand}" Margin="0,0,0,8" />
+          </WrapPanel>
+          <StackPanel IsVisible="{Binding HasBackupPreview}" Spacing="12">
+            <TextBlock Classes="h3" Text="{l:T backup.preview}" />
+            <ToggleSwitch IsChecked="{Binding BackupReplace}">
+              <TextBlock Text="{l:T backup.replace}" TextWrapping="Wrap" />
+            </ToggleSwitch>
+            <ScrollViewer MaxHeight="300">
+              <TextBlock Text="{Binding BackupPreviewText}" TextWrapping="Wrap" />
+            </ScrollViewer>
+            <WrapPanel>
+              <Button Content="{l:T backup.apply}" Command="{Binding ApplyBackupCommand}" Margin="0,0,8,8" />
+              <Button Classes="ghost" Content="{l:T backup.cancel}" Command="{Binding CancelBackupCommand}" Margin="0,0,0,8" />
+            </WrapPanel>
+          </StackPanel>
+        </StackPanel>
+      </Expander>
 
       <!-- About & credits -->
       <Expander Header="{l:T settings.about}" HorizontalAlignment="Stretch">

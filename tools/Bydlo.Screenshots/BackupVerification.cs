@@ -40,6 +40,11 @@ internal static class BackupVerification
         var window = new Window { Width = 1180, Height = 900, Content = new SettingsView { DataContext = shell.Settings } };
         window.Show();
         Pump();
+        var backupSection = window.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "BackupSettings");
+        backupSection.IsExpanded = true;
+        Pump();
+        backupSection.BringIntoView();
+        Pump();
         var backupPasswords = window.GetVisualDescendants().OfType<TextBox>().Where(t =>
             Equals(t.Watermark, Loc.Instance["backup.password"]) || Equals(t.Watermark, Loc.Instance["backup.password.confirm"])).ToArray();
         Require(backupPasswords.Length == 2 && backupPasswords.All(t => t.PasswordChar != default), "Both backup password fields are masked");
@@ -47,6 +52,8 @@ internal static class BackupVerification
         using (var frame = window.CaptureRenderedFrame()) { frame!.Save(Path.Combine(output, "backup-preview.png")); }
         window.Width = 400;
         window.Height = 860;
+        Pump();
+        backupSection.BringIntoView();
         Pump();
         using (var frame = window.CaptureRenderedFrame()) { frame!.Save(Path.Combine(output, "backup-preview-narrow.png")); }
         shell.Settings.CancelBackupCommand.Execute(null);

@@ -16,7 +16,7 @@ Environment.SetEnvironmentVariable("BYDLO_SAFE_DEV", "1");
 var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "screenshots"));
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
-if (args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
+if (args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
     args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
@@ -118,6 +118,89 @@ void Shoot(string name, double width, double height, Action<Window>? arrange = n
     frame.Save(Path.Combine(output, name + ".png"));
     window.Close();
     Console.WriteLine($"saved {name}.png");
+}
+
+if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
+{
+    shell.FinishOnboardingCommand.Execute(null);
+    if (shell.Profiles.Count != 0) throw new InvalidOperationException("Use a fresh output directory for empty-state verification.");
+    Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
+    foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled, ThemePreference.System })
+    {
+        services.Theme.Apply(theme);
+        foreach (var (width, height) in new[] { (1180, 780), (900, 780), (760, 780), (380, 700) })
+        {
+            shell.Navigate("home");
+            Shoot($"simple-home-{theme.ToString().ToLowerInvariant()}-{width}", width, height);
+        }
+    }
+    services.Theme.Apply(ThemePreference.Purple);
+    foreach (var source in new[] { "link", "subscription", "clipboard", "file", "qr" })
+    {
+        // No native pickers or clipboard in headless mode: their unavailable-service errors
+        // must leave the wizard open on the correct source page, never start an engine.
+        services.TopLevel = () => null;
+        Wait(shell.OpenImportCommand.ExecuteAsync(source));
+        var expected = source == "file" ? AddServerStep.File : source == "qr" ? AddServerStep.Qr : AddServerStep.Link;
+        if (!shell.IsAddServerOpen || shell.AddServerWizard.Step != expected)
+            throw new InvalidOperationException("Wrong direct import destination: " + source);
+        shell.AddServerWizard.CloseCommand.Execute(null);
+    }
+    Wait(shell.OpenImportCommand.ExecuteAsync("link"));
+    shell.AddServerWizard.Input = "draft";
+    Wait(shell.OpenImportCommand.ExecuteAsync("subscription"));
+    if (shell.AddServerWizard.Input != "draft") throw new InvalidOperationException("Direct import reset an open wizard.");
+    shell.AddServerWizard.CloseCommand.Execute(null);
+    var settingsWindow = new Window { Width = 380, Height = 700, Content = new SettingsView { DataContext = shell.Settings } };
+    settingsWindow.Show();
+    Pump(100);
+    var advanced = settingsWindow.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "AdvancedSettings");
+    if (advanced.IsExpanded) throw new InvalidOperationException("Advanced settings must start collapsed.");
+    advanced.IsExpanded = true;
+    Pump(50);
+    if (!shell.Settings.ShowAdvanced || !services.Settings.ShowAdvanced)
+        throw new InvalidOperationException("Advanced disclosure did not update the saved preference.");
+    advanced.IsExpanded = false;
+    Pump(50);
+    if (shell.Settings.ShowAdvanced) throw new InvalidOperationException("Advanced disclosure did not close.");
+    settingsWindow.Close();
+    foreach (var page in new[] { "tools", "settings" })
+    {
+        shell.Navigate(page);
+        Shoot($"simple-{page}", 1180, 900);
+        Shoot($"simple-{page}-380", 380, 700);
+    }
+    shell.Navigate("home");
+    var homeWindow = new Window { Width = 1180, Height = 780, Content = new MainView { DataContext = shell } };
+    homeWindow.Show();
+    Pump(100);
+    var toggles = homeWindow.GetVisualDescendants().OfType<ToggleSwitch>()
+        .Where(c => c.IsEffectivelyVisible && (Avalonia.Automation.AutomationProperties.GetName(c) is "Zapret" or "TgWsProxy")).ToArray();
+    if (toggles.Length != 2) throw new InvalidOperationException("Tools must be visible without profiles.");
+    homeWindow.Width = 380;
+    Pump(100);
+    var shortcut = homeWindow.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ToolShortcut");
+    if (!shortcut.IsEffectivelyVisible || !ReferenceEquals(shortcut.Command, shell.NavigateCommand))
+        throw new InvalidOperationException("Compact home must expose the tool shortcut.");
+    homeWindow.Close();
+    Wait(shell.Home.ToggleZapretCommand.ExecuteAsync(null));
+    Pump(50); // Session notifications are posted to the UI dispatcher.
+    if (!shell.Home.ZapretOn) throw new InvalidOperationException("Mock Zapret tool did not start.");
+    Wait(shell.Home.ToggleZapretCommand.ExecuteAsync(null));
+    Pump(50); // Session notifications are posted to the UI dispatcher.
+    if (shell.Home.ZapretOn) throw new InvalidOperationException("Mock Zapret tool did not stop.");
+    Wait(shell.Home.ToggleTgCommand.ExecuteAsync(null));
+    if (!shell.Home.TgOn) throw new InvalidOperationException("Mock Telegram tool did not start.");
+    Shoot("simple-home-telegram-enabled", 1180, 780);
+    Wait(services.Connections.StopAllAsync());
+    Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
+    Shoot("simple-home-with-server", 1180, 780);
+    Shoot("simple-home-with-server-380", 380, 700);
+    Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+    Shoot("simple-home-connected", 1180, 780);
+    Wait(services.Connections.StopAllAsync());
+    Console.WriteLine("Simple UI verification passed: themes, compact layout, direct import destinations, independent mock tools and VPN.");
+    return;
 }
 
 if (args.Contains("--verify-routing-picker", StringComparer.Ordinal))
