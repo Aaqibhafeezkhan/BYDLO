@@ -194,6 +194,7 @@ public sealed class SingBoxConfigBuilder
         try
         {
             custom = CustomJsonConfig.Read(secrets[Keys.RawConfig] ?? "", ProtocolKind.SingBoxConfig);
+            CustomInboundRouting.Map(custom, true, [ctx.Settings.Mode == ConnectionMode.Tun ? "tun-in" : "mixed-in"]);
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or FormatException or InvalidOperationException)
         {

@@ -60,6 +60,15 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             return Task.FromResult(EngineAvailability.NotImplemented("An SRS rule set cannot be used by Xray.", "routing.rules.unsupported"));
         }
 
+        try
+        {
+            XrayConfigBuilder.ValidateDnsSettings(settings.Routing);
+        }
+        catch (EngineException ex)
+        {
+            return Task.FromResult(EngineAvailability.NotImplemented(ex.Message, ex.LocalizationKey));
+        }
+
         var exe = locator.Locate(EngineKind.Xray, settings);
         return Task.FromResult(exe is null
             ? new EngineAvailability(AvailabilityStatus.NotInstalled, "Xray-core is not installed. Install it from Tools → Engines.") { LocalizationKey = "error.engine.xray.missing" }
