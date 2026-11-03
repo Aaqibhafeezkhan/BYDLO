@@ -2,9 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Bydlo.App.Services;
 using Bydlo.App.ViewModels;
 using Bydlo.App.Views;
+using Bydlo.Core.Diagnostics;
+using Bydlo.Core.Security;
 
 namespace Bydlo.App;
 
@@ -22,7 +25,27 @@ public sealed partial class App : Application
 
     public DesktopIntegration? Desktop { get; private set; }
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            try
+            {
+                var dir = Services?.Paths.LogsDirectory;
+                if (dir is not null)
+                {
+                    CrashReporter.WriteReport(dir, LogRedactor.Shared, e.Exception);
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        };
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {

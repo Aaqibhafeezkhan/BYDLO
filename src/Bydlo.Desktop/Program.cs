@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Media;
+using Bydlo.Core.Diagnostics;
+using Bydlo.Core.Security;
 
 namespace Bydlo.Desktop;
 
@@ -8,6 +10,8 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        var earlyPaths = Bydlo.Platform.AppPathsFactory.Create();
+        CrashReporter.Install(earlyPaths.LogsDirectory, LogRedactor.Shared);
         // Do this before claiming the single-instance mutex or forwarding activation.
         // Otherwise the elevated child forwards back to the parent and exits during UAC restart.
         if (OperatingSystem.IsWindows() && !ElevationHandoff.WaitForParent(ref args))

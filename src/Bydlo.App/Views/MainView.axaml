@@ -135,6 +135,18 @@
       </StackPanel>
     </Border>
 
+    <!-- Crash report banner -->
+    <Border Grid.Row="1" Grid.Column="1" Classes="banner" IsVisible="{Binding HasCrashReports}"
+            VerticalAlignment="Top" HorizontalAlignment="Center" Margin="16,52">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <c:OutlineIcon Data="{StaticResource LineAlert}" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" />
+        <TextBlock Text="{l:T crash.text}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+        <Button Classes="ghost" Content="{l:T crash.open}" Command="{Binding OpenCrashFolderCommand}" />
+        <Button Classes="ghost" Content="{l:T crash.copy}" Command="{Binding CopyCrashReportCommand}" />
+        <Button Classes="ghost" Content="{l:T crash.dismiss}" Command="{Binding DismissCrashReportsCommand}" />
+      </StackPanel>
+    </Border>
+
     <!-- Toast -->
     <Border Grid.Row="1" Grid.Column="1" IsVisible="{Binding HasVisibleToast}"
             VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16,0,16,22" MaxWidth="560"
