@@ -1,3 +1,4 @@
+using Bydlo.Platform;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
 using Bydlo.Core.Platform;
@@ -8,7 +9,7 @@ using Bydlo.Engines.SingBox;
 namespace Bydlo.Engines.OpenVpn;
 
 /// <summary>OpenVPN community client adapter (<c>openvpn --config</c>). Needs administrator rights for routes / adapters.</summary>
-public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator, IPrivilegeService privileges, IOpenVpnDriver? driver = null)
+public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator, IPrivilegeService privileges, IOpenVpnDriver? driver = null, IExitEventFactory? exitEvents = null)
     : ProcessEngineBase(runner, redactor)
 {
     public static readonly EngineDescriptor Info = new()
@@ -29,7 +30,7 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
 
     private string? _authFile;
     private string? _configFile;
-    private EventWaitHandle? _exitEvent;
+    private IExitEvent? _exitEvent;
 
     public override EngineDescriptor Descriptor => Info;
 
@@ -100,10 +101,10 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
         }
 
         string? exitName = null;
-        if (OperatingSystem.IsWindows() && locator.Platform.Os == OsFamily.Windows)
+        if (locator.Platform.Os == OsFamily.Windows)
         {
             exitName = "Local\\BYDLO-OpenVPN-" + Guid.NewGuid().ToString("N");
-            _exitEvent = new EventWaitHandle(false, EventResetMode.ManualReset, exitName);
+            _exitEvent = (exitEvents ?? new WindowsExitEventFactory()).Create(exitName);
             args.AddRange(["--service", exitName, "0"]);
         }
         return new ProcessSpec { FileName = availability.ExecutablePath!, Arguments = args, WorkingDirectory = request.WorkDirectory, DisplayName = "openvpn", GracefulTermination = true, WindowsExitEventName = exitName };
@@ -120,7 +121,7 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
     {
         // The running child owns its own event handle; signal before closing the parent handle.
         var exitEvent = Interlocked.Exchange(ref _exitEvent, null);
-        if (exitEvent is not null) { exitEvent.Set(); exitEvent.Dispose(); }
+        if (exitEvent is not null) { exitEvent.Signal(); exitEvent.Dispose(); }
         if (_authFile is not null)
         {
             SecureFile.DeleteQuietly(_authFile);

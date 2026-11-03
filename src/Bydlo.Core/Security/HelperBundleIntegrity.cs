@@ -1,15 +1,16 @@
 using System.Security.Cryptography;
+using Bydlo.Core.Models;
 
 namespace Bydlo.Core.Security;
 
 /// <summary>Checks the complete administrator-approved bundle, including DLLs and strategy data.</summary>
 public static class HelperBundleIntegrity
 {
-    public static void Verify(string root, IReadOnlyDictionary<string, string> hashes)
+    public static void Verify(string root, IReadOnlyDictionary<string, string> hashes, PlatformInfo? platform = null)
     {
         if (hashes.Count == 0) { throw new InvalidDataException("Empty bundle hashes."); }
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        var expected = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        var comparison = (platform ?? PlatformInfo.Current).Os == OsFamily.Windows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var expected = new HashSet<string>((platform ?? PlatformInfo.Current).Os == OsFamily.Windows ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         var engineRoot = Path.GetFullPath(Path.Combine(root, "engines")) + Path.DirectorySeparatorChar;
         foreach (var (relative, hash) in hashes)
         {

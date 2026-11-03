@@ -1,4 +1,6 @@
+using Bydlo.Platform.Processes;
 using System.Globalization;
+using Bydlo.Core.Models;
 using System.Text.RegularExpressions;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Processes;
@@ -11,7 +13,7 @@ namespace Bydlo.Engines.Zapret;
 /// The interactive upstream process/ipset manager is deliberately not executed.
 /// Each curl is owned by IProcessRunner, with real response codes and measured successful latency.
 /// </summary>
-public sealed partial class TestZapretProbe(IProcessRunner runner) : IZapretStrategyProbe
+public sealed partial class TestZapretProbe(IProcessRunner runner, PlatformInfo? platform = null) : IZapretStrategyProbe
 {
     public async Task PrepareAsync(CancellationToken ct)
     {
@@ -19,7 +21,7 @@ public sealed partial class TestZapretProbe(IProcessRunner runner) : IZapretStra
         {
             var result = await runner.RunToCompletionAsync(new ProcessSpec
             {
-                FileName = OperatingSystem.IsWindows() ? "curl.exe" : "curl",
+                FileName = (platform ?? PlatformInfo.Current).Os == OsFamily.Windows ? "curl.exe" : "curl",
                 Arguments = ["--disable", "--version"],
                 DisplayName = "curl version", AffectsNetwork = false,
             }, TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
@@ -73,10 +75,10 @@ public sealed partial class TestZapretProbe(IProcessRunner runner) : IZapretStra
                 };
                 var spec = new ProcessSpec
                 {
-                    FileName = OperatingSystem.IsWindows() ? "curl.exe" : "curl",
+                    FileName = (platform ?? PlatformInfo.Current).Os == OsFamily.Windows ? "curl.exe" : "curl",
                     DisplayName = "Test Zapret HTTP/TLS",
                     Arguments = ["--disable", "--head", "--silent", "--show-error", "--noproxy", "*",
-                        "--max-time", "4", "--connect-timeout", "2", "--output", OperatingSystem.IsWindows() ? "NUL" : "/dev/null",
+                        "--max-time", "4", "--connect-timeout", "2", "--output", (platform ?? PlatformInfo.Current).Os == OsFamily.Windows ? "NUL" : "/dev/null",
                         "--write-out", "\nBYDLO_RESULT:%{http_code}:%{time_total}\n", .. version, "--url", target],
                 };
                 try

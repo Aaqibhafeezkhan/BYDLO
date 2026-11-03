@@ -1,4 +1,3 @@
-using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -67,16 +66,15 @@ public abstract class FileSecretStoreBase(string directory) : ISecretStore
 }
 
 /// <summary>Windows DPAPI (CurrentUser scope): secrets are bound to the Windows account.</summary>
-[SupportedOSPlatform("windows")]
-public sealed class DpapiSecretStore(string directory) : FileSecretStoreBase(directory)
+public sealed class DpapiSecretStore(string directory, IDataProtection? protection = null) : FileSecretStoreBase(directory)
 {
-    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("BYDLO.secrets.v1");
+    private readonly IDataProtection _protection = protection ?? new WindowsDataProtection();
 
     public override string ProtectionDescription => "Windows DPAPI (current user)";
 
-    protected override byte[] Protect(byte[] plain) => ProtectedData.Protect(plain, Entropy, DataProtectionScope.CurrentUser);
+    protected override byte[] Protect(byte[] plain) => _protection.Protect(plain);
 
-    protected override byte[] Unprotect(byte[] cipher) => ProtectedData.Unprotect(cipher, Entropy, DataProtectionScope.CurrentUser);
+    protected override byte[] Unprotect(byte[] cipher) => _protection.Unprotect(cipher);
 }
 
 /// <summary>

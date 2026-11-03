@@ -1,11 +1,18 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Bydlo.Core.Processes;
+using Bydlo.Core.Models;
 
 namespace Bydlo.Platform;
 
 /// <summary>Native desktop notifications; absence of a notification daemon is non-fatal.</summary>
-public sealed class DesktopNotifications(IProcessRunner runner) : IDisposable
+public interface IWindowsNotificationBackend
+{
+    Task ShowAsync(nint window, string title, string message, CancellationToken ct);
+}
+
+public sealed class DesktopNotifications(IProcessRunner runner, PlatformInfo? platform = null,
+    IWindowsNotificationBackend? windows = null) : IDisposable
 {
     private static readonly SemaphoreSlim NotificationGate = new(1, 1);
     private readonly CancellationTokenSource _shutdown = new();
@@ -16,13 +23,16 @@ public sealed class DesktopNotifications(IProcessRunner runner) : IDisposable
         await NotificationGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (OperatingSystem.IsWindows())
+            if ((platform ?? PlatformInfo.Current).Os == OsFamily.Windows)
             {
-                await ShowWindowsAsync(window, title, message, ct).ConfigureAwait(false);
+                if (window == 0) { return; }
+                await (windows ?? new NativeWindowsNotifications()).ShowAsync(window,
+                    title.Length > 63 ? title[..63] : title,
+                    message.Length > 255 ? message[..255] : message, ct).ConfigureAwait(false);
                 return;
             }
 
-            var spec = OperatingSystem.IsMacOS()
+            var spec = (platform ?? PlatformInfo.Current).Os == OsFamily.MacOS
                 ? new ProcessSpec
                 {
                     FileName = "/usr/bin/osascript",
@@ -47,13 +57,22 @@ public sealed class DesktopNotifications(IProcessRunner runner) : IDisposable
         {
             Size = Marshal.SizeOf<NotifyIconData>(), Window = window, Id = 0x4259444C,
             Flags = 2 | 4 | 16, Icon = LoadIcon(0, 32512), Tip = "BYDLO",
-            Info = message.Length > 255 ? message[..255] : message,
-            InfoTitle = title.Length > 63 ? title[..63] : title, InfoFlags = 1,
+            Info = message,
+            InfoTitle = title, InfoFlags = 1,
         };
         // A separate, short-lived balloon icon avoids relying on Avalonia's private native tray ID.
         if (!ShellNotifyIcon(0, ref data)) { throw new IOException("Windows rejected the desktop notification."); }
         try { await Task.Delay(TimeSpan.FromSeconds(8), ct).ConfigureAwait(false); }
         finally { ShellNotifyIcon(2, ref data); }
+    }
+
+    private sealed class NativeWindowsNotifications : IWindowsNotificationBackend
+    {
+        public Task ShowAsync(nint window, string title, string message, CancellationToken ct)
+        {
+            if (!OperatingSystem.IsWindows()) { throw new PlatformNotSupportedException(); }
+            return ShowWindowsAsync(window, title, message, ct);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

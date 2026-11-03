@@ -1,5 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Bydlo.Core.Platform;
+using Bydlo.Core.Models;
 
 namespace Bydlo.Engines.Zapret;
 
@@ -45,14 +47,15 @@ public static partial class ZapretStrategyParser
             .Select(n => new ZapretStrategy(n, Path.GetFileNameWithoutExtension(n)))];
     }
 
-    public static ParsedStrategy Parse(string batchText, string installDir, GameFilterValues gameFilter, string? userListsDirectory = null)
+    public static ParsedStrategy Parse(string batchText, string installDir, GameFilterValues gameFilter, string? userListsDirectory = null, PlatformInfo? platform = null)
     {
         var warnings = new List<string>();
-        var root = Path.GetFullPath(installDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var paths = new TargetPathRules((platform ?? PlatformInfo.Current).Os);
+        var root = paths.Normalize(paths.IsAbsolute(installDir) ? installDir : Path.GetFullPath(installDir)) + paths.Separator;
         var vars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["BIN"] = root + "bin" + Path.DirectorySeparatorChar,
-            ["LISTS"] = root + "lists" + Path.DirectorySeparatorChar,
+            ["BIN"] = root + "bin" + paths.Separator,
+            ["LISTS"] = root + "lists" + paths.Separator,
             ["~dp0"] = root,
             ["GameFilter"] = gameFilter.GameFilter,
             ["GameFilterTCP"] = gameFilter.Tcp,
@@ -88,7 +91,7 @@ public static partial class ZapretStrategyParser
                 {
                     foreach (var name in new[] { "list-general-user.txt", "list-exclude-user.txt", "ipset-exclude-user.txt" })
                     {
-                        value = value.Replace(Path.Combine(root, "lists", name), Path.Combine(userListsDirectory, name), StringComparison.OrdinalIgnoreCase);
+                        value = value.Replace(paths.Combine(root, "lists", name), paths.Combine(userListsDirectory, name), StringComparison.OrdinalIgnoreCase);
                     }
                 }
 

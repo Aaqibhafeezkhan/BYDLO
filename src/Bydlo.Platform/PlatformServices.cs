@@ -106,17 +106,18 @@ public sealed class PrivilegeService : IPrivilegeService
 
 public static class SecretStoreFactory
 {
+    // Selection is pure: tests provide factories that never access native vaults.
+    internal static ISecretStore Select(Bydlo.Core.Models.PlatformInfo platform,
+        Func<ISecretStore> windows, Func<ISecretStore> portable) =>
+        platform.Os == Bydlo.Core.Models.OsFamily.Windows ? windows() : portable();
+
     public static ISecretStore Create(IAppPaths paths, bool isolated = false)
     {
         var directory = Path.Combine(paths.DataDirectory, "secrets");
-        if (OperatingSystem.IsWindows())
-        {
-            return new DpapiSecretStore(directory);
-        }
-
-        return CreatePortable(paths, isolated || NetworkSafetyGuard.IsLocked, scope =>
+        return Select(Bydlo.Core.Models.PlatformInfo.Current, () => new DpapiSecretStore(directory),
+            () => CreatePortable(paths, isolated || NetworkSafetyGuard.IsLocked, scope =>
             OperatingSystem.IsMacOS() ? new MacKeychainBackend(scope)
-                : OperatingSystem.IsLinux() && !OperatingSystem.IsAndroid() ? new LinuxSecretBackend(scope) : null);
+                : OperatingSystem.IsLinux() && !OperatingSystem.IsAndroid() ? new LinuxSecretBackend(scope) : null));
     }
 
     // Backend creation is deferred so isolated runs never access the user's system vault.

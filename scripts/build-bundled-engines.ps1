@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'env.ps1')
 . (Join-Path $PSScriptRoot 'native-build-cache.ps1')
 . (Join-Path $PSScriptRoot 'openvpn-cache.ps1')
+. (Join-Path $PSScriptRoot 'extract-openvpn-msi.ps1')
 $repo = $env:BYDLO_ROOT
 $output = [IO.Path]::GetFullPath($PublishDirectory)
 $stage = Join-Path $repo ('.tmp/native-build-' + $Rid)
@@ -68,13 +69,15 @@ Copy-Item $openvpnSource $sources -Force
 if ($Rid.StartsWith('win-')) {
     Copy-Item (Fetch 'dco-source') (Join-Path $sources 'ovpn-dco-2.8.14-source.tar.gz') -Force
     $msi = Fetch ('openvpn-windows-' + $Rid.Split('-')[1])
-    $lessmsi = Fetch 'lessmsi'
-    Expand-Archive -LiteralPath $lessmsi -DestinationPath (Join-Path $stage 'lessmsi') -Force
-    # Extract only. Never execute MSI custom actions, GUI, engine, driver or service.
-    $extract = (Join-Path $stage 'openvpn-extracted') + [IO.Path]::DirectorySeparatorChar
-    & (Join-Path $stage 'lessmsi/lessmsi.exe') x $msi $extract
-    CheckExit 'Read-only MSI extraction'
-    $original = Join-Path $extract 'SourceDir/OpenVPN'
+    $lessmsiExe = ''
+    if ($IsWindows) {
+        $lessmsi = Fetch 'lessmsi'
+        Expand-Archive -LiteralPath $lessmsi -DestinationPath (Join-Path $stage 'lessmsi') -Force
+        $lessmsiExe = Join-Path $stage 'lessmsi/lessmsi.exe'
+    }
+    # Fresh workspace: stale payload from earlier MSI versions must not enter the bundle.
+    $extract = Join-Path $stage ('openvpn-extracted-' + [guid]::NewGuid().ToString('N'))
+    $original = Expand-OpenVpnMsi $msi $extract $lessmsiExe
     foreach ($name in @('openvpn.exe','tapctl.exe','vcruntime140.dll','libpkcs11-helper-1.dll')) {
         Copy-Item (Join-Path $original "bin/$name") $ovpnDir -Force
     }
@@ -124,6 +127,7 @@ Copy-Item (Join-Path $repo 'scripts/build-openvpn.sh') $sources -Force
 Copy-Item (Join-Path $repo 'scripts/build-bundled-engines.ps1') $sources -Force
 Copy-Item (Join-Path $repo 'scripts/native-build-cache.ps1') $sources -Force
 Copy-Item (Join-Path $repo 'scripts/openvpn-cache.ps1') $sources -Force
+Copy-Item (Join-Path $repo 'scripts/extract-openvpn-msi.ps1') $sources -Force
 Get-ChildItem (Join-Path $output 'engines') -Recurse -File | Sort-Object FullName | ForEach-Object {
     '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), ([IO.Path]::GetRelativePath($output, $_.FullName).Replace('\','/'))
 } | Set-Content (Join-Path $output 'ENGINES-SHA256SUMS.txt') -Encoding utf8NoBOM
