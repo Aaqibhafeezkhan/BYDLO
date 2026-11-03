@@ -17,7 +17,7 @@ var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
 if (args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
-    args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
+    args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
@@ -133,6 +133,45 @@ if (args.Contains("--preview-brand", StringComparer.Ordinal))
     services.Theme.Apply(ThemePreference.Purple);
     Shoot("brand-desktop", 1180, 780);
     Shoot("brand-compact", 380, 700);
+    return;
+}
+
+if (args.Contains("--verify-speed", StringComparer.Ordinal))
+{
+    shell.FinishOnboardingCommand.Execute(null);
+    Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
+    shell.Navigate("connections");
+    var ids = shell.Profiles.Select(profile => profile.Id).ToArray();
+    shell.SelectedProfile = shell.Profiles[1];
+    shell.SetServerSpeeds(new Dictionary<Guid, long> { [ids[0]] = 1024, [ids[1]] = 8192, [ids[2]] = 0 });
+    shell.SortBySpeed = true;
+    if (shell.Profiles[0].Id != ids[1] || shell.SelectedProfile?.Id != ids[1] ||
+        shell.Profiles.Single(profile => profile.Id == ids[2]).MeasuredSpeedText != "—")
+        throw new InvalidOperationException("Speed sorting, selection or unavailable result failed.");
+    if (shell.Connections.CanMeasureSpeed || string.IsNullOrEmpty(shell.Connections.SpeedTestDisabledReason))
+        throw new InvalidOperationException("Mock/safe session must disable speed tests with an explanation.");
+    // Even direct command execution must respect the safety guard.
+    Wait(shell.Connections.MeasureSpeedCommand.ExecuteAsync(null));
+    foreach (var width in new[] { 1180, 380 })
+    {
+        var window = new Window { Width = width, Height = 900, Content = new ConnectionsView { DataContext = shell.Connections } };
+        window.Show();
+        Pump(100);
+        var expander = window.GetVisualDescendants().OfType<Expander>()
+            .Single(control => Equals(control.Header, Bydlo.App.Services.Loc.Instance["connections.speed.title"]));
+        expander.IsExpanded = true;
+        Pump(100);
+        expander.BringIntoView();
+        Pump(100);
+        var start = expander.GetVisualDescendants().OfType<Button>()
+            .Single(button => ReferenceEquals(button.Command, shell.Connections.MeasureSpeedCommand));
+        if (start.IsEnabled || !expander.GetVisualDescendants().OfType<TextBlock>()
+            .Any(text => text.IsVisible && text.Text == shell.Connections.SpeedTestDisabledReason))
+            throw new InvalidOperationException("Speed test bindings or disabled explanation failed.");
+        using (var frame = window.CaptureRenderedFrame()) { frame?.Save(Path.Combine(output, $"speed-{width}.png")); }
+        window.Close();
+    }
+    Console.WriteLine("Speed UI verification passed: results, sorting, selection, safety guard, bindings and compact layout.");
     return;
 }
 

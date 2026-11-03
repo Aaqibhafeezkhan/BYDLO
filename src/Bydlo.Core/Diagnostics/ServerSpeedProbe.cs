@@ -25,7 +25,8 @@ public sealed class ServerSpeedProbe(
             async (profile, token) =>
             {
                 using var limit = CancellationTokenSource.CreateLinkedTokenSource(token);
-                limit.CancelAfter(Timeout);
+                // Separate budgets for engine startup and the download itself.
+                limit.CancelAfter(Timeout + Timeout);
                 try
                 {
                     results[profile.Id] = await measure(profile, target, limit.Token).ConfigureAwait(false);
@@ -34,7 +35,8 @@ public sealed class ServerSpeedProbe(
                 {
                     results[profile.Id] = 0;
                 }
-                catch (Exception ex) when (ex is EngineException or HttpRequestException or IOException or TimeoutException)
+                catch (Exception ex) when (ex is EngineException { LocalizationKey: not "error.engine.cleanup" }
+                    or HttpRequestException or IOException or TimeoutException)
                 {
                     results[profile.Id] = 0;
                 }
@@ -47,7 +49,9 @@ public sealed class ServerSpeedProbe(
     {
         try
         {
-            await engine.StartAsync(start, ct).ConfigureAwait(false);
+            using var startup = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            startup.CancelAfter(Timeout);
+            await engine.StartAsync(start, startup.Token).ConfigureAwait(false);
             return await DownloadAsync(http, target, ct).ConfigureAwait(false);
         }
         finally
@@ -71,29 +75,41 @@ public sealed class ServerSpeedProbe(
     }
 
     public static async Task<long> DownloadAsync(HttpClient http, Uri target, CancellationToken ct = default)
+        => await DownloadAsync(http, target, Timeout, ct).ConfigureAwait(false);
+
+    internal static async Task<long> DownloadAsync(HttpClient http, Uri target, TimeSpan duration, CancellationToken ct = default)
     {
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(duration);
         using var request = new HttpRequestMessage(HttpMethod.Get, target);
+        request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true, NoStore = true };
+        request.Headers.AcceptEncoding.ParseAdd("identity");
         request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, MaximumBytes - 1);
-        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, limit.Token).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         if (response.StatusCode is not (HttpStatusCode.OK or HttpStatusCode.PartialContent))
         {
             return 0;
         }
-        await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        await using var stream = await response.Content.ReadAsStreamAsync(limit.Token).ConfigureAwait(false);
         var watch = Stopwatch.StartNew();
         var buffer = new byte[65536];
         var total = 0;
-        while (total < MaximumBytes)
+        try
         {
-            var count = await stream.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, MaximumBytes - total)), ct)
-                .ConfigureAwait(false);
-            if (count == 0)
+            while (total < MaximumBytes)
             {
-                break;
+                var count = await stream.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, MaximumBytes - total)), limit.Token)
+                    .ConfigureAwait(false);
+                if (count == 0)
+                {
+                    break;
+                }
+                total += count;
             }
-            total += count;
         }
+        catch (OperationCanceledException) when (limit.IsCancellationRequested && !ct.IsCancellationRequested) { }
+        ct.ThrowIfCancellationRequested();
         return (long)(total / Math.Max(watch.Elapsed.TotalSeconds, 0.001));
     }
 }

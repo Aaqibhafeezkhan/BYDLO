@@ -25,6 +25,9 @@ public sealed partial class ConnectionManager
 
     private async Task<long> MeasureThroughProxyAsync(Profile profile, Uri target, AppSettings settings, CancellationToken ct)
     {
+        // Custom configurations can route the test URL directly or across multiple outbounds.
+        // Their result cannot honestly be attributed to one server.
+        if (profile.Protocol is ProtocolKind.SingBoxConfig or ProtocolKind.XrayConfig) { return 0; }
         var candidates = _registry.CandidatesFor(profile, _os);
         var kind = profile.PreferredEngine is { } preferred && candidates.Contains(preferred)
             ? preferred : candidates.Count > 0 ? candidates[0] : EngineKind.Mock;
@@ -43,13 +46,14 @@ public sealed partial class ConnectionManager
             Routing = new RoutingSettings { PreserveMeshVpnRanges = false, BypassPrivateNetworks = false },
         };
         var work = Path.Combine(_paths.SessionsDirectory, "speed-" + Guid.NewGuid().ToString("N"));
+        var secrets = await _secrets.LoadAsync(profile.Id.ToString(), ct).ConfigureAwait(false);
         var engine = _registry.Create(kind, probeSettings);
         try
         {
             var start = new EngineStartRequest
             {
                 Profile = profile,
-                Secrets = await _secrets.LoadAsync(profile.Id.ToString(), ct).ConfigureAwait(false),
+                Secrets = secrets,
                 Settings = probeSettings,
                 WorkDirectory = work,
             };

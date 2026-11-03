@@ -33,7 +33,7 @@
   "profile.dpi.value.xray": "Mux (Xray)",
   "profile.dpi.value.xudp": "XUDP (Xray)",
   "connections.speed.title": "Тест скорости серверов",
-  "connections.speed.notice": "До 4 МиБ загрузки на каждый поддерживаемый сервер. Тест расходует трафик.",
+  "connections.speed.notice": "До 4 МиБ на сервер через sing-box или Xray: до 12 с на запуск и 12 с на загрузку, по два сервера одновременно. Тест расходует трафик. Произвольные JSON-конфиги и другие движки пропускаются.",
   "connections.speed.url": "HTTPS-адрес тестового файла",
   "connections.speed.start": "Измерить скорость загрузки",
   "connections.speed.cancel": "Отменить тест",
