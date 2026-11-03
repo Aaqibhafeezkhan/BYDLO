@@ -16,7 +16,7 @@
     </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,*">
-    <Border Classes="page-heading" Margin="20,12,20,0" MaxWidth="880">
+    <Border Classes="page-heading" Margin="20,12,20,0" MaxWidth="880" HorizontalAlignment="Center">
       <Grid x:Name="PageHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
         <StackPanel Spacing="4" Margin="0,0,12,0">
           <TextBlock Classes="h1" Text="{l:T nav.routing}" />
@@ -26,7 +26,7 @@
       </Grid>
     </Border>
     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
-      <StackPanel Classes="page" MaxWidth="880">
+      <StackPanel Classes="page" MaxWidth="880" HorizontalAlignment="Center">
         <Border Classes="panel">
           <StackPanel Spacing="14">
             <TextBlock Classes="h2" Text="{l:T routing.preset.label}" />

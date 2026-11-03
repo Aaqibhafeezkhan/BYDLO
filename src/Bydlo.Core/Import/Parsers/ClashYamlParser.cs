@@ -121,6 +121,7 @@ internal static class ClashYamlParser
             security = "reality";
             Copy(reality, "public-key", Keys.RealityPublicKey);
             Copy(reality, "short-id", Keys.RealityShortId);
+            Copy(reality, "spider-x", Keys.RealitySpiderX);
         }
         profile.Options[Keys.Security] = security;
         Copy(proxy, "servername", Keys.Sni);

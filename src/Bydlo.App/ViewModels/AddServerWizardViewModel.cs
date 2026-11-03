@@ -345,6 +345,12 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         SubscriptionDetails = string.Join('\n', details);
         ErrorKey = null;
         Step = AddServerStep.Preview;
+        // Ping immediately after import (issue #242): non-blocking, mock and safety lock stay silent.
+        if (CanCheckPreviewLatency)
+        {
+            SortPreviewByLatency = true;
+            _ = CheckPreviewLatency();
+        }
     }
 
     private static string Safe(string text, ProfileSecrets secrets)
@@ -476,7 +482,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         }
     }
 
-    /// <summary>Explicit per-server latency probe over the pending preview (issue #136). Never runs automatically.</summary>
+    /// <summary>Per-server latency probe over the pending preview (issue #136, auto after import in #242). Skipped in Mock Mode and under the safety lock.</summary>
     [RelayCommand]
     private async Task CheckPreviewLatency()
     {

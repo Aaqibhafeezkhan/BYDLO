@@ -103,6 +103,15 @@ public sealed class AppSettings
     /// <summary>Sets the OS proxy to the local inbound while connected. Off by default.</summary>
     public bool SetSystemProxy { get; set; }
 
+    /// <summary>
+    /// When true, Windows asks for elevation (UAC) right after startup so TUN, tunnels,
+    /// Zapret and the system proxy are available immediately (issue #246). Off by default;
+    /// when elevation is declined the app keeps working with a limited feature set.
+    /// Linux/macOS ignore this setting (use sudo or the privileged helper instead).
+    /// Never triggers while mock or <c>BYDLO_SAFE_DEV=1</c> safety lock is active.
+    /// </summary>
+    public bool RunElevatedOnStartup { get; set; }
+
     /// <summary>Retain a separate strict TUN while the sing-box backend reconnects. Off by default.</summary>
     public bool KillSwitch { get; set; }
 
