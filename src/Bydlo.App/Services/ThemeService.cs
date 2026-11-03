@@ -82,10 +82,7 @@ public sealed class ThemeService
             return false;
         }
 
-        var basePalette = new ResourceInclude(new Uri("avares://Bydlo.App/App.axaml"))
-        {
-            Source = new Uri($"avares://Bydlo.App/Themes/{(doc.Dark ? "Purple" : "Light")}.axaml"),
-        };
+        var basePalette = CustomBasePalette(doc.Dark);
         var overrides = new ResourceDictionary();
         foreach (var (key, value) in doc.ToResourceColors())
         {
@@ -119,6 +116,12 @@ public sealed class ThemeService
         app.RequestedThemeVariant = doc.Dark ? ThemeVariant.Dark : ThemeVariant.Light;
         return HasLowContrast(app);
     }
+
+    internal static ResourceInclude CustomBasePalette(bool dark) =>
+        new(new Uri("avares://Bydlo.App/App.axaml"))
+        {
+            Source = new Uri($"avares://Bydlo.App/Themes/{(dark ? "Purple" : "Light")}.axaml"),
+        };
 
     /// <summary>Current effective palette as full resource keys to #AARRGGBB (for exporting a template).</summary>
     public static IReadOnlyDictionary<string, string> ExportCurrentPalette()

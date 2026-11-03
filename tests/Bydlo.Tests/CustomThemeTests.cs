@@ -150,9 +150,52 @@ public class CustomThemeTests
             var doc = CustomTheme.Parse(File.ReadAllText(Path.Combine(dir, entry.Id + ".json")));
             Assert.Equal(entry.Id, doc.Id);
             Assert.Empty(doc.IgnoredKeys);
+            Assert.Equal(doc.Description, entry.Description);
+            Assert.Equal(doc.Author, entry.Author);
+            Assert.NotEmpty(entry.Author);
+            Assert.Equal(doc.Dark, entry.Dark);
+            Assert.Equal(5, entry.PreviewColors.Count);
+            foreach (var (key, value) in entry.PreviewColors)
+            {
+                Assert.Equal(CustomTheme.Normalize(doc.Colors[key]), value);
+            }
+            Assert.Equal(CustomTheme.ResourceKeys.Order(StringComparer.Ordinal),
+                doc.ToResourceColors().Keys.Order(StringComparer.Ordinal));
+            if (entry.Id is "ocean" or "forest")
+            {
+                Assert.False(CustomTheme.IsLowContrast(doc.Colors["Text"], doc.Colors["Bg"]));
+                Assert.False(CustomTheme.IsLowContrast(doc.Colors["Text"], doc.Colors["Surface"]));
+                Assert.False(CustomTheme.IsLowContrast(doc.Colors["OnPrimary"], doc.Colors["Primary"]));
+            }
         }
-        // Purple carries the whole palette so it does not depend on the dark base theme.
-        Assert.Equal(CustomTheme.ResourceKeys.Order(StringComparer.Ordinal), CustomTheme.Parse(File.ReadAllText(Path.Combine(dir, "purple.json"))).ToResourceColors().Keys.Order(StringComparer.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("", "")]
+    [InlineData("\"description\":42,", "")]
+    [InlineData("\"description\":\"  Sea foam  \",", "Sea foam")]
+    public void Description_is_optional_plain_text(string field, string expected)
+    {
+        Assert.Equal(expected, CustomTheme.Parse(Valid.Insert(Valid.IndexOf('{') + 1, field)).Description);
+        Assert.Equal(expected, Assert.Single(CustomTheme.ParseIndex(
+            "[{" + field + "\"id\":\"ocean\",\"url\":\"https://example.invalid/ocean.json\"}]")).Description);
+    }
+
+    [Fact]
+    public void Gallery_caps_description_and_ignores_invalid_preview_colors()
+    {
+        var description = new string('x', 141);
+        var entry = Assert.Single(CustomTheme.ParseIndex($$"""
+            [{"id":"ocean","url":"https://example.invalid/ocean.json","description":"{{description}}",
+              "base":"light","name":9,"preview":{"Bg":"#112233","Sidebar":"red","Surface":10,"Other":"#FFFFFF"}
+            }]
+            """));
+        Assert.Equal(new string('x', 140), entry.Description);
+        Assert.Equal("ocean", entry.Name);
+        Assert.False(entry.Dark);
+        Assert.Equal("#FF112233", Assert.Single(entry.PreviewColors).Value);
+        Assert.Equal(entry.Description, CustomTheme.Parse(Valid.Insert(Valid.IndexOf('{') + 1,
+            "\"description\":\"" + description + "\",")).Description);
     }
 
     private static string RepositoryThemesDirectory()

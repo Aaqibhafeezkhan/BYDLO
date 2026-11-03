@@ -48,14 +48,33 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:GalleryThemeRow">
                 <Border Classes="tile" Margin="0,0,0,6">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
-                      <TextBlock Classes="faint" Text="{Binding Author}" />
-                    </StackPanel>
-                    <Button Grid.Column="1" Classes="primary" Margin="8,0,0,0" VerticalAlignment="Center"
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                      <Border Width="76" Height="48" CornerRadius="5" ClipToBounds="True" Background="{Binding Background}" VerticalAlignment="Top">
+                        <Grid ColumnDefinitions="18,*">
+                          <Border Background="{Binding Sidebar}">
+                            <Border Width="8" Height="2" Background="{Binding Text}" VerticalAlignment="Top" Margin="0,10,0,0" />
+                          </Border>
+                          <Border Grid.Column="1" Background="{Binding Surface}" Margin="5" CornerRadius="3" Padding="5">
+                            <StackPanel Spacing="5">
+                              <Border Width="24" Height="2" Background="{Binding Text}" HorizontalAlignment="Left" />
+                              <Border Width="19" Height="2" Background="{Binding Text}" HorizontalAlignment="Left" />
+                              <Border Width="21" Height="7" Background="{Binding Primary}" HorizontalAlignment="Left" CornerRadius="2" />
+                            </StackPanel>
+                          </Border>
+                        </Grid>
+                      </Border>
+                      <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Classes="muted" Text="{Binding Description}" IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
+                        <TextBlock Classes="faint" Text="{Binding Author}" IsVisible="{Binding HasAuthor}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Grid>
+                    <Button Classes="primary" HorizontalAlignment="Left" IsVisible="{Binding !IsInstalled}"
                             Content="{l:T theme.custom.install}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallGalleryThemeCommand}" CommandParameter="{Binding Id}" />
-                  </Grid>
+                    <Button Classes="ghost" HorizontalAlignment="Left" IsVisible="{Binding IsInstalled}"
+                            Content="{l:T theme.custom.reinstall}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallGalleryThemeCommand}" CommandParameter="{Binding Id}" />
+                  </StackPanel>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -71,21 +90,22 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:CustomThemeRow">
                     <Border Classes="tile" Margin="0,0,0,6">
-                      <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Spacing="6">
                         <StackPanel VerticalAlignment="Center">
-                          <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="{Binding Name}" FontWeight="Medium" />
-                            <Border Classes="pill" IsVisible="{Binding IsActive}">
+                          <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                            <Border Classes="pill" IsVisible="{Binding IsActive}" HorizontalAlignment="Left">
                               <TextBlock Text="{l:T theme.custom.active}" />
                             </Border>
                           </StackPanel>
-                          <TextBlock Classes="faint" Text="{Binding Author}" />
+                          <TextBlock Classes="muted" Text="{Binding Description}" IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
+                          <TextBlock Classes="faint" Text="{Binding Author}" IsVisible="{Binding HasAuthor}" TextWrapping="Wrap" />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                          <Button Classes="ghost" Content="{l:T theme.custom.apply}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyCustomThemeCommand}" CommandParameter="{Binding Id}" />
-                          <Button Classes="ghost" Content="{l:T theme.custom.delete}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}" CommandParameter="{Binding Id}" />
-                        </StackPanel>
-                      </Grid>
+                        <WrapPanel>
+                          <Button Classes="ghost" Content="{l:T theme.custom.apply}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyCustomThemeCommand}" CommandParameter="{Binding Id}" Margin="0,0,6,4" />
+                          <Button Classes="ghost" Content="{l:T theme.custom.delete}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}" CommandParameter="{Binding Id}" Margin="0,0,6,4" />
+                        </WrapPanel>
+                      </StackPanel>
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

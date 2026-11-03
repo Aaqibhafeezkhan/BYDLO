@@ -3,12 +3,45 @@
     "id": "purple",
     "name": "Purple",
     "author": "BYDLO",
-    "url": "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/purple.json"
+    "description": "Фиолетовые акценты на тёмном фоне.",
+    "base": "dark",
+    "url": "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/purple.json",
+    "preview": {
+      "Bg": "#15121D",
+      "Sidebar": "#100E17",
+      "Surface": "#211B2E",
+      "Primary": "#7250BC",
+      "Text": "#EFEDF3"
+    }
   },
   {
     "id": "ocean",
     "name": "Ocean",
     "author": "BYDLO",
-    "url": "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/ocean.json"
+    "description": "Тема релиза v0.2. Глубокая морская вода, аквамарин и светлая пена.",
+    "base": "dark",
+    "url": "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/ocean.json",
+    "preview": {
+      "Bg": "#081D27",
+      "Sidebar": "#061620",
+      "Surface": "#102C38",
+      "Primary": "#55D6C6",
+      "Text": "#EDFBF8"
+    }
+  },
+  {
+    "id": "forest",
+    "name": "Лес",
+    "author": "BYDLO",
+    "description": "Тема релиза v0.3. Баги исправлены, и всё расцвело.",
+    "base": "dark",
+    "url": "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/forest.json",
+    "preview": {
+      "Bg": "#111F17",
+      "Sidebar": "#0B1710",
+      "Surface": "#1B2D21",
+      "Primary": "#A4DD78",
+      "Text": "#F8F5E6"
+    }
   }
 ]
