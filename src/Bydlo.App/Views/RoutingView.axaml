@@ -100,6 +100,48 @@
           <Expander Header="{l:T common.advanced}" IsExpanded="{Binding ShowRuleEditor}" HorizontalAlignment="Stretch">
             <StackPanel Spacing="10">
               <Button Content="{l:T profile.dpi.defaults}" Command="{Binding EditDpiDefaultsCommand}" />
+              <Expander x:Name="SourceEditor" Header="{l:T routing.sources.title}" HorizontalAlignment="Stretch">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="faint" Text="{l:T routing.sources.hint}" TextWrapping="Wrap" />
+                  <TextBlock Classes="caps" Text="{l:T routing.sources.builtin}" />
+                  <ItemsControl ItemsSource="{Binding BuiltInSources}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="r:RuleSetSource">
+                        <Expander Header="{Binding Tag}" HorizontalAlignment="Stretch">
+                          <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Url}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Sha256}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding MaxBytes}" />
+                          </StackPanel>
+                        </Expander>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="caps" Text="{l:T routing.sources.custom}" />
+                  <ListBox ItemsSource="{Binding RuleSetSources}" SelectedItem="{Binding SelectedSource}" MaxHeight="180">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="r:RuleSetSource">
+                        <StackPanel Spacing="4">
+                          <TextBlock Text="{Binding Tag}" />
+                          <TextBlock Classes="faint" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Url}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                  <TextBlock Text="{l:T routing.sources.tag}" />
+                  <TextBox x:Name="SourceTagInput" Text="{Binding SourceTag}" Watermark="geosite-custom / geosite.dat / geoip.dat" />
+                  <TextBlock Text="{l:T routing.sources.url}" />
+                  <TextBox Text="{Binding SourceUrl}" Watermark="https://" />
+                  <TextBlock Text="SHA-256" />
+                  <TextBox Text="{Binding SourceHash}" />
+                  <TextBlock Text="{l:T routing.sources.size}" />
+                  <TextBox Text="{Binding SourceMaxBytes}" />
+                  <WrapPanel>
+                    <Button Content="{l:T routing.sources.save}" Command="{Binding SaveSourceCommand}" />
+                    <Button Content="{l:T routing.rules.remove}" Command="{Binding RemoveSourceCommand}" />
+                  </WrapPanel>
+                </StackPanel>
+              </Expander>
               <TextBlock Classes="caps" Text="{l:T routing.rules.ordered}" />
               <ComboBox ItemsSource="{Binding RuleConditions}" SelectedIndex="{Binding RuleConditionIndex}" />
               <TextBox Text="{Binding RuleValue}" Watermark="{l:T routing.rules.value}" />
@@ -113,9 +155,9 @@
                               ToolTip.Tip="{l:T routing.rules.drag}">
                         <TextBlock Text="⋮⋮" />
                       </Border>
-                      <TextBlock Text="{Binding Condition}" />
+                      <TextBlock Text="{Binding Condition, Converter={x:Static l:RoutingRuleLabelConverter.Instance}}" />
                       <TextBlock Text="{Binding Value}" />
-                      <TextBlock Text="{Binding Action}" />
+                      <TextBlock Text="{Binding Action, Converter={x:Static l:RoutingRuleLabelConverter.Instance}}" />
                     </StackPanel>
                   </DataTemplate>
                 </ListBox.ItemTemplate>

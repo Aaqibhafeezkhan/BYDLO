@@ -531,14 +531,23 @@ HTTP подменён обработчиком и потоками в памят
 . ./scripts/env.ps1
 ./scripts/test-native-build-cache.ps1
 dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/routing-ui ru --mock --verify-routing-picker
+
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/routing-rules-ui ru --mock --verify-routing-rules
 dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connections-ui ru --mock --verify-active-connections
 dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/backup-ui ru --mock --verify-backup
 ```
 
-Каталог приложений проверяется только на Windows. Первые два UI-сценария снимают
+Каталог приложений проверяется только на Windows. Сценарии каталога приложений и активных соединений снимают
 Purple, Light и OLED на широком экране и при ширине 380 пикселей. Проверка кеша
 использует фиктивные файлы и ничего не запускает. Полный macOS-комплект и нативные
 хранилища Linux/macOS требуют отдельных проверок на соответствующих платформах.
+
+`--verify-routing-rules` проверяет добавление, изменение и удаление источника, отклонение
+дубликатов, редактирование и перестановку одинаковых правил, сохранение настроек и запрет
+загрузки в Mock Mode; снимает редактор при ширине 1180 и 380 пикселей. `RoutingRuleBookTests`,
+`RuleSetCacheTests` и `ConfigBuilderTests` покрывают JSON, валидацию источников, перевод
+условий и действий, порядок, сохранность кеша при ошибках и отмене, а также подготовку
+geo-файлов Xray. HTTP и процессы подменены фейками; сеть и реальные движки не используются.
 
 ## Простой интерфейс (#92)
 

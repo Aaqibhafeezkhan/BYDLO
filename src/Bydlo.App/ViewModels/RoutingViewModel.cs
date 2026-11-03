@@ -5,8 +5,6 @@ using Avalonia.Platform;
 using Bydlo.App.Services;
 using Avalonia.Controls;
 using System.Collections.ObjectModel;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Avalonia.Platform.Storage;
 using Bydlo.Core.Routing;
 using Bydlo.Core.Security;
@@ -24,6 +22,7 @@ public sealed partial class RoutingViewModel : PageViewModel
         : base(shell)
     {
         OrderedRules.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanDownloadPreset));
+        RuleSetSources.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanDownloadPreset));
         Load();
     }
 
@@ -125,7 +124,7 @@ public sealed partial class RoutingViewModel : PageViewModel
     private int _countryIndex;
 
     public bool IsLocalPreset => PresetIndex == (int)RoutingPreset.ExceptLocal;
-    public bool CanDownloadPreset => (PresetIndex > 0 || OrderedRules.Count > 0 || RemoteDnsRuleSets.Length > 0 || DirectDnsRuleSets.Length > 0) && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
+    public bool CanDownloadPreset => (PresetIndex > 0 || OrderedRules.Count > 0 || RuleSetSources.Count > 0 || RemoteDnsRuleSets.Length > 0 || DirectDnsRuleSets.Length > 0) && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
     private string Country => CountryIndex == 1 ? "cn" : "ru";
 
     [RelayCommand]
@@ -136,24 +135,64 @@ public sealed partial class RoutingViewModel : PageViewModel
             return;
         }
         var cache = new RuleSetCache(RoutingPresets.CacheDirectory(Services.Paths.DataDirectory), Services.Http);
-        foreach (var source in RoutingPresets.Sources((RoutingPreset)PresetIndex, Country)
-            .Concat(OrderedRules.Where(rule => rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp)
-                .Select(rule => RoutingPresets.Find(rule.Value)).OfType<RuleSetSource>())
-            .Concat(OrderedRules
-                .Select(rule => RoutingPresets.XraySource(rule.Condition)).OfType<RuleSetSource>())
-            .Concat(Split(RemoteDnsRuleSets).Concat(Split(DirectDnsRuleSets)).Select(RoutingPresets.Find).OfType<RuleSetSource>())
-            .DistinctBy(source => source.Tag))
+        RuleBook().Validate();
+        var settings = new RoutingSettings
+        {
+            Preset = (RoutingPreset)PresetIndex, PresetCountry = Country, OrderedRules = [.. OrderedRules],
+            RuleSetSources = [.. RuleSetSources], RemoteDnsRuleSets = Split(RemoteDnsRuleSets),
+            DirectDnsRuleSets = Split(DirectDnsRuleSets),
+        };
+        foreach (var source in RoutingPresets.DownloadSources(settings))
         {
             await cache.UpdateAsync(source, Services.ShutdownToken);
         }
         Shell.ShowToast(L["routing.preset.updated"]);
     });
 
-    private static readonly JsonSerializerOptions RulesJson = new()
+    private RoutingRuleBook RuleBook() => new([.. OrderedRules], [.. RuleSetSources]);
+
+    public ObservableCollection<RuleSetSource> RuleSetSources { get; } = [];
+    public IReadOnlyList<RuleSetSource> BuiltInSources => RoutingPresets.BuiltInSources;
+    [ObservableProperty] private RuleSetSource? _selectedSource;
+    [ObservableProperty] private string _sourceTag = "";
+    [ObservableProperty] private string _sourceUrl = "";
+    [ObservableProperty] private string _sourceHash = "";
+    [ObservableProperty] private string _sourceMaxBytes = "67108864";
+
+    partial void OnSelectedSourceChanged(RuleSetSource? value)
     {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter<RoutingCondition>(), new JsonStringEnumConverter<RoutingAction>() },
-    };
+        if (value is null) { return; }
+        SourceTag = value.Tag;
+        SourceUrl = value.Url.AbsoluteUri;
+        SourceHash = value.Sha256;
+        SourceMaxBytes = value.MaxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    [RelayCommand]
+    private Task<bool> SaveSource() => Shell.Guard(() =>
+    {
+        if (!Uri.TryCreate(SourceUrl.Trim(), UriKind.Absolute, out var url) ||
+            !int.TryParse(SourceMaxBytes, out var size))
+        {
+            throw new InvalidDataException(L["routing.sources.invalid"]);
+        }
+        var source = new RuleSetSource(SourceTag.Trim(), url, SourceHash.Trim(), size);
+        var index = SelectedSource is null ? -1 : RuleSetSources.IndexOf(SelectedSource);
+        var sources = RuleSetSources.ToList();
+        if (index >= 0) { sources[index] = source; } else { sources.Add(source); }
+        try { new RoutingRuleBook([.. OrderedRules], sources).Validate(); }
+        catch (InvalidDataException) { throw new InvalidDataException(L["routing.sources.invalid"]); }
+        if (index >= 0) { RuleSetSources[index] = source; } else { RuleSetSources.Add(source); }
+        SelectedSource = null;
+        SourceTag = SourceUrl = SourceHash = "";
+        return Task.CompletedTask;
+    });
+
+    [RelayCommand]
+    private void RemoveSource()
+    {
+        if (SelectedSource is { } source) { RuleSetSources.Remove(source); }
+    }
 
     public ObservableCollection<OrderedRoutingRule> OrderedRules { get; } = [];
     public IReadOnlyList<string> RuleConditions => Enum.GetValues<RoutingCondition>()
@@ -263,6 +302,7 @@ public sealed partial class RoutingViewModel : PageViewModel
     [RelayCommand]
     private Task<bool> ExportRules() => Shell.Guard(async () =>
     {
+        var json = RuleBook().Export();
         if (Services.TopLevel()?.StorageProvider is not { } storage)
         {
             return;
@@ -275,7 +315,8 @@ public sealed partial class RoutingViewModel : PageViewModel
         {
             await using var stream = await file.OpenWriteAsync();
             stream.SetLength(0);
-            await JsonSerializer.SerializeAsync(stream, OrderedRules, RulesJson);
+            await using var writer = new StreamWriter(stream);
+            await writer.WriteAsync(json);
         }
     });
 
@@ -304,17 +345,18 @@ public sealed partial class RoutingViewModel : PageViewModel
         {
             throw new InvalidDataException(L["routing.rules.invalid"]);
         }
-        var rules = JsonSerializer.Deserialize<List<OrderedRoutingRule>>(buffer.AsSpan(0, length), RulesJson);
-        if (rules is null || rules.Any(rule => rule is null || string.IsNullOrWhiteSpace(rule.Value)
-            || !Enum.IsDefined(rule.Condition) || !Enum.IsDefined(rule.Action)))
-        {
-            throw new InvalidDataException(L["routing.rules.invalid"]);
-        }
+        RoutingRuleBook book;
+        try { book = RoutingRuleBook.Import(buffer.AsSpan(0, length)); }
+        catch (System.Text.Json.JsonException) { throw new InvalidDataException(L["routing.rules.invalid"]); }
         OrderedRules.Clear();
-        foreach (var rule in rules)
+        foreach (var rule in book.Rules)
         {
             OrderedRules.Add(rule);
         }
+        RuleSetSources.Clear();
+        foreach (var source in book.Sources) { RuleSetSources.Add(source); }
+        SelectedRule = null;
+        SelectedSource = null;
     });
 
     [RelayCommand]
@@ -337,10 +379,12 @@ public sealed partial class RoutingViewModel : PageViewModel
     }
 
     [RelayCommand]
-    private async Task Save()
+    private Task<bool> Save() => Shell.Guard(async () =>
     {
+        RuleBook().Validate();
         var r = Services.Settings.Routing;
         r.OrderedRules = [.. OrderedRules];
+        r.RuleSetSources = [.. RuleSetSources];
         r.Preset = (RoutingPreset)Math.Max(PresetIndex, 0);
         r.PresetCountry = Country;
         r.PreserveMeshVpnRanges = PreserveMesh;
@@ -366,11 +410,15 @@ public sealed partial class RoutingViewModel : PageViewModel
         r.ProxyOnlyListedProcesses = ProxyOnlyListedProcesses;
         await Services.SaveSettingsAsync();
         Shell.ShowToast(Shell.Home.IsConnected ? L["routing.saved.reconnect"] : L["toast.saved"]);
-    }
+    });
 
     private void Load()
     {
         var r = Services.Settings.Routing;
+        SelectedRule = null;
+        SelectedSource = null;
+        RuleSetSources.Clear();
+        foreach (var source in r.RuleSetSources) { RuleSetSources.Add(source); }
         OrderedRules.Clear();
         foreach (var rule in r.OrderedRules)
         {

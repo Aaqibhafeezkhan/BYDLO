@@ -41,12 +41,44 @@ public sealed class RuleSetCacheTests
     private sealed class Stub : HttpMessageHandler
     {
         public required byte[] Data { get; set; }
+        public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            Task.FromResult(new HttpResponseMessage(Status)
             {
                 Content = new StreamContent(new UnseekableStream(Data)),
             });
+    }
+
+    [Fact]
+    public async Task Http_failure_and_cancellation_leave_verified_cache_unchanged()
+    {
+        using var handler = new Stub { Data = ValidBytes };
+        using var http = new HttpClient(handler);
+        var cache = new RuleSetCache(TestDirs.New("rule-set-failure"), http);
+        var path = await cache.UpdateAsync(Source);
+        handler.Status = HttpStatusCode.NotFound;
+        await Assert.ThrowsAsync<HttpRequestException>(() => cache.UpdateAsync(Source));
+        handler.Status = HttpStatusCode.OK;
+        using var ct = new CancellationTokenSource();
+        ct.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.UpdateAsync(Source, ct.Token));
+        Assert.Equal(ValidBytes, await File.ReadAllBytesAsync(path));
+        Assert.Single(Directory.GetFiles(Path.GetDirectoryName(path)!));
+    }
+
+    [Fact]
+    public async Task New_hash_does_not_replace_previous_version_on_failed_download()
+    {
+        using var handler = new Stub { Data = ValidBytes };
+        using var http = new HttpClient(handler);
+        var cache = new RuleSetCache(TestDirs.New("rule-set-version"), http);
+        var path = await cache.UpdateAsync(Source);
+        var changed = Source with { Sha256 = new string('a', 64) };
+        await Assert.ThrowsAsync<IntegrityException>(() => cache.UpdateAsync(changed));
+        Assert.Equal(ValidBytes, await File.ReadAllBytesAsync(path));
+        Assert.False(File.Exists(cache.GetPath(changed)));
+        Assert.Single(Directory.GetFiles(Path.GetDirectoryName(path)!));
     }
 
     private sealed class UnseekableStream(byte[] data) : MemoryStream(data)

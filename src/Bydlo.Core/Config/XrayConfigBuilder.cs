@@ -143,6 +143,10 @@ public sealed class XrayConfigBuilder
 
         foreach (var rule in routing.OrderedRules)
         {
+            if (RoutingPresets.UnsupportedXrayRule(routing, rule))
+            {
+                throw new EngineException("routing.rules.unsupported", localizationKey: "routing.rules.unsupported");
+            }
             rules.Add(OrderedRoutingRules.Compile(rule, false, settings.Mode, proxyTag, null));
         }
 

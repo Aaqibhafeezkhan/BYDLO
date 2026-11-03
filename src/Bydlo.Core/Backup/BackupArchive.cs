@@ -116,6 +116,7 @@ public static class BackupArchive
             r.DirectCidrs = Union(c.DirectCidrs, r.DirectCidrs);
             r.DirectProcesses = Union(c.DirectProcesses, r.DirectProcesses);
             r.OrderedRules = [.. c.OrderedRules.Concat(r.OrderedRules).Distinct()];
+            r.RuleSetSources = [.. c.RuleSetSources.Concat(r.RuleSetSources).DistinctBy(source => source.Tag)];
         }
         return settings;
     }
@@ -152,6 +153,8 @@ public static class BackupArchive
         { throw new InvalidDataException("Invalid routing or DPI settings."); }
         try { s.DpiDefaults.ValidateFormat(); }
         catch (Bydlo.Core.Engines.EngineException ex) { throw new InvalidDataException("Invalid DPI settings.", ex); }
+        try { new Routing.RoutingRuleBook(s.Routing.OrderedRules, s.Routing.RuleSetSources).Validate(); }
+        catch (Bydlo.Core.Engines.EngineException ex) { throw new InvalidDataException("Invalid routing settings.", ex); }
         var ids = new HashSet<Guid>();
         foreach (var sub in data.Subscriptions)
         {
