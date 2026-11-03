@@ -131,7 +131,7 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             }
             ruleSets.Add(source.Tag, path);
         }
-        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth, ruleSets);
+        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth, ruleSets, locator.Platform.Os);
         var json = request.Group is { } group ? _builder.BuildGroup(group, request.GroupMembers ?? [], ctx).ToJsonString()
             : request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
         _configPath = Path.Combine(request.WorkDirectory, "sing-box.json");
