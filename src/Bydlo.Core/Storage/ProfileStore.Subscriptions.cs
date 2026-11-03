@@ -88,6 +88,7 @@ public sealed partial class ProfileStore
             var next = new ProfileDocument
             {
                 Version = _doc.Version,
+                PendingSecretDeletes = [.. _doc.PendingSecretDeletes],
                 Profiles = _doc.Profiles.Where(profile => !removedIds.Contains(profile.Id))
                     .Select(profile => matched.TryGetValue(profile.Id, out var match)
                         ? CopySubscriptionProfile(profile, subscriptionId, MergeOptions(profile, match.Profile, sub))

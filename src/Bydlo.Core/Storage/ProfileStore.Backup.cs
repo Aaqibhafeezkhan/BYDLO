@@ -33,7 +33,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var incoming = new ProfileDocument { Profiles = data.Profiles.Select(p => p.Profile).ToList(), Subscriptions = data.Subscriptions.Select(s => s.Subscription).ToList() };
+            var incoming = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = data.Profiles.Select(p => p.Profile).ToList(), Subscriptions = data.Subscriptions.Select(s => s.Subscription).ToList() };
             if (mode == BackupImportMode.Merge)
             {
                 incoming.Profiles.InsertRange(0, _doc.Profiles.Where(p => incoming.Profiles.All(i => i.Id != p.Id)));
