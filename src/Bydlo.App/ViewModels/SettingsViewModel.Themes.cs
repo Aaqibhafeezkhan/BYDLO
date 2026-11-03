@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.Json;
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Bydlo.App.Services;
 using Bydlo.Core.Models;
@@ -20,11 +21,17 @@ public sealed class CustomThemeRow(CustomThemeDocument doc, bool isActive) : Obs
 
     public string Author => doc.Author;
 
+    public string Description => doc.Description;
+
+    public bool HasDescription => Description.Length > 0;
+
+    public bool HasAuthor => Author.Length > 0;
+
     public bool IsActive => isActive;
 }
 
 /// <summary>One downloadable theme from the repository gallery.</summary>
-public sealed class GalleryThemeRow(ThemeGalleryEntry entry)
+public sealed partial class GalleryThemeRow(ThemeGalleryEntry entry) : ObservableObject
 {
     public string Id => entry.Id;
 
@@ -33,6 +40,31 @@ public sealed class GalleryThemeRow(ThemeGalleryEntry entry)
     public string Author => entry.Author;
 
     public string Url => entry.Url;
+
+    public string Description => entry.Description;
+
+    public bool HasDescription => Description.Length > 0;
+
+    public bool HasAuthor => Author.Length > 0;
+
+    [ObservableProperty] private bool _isInstalled;
+
+    private readonly Avalonia.Markup.Xaml.Styling.ResourceInclude _basePalette = ThemeService.CustomBasePalette(entry.Dark);
+
+    public IBrush? Background => PreviewBrush("Bg");
+    public IBrush? Sidebar => PreviewBrush("Sidebar");
+    public IBrush? Surface => PreviewBrush("Surface");
+    public IBrush? Primary => PreviewBrush("Primary");
+    public IBrush? Text => PreviewBrush("Text");
+
+    private IBrush? PreviewBrush(string key)
+    {
+        if (entry.PreviewColors.TryGetValue(key, out var value))
+        {
+            return new SolidColorBrush(value == "Transparent" ? Colors.Transparent : Color.Parse(value));
+        }
+        return _basePalette.TryGetResource(CustomTheme.MapKey(key), null, out var fallback) ? fallback as IBrush : null;
+    }
 }
 
 /// <summary>Custom JSON themes: import/export/apply/delete plus the repository gallery (issue #41).</summary>
@@ -57,6 +89,10 @@ public sealed partial class SettingsViewModel
     {
         var active = Theme == ThemePreference.Custom ? Services.Settings.CustomThemeId : null;
         InstalledThemes.ReplaceWith(CustomThemeStore.ListAll(ThemesDirectory).Select(d => new CustomThemeRow(d, d.Id == active)));
+        foreach (var entry in GalleryThemes)
+        {
+            entry.IsInstalled = InstalledThemes.Any(theme => theme.Id == entry.Id);
+        }
         UpdateContrastWarning();
     }
 
@@ -247,18 +283,22 @@ public sealed partial class SettingsViewModel
                 Shell.ShowToast(L["theme.custom.locked"], isError: true);
                 return;
             }
-            var index = await DownloadCappedTextAsync(CustomTheme.DefaultGalleryIndexUrl);
-            if (index is null) { Shell.ShowToast(L["theme.custom.gallery.error"], isError: true); return; }
-            IReadOnlyList<ThemeGalleryEntry> entries;
-            try { entries = CustomTheme.ParseIndex(index); }
-            catch (CustomThemeException) { Shell.ShowToast(L["theme.custom.gallery.error"], isError: true); return; }
-            var installed = new HashSet<string>(InstalledThemes.Select(t => t.Id), StringComparer.Ordinal);
-            GalleryThemes.ReplaceWith(entries.Where(e => !installed.Contains(e.Id)).Select(e => new GalleryThemeRow(e)));
-            if (GalleryThemes.Count == 0) { Shell.ShowToast(L["theme.custom.gallery.empty"]); }
+            await LoadGalleryAsync(Services.Http);
         }
         finally { CustomThemesBusy = false; }
     }
 
+    internal async Task LoadGalleryAsync(HttpClient http)
+    {
+        var index = await DownloadCappedTextAsync(http, CustomTheme.DefaultGalleryIndexUrl);
+        if (index is null) { Shell.ShowToast(L["theme.custom.gallery.error"], isError: true); return; }
+        IReadOnlyList<ThemeGalleryEntry> entries;
+        try { entries = CustomTheme.ParseIndex(index); }
+        catch (CustomThemeException) { Shell.ShowToast(L["theme.custom.gallery.error"], isError: true); return; }
+        var installed = new HashSet<string>(InstalledThemes.Select(t => t.Id), StringComparer.Ordinal);
+        GalleryThemes.ReplaceWith(entries.Select(e => new GalleryThemeRow(e) { IsInstalled = installed.Contains(e.Id) }));
+        if (GalleryThemes.Count == 0) { Shell.ShowToast(L["theme.custom.gallery.empty"]); }
+    }
     [RelayCommand]
     private async Task InstallGalleryTheme(string id)
     {
@@ -273,7 +313,7 @@ public sealed partial class SettingsViewModel
                 Shell.ShowToast(L["theme.custom.locked"], isError: true);
                 return;
             }
-            var content = await DownloadCappedTextAsync(entry.Url);
+            var content = await DownloadCappedTextAsync(Services.Http, entry.Url);
             if (content is null) { Shell.ShowToast(L["theme.custom.gallery.error"], isError: true); return; }
             CustomThemeDocument doc;
             try { doc = CustomThemeStore.Save(ThemesDirectory, content); }
@@ -284,7 +324,6 @@ public sealed partial class SettingsViewModel
                 return;
             }
             ApplyCustomDocument(doc);
-            GalleryThemes.Remove(entry);
             Shell.ShowToast(Loc.T("theme.custom.installed", doc.Name));
         }
         finally { CustomThemesBusy = false; }
@@ -311,13 +350,13 @@ public sealed partial class SettingsViewModel
         }
     }
 
-    private async Task<string?> DownloadCappedTextAsync(string url)
+    private async Task<string?> DownloadCappedTextAsync(HttpClient http, string url)
     {
         // Stream with an early stop: without Content-Length a full ReadAsStringAsync
         // could allocate an unbounded buffer before the 64 KiB check.
         try
         {
-            using var response = await Services.Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, Services.ShutdownToken);
+            using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, Services.ShutdownToken);
             if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > CustomTheme.MaxFileBytes)
             {
                 return null;

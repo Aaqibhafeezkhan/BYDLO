@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media;
@@ -95,6 +96,97 @@ internal static class ThemeVerification
         services.Settings.CustomThemeId = null;
         services.Theme.Apply(ThemePreference.System);
         Console.WriteLine("Theme verification passed: first-run System, legacy Purple migration, gallery Purple palette, Black, contrast warning, fallback, install, Settings render.");
+    }
+
+    public static void RunGallery(MainViewModel shell, string output)
+    {
+        shell.FinishOnboardingCommand.Execute(null);
+        Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
+        shell.Toast = null;
+        using var handler = new GalleryHandler(File.ReadAllText(RepositoryFile("themes", "index.json")));
+        using var http = new HttpClient(handler);
+        Wait(shell.Settings.LoadGalleryAsync(http));
+        Require(handler.Requests == 1, "Gallery thumbnails load with only one index request");
+        var entries = shell.Settings.GalleryThemes;
+        Require(entries.Count >= 3, "Gallery loaded the repository themes");
+        shell.Navigate("settings");
+
+        foreach (var width in new[] { 1180, 380 })
+        {
+            Shoot(shell, output, $"gallery-{width}", width, window =>
+            {
+                var descendants = window.GetVisualDescendants().ToArray();
+                foreach (var entry in entries)
+                {
+                    var thumbnail = descendants.OfType<Border>().Single(b => b.Width == 76 &&
+                        b.Height == 48 && ReferenceEquals(b.DataContext, entry));
+                    Require(thumbnail.IsEffectivelyVisible && thumbnail.Bounds.Width == 76, "Gallery thumbnail is laid out");
+                    Require(thumbnail.Background is ISolidColorBrush, "Gallery thumbnail has its palette");
+                    foreach (var text in new[] { entry.Name, entry.Description, entry.Author })
+                    {
+                        Require(descendants.OfType<TextBlock>().Any(t => ReferenceEquals(t.DataContext, entry) &&
+                            t.Text == text && t.IsEffectivelyVisible && t.Bounds.Width > 0), "Gallery metadata is visible: " + text);
+                    }
+                }
+                var settings = descendants.OfType<SettingsView>().Single();
+                var scroll = (ScrollViewer)settings.Content!;
+                var fetch = descendants.OfType<Button>().Single(b => ReferenceEquals(b.Command, shell.Settings.FetchGalleryCommand));
+                var position = fetch.TranslatePoint(new Point(), (Visual)scroll.Content!);
+                scroll.Offset = new Vector(0, position!.Value.Y - 16);
+            });
+        }
+
+        entries.Clear();
+        var dir = CustomThemeStore.ThemesDirectory(shell.Services.Paths.DataDirectory);
+        foreach (var id in new[] { "ocean", "forest" })
+        {
+            CustomThemeStore.Save(dir, File.ReadAllText(RepositoryFile("themes", id + ".json")));
+            shell.Settings.ApplyCustomThemeCommand.Execute(id);
+            Require(!ThemeService.HasLowContrast(Avalonia.Application.Current!), id + " has readable text");
+            foreach (var page in new[] { "home", "connections", "settings" })
+            {
+                shell.Navigate(page);
+                foreach (var width in new[] { 1180, 380 })
+                {
+                    Shoot(shell, output, $"{id}-{page}-{width}", width);
+                }
+            }
+            shell.Settings.DeleteCustomThemeCommand.Execute(id);
+        }
+        Console.WriteLine("Gallery metadata, single fake HTTP request, and Ocean / Forest renders passed in Mock Mode.");
+    }
+
+    private static void Shoot(MainViewModel shell, string output, string name, int width, Action<Window>? arrange = null)
+    {
+        var window = new Window { Width = width, Height = 900, Content = new MainView { DataContext = shell } };
+        window.Show();
+        Pump();
+        arrange?.Invoke(window);
+        Pump();
+        using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException("No frame: " + name);
+        frame.Save(Path.Combine(output, name + ".png"));
+        window.Close();
+    }
+
+    private static void Wait(Task task)
+    {
+        while (!task.IsCompleted)
+        {
+            Pump();
+        }
+        task.GetAwaiter().GetResult();
+    }
+
+    private sealed class GalleryHandler(string index) : HttpMessageHandler
+    {
+        public int Requests { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Require(request.RequestUri?.AbsoluteUri == CustomTheme.DefaultGalleryIndexUrl, "Only the gallery index is requested");
+            Requests++;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(index) });
+        }
     }
 
     // Ported from PR #173: legacy settings for every theme, single selection, Black palette, first run.

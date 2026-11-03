@@ -4,6 +4,7 @@
   "author": "BYDLO",
   "version": 1,
   "base": "dark",
+  "description": "Тема бета-тестирования v0.1. Фиолетовые акценты на тёмном фоне.",
   "colors": {
     "AccentColor": "#B9A1ED",
     "PrimaryColor": "#7250BC",

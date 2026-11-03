@@ -17,7 +17,7 @@ public sealed record CustomThemeDocument(
     int Version,
     bool Dark,
     IReadOnlyDictionary<string, string> Colors,
-    IReadOnlyList<string> IgnoredKeys)
+    IReadOnlyList<string> IgnoredKeys, string Description = "")
 {
     /// <summary>Overrides mapped to palette resource keys (e.g. "Bg" to "BgBrush").</summary>
     public IReadOnlyDictionary<string, string> ToResourceColors() =>
@@ -25,7 +25,7 @@ public sealed record CustomThemeDocument(
 }
 
 /// <summary>Theme gallery entry from <c>themes/index.json</c>.</summary>
-public sealed record ThemeGalleryEntry(string Id, string Name, string Author, string Url);
+public sealed record ThemeGalleryEntry(string Id, string Name, string Author, string Url, string Description, bool Dark, IReadOnlyDictionary<string, string> PreviewColors);
 
 /// <summary>
 /// Custom themes are JSON with colors only (issue #41). Runtime XAML is never loaded:
@@ -174,7 +174,7 @@ public static partial class CustomTheme
             }
 
             return new CustomThemeDocument(id, name, author, FormatVersion,
-                baseName.Equals("dark", StringComparison.OrdinalIgnoreCase), parsed, ignored);
+                baseName.Equals("dark", StringComparison.OrdinalIgnoreCase), parsed, ignored, ReadDescription(root));
         }
     }
 
@@ -201,17 +201,54 @@ public static partial class CustomTheme
                     throw new CustomThemeException("Theme gallery index is too large.");
                 }
                 if (item.ValueKind != JsonValueKind.Object) { continue; }
-                var id = OptionalString(item, "id", 32);
-                var url = OptionalString(item, "url", 512);
+                var id = ReadGalleryLabel(item, "id", 32);
+                var url = ReadGalleryLabel(item, "url", 512);
                 if (id is null || !IdRegex().IsMatch(id) || url is null ||
                     !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "https")
                 {
                     continue;
                 }
-                entries.Add(new ThemeGalleryEntry(id, OptionalString(item, "name", 64) ?? id, OptionalString(item, "author", 64) ?? "", url));
+                entries.Add(new ThemeGalleryEntry(id, ReadGalleryLabel(item, "name") ?? id, ReadGalleryLabel(item, "author") ?? "", url,
+                    ReadDescription(item), !item.TryGetProperty("base", out var baseValue) ||
+                    baseValue.ValueKind != JsonValueKind.String ||
+                    !string.Equals(baseValue.GetString(), "light", StringComparison.OrdinalIgnoreCase),
+                    ReadPreviewColors(item)));
             }
             return entries;
         }
+    }
+
+    private static string? ReadGalleryLabel(JsonElement item, string key, int max = 64) =>
+        item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String &&
+        value.GetString() is { Length: > 0 } label && label.Length <= max ? label : null;
+
+    private static string ReadDescription(JsonElement item)
+    {
+        if (!item.TryGetProperty("description", out var value) || value.ValueKind != JsonValueKind.String)
+        {
+            return "";
+        }
+
+        var description = string.Concat(value.GetString()!.Trim().EnumerateRunes()
+            .Where(rune => !Rune.IsControl(rune)).Take(140).Select(rune => rune.ToString()));
+        return description.Trim();
+    }
+
+    private static Dictionary<string, string> ReadPreviewColors(JsonElement item)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (item.TryGetProperty("preview", out var preview) && preview.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var key in new[] { "Bg", "Sidebar", "Surface", "Primary", "Text" })
+            {
+                if (preview.TryGetProperty(key, out var color) && color.ValueKind == JsonValueKind.String &&
+                    IsColor(color.GetString()))
+                {
+                    result[key] = Normalize(color.GetString()!);
+                }
+            }
+        }
+        return result;
     }
 
     private static bool IsColor(string? value) =>

@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <InternalsVisibleTo Include="Bydlo.Screenshots" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
