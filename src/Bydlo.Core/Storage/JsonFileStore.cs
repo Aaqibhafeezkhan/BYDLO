@@ -82,6 +82,9 @@ public sealed class Subscription
     public long? Total { get; set; }
 
     public DateTimeOffset? Expires { get; set; }
+
+    /// <summary>Last provider options, used to identify local overrides during refresh.</summary>
+    public Dictionary<Guid, Dictionary<string, string>>? SourceOptions { get; init; }
 }
 
 internal sealed class ProfileDocument
@@ -243,6 +246,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
             Download = metadata?.Download,
             Total = metadata?.Total,
             Expires = metadata?.Expires,
+            SourceOptions = [],
         };
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
@@ -260,6 +264,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
                     written.Add(item.Profile.Id.ToString());
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     item.Profile.SubscriptionId = sub.Id;
+                    sub.SourceOptions!.Add(item.Profile.Id, new(item.Profile.Options, StringComparer.OrdinalIgnoreCase));
                 }
                 var next = new ProfileDocument { Profiles = [.. _doc.Profiles, .. profiles.Select(p => p.Profile)], Subscriptions = [.. _doc.Subscriptions, sub], Chains = [.. _doc.Chains] };
                 await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
@@ -273,46 +278,6 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
         }
         finally { _gate.Release(); }
         return sub;
-    }
-
-    /// <summary>Replaces all profiles of a subscription with a fresh list.</summary>
-    public async Task ReplaceSubscriptionProfilesAsync(Guid subscriptionId, IReadOnlyList<ImportedProfile> fresh, Bydlo.Core.Import.SubscriptionMetadata? metadata = null, CancellationToken ct = default)
-    {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
-                ?? throw new InvalidDataException("Subscription not found.");
-
-            foreach (var old in _doc.Profiles.Where(p => p.SubscriptionId == subscriptionId).ToList())
-            {
-                _doc.Profiles.Remove(old);
-                await secrets.DeleteAsync(old.Id.ToString(), ct).ConfigureAwait(false);
-                DetachFromChainsUnsafe(old.Id);
-            }
-
-            foreach (var item in fresh)
-            {
-                item.Profile.SubscriptionId = subscriptionId;
-                _doc.Profiles.Add(item.Profile);
-                await secrets.SaveAsync(item.Profile.Id.ToString(), item.Secrets, ct).ConfigureAwait(false);
-            }
-
-            sub.LastUpdated = DateTimeOffset.UtcNow;
-            if (metadata is not null)
-            {
-                sub.Upload = metadata.Upload;
-                sub.Download = metadata.Download;
-                sub.Total = metadata.Total;
-                sub.Expires = metadata.Expires;
-            }
-
-            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
-        }
-        finally
-        {
-            _gate.Release();
-        }
     }
 
     public async Task<string?> GetSubscriptionUrlAsync(Guid subscriptionId, CancellationToken ct = default) =>

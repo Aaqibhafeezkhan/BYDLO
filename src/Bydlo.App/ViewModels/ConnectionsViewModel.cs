@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Bydlo.App.Services;
 using Bydlo.Core.Diagnostics;
+using Bydlo.Core.Engines;
 using Bydlo.Core.Import;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
@@ -94,24 +95,28 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     [RelayCommand]
     private async Task RefreshSubscription(SubscriptionRow row)
     {
+        if (IsWorking) { return; }
+        if (Services.IsMock || NetworkSafetyGuard.IsLocked)
+        {
+            Shell.ShowToast(L["catalog.locked"], isError: true);
+            return;
+        }
         IsWorking = true;
         try
         {
             await Shell.Guard(async () =>
             {
                 var url = await Services.Profiles.GetSubscriptionUrlAsync(row.Id) ?? throw new InvalidOperationException("Subscription URL missing.");
-                var preview = await Services.Subscriptions.FetchPreviewAsync(url, Services.ShutdownToken);
+                var preview = await Services.Subscriptions.FetchRefreshAsync(url, Services.ShutdownToken);
                 if (preview.Import.IsEmpty)
                 {
-                    Shell.ShowToast((preview.Import.Errors.Count > 0 ? preview.Import.Errors[0] : null) ?? L["import.none"], isError: true);
+                    Shell.ShowToast(L["wizard.error.subscription"], isError: true);
                     return;
                 }
 
-                var selected = Shell.SelectedProfile;
-                var selectedKey = selected is null ? null : ProfileKey(selected.Profile);
-                await Services.Profiles.ReplaceSubscriptionProfilesAsync(row.Id, preview.Import.Profiles, preview.Metadata);
+                await Services.Profiles.ReplaceSubscriptionProfilesAsync(row.Id, preview.Import.Profiles, preview.Metadata, Services.ShutdownToken);
                 Shell.ReloadProfiles();
-                RestoreSelection(selectedKey);
+
                 Shell.ShowToast(Loc.T("import.sub.updated", row.Snapshot.Name, preview.Import.Profiles.Count));
             });
         }
@@ -178,8 +183,6 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         IsWorking = true;
         try
         {
-            var selected = Shell.SelectedProfile;
-            var selectedKey = selected is null ? null : ProfileKey(selected.Profile);
             var refreshed = 0;
             foreach (var sub in due)
             {
@@ -190,7 +193,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
                     {
                         continue;
                     }
-                    var preview = await Services.Subscriptions.FetchPreviewAsync(url, Services.ShutdownToken);
+                    var preview = await Services.Subscriptions.FetchRefreshAsync(url, Services.ShutdownToken);
                     if (preview.Import.IsEmpty)
                     {
                         continue;
@@ -198,15 +201,14 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
                     await Services.Profiles.ReplaceSubscriptionProfilesAsync(sub.Id, preview.Import.Profiles, preview.Metadata, Services.ShutdownToken);
                     refreshed++;
                 }
-                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or InvalidDataException)
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or InvalidDataException or IOException or UnauthorizedAccessException or EngineException)
                 {
-                    Services.Log.Warn("subs", $"Auto-update failed: {sub.Name}");
+                    Services.Log.Warn("subs", $"Auto-update failed: {ex.GetType().Name}");
                 }
             }
             if (refreshed > 0)
             {
                 Shell.ReloadProfiles();
-                RestoreSelection(selectedKey);
             }
         }
         finally
@@ -216,22 +218,6 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             Subscriptions.ReplaceWith(Services.Profiles.Subscriptions.Select(s => new SubscriptionRow(s)));
         }
     }
-
-    private void RestoreSelection(string? key)
-    {
-        if (key is null)
-        {
-            return;
-        }
-        var match = Shell.Profiles.FirstOrDefault(p => ProfileKey(p.Profile) == key);
-        if (match is not null)
-        {
-            Shell.SelectedProfile = match;
-        }
-    }
-
-    private static string ProfileKey(Profile profile) =>
-        $"{profile.Protocol}|{profile.Host}|{profile.Port}|{profile.Name}";
 
     [RelayCommand]
     private async Task Select(ProfileItem item)
