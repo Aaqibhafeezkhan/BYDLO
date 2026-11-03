@@ -63,7 +63,9 @@ public sealed partial class SettingsViewModel
                         ? "https://github.com/endercodezz/BYDLO/releases"
                         : release.HtmlUrl;
                     UpdateStatus = Loc.T("settings.update.available", release.Tag);
-                    Shell.ShowToast(Loc.T("settings.update.available", release.Tag));
+                    Services.Settings.PendingUpdate = release;
+                    await Services.SaveSettingsAsync();
+                    Shell.ShowReleaseNotification(release);
                 }
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
@@ -109,16 +111,11 @@ public sealed partial class SettingsViewModel
         {
             return;
         }
-        var last = Services.Settings.LastUpdateCheck;
-        if (last is not null && DateTimeOffset.UtcNow - last < TimeSpan.FromHours(24))
-        {
-            return;
-        }
         IsCheckingUpdates = true;
         try
         {
-            var release = await new GitHubUpdateClient().CheckBydloAsync(Version, Services.ShutdownToken);
-            Services.Settings.LastUpdateCheck = DateTimeOffset.UtcNow;
+            var release = await new StartupUpdateChecker(new GitHubUpdateClient()).CheckAsync(
+                Services.Settings, Version, Services.IsMock || NetworkSafetyGuard.IsLocked, Services.ShutdownToken);
             await Services.SaveSettingsAsync();
             if (release is not null)
             {
@@ -126,14 +123,10 @@ public sealed partial class SettingsViewModel
                     ? "https://github.com/endercodezz/BYDLO/releases"
                     : release.HtmlUrl;
                 UpdateStatus = Loc.T("settings.update.available", release.Tag);
-                Shell.ShowToast(Loc.T("settings.update.available", release.Tag));
-            }
-            else
-            {
-                UpdateStatus = L["settings.update.uptodate"];
+                Shell.ShowReleaseNotification(release);
             }
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or InvalidOperationException or IOException or UnauthorizedAccessException)
         {
             Services.Log.Warn("update", ex.GetType().Name);
         }

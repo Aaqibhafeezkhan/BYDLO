@@ -621,6 +621,8 @@
   "import.manual": "Enter configuration manually",
   "settings.about": "About and licenses",
   "settings.update.auto": "Automatically check for new versions",
+  "update.notification.open": "Open release",
+  "update.notification.dismiss": "Dismiss",
   "settings.update.auto.hint": "At most once per day on startup. Disabled in Mock Mode and safe development.",
   "settings.update.check": "Check now",
   "settings.update.checking": "Checking for updates…",
