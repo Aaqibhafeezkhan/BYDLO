@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Bydlo.Engines/Bydlo.Engines.csproj" />
+    <ProjectReference Include="../Bydlo.Platform/Bydlo.Platform.csproj" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" />
+  </ItemGroup>
+</Project>

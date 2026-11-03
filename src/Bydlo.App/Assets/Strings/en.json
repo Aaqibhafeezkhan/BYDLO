@@ -1,4 +1,11 @@
 {
+  "helper.title": "Privileged helper",
+  "helper.hint": "Install a small system service so TUN, Zapret, AmneziaWG and OpenVPN can run while the interface stays unprivileged. Installation and removal stop BYDLO connections and require administrator approval. Only bundled engines are accepted; custom configs, plugins, relay chains and external rule sets require the existing elevated mode. OpenVPN requires its driver to be installed separately on Windows.",
+  "helper.install": "Install helper (administrator approval)",
+  "helper.remove": "Remove helper (administrator approval)",
+  "helper.changed": "Helper updated. New connections use the current installation.",
+  "helper.error": "The helper request failed or administrator approval was cancelled. Check the bundled engines, supported profile options and service installation. Remove the helper to return to the existing elevated mode.",
+  "helper.unsupported": "The helper supports Windows, Linux with systemd, and macOS with launchd. Use the existing elevated mode on other platforms.",
   "import.clash.invalid": "Clash/Mihomo YAML could not be read.",
   "import.clash.skipped": "Proxy #{0} is unsupported or invalid.",
   "import.json.unsafe": "The JSON configuration contains unsupported or unsafe settings.",

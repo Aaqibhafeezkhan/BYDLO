@@ -44,6 +44,11 @@ public sealed class AppServices
         OpenVpnDriver = new OpenVpnDriver(Runner, Privileges, () => Locator.BundledExecutable("openvpn") is { } exe ? Path.GetDirectoryName(exe) : null);
         TgSecrets = new TgWsProxySecrets(Secrets);
         Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, () => new MockEngine(), ZapretFirewall, AmneziaNetwork, OpenVpnDriver);
+        Registry.Decorate = (engine, settings) => HelperManagement.IsSupported && !Privileges.IsElevated &&
+            !IsMock && !NetworkSafetyGuard.IsLocked && HelperManagement.IsInstalled &&
+            HelperRequestPolicy.Supports(engine.Descriptor.Kind) &&
+            (engine.Descriptor.Kind != EngineKind.SingBox || settings.Mode == ConnectionMode.Tun)
+                ? new HelperEngine(engine, () => OperatingSystem.IsWindows() ? new HelperConnection() : new UnixHelperConnection(), () => HelperManagement.IsInstalled) : engine;
         SystemProxy = SystemProxyFactory.Create(Runner, Paths);
         Connections = new ConnectionManager(Registry, Secrets, Paths, new ConflictDetector(new TcpPortChecker()), Log, SystemProxy);
         ConnectionCheck = new ConnectionCheckService();

@@ -162,6 +162,9 @@ jobs:
           dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }} \
             --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
             -o publish/BYDLO-${{ matrix.rid }}
+          dotnet publish src/Bydlo.Helper/Bydlo.Helper.csproj -c Release -r ${{ matrix.rid }} \
+            --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            -o publish/BYDLO-${{ matrix.rid }}/helper
       - name: Bundle pinned sing-box, Xray and Zapret (never execute engines)
         shell: bash
         run: |
