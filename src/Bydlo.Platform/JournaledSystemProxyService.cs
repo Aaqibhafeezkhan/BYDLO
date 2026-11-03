@@ -92,10 +92,28 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
             throw new InvalidDataException("Proxy recovery belongs to another desktop environment.");
         }
 
+        // Inspect ownership before restoring any component of a desktop proxy endpoint.
+        // A foreign host or port also transfers ownership of its enable/authentication flags.
+        var currentValues = new string[journal.Changes.Length];
+        for (var index = 0; index < journal.Changes.Length; index++)
+        {
+            var change = journal.Changes[index];
+            currentValues[index] = await ReadAsync(change.Scope, change.Key, ct).ConfigureAwait(false);
+        }
+        var foreignScopes = journal.Changes.Select((change, index) => (change, current: currentValues[index]))
+            .Where(item => IsEndpoint(item.change.Key) && item.current != item.change.Applied && item.current != item.change.Previous)
+            .Select(item => item.change.Scope).ToHashSet(StringComparer.Ordinal);
+
         for (var index = journal.Changes.Length - 1; index >= 0; index--)
         {
             var change = journal.Changes[index];
-            var current = await ReadAsync(change.Scope, change.Key, ct).ConfigureAwait(false);
+            var current = currentValues[index];
+            if (kind == DesktopProxyKind.Gnome && (foreignScopes.Contains(change.Scope) ||
+                    (change.Key == "mode" && foreignScopes.Count > 0)) ||
+                (kind is DesktopProxyKind.Kde5 or DesktopProxyKind.Kde6 && change.Key == "ProxyType" && foreignScopes.Count > 0))
+            {
+                continue;
+            }
             if (kind == DesktopProxyKind.MacOs && journal.RestoringIndex == index &&
                 JsonSerializer.Deserialize<MacProxy>(change.Previous) is { Enabled: false, Port: > 0 } previous &&
                 current == JsonSerializer.Serialize(previous with { Enabled = true }))
@@ -118,9 +136,20 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
     private async Task SaveJournalAsync(ProxyJournal journal, CancellationToken ct)
     {
         var temporary = Journal + ".tmp";
-        await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(journal), ct).ConfigureAwait(false);
+        await using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            await JsonSerializer.SerializeAsync(stream, journal, cancellationToken: ct).ConfigureAwait(false);
+            stream.Flush(flushToDisk: true);
+        }
         File.Move(temporary, Journal, overwrite: true);
     }
+
+    private bool IsEndpoint(string key) => kind switch
+    {
+        DesktopProxyKind.Gnome => key is "host" or "port",
+        DesktopProxyKind.Kde5 or DesktopProxyKind.Kde6 => key is "httpProxy" or "httpsProxy",
+        _ => false,
+    };
 
     private async Task<ProxyChange[]> CaptureAsync(string host, int port, CancellationToken ct)
     {
