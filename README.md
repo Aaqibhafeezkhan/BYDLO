@@ -4,7 +4,7 @@
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
 <i>One app. Every protocol. Zero bullshit.</i></p>
 
-<p align="center"><img src="docs/images/desktop-workspace-80de20d841c0.png" width="880" alt="Главный экран BYDLO в Mock-режиме"></p>
+<p align="center"><img src="docs/images/home-connected-b9c174e50e02.png" width="880" alt="Главный экран BYDLO в Mock-режиме"></p>
 
 BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
@@ -48,23 +48,23 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 Скриншоты сняты на русском языке в Mock Mode; подключение и трафик на них имитируются.
 
 <p align="center">
-  <img src="docs/images/home-light-a7505feeb075.png" width="48%" alt="Главный экран: светлая тема">
-  <img src="docs/images/home-oled-89759eed9efe.png" width="48%" alt="Главный экран: чёрная тема">
+  <img src="docs/images/home-light-cc8c90f1e151.png" width="48%" alt="Главный экран: светлая тема">
+  <img src="docs/images/home-oled-bac2c6d2a4e0.png" width="48%" alt="Главный экран: чёрная тема">
 </p>
 <p align="center">
-  <img src="docs/images/connections-e9fdb6b6de6b.png" width="48%" alt="Подключения: импорт и список серверов">
-  <img src="docs/images/tools-bc106a90a49f.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
+  <img src="docs/images/connections-1335f54ebc21.png" width="48%" alt="Подключения: импорт и список серверов">
+  <img src="docs/images/tools-8e9409f8865d.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
 </p>
 <p align="center">
-  <img src="docs/images/routing-e8a4c176997d.png" width="48%" alt="Маршрутизация: режимы, DNS и правила">
-  <img src="docs/images/statistics-d027558d0332.png" width="48%" alt="Статистика: скорость, трафик и журнал">
+  <img src="docs/images/routing-605ec2b33af3.png" width="48%" alt="Маршрутизация: режимы, DNS и правила">
+  <img src="docs/images/statistics-405dc2eebe9a.png" width="48%" alt="Статистика: скорость, трафик и журнал">
 </p>
 <p align="center">
-  <img src="docs/images/settings-36d91ee504e3.png" width="70%" alt="Настройки приложения">
+  <img src="docs/images/settings-4f4d6755cd48.png" width="70%" alt="Настройки приложения">
 </p>
 <p align="center">
-  <img src="docs/images/mobile-home-ecdc58e8cd6d.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
-  <img src="docs/images/mobile-connections-42d5d33d5c64.png" width="260" alt="Узкое окно: список серверов">
+  <img src="docs/images/mobile-home-dad967e786d4.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
+  <img src="docs/images/mobile-connections-4890b21b1aad.png" width="260" alt="Узкое окно: список серверов">
 </p>
 
 ## Платформы
