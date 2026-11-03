@@ -136,7 +136,7 @@
               <StackPanel IsVisible="{Binding HasApplicationPicker}" IsEnabled="{Binding IsTunMode}" Spacing="8">
                 <Button Command="{Binding FindApplicationsCommand}" Content="{l:T routing.process.find}" />
                 <TextBox Text="{Binding ApplicationSearch}" Watermark="{l:T routing.process.search}" />
-                <ComboBox ItemsSource="{Binding MatchingApplications}" SelectedItem="{Binding SelectedApplication}"
+                <ComboBox x:Name="ApplicationPicker" ItemsSource="{Binding MatchingApplications}" SelectedItem="{Binding SelectedApplication}"
                           HorizontalAlignment="Stretch">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:RoutingViewModel+ApplicationRow">

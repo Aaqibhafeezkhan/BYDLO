@@ -56,6 +56,73 @@ public sealed class ServerSpeedTests
             respond(request, cancellationToken);
     }
 
+    [Fact]
+    public async Task Temporary_engine_cleanup_retries_a_failed_stop()
+    {
+        var runner = new FakeProcessRunner { StartupOutput = { "Xray started" } };
+        var engine = new XrayEngine(runner, new LogRedactor(), new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64)));
+        using var http = new HttpClient(new Handler((_, _) =>
+        {
+            runner.Last!.StopFailuresRemaining = 1;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) });
+        }));
+        var request = new EngineStartRequest
+        {
+            Profile = Profile,
+            Secrets = new ProfileSecrets { Values = { [Keys.Password] = "fake" } },
+            Settings = new AppSettings(),
+            WorkDirectory = TestDirs.New("speed-stop-retry"),
+        };
+        Assert.True(await ServerSpeedProbe.MeasureThroughEngineAsync(engine, request, http, Url) > 0);
+        Assert.True(runner.Last!.Stopped);
+        Assert.Equal(EngineState.Stopped, engine.State);
+    }
+
+    [Fact]
+    public async Task Failed_cleanup_remains_retryable_and_reports_a_localized_error()
+    {
+        var runner = new FakeProcessRunner { StartupOutput = { "Xray started" } };
+        var engine = new XrayEngine(runner, new LogRedactor(), new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64)));
+        using var http = new HttpClient(new Handler((_, _) =>
+        {
+            runner.Last!.StopError = new IOException("Fake persistent stop failure.");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1]) });
+        }));
+        var request = new EngineStartRequest
+        {
+            Profile = Profile,
+            Secrets = new ProfileSecrets { Values = { [Keys.Password] = "fake" } },
+            Settings = new AppSettings(), WorkDirectory = TestDirs.New("speed-stop-failure"),
+        };
+        var error = await Assert.ThrowsAsync<EngineException>(() => ServerSpeedProbe.MeasureThroughEngineAsync(engine, request, http, Url));
+        Assert.Equal("error.engine.cleanup", error.LocalizationKey);
+        Assert.False(runner.Last!.Stopped);
+        runner.Last.StopError = null;
+        await ServerSpeedProbe.StopEngineAsync(engine);
+        Assert.True(runner.Last.Stopped);
+        Assert.Equal(EngineState.Stopped, engine.State);
+    }
+
+    [Fact]
+    public async Task Batch_limits_parallel_measurements_and_preserves_results()
+    {
+        var active = 0;
+        var maximum = 0;
+        var probe = new ServerSpeedProbe(async (_, _, token) =>
+        {
+            var count = Interlocked.Increment(ref active);
+            Interlocked.Exchange(ref maximum, Math.Max(Volatile.Read(ref maximum), count));
+            try { await Task.Delay(20, token); return 123L; }
+            finally { Interlocked.Decrement(ref active); }
+        });
+        var profiles = Enumerable.Range(0, 5).Select(_ => new Profile()).ToArray();
+        var results = await probe.RunAsync(profiles, Url);
+        Assert.Equal(5, results.Count);
+        Assert.All(results.Values, value => Assert.Equal(123L, value));
+        Assert.InRange(maximum, 1, 2);
+        Assert.Equal(0, active);
+    }
+
     private sealed class MemoryStream(byte[] bytes) : System.IO.MemoryStream(bytes)
     {
         public long PositionAfterDispose { get; private set; }

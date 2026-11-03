@@ -59,6 +59,8 @@ public sealed class FakeProcess : IManagedProcess
 
     public Exception? StopError { get; set; }
 
+    public int StopFailuresRemaining { get; set; }
+
     public event EventHandler<string>? OutputLine;
 
     public event EventHandler<int>? Exited;
@@ -74,6 +76,11 @@ public sealed class FakeProcess : IManagedProcess
 
     public Task StopAsync(TimeSpan timeout, CancellationToken ct = default)
     {
+        if (StopFailuresRemaining > 0)
+        {
+            StopFailuresRemaining--;
+            throw new IOException("Transient fake process stop failure.");
+        }
         if (StopError is { } error) { throw error; }
         Stopped = true;
         HasExited = true;

@@ -448,3 +448,25 @@ Safety lock также подавляет доставку системных у
 уведомлений и режим «Не беспокоить». Агенты не выполняют нативную регистрацию и не запускают
 реальные сетевые сценарии. Нативная доставка, поведение оболочек Linux и вход в систему
 не подтверждены headless-тестами.
+
+## Регрессионные проверки PR #96
+
+`ConfigImportTests` проверяет типы секций JSON и ссылки на исходящие подключения;
+`BackupSettingsValidationTests` — новые поля DNS/DPI и совместимость со старыми копиями;
+`ChainTests` — ограничения готовых режимов при явном выборе движка;
+`ServerSpeedTests` — отмену и повторную очистку временных движков с фейковым запуском.
+
+Безопасные проверки интерфейса и кеша:
+
+```powershell
+. ./scripts/env.ps1
+./scripts/test-native-build-cache.ps1
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/routing-ui ru --mock --verify-routing-picker
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connections-ui ru --mock --verify-active-connections
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/backup-ui ru --mock --verify-backup
+```
+
+Каталог приложений проверяется только на Windows. Первые два UI-сценария снимают
+Purple, Light и OLED на широком экране и при ширине 380 пикселей. Проверка кеша
+использует фиктивные файлы и ничего не запускает. Полный macOS-комплект и нативные
+хранилища Linux/macOS требуют отдельных проверок на соответствующих платформах.

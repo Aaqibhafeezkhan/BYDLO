@@ -4,6 +4,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'env.ps1')
+. (Join-Path $PSScriptRoot 'native-build-cache.ps1')
 . (Join-Path $PSScriptRoot 'openvpn-cache.ps1')
 $repo = $env:BYDLO_ROOT
 $output = [IO.Path]::GetFullPath($PublishDirectory)
@@ -91,9 +92,10 @@ if ($Rid.StartsWith('win-')) {
     }
     $cache = $env:BYDLO_OPENVPN_BUILD_CACHE
     $files = @('openvpn', 'COPYING', 'openssl.cnf')
-    $useCache = $Rid -eq 'osx-arm64' -and $cache
-    if ($useCache -and (Test-OpenVpnCache $cache)) {
-        Write-Host 'Using SHA-256 verified OpenVPN/OpenSSL cache.'
+    $cacheIdentity = $env:BYDLO_OPENVPN_CACHE_ID
+    $useCache = $Rid -eq 'osx-arm64' -and $cache -and $cacheIdentity
+    if ($useCache -and (Test-OpenVpnCache $cache) -and (Test-NativeBuildCache $cache $cacheIdentity $files)) {
+        Write-Host 'Using SHA-256 and input-identity verified OpenVPN/OpenSSL cache.'
         foreach ($name in $files) {
             Copy-Item -LiteralPath (Join-Path $cache $name) -Destination $ovpnDir -Force
         }
@@ -101,10 +103,7 @@ if ($Rid.StartsWith('win-')) {
         & bash (Join-Path $repo 'scripts/build-openvpn.sh') $Rid $stage $ovpnDir $openvpnSource $opensslSource $capSource
         CheckExit 'OpenVPN/OpenSSL build'
         if ($useCache) {
-            New-Item -ItemType Directory -Force $cache | Out-Null
-            foreach ($name in $files) {
-                Copy-Item -LiteralPath (Join-Path $ovpnDir $name) -Destination $cache -Force
-            }
+            Save-NativeBuildCache $cache $ovpnDir $cacheIdentity $files
             Write-OpenVpnCacheManifest $cache
         }
     }
@@ -123,6 +122,7 @@ Copy-Item (Join-Path $repo 'engines/bundle-inputs.lock.json') (Join-Path $output
 Copy-Item (Join-Path $repo 'engines/engines.lock.json') (Join-Path $output 'engines') -Force
 Copy-Item (Join-Path $repo 'scripts/build-openvpn.sh') $sources -Force
 Copy-Item (Join-Path $repo 'scripts/build-bundled-engines.ps1') $sources -Force
+Copy-Item (Join-Path $repo 'scripts/native-build-cache.ps1') $sources -Force
 Copy-Item (Join-Path $repo 'scripts/openvpn-cache.ps1') $sources -Force
 Get-ChildItem (Join-Path $output 'engines') -Recurse -File | Sort-Object FullName | ForEach-Object {
     '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), ([IO.Path]::GetRelativePath($output, $_.FullName).Replace('\','/'))

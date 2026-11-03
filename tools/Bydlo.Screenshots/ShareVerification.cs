@@ -24,8 +24,12 @@ internal static class ShareVerification
         flyout.ShowAt(menuButton);
         Pump();
         var actions = ((StackPanel)flyout.Content!).Children.OfType<Button>().ToArray();
-        Require(actions[0].Command is not null && actions[1].Command is not null, "Share menu commands resolve in flyout");
-        Require(actions[0].IsVisible && actions[1].IsVisible && !actions[2].IsVisible, "Protocol-specific actions");
+        var copyAction = actions.Single(button => ReferenceEquals(button.Command, shell.Connections.CopyLinkCommand));
+        var qrAction = actions.Single(button => ReferenceEquals(button.Command, shell.Connections.ShowQrCommand));
+        var exportAction = actions.Single(button => ReferenceEquals(button.Command, shell.Connections.ExportConfigCommand));
+        Require(copyAction.IsVisible && qrAction.IsVisible && !exportAction.IsVisible, "Protocol-specific actions");
+        Require(actions.Any(button => ReferenceEquals(button.Command, shell.Connections.EditProfileCommand)) &&
+            actions.Any(button => ReferenceEquals(button.Command, shell.Connections.DuplicateProfileCommand)), "Profile editor menu commands resolve in flyout");
         using (var frame = window.CaptureRenderedFrame()) { frame?.Save(Path.Combine(output, "share-menu.png")); }
         flyout.Hide();
 

@@ -9,6 +9,8 @@ namespace Bydlo.Core.Connection;
 
 public sealed partial class ConnectionManager
 {
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, IEngine> _failedSpeedProbes = new();
+
     public Task<IReadOnlyDictionary<Guid, long>> MeasureServerSpeedsAsync(
         IReadOnlyList<Profile> profiles, Uri target, AppSettings settings, CancellationToken ct = default)
     {
@@ -37,9 +39,11 @@ public sealed partial class ConnectionManager
             EnginePaths = new Dictionary<string, string>(settings.EnginePaths, StringComparer.OrdinalIgnoreCase),
             Mode = ConnectionMode.LocalProxy,
             LocalProxyPort = port,
+            DpiDefaults = settings.DpiDefaults,
             Routing = new RoutingSettings { PreserveMeshVpnRanges = false, BypassPrivateNetworks = false },
         };
         var work = Path.Combine(_paths.SessionsDirectory, "speed-" + Guid.NewGuid().ToString("N"));
+        var engine = _registry.Create(kind, probeSettings);
         try
         {
             var start = new EngineStartRequest
@@ -56,15 +60,34 @@ public sealed partial class ConnectionManager
                 Proxy = new WebProxy($"http://127.0.0.1:{httpPort}"),
                 AllowAutoRedirect = false,
             });
-            return await ServerSpeedProbe.MeasureThroughEngineAsync(_registry.Create(kind, probeSettings), start, http, target, ct)
+            return await ServerSpeedProbe.MeasureThroughEngineAsync(engine, start, http, target, ct)
                 .ConfigureAwait(false);
         }
         finally
         {
-            if (Directory.Exists(work))
+            if (engine.State != EngineState.Stopped)
+            {
+                // Retain the handle and recovery files until shutdown can retry cleanup.
+                _failedSpeedProbes[work] = engine;
+            }
+            else if (Directory.Exists(work))
             {
                 Directory.Delete(work, recursive: true);
             }
+        }
+    }
+
+    private async Task RetrySpeedProbeCleanupAsync(List<Exception> errors)
+    {
+        foreach (var (work, engine) in _failedSpeedProbes.ToArray())
+        {
+            try
+            {
+                await ServerSpeedProbe.StopEngineAsync(engine).ConfigureAwait(false);
+                if (Directory.Exists(work)) { Directory.Delete(work, recursive: true); }
+                _failedSpeedProbes.TryRemove(work, out _);
+            }
+            catch (Exception ex) { errors.Add(ex); }
         }
     }
 

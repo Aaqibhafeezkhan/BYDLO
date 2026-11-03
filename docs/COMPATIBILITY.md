@@ -71,7 +71,8 @@ Windows x64: Zapret (Flowseal) и встроенный TgWsProxy (✅), для T
 | `.conf` WireGuard / AmneziaWG, `.ovpn` OpenVPN | ✅ |
 | QR-код из файла изображения | ✅ (ZXing) |
 | QR-код с камеры | 🗓 |
-| Полные JSON-конфигурации sing-box / Xray | 🗓 |
+| Clash/Mihomo YAML (`proxies`) | ✅; отдельные профили, без импорта групп |
+| JSON-конфигурации sing-box / Xray | 🧪; поддерживаемое подмножество встроенных настроек, слушатели задаёт BYDLO; внешние файлы и сторонний API отклоняются |
 
 ## Экспорт и передача сервера
 
