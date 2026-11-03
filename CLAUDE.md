@@ -107,7 +107,8 @@ Android is not part of v0.1 (planned; see docs/ROADMAP.md).
 ## 5. UI rules
 
 - Beauty and simplicity first: big connect button on Home, advanced options hidden under *Advanced*.
-- Themes: Purple (default dark), Light, OLED black, System. Colors live only in `src/Bydlo.App/Themes/*.axaml`.
+- Themes: base switch Light, Black (`Oled`), System (default for fresh installs; Light or Black by OS). Purple is not built in:
+  it ships as the gallery theme `themes/purple.json`; saved `Purple` migrates to System. Colors live only in `src/Bydlo.App/Themes/*.axaml`.
 - All user-visible strings go through localization (`Assets/Strings/en.json`, `ru.json`). Add both languages.
 - Desktop: sidebar navigation; narrow windows (and the future Android head): bottom navigation. Same visual language everywhere.
 

@@ -137,4 +137,34 @@ public class CustomThemeTests
         Assert.Equal("ocean", entry.Id);
         Assert.Throws<CustomThemeException>(() => CustomTheme.ParseIndex("[]{}"));
     }
+
+    [Fact]
+    public void Repository_gallery_lists_purple_and_every_file_parses()
+    {
+        var dir = RepositoryThemesDirectory();
+        var index = CustomTheme.ParseIndex(File.ReadAllText(Path.Combine(dir, "index.json")));
+        var purple = Assert.Single(index, e => e.Id == "purple");
+        Assert.EndsWith("/themes/purple.json", purple.Url, StringComparison.Ordinal);
+        foreach (var entry in index)
+        {
+            var doc = CustomTheme.Parse(File.ReadAllText(Path.Combine(dir, entry.Id + ".json")));
+            Assert.Equal(entry.Id, doc.Id);
+            Assert.Empty(doc.IgnoredKeys);
+        }
+        // Purple carries the whole palette so it does not depend on the dark base theme.
+        Assert.Equal(CustomTheme.ResourceKeys.Order(StringComparer.Ordinal), CustomTheme.Parse(File.ReadAllText(Path.Combine(dir, "purple.json"))).ToResourceColors().Keys.Order(StringComparer.Ordinal));
+    }
+
+    private static string RepositoryThemesDirectory()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            var themes = Path.Combine(dir.FullName, "themes");
+            if (File.Exists(Path.Combine(themes, "index.json")) && File.Exists(Path.Combine(dir.FullName, "BYDLO.slnx")))
+            {
+                return themes;
+            }
+        }
+        throw new DirectoryNotFoundException("Repository themes directory not found.");
+    }
 }

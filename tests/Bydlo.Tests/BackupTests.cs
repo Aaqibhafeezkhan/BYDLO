@@ -12,6 +12,19 @@ public sealed class BackupTests
 {
     private const string Password = "a long backup password 🔑";
 
+    [Theory]
+    [InlineData(ThemePreference.Custom, ThemePreference.System)]
+    [InlineData(ThemePreference.Purple, ThemePreference.System)]
+    [InlineData(ThemePreference.Oled, ThemePreference.Oled)]
+    public void Restored_theme_without_local_custom_file_follows_system(ThemePreference stored, ThemePreference expected)
+    {
+        var data = Data();
+        data.Settings.Theme = stored;
+        data.Settings.CustomThemeId = "from-backup";
+        var settings = BackupArchive.ImportSettings(data, new AppSettings(), BackupImportMode.Replace);
+        Assert.Equal(expected, settings.Theme);
+    }
+
     private static BackupData Data()
     {
         var sub = new Subscription { Name = "Private subscription" };

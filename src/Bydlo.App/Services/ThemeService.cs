@@ -12,7 +12,7 @@ namespace Bydlo.App.Services;
 /// <summary>Swaps the color palette at runtime and follows the OS theme when set to System.</summary>
 public sealed class ThemeService
 {
-    private ThemePreference _preference = ThemePreference.Purple;
+    private ThemePreference _preference = ThemePreference.System;
 
     public void Apply(ThemePreference preference)
     {
@@ -45,7 +45,7 @@ public sealed class ThemeService
 
     /// <summary>
     /// Applies the saved preference including the custom theme file.
-    /// A missing, broken or unappliable custom file falls back to Purple
+    /// A missing, broken or unappliable custom file falls back to the System theme
     /// so a bad theme can never block startup. Returns the low-contrast flag.
     /// </summary>
     public bool ApplySaved(AppSettings settings, string dataDirectory)
@@ -65,7 +65,7 @@ public sealed class ThemeService
                 }
             }
         }
-        Apply(settings.Theme == ThemePreference.Custom ? ThemePreference.Purple : settings.Theme);
+        Apply(settings.Theme == ThemePreference.Custom ? ThemePreference.System : settings.Theme);
         return false;
     }
 
@@ -188,5 +188,9 @@ public sealed class ThemeService
     }
 
     private static ThemePreference FromSystem(Application app) =>
-        app.PlatformSettings?.GetColorValues().ThemeVariant == PlatformThemeVariant.Light ? ThemePreference.Light : ThemePreference.Purple;
+        ForSystemVariant(app.PlatformSettings?.GetColorValues().ThemeVariant);
+
+    /// <summary>System follows the OS between the two base themes: Light and Black (issue #134).</summary>
+    public static ThemePreference ForSystemVariant(PlatformThemeVariant? variant) =>
+        variant == PlatformThemeVariant.Light ? ThemePreference.Light : ThemePreference.Oled;
 }
