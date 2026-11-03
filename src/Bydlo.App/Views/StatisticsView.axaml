@@ -6,6 +6,7 @@
              x:Class="Bydlo.App.Views.StatisticsView"
              x:DataType="vm:StatisticsViewModel">
   <ScrollViewer>
+    <Border Classes="workspace">
     <StackPanel Classes="page">
       <Border Classes="page-heading">
         <StackPanel Spacing="8">
@@ -75,5 +76,6 @@
         </StackPanel>
       </Border>
     </StackPanel>
+    </Border>
   </ScrollViewer>
 </UserControl>

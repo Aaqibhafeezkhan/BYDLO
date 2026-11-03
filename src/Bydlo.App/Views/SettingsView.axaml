@@ -8,6 +8,7 @@
              x:Class="Bydlo.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <ScrollViewer>
+    <Border Classes="workspace">
     <StackPanel Classes="page">
       <Border Classes="page-heading">
         <StackPanel Spacing="10">
@@ -168,5 +169,6 @@
         </StackPanel>
       </Expander>
     </StackPanel>
+    </Border>
   </ScrollViewer>
 </UserControl>

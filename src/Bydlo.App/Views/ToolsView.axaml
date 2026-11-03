@@ -7,6 +7,7 @@
              x:Class="Bydlo.App.Views.ToolsView"
              x:DataType="vm:ToolsViewModel">
   <ScrollViewer>
+    <Border Classes="workspace">
     <StackPanel Classes="page">
       <Border Classes="page-heading">
         <StackPanel Spacing="8">
@@ -331,5 +332,6 @@
         </StackPanel>
       </Expander>
     </StackPanel>
+    </Border>
   </ScrollViewer>
 </UserControl>

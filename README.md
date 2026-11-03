@@ -4,7 +4,7 @@
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
 <i>One app. Every protocol. Zero bullshit.</i></p>
 
-<p align="center"><img src="docs/images/home-purple-9541745d6150.png" width="880" alt="Главный экран BYDLO: импорт, Zapret и Telegram-прокси"></p>
+<p align="center"><img src="docs/images/desktop-workspace.png" width="880" alt="Главный экран BYDLO в Mock-режиме"></p>
 
 BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
@@ -12,9 +12,8 @@ BYDLO не изобретает протоколы заново: он управ
 AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-discord-youtube) и
 [tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) от Flowseal — через один понятный интерфейс.
 
-> **v0.2.0 — первый публичный релиз BYDLO на GitHub.** Логика покрыта изолированными тестами, а реальные подключения мейнтейнер
-> проверяет вручную: Zapret и TgWsProxy уже работают в реальной сети на Windows x64. Что проверено на каждой платформе,
-> а что ещё ждёт ручного прогона, — в [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) и [docs/TESTING.md](docs/TESTING.md).
+> **v0.2.0 — первый публичный релиз BYDLO на GitHub.** Сопровождающий подтвердил работу поддерживаемых сценариев Windows, включая реальные подключения.
+> Статусы и ограничения платформ описаны в [матрице совместимости](docs/COMPATIBILITY.md), а порядок ручной проверки — в [руководстве](docs/TESTING.md).
 
 ## Возможности
 

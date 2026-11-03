@@ -6,6 +6,7 @@
              x:Class="Bydlo.App.Views.ContributorsView"
              x:DataType="vm:ContributorsViewModel">
   <ScrollViewer>
+    <Border Classes="workspace">
     <StackPanel Classes="page">
       <Border Classes="page-heading">
         <StackPanel Spacing="8">
@@ -41,5 +42,6 @@
 
       <Button Classes="ghost" HorizontalAlignment="Left" Content="{l:T contributors.all}" Command="{Binding OpenAllCommand}" />
     </StackPanel>
+    </Border>
   </ScrollViewer>
 </UserControl>

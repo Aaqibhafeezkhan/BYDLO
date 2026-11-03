@@ -470,4 +470,35 @@
     </Setter>
   </Style>
   <Style Selector="RadioButton:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+  <Style Selector=".desktop Border.workspace">
+    <Setter Property="MaxWidth" Value="1120" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Margin" Value="24,20,24,28" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+  </Style>
+  <Style Selector=".desktop Border.workspace > StackPanel.page">
+    <Setter Property="Margin" Value="24" />
+    <Setter Property="Spacing" Value="16" />
+  </Style>
+  <Style Selector=".desktop Border.workspace TextBlock.h1">
+    <Setter Property="FontSize" Value="32" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="LetterSpacing" Value="-0.6" />
+  </Style>
+  <Style Selector=".desktop Border.workspace Border.page-heading">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0,0,0,6" />
+  </Style>
+  <Style Selector=".desktop Border.workspace Border.panel">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector=".desktop Border.workspace Border.connection-workspace">
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+  </Style>
 </Styles>

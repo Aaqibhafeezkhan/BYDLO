@@ -7,7 +7,7 @@
              x:Class="Bydlo.App.Views.MainView"
              x:DataType="vm:MainViewModel"
              Background="{DynamicResource BackdropBrush}"
-             Classes.motion="{Binding !Settings.ReduceMotion}">
+             Classes.motion="{Binding !Settings.ReduceMotion}" Classes.desktop="{Binding !IsCompact}">
   <UserControl.Styles>
     <Style Selector="TransitioningContentControl.page-host">
       <Setter Property="PageTransition" Value="{x:Null}" />

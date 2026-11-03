@@ -6,6 +6,7 @@
              x:Class="Bydlo.App.Views.HomeView"
              x:DataType="vm:HomeViewModel">
   <ScrollViewer>
+    <Border Classes="workspace">
     <StackPanel Classes="page">
       <StackPanel Spacing="6">
         <TextBlock Classes="h1" Text="{l:T nav.home}" TextWrapping="Wrap" />
@@ -218,5 +219,6 @@
         </StackPanel>
       </Grid>
     </StackPanel>
+    </Border>
   </ScrollViewer>
 </UserControl>
