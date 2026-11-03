@@ -16,12 +16,7 @@ function Read-BigEndianUInt32([IO.BinaryReader]$Reader) {
     [Array]::Reverse($bytes)
     return [BitConverter]::ToUInt32($bytes, 0)
 }
-foreach ($entry in $lock.engines) {
-    if ($PrebuiltOnly -and $entry.id -in @('amneziawg', 'openvpn')) { continue }
-    $relative = if ($entry.assets.ContainsKey($platform)) { $entry.assets[$platform].executable } elseif ($entry.bundledExecutables -and $entry.bundledExecutables.ContainsKey($platform)) { $entry.bundledExecutables[$platform] } else { $null }
-    if (!$relative) { continue }
-    $path = Join-Path $output "engines/$($entry.id)/$($entry.version)/$relative"
-    if (!(Test-Path -LiteralPath $path)) { throw "Missing bundled engine: $path" }
+function Assert-ExecutableArchitecture([string]$path) {
     # Read executable headers; never run --version, config checks or any bundled engine.
     $stream = [IO.File]::OpenRead($path)
     try {
@@ -71,6 +66,20 @@ foreach ($entry in $lock.engines) {
             throw "Unknown executable format: $path"
         }
     } finally { $stream.Dispose() }
+}
+$suffix = if ($Rid.StartsWith('win-')) { '.exe' } else { '' }
+foreach ($relative in @("BYDLO$suffix", "helper/Bydlo.Helper$suffix")) {
+    $path = Join-Path $output $relative
+    if (!(Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing application executable: $relative" }
+    Assert-ExecutableArchitecture $path
+}
+foreach ($entry in $lock.engines) {
+    if ($PrebuiltOnly -and $entry.id -in @('amneziawg', 'openvpn')) { continue }
+    $relative = if ($entry.assets.ContainsKey($platform)) { $entry.assets[$platform].executable } elseif ($entry.bundledExecutables -and $entry.bundledExecutables.ContainsKey($platform)) { $entry.bundledExecutables[$platform] } else { $null }
+    if (!$relative) { continue }
+    $path = Join-Path $output "engines/$($entry.id)/$($entry.version)/$relative"
+    if (!(Test-Path -LiteralPath $path)) { throw "Missing bundled engine: $path" }
+    Assert-ExecutableArchitecture $path
 }
 if ($Rid.StartsWith('win-')) {
     $version = ($lock.engines | Where-Object id -eq 'openvpn').version
