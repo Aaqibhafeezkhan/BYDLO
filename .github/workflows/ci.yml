@@ -284,6 +284,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify release tag matches app version
+        # Manual runs rehearse packaging from a branch; only real tags must match Directory.Build.props.
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(grep -oPm1 '(?<=<Version>)[^<]+' Directory.Build.props)
+          echo "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "Invalid release tag '${GITHUB_REF_NAME}': expected vX.Y.Z" >&2; exit 1; }
+          test "${GITHUB_REF_NAME}" = "v${version}" || { echo "Release tag '${GITHUB_REF_NAME}' does not match app version 'v${version}' from Directory.Build.props" >&2; exit 1; }
+          echo "Release ${GITHUB_REF_NAME} matches app version."
       - uses: actions/download-artifact@v4
         with:
           path: dist
