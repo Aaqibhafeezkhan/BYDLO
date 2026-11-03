@@ -83,7 +83,9 @@ public class ConfigBuilderTests
         var o = SingBox(Import("hy2://auth@hy.example.com:443,20000-30000/?obfs=salamander&obfs-password=op&sni=hy.example.com"))["outbounds"]![0]!;
         Assert.Equal("hysteria2", (string?)o["type"]);
         Assert.Equal("salamander", (string?)o["obfs"]!["type"]);
-        Assert.Equal("20000:30000", (string?)o["server_ports"]![0]);
+        Assert.Null(o["server_port"]);
+        Assert.Equal("443:443", (string?)o["server_ports"]![0]);
+        Assert.Equal("20000:30000", (string?)o["server_ports"]![1]);
         Assert.Equal("h3", (string?)o["tls"]!["alpn"]![0]);
     }
 

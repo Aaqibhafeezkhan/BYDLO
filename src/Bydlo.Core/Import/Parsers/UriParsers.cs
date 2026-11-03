@@ -195,13 +195,16 @@ public sealed partial class Hysteria2Parser : IProfileParser
         var text = input.Trim();
         text = "hysteria2://" + text[(text.IndexOf("://", StringComparison.Ordinal) + 3)..];
 
-        // Port hopping ("host:443,20000-30000") is not a valid URI port: keep the first port, remember the rest.
+        // Normalize the authority before System.Uri sees its non-standard port list.
         string? hop = null;
         var m = PortList().Match(text);
         if (m.Success)
         {
-            hop = m.Groups["rest"].Value.TrimStart(',');
-            text = text.Remove(m.Groups["rest"].Index, m.Groups["rest"].Length);
+            var ports = m.Groups["ports"];
+            var ranges = Hysteria2Ports.Parse(ports.Value);
+            hop = Hysteria2Ports.Additional(ranges);
+            text = text.Remove(ports.Index, ports.Length).Insert(ports.Index,
+                ranges[0].Start.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         var uri = ParseUri(text, "hysteria2");
@@ -234,7 +237,7 @@ public sealed partial class Hysteria2Parser : IProfileParser
         return new ImportedProfile(p, secrets);
     }
 
-    [GeneratedRegex(@"@[^/?#]+?:\d+(?<rest>(,\d+(-\d+)?)+)")]
+    [GeneratedRegex(@"^hysteria2://(?:[^/?#@]*@)?(?:\[[^\]]+\]|[^:/?#@]+):(?<ports>[^/?#]+)")]
     private static partial Regex PortList();
 }
 
