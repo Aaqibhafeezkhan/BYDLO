@@ -308,6 +308,78 @@ jobs:
           ./scripts/build-bundled-engines.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory artifacts/windows-native
           ./scripts/compare-engine-payload.ps1 -CrossBundle artifacts/windows-cross -NativeBundle artifacts/windows-native
 
+  sign-windows:
+    name: Sign Windows binaries
+    # Release signing only; PRs never touch keys. Secrets live only in CI, never in the repo (see docs/CODE-SIGNING.md).
+    if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    needs: desktop
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: BYDLO-win-x64
+          path: dist/BYDLO-win-x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: BYDLO-win-arm64
+          path: dist/BYDLO-win-arm64
+      - name: Sign with Azure Trusted Signing (OIDC, timestamped)
+        uses: Azure/trusted-signing-action@v0.5.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
+          files-folder: dist
+          files-folder-filter: BYDLO.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+      - name: Sign helpers with Azure Trusted Signing (OIDC, timestamped)
+        uses: Azure/trusted-signing-action@v0.5.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
+          files-folder: dist
+          files-folder-filter: Bydlo.Helper.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+      - name: Verify signatures (signtool)
+        shell: pwsh
+        run: |
+          $files = @(
+            'dist/BYDLO-win-x64/BYDLO.exe',
+            'dist/BYDLO-win-x64/helper/Bydlo.Helper.exe',
+            'dist/BYDLO-win-arm64/BYDLO.exe',
+            'dist/BYDLO-win-arm64/helper/Bydlo.Helper.exe'
+          )
+          foreach ($f in $files) {
+            if (!(Test-Path $f)) { throw "Missing signed file: $f" }
+            & signtool verify /pa /v $f
+            if ($LASTEXITCODE -ne 0) { throw "Signature verification failed: $f" }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BYDLO-win-x64
+          path: dist/BYDLO-win-x64
+          overwrite: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BYDLO-win-arm64
+          path: dist/BYDLO-win-arm64
+          overwrite: true
+
   macos:
     name: Verify and bundle macOS Apple Silicon
     if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
@@ -365,7 +437,7 @@ jobs:
     name: Verify release archives
     # Manual runs rehearse release packaging without creating a tag or draft release.
     if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
-    needs: [desktop, windows-parity, macos]
+    needs: [desktop, windows-parity, sign-windows, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
