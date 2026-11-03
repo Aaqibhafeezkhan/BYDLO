@@ -298,13 +298,22 @@ jobs:
           done
           for d in BYDLO-*; do
             case "$d" in
-              *linux-*|*osx-*) find "$d" -type f \( -name BYDLO -o -name nfqws -o -name tpws -o -name sing-box -o -name xray -o -name bydlo-amneziawg -o -name openvpn \) -exec chmod 755 {} + ;;
+              *linux-*|*osx-*) find "$d" -type f \( -name BYDLO -o -name Bydlo.Helper -o -name nfqws -o -name tpws -o -name sing-box -o -name xray -o -name bydlo-amneziawg -o -name openvpn \) -exec chmod 755 {} + ;;
             esac
             (cd "$d" && zip -qr "../$d.zip" .)
           done
           sha256sum *.zip > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
-          for archive in *.zip; do unzip -tq "$archive"; done
+          for archive in *.zip; do
+            unzip -tq "$archive"
+            case "$archive" in
+              *linux-*|*osx-*)
+                for entry in BYDLO helper/Bydlo.Helper; do
+                  unzip -Z -l "$archive" "$entry" | awk '$1 ~ /^-rwx/ { executable=1 } END { exit !executable }'
+                done
+                ;;
+            esac
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: release-packages

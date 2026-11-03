@@ -42,6 +42,10 @@ try {
     $thin = [byte[]]::new(32)
     [BitConverter]::GetBytes([uint32]4277009103).CopyTo($thin, 0)
     [BitConverter]::GetBytes([uint32]0x100000c).CopyTo($thin, 4)
+    $app = Join-Path $bundle 'BYDLO'
+    $helper = Join-Path $bundle 'helper/Bydlo.Helper'
+    Put $app $thin
+    Put $helper $thin
     $paths = @{}
     foreach ($id in @('sing-box', 'xray', 'zapret-native')) {
         $entry = $lock.engines | Where-Object id -eq $id
@@ -65,6 +69,11 @@ try {
     $script:checks++
     $wrongCpu = $thin.Clone()
     [BitConverter]::GetBytes([uint32]0x1000007).CopyTo($wrongCpu, 4)
+    Mutate $app $wrongCpu 'Wrong Mach-O architecture'
+    Mutate $helper $wrongCpu 'Wrong Mach-O architecture'
+    [IO.File]::Delete($helper)
+    Reject { Verify } 'Missing application executable: helper/Bydlo.Helper'
+    Put $helper $thin
     Mutate $paths['sing-box'] $wrongCpu 'Wrong Mach-O architecture'
     Mutate $paths['sing-box'] ([byte[]]@(0x7f,0x45,0x4c,0x46,0,0,0,0)) 'Wrong executable format'
     $noArm = $fat.Clone(); $noArm[11] = 7
