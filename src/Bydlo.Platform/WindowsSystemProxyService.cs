@@ -40,6 +40,7 @@ public sealed partial class WindowsSystemProxyService : ISystemProxyService
             return Task.CompletedTask;
         }
 
+        NetworkSafetyGuard.EnsureAllowed("restore the system proxy");
         using var key = Registry.CurrentUser.OpenSubKey(KeyPath, writable: true);
         if (key is not null)
         {

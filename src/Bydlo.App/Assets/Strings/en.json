@@ -492,7 +492,7 @@
   "settings.port": "Local proxy port",
   "settings.port.hint": "SOCKS5 + HTTP on 127.0.0.1 (Xray uses the next port for HTTP). “Allow LAN” below listens on all interfaces.",
   "settings.sysproxy": "Set system proxy while connected",
-  "settings.sysproxy.hint": "Windows only. The previous proxy settings are restored on disconnect.",
+  "settings.sysproxy.hint": "Available on Windows, macOS, GNOME and KDE. Previous settings are restored on disconnect.",
   "settings.lan": "Allow LAN access",
   "settings.lan.hint": "Other devices on your network can use the local proxy (SOCKS5 + HTTP). Off by default.",
   "settings.lan.warning": "Anyone on your LAN with the login and password can route traffic through this device.",

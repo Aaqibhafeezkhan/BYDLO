@@ -1,3 +1,4 @@
+using Bydlo.Core.Processes;
 using System.Diagnostics;
 using Bydlo.Core.Platform;
 using Bydlo.Core.Security;
@@ -136,6 +137,39 @@ public static class SecretStoreFactory
 
 public static class SystemProxyFactory
 {
-    public static ISystemProxyService Create() =>
-        OperatingSystem.IsWindows() ? new WindowsSystemProxyService() : new UnsupportedSystemProxyService();
+    public static ISystemProxyService Create(IProcessRunner runner, IAppPaths paths)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return new WindowsSystemProxyService();
+        }
+        if (OperatingSystem.IsMacOS())
+        {
+            return new JournaledSystemProxyService(runner, DesktopProxyKind.MacOs, paths.DataDirectory);
+        }
+        if (OperatingSystem.IsLinux())
+        {
+            var desktop = Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "";
+            if (desktop.Contains("KDE", StringComparison.OrdinalIgnoreCase) || desktop.Contains("Plasma", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var version in new[] { "6", "5" })
+                {
+                    if (HasTool("kreadconfig" + version) && HasTool("kwriteconfig" + version))
+                    {
+                        return new JournaledSystemProxyService(runner,
+                            version == "6" ? DesktopProxyKind.Kde6 : DesktopProxyKind.Kde5, paths.DataDirectory);
+                    }
+                }
+            }
+            if (desktop.Contains("GNOME", StringComparison.OrdinalIgnoreCase) && HasTool("gsettings"))
+            {
+                return new JournaledSystemProxyService(runner, DesktopProxyKind.Gnome, paths.DataDirectory);
+            }
+        }
+        return new UnsupportedSystemProxyService();
+    }
+
+    private static bool HasTool(string name) => (Environment.GetEnvironmentVariable("PATH") ?? "")
+        .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+        .Any(path => Path.IsPathFullyQualified(path) && File.Exists(Path.Combine(path, name)));
 }

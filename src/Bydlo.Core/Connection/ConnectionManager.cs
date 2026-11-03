@@ -185,7 +185,8 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
             {
                 NetworkSafetyGuard.EnsureAllowed("set the system proxy");
-                await _systemProxy.SetAsync("127.0.0.1", settings.LocalProxyPort, ct).ConfigureAwait(false);
+                await _systemProxy.SetAsync("127.0.0.1",
+                    session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
                 session.SystemProxySet = true;
             }
         }
@@ -235,7 +236,8 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
             {
                 NetworkSafetyGuard.EnsureAllowed("set the system proxy");
-                await _systemProxy.SetAsync("127.0.0.1", settings.LocalProxyPort, ct).ConfigureAwait(false);
+                await _systemProxy.SetAsync("127.0.0.1",
+                    session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
                 session.SystemProxySet = true;
             }
         }

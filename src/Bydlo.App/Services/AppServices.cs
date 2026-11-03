@@ -44,7 +44,7 @@ public sealed class AppServices
         OpenVpnDriver = new OpenVpnDriver(Runner, Privileges, () => Locator.BundledExecutable("openvpn") is { } exe ? Path.GetDirectoryName(exe) : null);
         TgSecrets = new TgWsProxySecrets(Secrets);
         Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, () => new MockEngine(), ZapretFirewall, AmneziaNetwork, OpenVpnDriver);
-        SystemProxy = SystemProxyFactory.Create();
+        SystemProxy = SystemProxyFactory.Create(Runner, Paths);
         Connections = new ConnectionManager(Registry, Secrets, Paths, new ConflictDetector(new TcpPortChecker()), Log, SystemProxy);
         ConnectionCheck = new ConnectionCheckService();
         Importer = new ProfileImporter();
@@ -152,6 +152,8 @@ public sealed class AppServices
 
         if (!s.IsMock && !NetworkSafetyGuard.IsLocked)
         {
+            try { await s.SystemProxy.ClearAsync().ConfigureAwait(false); }
+            catch (Exception ex) { s.Log.Error("system-proxy", "Proxy recovery failed: " + ex.Message); }
             // A retained TUN may outlive a crashed UI. Release only BYDLO's journaled guard.
             try { s.Journal.KillOrphans(RetainedTunEngine.GuardProcessName); }
             catch (Exception ex) { s.Log.Error("kill-switch", "Crash recovery failed: " + ex.Message); }
