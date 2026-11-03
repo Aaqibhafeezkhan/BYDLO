@@ -605,6 +605,9 @@
   "crash.open": "Open logs",
   "crash.copy": "Copy report",
   "crash.dismiss": "Dismiss",
+  "store.recovered": "Settings or profiles were recovered from a backup copy.",
+  "store.reset": "Settings or profiles were damaged and have been reset. The broken file was kept for inspection.",
+  "store.newer": "Data was created by a newer BYDLO version. Update the app instead of overwriting it.",
 
   "common.save": "Save",
   "common.cancel": "Cancel",
