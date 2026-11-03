@@ -1,7 +1,8 @@
 name: Auto-merge
 
-# Turns on GitHub's native auto-merge for pull requests from trusted maintainers into the default branch.
-# GitHub then merges only after every rule of the default-branch ruleset passes, required CI checks included;
+# Turns on GitHub's native auto-merge for pull requests from trusted maintainers into the default branch or
+# the `developer` integration branch (see CLAUDE.md, Git). Both branches share one ruleset.
+# GitHub then merges only after every rule of that ruleset passes, required CI checks included;
 # the merge is made as github-actions[bot], which is not a ruleset bypass actor. GitHub neither closes linked
 # issues nor deletes the head branch for such merges; post-merge-cleanup.yml does both. Every other pull
 # request stays manual.
@@ -29,7 +30,8 @@ jobs:
     # Trusted numeric account ids (stable across renames): 156020274 endercodezz, 330476880 pifagor4ikh.
     if: >-
       github.server_url == 'https://github.com'
-      && github.event.pull_request.base.ref == github.event.repository.default_branch
+      && (github.event.pull_request.base.ref == github.event.repository.default_branch
+        || github.event.pull_request.base.ref == 'developer')
       && github.event.pull_request.head.repo.full_name == github.repository
       && contains(fromJSON('[156020274, 330476880]'), github.event.pull_request.user.id)
       && contains(fromJSON('[156020274, 330476880]'), github.event.sender.id)

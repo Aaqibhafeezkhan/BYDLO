@@ -2,7 +2,10 @@ name: Post-merge cleanup
 
 # Auto-merge merges as github-actions[bot] using GITHUB_TOKEN. For such merges GitHub skips closing
 # keywords (Closes #N), skips "Automatically delete head branches" and triggers no further workflow, so
-# a pull_request "closed" trigger never fires. This workflow does that cleanup instead:
+# a pull_request "closed" trigger never fires. GitHub also never applies closing keywords to merges into a
+# non-default branch, whoever merges, so for the `developer` integration branch (CLAUDE.md, Git) linked
+# issues are closed for every merge; branches are still deleted only after bot merges.
+# This workflow does that cleanup instead:
 # - workflow_run: right after CI finishes for a PR, wait until GitHub completes the auto-merge;
 # - schedule: fallback for missed runs (GitHub may delay or drop cron runs);
 # - workflow_dispatch: manual run for one PR or for recent merges, dry run by default.
@@ -58,6 +61,8 @@ jobs:
           set -euo pipefail
           BASE_BRANCH=$(gh api "repos/$GH_REPO" --jq .default_branch)
           [[ "$GITHUB_REF" == "refs/heads/$BASE_BRANCH" ]] || exit 0
+          INTEGRATION_BRANCH=developer
+          bases=("$BASE_BRANCH" "$INTEGRATION_BRANCH")
           fields=number,state,baseRefName,headRefName,headRefOid,isCrossRepository,mergedAt,mergedBy,autoMergeRequest,closingIssuesReferences
 
           act() {
@@ -73,6 +78,7 @@ jobs:
                 MERGED) echo "$data"; return 0 ;;
                 CLOSED) return 1 ;;
               esac
+              # A maintainer merges into developer by hand; the scheduled run picks that up.
               jq -e '.autoMergeRequest != null' <<< "$data" >/dev/null || return 1
               sleep 15
             done
@@ -84,24 +90,32 @@ jobs:
             # workflow_run.pull_requests is empty once the PR is merged, so match by branch and head commit.
             [[ "$RUN_BRANCH" =~ ^[A-Za-z0-9._/-]+$ && "$RUN_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 0
             prs='[]'
-            for pr in $(gh pr list --state all --head "$RUN_BRANCH" --base "$BASE_BRANCH" --json number,headRefOid \
-                          --jq ".[] | select(.headRefOid == \"$RUN_SHA\") | .number"); do
-              data=$(wait_for_merge "$pr") || continue
-              prs=$(jq --argjson pr "$data" '. + [$pr]' <<< "$prs")
+            for base in "${bases[@]}"; do
+              for pr in $(gh pr list --state all --head "$RUN_BRANCH" --base "$base" --json number,headRefOid \
+                            --jq ".[] | select(.headRefOid == \"$RUN_SHA\") | .number"); do
+                data=$(wait_for_merge "$pr") || continue
+                prs=$(jq --argjson pr "$data" '. + [$pr]' <<< "$prs")
+              done
             done
           elif [[ -n "$PR_NUMBER" ]]; then
             [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo 'Expected a numeric PR number.' >&2; exit 1; }
             prs=$(gh pr view "$PR_NUMBER" --json "$fields" --jq '[.]')
           else
             since=$(date -u -d '2 days ago' +%F)
-            prs=$(gh pr list --state merged --base "$BASE_BRANCH" --search "merged:>=$since" --limit 100 --json "$fields")
+            prs='[]'
+            for base in "${bases[@]}"; do
+              merged=$(gh pr list --state merged --base "$base" --search "merged:>=$since" --limit 100 --json "$fields")
+              prs=$(jq --argjson more "$merged" '. + $more' <<< "$prs")
+            done
           fi
 
-          # Only same-repository PRs that the auto-merge bot merged into the default branch.
-          prs=$(jq -c --arg base "$BASE_BRANCH" '
-            [.[] | select(.mergedAt != null and .baseRefName == $base
-              and (.isCrossRepository | not)
-              and .mergedBy.is_bot == true and .mergedBy.login == "app/github-actions")]
+          # Same-repository PRs: into the default branch only when the auto-merge bot merged them (GitHub
+          # handles manual merges); into the integration branch for any merge. botMerged gates branch deletion.
+          prs=$(jq -c --arg base "$BASE_BRANCH" --arg integration "$INTEGRATION_BRANCH" '
+            [.[] | (.mergedBy.is_bot == true and .mergedBy.login == "app/github-actions") as $bot
+              | select(.mergedAt != null and (.isCrossRepository | not)
+                and ((.baseRefName == $base and $bot) or .baseRefName == $integration))
+              | . + {botMerged: $bot}]
           ' <<< "$prs")
 
           # Linked issues: GitHub's closing references in this repository.
@@ -136,9 +150,10 @@ jobs:
 
           # Head branches: delete only when the branch still points at the merged head commit and no open
           # PR uses it, so later pushes and stacked PRs are never lost.
-          branches=$(jq -r '.[] | [.number, .headRefName, .headRefOid] | @tsv' <<< "$prs")
+          branches=$(jq -r '.[] | select(.botMerged) | [.number, .headRefName, .headRefOid] | @tsv' <<< "$prs")
           while IFS=$'\t' read -r pr branch head; do
-            [[ -n "$branch" && "$branch" != "$BASE_BRANCH" ]] || continue
+            # Never the long-lived branches (a release PR has developer as its head).
+            [[ -n "$branch" && "$branch" != "$BASE_BRANCH" && "$branch" != "$INTEGRATION_BRANCH" ]] || continue
             [[ "$branch" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "Skipping branch of PR #$pr: unexpected name." >&2; continue; }
             sha=$(gh api "repos/$GH_REPO/git/ref/heads/$branch" --jq .object.sha 2>/dev/null) || continue
             [[ "$sha" == "$head" ]] || { echo "Keeping $branch: it has commits after PR #$pr."; continue; }
