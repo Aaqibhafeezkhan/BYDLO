@@ -63,7 +63,7 @@ public sealed partial class ConnectionManager
                 await session.StartAsync(strategy, deadline.Token).ConfigureAwait(false);
                 if (Zapret.Status != ConnectionStatus.Connected)
                 {
-                    throw new EngineException("Zapret did not remain running.");
+                    throw new EngineException("Zapret did not remain running.", localizationKey: "error.engine.zapret.stopped");
                 }
                 if (save is not null) { await save().ConfigureAwait(false); }
                 lock (_sessions) { _sessions[ZapretKey].Settings.AutoReconnect = settings.AutoReconnect; }
@@ -75,7 +75,7 @@ public sealed partial class ConnectionManager
                 {
                     throw new EngineException(new AggregateException(ex, restoreError).Message, localizationKey: "tools.select.restorefailed");
                 }
-                throw new EngineException(ex.Message, localizationKey: "tools.select.applyfailed");
+                throw new EngineException(ex.Message, ex, localizationKey: "tools.select.applyfailed");
             }
         }
         finally { _gate.Release(); }

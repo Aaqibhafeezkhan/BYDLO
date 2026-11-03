@@ -29,7 +29,7 @@ internal sealed class PfTpwsBackend : IZapretBackend
     {
         if (settings.GameFilter != "disabled")
         {
-            throw new EngineException("macOS Zapret supports IPv4 TCP 80/443 only; disable the game filter.");
+            throw new EngineException("macOS Zapret supports IPv4 TCP 80/443 only; disable the game filter.", localizationKey: "error.engine.zapret.macos.gamefilter");
         }
 
         return Task.FromResult(new ParsedStrategy(NativeZapretStrategy.Build(OsFamily.MacOS, install, strategy, settings.GameFilter), []));

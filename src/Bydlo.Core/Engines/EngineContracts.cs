@@ -130,9 +130,11 @@ public interface IEngine : IAsyncDisposable
     Task StopAsync(CancellationToken ct = default);
 }
 
-public sealed class EngineException(string message, Exception? inner = null, string? localizationKey = null) : Exception(message, inner)
+public sealed class EngineException(string message, Exception? inner = null, string? localizationKey = null,
+    string[]? localizationArguments = null) : Exception(message, inner)
 {
     public string? LocalizationKey { get; } = localizationKey;
+    public string[] LocalizationArguments { get; } = localizationArguments ?? [];
 }
 
 /// <summary>Restarts transport without releasing a retained TUN.</summary>

@@ -136,7 +136,7 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public string ZapretStatus => StatusOf(Shell.Zapret);
 
-    public string? ZapretError => Shell.Zapret.Status == ConnectionStatus.Error ? Loc.Error(Shell.Zapret.Error ?? "", Shell.Zapret.ErrorLocalizationKey) : null;
+    public string? ZapretError => Shell.Zapret.Status == ConnectionStatus.Error ? Loc.Error(Shell.Zapret.Error ?? "", Shell.Zapret.ErrorLocalizationKey, Shell.Zapret.ErrorLocalizationArguments) : null;
 
     /// <summary>Zapret failed only because of missing elevation: offer a one-click restart here.</summary>
     public bool ZapretNeedsElevation => Shell.Zapret.Status == ConnectionStatus.Error

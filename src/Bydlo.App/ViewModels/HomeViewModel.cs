@@ -95,7 +95,7 @@ public sealed partial class HomeViewModel : PageViewModel
         }
     }
 
-    public string? Error => IsError && Shell.Primary.Error is { } error ? Loc.Error(error, Shell.Primary.ErrorLocalizationKey) : null;
+    public string? Error => IsError && Shell.Primary.Error is { } error ? Loc.Error(error, Shell.Primary.ErrorLocalizationKey, Shell.Primary.ErrorLocalizationArguments) : null;
 
     /// <summary>Relay chain carrying the active connection, if any (issue #75).</summary>
     public bool IsChainActive => Shell.Primary.Chain is not null;
