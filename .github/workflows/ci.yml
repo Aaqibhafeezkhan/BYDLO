@@ -138,6 +138,10 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/share-verification ru --mock --verify-share
+      - name: Verify connection switching (headless, mock only, no network)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connect-switch-verification ru --mock --verify-connect-switch
       # Artifacts are kept on GitHub only: artifact actions v4 refuse to run on Gitea (it looks like GHES),
       # and GitHub fails the whole job if a step even references the deprecated v3.
       - uses: actions/upload-artifact@v4
