@@ -160,9 +160,15 @@ PR из форков, PR других авторов и ботов остают�
   (`--match-head-commit`). На зеркале Gitea задача не выполняется.
 - Merge выполняет GitHub, когда PR выполняет все правила ruleset `main`, включая обязательные проверки CI.
   Merge делает `github-actions[bot]`, который не может обходить ruleset.
-  Исходную ветку удаляет настройка репозитория **Automatically delete head branches**.
 - Merge, сделанный токеном `GITHUB_TOKEN`, не запускает новых workflow. Поэтому после auto-merge CI
   для `push` в `main` не запускается: проверка уже прошла в PR.
+- Для такого merge GitHub не закрывает issues по `Closes #N` и не удаляет исходную ветку, даже при включённой
+  настройке **Automatically delete head branches**. Это делает `.github/workflows/post-merge-cleanup.yml`.
+  Он запускается после завершения CI для PR (`workflow_run`), ждёт до 10 минут, пока GitHub выполнит merge,
+  закрывает связанные issues и удаляет ветку. Ветка остаётся, если после merge в неё добавили коммиты или
+  её использует открытый PR. Issue, который переоткрыли после merge, тоже остаётся открытым.
+  Резерв — запуск по расписанию дважды в час для PR, влитых за последние двое суток. Ручной запуск
+  (Actions → Post-merge cleanup) по умолчанию только показывает, что будет сделано (`dry_run`).
 
 Нужные настройки репозитория (Settings → General): **Allow auto-merge** и **Automatically delete head branches**.
 В ruleset `main` должно быть правило **Require status checks to pass** с источником GitHub Actions и проверками
