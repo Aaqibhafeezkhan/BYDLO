@@ -215,8 +215,19 @@ public sealed class SingBoxConfigBuilder
 
         custom["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true };
         custom["inbounds"] = new JsonArray(BuildInbound(ctx.Settings, ctx.LocalProxyAuth));
+        var generateDns = custom["dns"] is null;
         custom["dns"] ??= BuildDns(ctx.Settings.Routing, ctx.Settings.Mode, first, ctx.RuleSets);
         var route = custom["route"] as JsonObject ?? new JsonObject();
+        if (generateDns)
+        {
+            // Custom routing is retained; only declare sets referenced by the generated DNS.
+            // BuildDns has already checked that every referenced set is available.
+            var dnsSets = ctx.Settings.Routing.RemoteDnsRuleSets
+                .Concat(ctx.Settings.Routing.DirectDnsRuleSets).Distinct(StringComparer.Ordinal);
+            var localSets = BuildLocalRuleSets(dnsSets.Select(tag =>
+                new KeyValuePair<string, string>(tag, ctx.RuleSets![tag])));
+            if (localSets.Count > 0) { route["rule_set"] = localSets; }
+        }
         var rules = route["rules"] as JsonArray ?? new JsonArray();
         if (ctx.Settings.Routing.PreserveMeshVpnRanges)
         {
@@ -504,7 +515,6 @@ public sealed class SingBoxConfigBuilder
 
         var preset = routing.Preset;
         var sources = RoutingPresets.Sources(preset, routing.PresetCountry);
-        var localSets = new JsonArray();
         if (sources.Count > 0)
         {
             if (ruleSets is null || sources.Any(source => !ruleSets.ContainsKey(source.Tag)))
@@ -519,16 +529,7 @@ public sealed class SingBoxConfigBuilder
             });
         }
 
-        if (ruleSets is not null)
-        {
-            foreach (var (tag, path) in ruleSets)
-            {
-                localSets.Add(new JsonObject
-                {
-                    ["type"] = "local", ["format"] = "binary", ["tag"] = tag, ["path"] = path,
-                });
-            }
-        }
+        var localSets = BuildLocalRuleSets(ruleSets ?? new Dictionary<string, string>());
 
         var route = new JsonObject
         {
@@ -544,6 +545,12 @@ public sealed class SingBoxConfigBuilder
         }
         return route;
     }
+
+    private static JsonArray BuildLocalRuleSets(IEnumerable<KeyValuePair<string, string>> ruleSets) =>
+        new([.. ruleSets.Select(set => (JsonNode)new JsonObject
+        {
+            ["type"] = "local", ["format"] = "binary", ["tag"] = set.Key, ["path"] = set.Value,
+        })]);
 
     private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, DpiSettings defaults, string tag = ProxyTag)
     {
