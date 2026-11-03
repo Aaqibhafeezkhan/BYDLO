@@ -22,7 +22,11 @@ public sealed class SystemProxyCleanupTests
         var recording = proxy as RecordingProxy ?? new RecordingProxy();
         var manager = new ConnectionManager(registry, new InMemorySecretStore(),
             new RootedAppPaths(TestDirs.New("system-proxy-cleanup")), new ConflictDetector(ports ?? new FakePorts()),
-            new LogHub(new LogRedactor()), recording, OsFamily.Windows);
+            new LogHub(new LogRedactor()), recording, OsFamily.Windows)
+        {
+            // Isolated tests never touch the real OS proxy; bypass the development safety lock like SystemProxyPortTests.
+            EnsureSystemProxyAllowed = () => { },
+        };
         return (manager, runner, recording);
     }
 
@@ -62,7 +66,10 @@ public sealed class SystemProxyCleanupTests
             .Register(engine.Descriptor, () => engine);
         await using var manager = new ConnectionManager(registry, new InMemorySecretStore(),
             new RootedAppPaths(TestDirs.New("system-proxy-fail")), new ConflictDetector(new FakePorts()),
-            new LogHub(new LogRedactor()), throwing, OsFamily.Windows);
+            new LogHub(new LogRedactor()), throwing, OsFamily.Windows)
+        {
+            EnsureSystemProxyAllowed = () => { },
+        };
         var settings = new AppSettings { LocalProxyPort = 2345, SetSystemProxy = true, AutoReconnect = false };
         var ex = await Assert.ThrowsAsync<EngineException>(() => manager.ConnectAsync(Demo(), settings));
         Assert.Equal("error.systemproxy.failed", ex.LocalizationKey);
