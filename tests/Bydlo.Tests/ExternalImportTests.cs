@@ -30,8 +30,40 @@ public class ExternalImportTests
         Assert.True(history.TryOffer(link, true));
         Assert.False(history.TryOffer(" " + link + " ", true));
         Assert.False(history.TryOffer("unrelated clipboard", true));
-        Assert.True(history.TryOffer("https://example.com/sub", true));
+        Assert.False(history.TryOffer("https://example.com/sub", true));
         Assert.False(history.TryOffer(link, true));
+    }
+
+    [Theory]
+    [InlineData("https://example.org/docs")]
+    [InlineData("https://example.org/?lang=ru")]
+    [InlineData("https://example.org")]
+    [InlineData("http://example.org/docs")]
+    [InlineData(" https://example.org/sub?token=secret ")]
+    [InlineData("https://example.org/api/v1/client/subscribe?token=secret")]
+    public void Clipboard_does_not_offer_web_URLs_but_manual_subscription_import_remains_available(string input)
+    {
+        var history = new ClipboardSuggestionHistory();
+
+        Assert.False(history.TryOffer(input, true));
+        Assert.True(ProfileImporter.LooksLikeSubscriptionUrl(input, allowRoot: true));
+    }
+
+    [Theory]
+    [InlineData("vless://id@example.com:443")]
+    [InlineData("VMESS://encoded")]
+    [InlineData("trojan://password@example.com:443")]
+    [InlineData("ss://encoded@example.com:443")]
+    [InlineData("hy2://password@example.com:443")]
+    [InlineData("tuic://id:password@example.com:443")]
+    [InlineData("wg://encoded")]
+    [InlineData("socks5://user:password@example.com:1080")]
+    public void Clipboard_still_offers_explicit_protocol_links_once(string input)
+    {
+        var history = new ClipboardSuggestionHistory();
+
+        Assert.True(history.TryOffer(input, true));
+        Assert.False(history.TryOffer(" " + input + " ", true));
     }
 
     [Fact]

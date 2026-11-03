@@ -91,6 +91,12 @@ internal static class ImportVerification
         shell.CancelImportCommand.Execute(null);
 
         var clipboard = window.Clipboard!;
+        foreach (var url in new[] { "https://example.org/docs", "https://example.org/?lang=ru", "https://example.invalid/sub?token=secret" })
+        {
+            Wait(clipboard.SetTextAsync(url));
+            Wait(shell.CheckClipboardAsync());
+            Require(shell.ClipboardOffer is null && !shell.HasImportPreview, "Web URLs do not trigger clipboard offers");
+        }
         Wait(clipboard.SetTextAsync(link));
         Wait(shell.CheckClipboardAsync());
         Require(shell.ClipboardOffer is not null && !shell.ClipboardOffer.Contains("11111111", StringComparison.Ordinal), "Safe clipboard banner");
@@ -107,6 +113,16 @@ internal static class ImportVerification
         Require(shell.ClipboardOffer is not null, "Reenabled clipboard suggestions");
         Wait(shell.AcceptClipboardOfferCommand.ExecuteAsync(null));
         Require(shell.HasImportPreview && shell.ClipboardOffer is null, "Banner acceptance opens preview");
+        shell.CancelImportCommand.Execute(null);
+
+        Wait(clipboard.SetTextAsync(link + "3"));
+        Wait(shell.CheckClipboardAsync());
+        Require(shell.ClipboardOffer is not null, "New protocol link opens another offer");
+        Wait(clipboard.SetTextAsync("https://example.org/docs"));
+        Wait(shell.CheckClipboardAsync());
+        Require(shell.ClipboardOffer is null, "Web URL clears the previous protocol offer");
+        Wait(shell.PasteImportCommand.ExecuteAsync(null));
+        Require(shell.HasImportPreview && shell.CanConfirmImport, "Explicit paste still accepts arbitrary subscription URLs");
         shell.CancelImportCommand.Execute(null);
 
         using var bitmap = MakeQr(link);
