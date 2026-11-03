@@ -37,7 +37,9 @@ public sealed class InMemorySecretStore : ISecretStore
     {
         lock (_gate)
         {
-            return Task.FromResult(_items.TryGetValue(id, out var s) ? s : ProfileSecrets.Empty);
+            return Task.FromResult(_items.TryGetValue(id, out var s)
+                ? new ProfileSecrets { Values = new(s.Values, StringComparer.OrdinalIgnoreCase) }
+                : ProfileSecrets.Empty);
         }
     }
 
