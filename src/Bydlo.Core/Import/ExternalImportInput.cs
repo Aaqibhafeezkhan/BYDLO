@@ -42,7 +42,7 @@ public static class ExternalImportInput
 
     public static bool IsImage(string path) => Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".webp";
 
-    public static bool IsFile(string path) => IsImage(path) || Path.GetExtension(path).ToLowerInvariant() is ".conf" or ".ovpn" or ".txt";
+    public static bool IsFile(string path) => IsImage(path) || Path.GetExtension(path).ToLowerInvariant() is ".conf" or ".ovpn" or ".txt" or ".yaml" or ".yml" or ".json";
 
     public static IEnumerable<string> LaunchInputs(IEnumerable<string> args) => args
         .Where(a => !a.StartsWith('-') && (LinkKind(a) is not null || IsFile(a)));

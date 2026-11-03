@@ -106,6 +106,8 @@ public static class Labels
 {
     public static string Protocol(ProtocolKind p) => p switch
     {
+        ProtocolKind.SingBoxConfig => "sing-box JSON",
+        ProtocolKind.XrayConfig => "Xray JSON",
         ProtocolKind.Vless => "VLESS",
         ProtocolKind.Vmess => "VMess",
         ProtocolKind.Trojan => "Trojan",

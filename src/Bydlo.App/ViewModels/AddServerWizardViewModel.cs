@@ -48,7 +48,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
 
     public ObservableCollection<ServerPreviewItem> PreviewItems { get; } = [];
     public static IReadOnlyList<ProtocolKind> Protocols { get; } = Enum.GetValues<ProtocolKind>()
-        .Where(p => p is not (ProtocolKind.AnyTls or ProtocolKind.ShadowTls or ProtocolKind.Naive or ProtocolKind.Ssh)).ToArray();
+        .Where(p => p is not (ProtocolKind.AnyTls or ProtocolKind.ShadowTls or ProtocolKind.Naive or ProtocolKind.Ssh or ProtocolKind.SingBoxConfig or ProtocolKind.XrayConfig)).ToArray();
     public bool IsSource => Step == AddServerStep.Source;
     public bool IsLink => Step == AddServerStep.Link;
     public bool IsFile => Step == AddServerStep.File;
@@ -156,7 +156,12 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     private void ShowPreview(ImportResult result, string? url = null, SubscriptionMetadata? metadata = null)
     {
         if (_preparation?.IsCancellationRequested == true) { return; }
-        if (result.IsEmpty) { ErrorKey = "wizard.error.input"; return; }
+        if (result.IsEmpty)
+        {
+            ErrorKey = result.Errors.FirstOrDefault(error => error is "import.clash.invalid" or "import.json.unsafe")
+                ?? "wizard.error.input";
+            return;
+        }
         _pending = result;
         _pendingUrl = url;
         _pendingMetadata = metadata;
@@ -168,8 +173,12 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         { details.Add(Loc.T("wizard.traffic", Format.Bytes(up + down))); }
         if (metadata?.Total is > 0) { details.Add(Loc.T("wizard.limit", Format.Bytes(metadata.Total.Value))); }
         if (metadata?.Expires is { } expires) { details.Add(Loc.T("wizard.expires", expires.ToLocalTime().ToString("g"))); }
-        SubscriptionDetails = string.Join('\n', details);
         SkippedCount = result.Errors.Count;
+        foreach (var error in result.Errors.Where(error => error.StartsWith("import.clash.skipped|", StringComparison.Ordinal)))
+        {
+            details.Add(Loc.T("import.clash.skipped", error["import.clash.skipped|".Length..]));
+        }
+        SubscriptionDetails = string.Join('\n', details);
         ErrorKey = null;
         Step = AddServerStep.Preview;
     }
@@ -192,7 +201,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = L[image ? "import.qr" : "import.file"], AllowMultiple = !image,
-            FileTypeFilter = image ? [FilePickerFileTypes.ImageAll] : [new FilePickerFileType("VPN") { Patterns = ["*.conf", "*.ovpn", "*.txt"] }],
+            FileTypeFilter = image ? [FilePickerFileTypes.ImageAll] : [new FilePickerFileType("VPN") { Patterns = ["*.conf", "*.ovpn", "*.txt", "*.yaml", "*.yml", "*.json"] }],
         });
         if (files.Count == 0) { return; }
         try { await PrepareFilesAsync(files.Select(f => f.TryGetLocalPath()).OfType<string>()); }

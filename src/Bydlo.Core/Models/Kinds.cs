@@ -18,6 +18,8 @@ public enum ProtocolKind
     ShadowTls,
     Naive,
     Ssh,
+    SingBoxConfig,
+    XrayConfig,
 }
 
 /// <summary>Executable or library that actually carries traffic.</summary>

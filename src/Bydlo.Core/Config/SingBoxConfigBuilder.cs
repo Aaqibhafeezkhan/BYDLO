@@ -23,7 +23,7 @@ public sealed class SingBoxConfigBuilder
     {
         ProtocolKind.Vless, ProtocolKind.Vmess, ProtocolKind.Trojan, ProtocolKind.Shadowsocks,
         ProtocolKind.Hysteria2, ProtocolKind.Tuic, ProtocolKind.Socks5, ProtocolKind.Http, ProtocolKind.WireGuard,
-        ProtocolKind.AnyTls, ProtocolKind.ShadowTls, ProtocolKind.Naive, ProtocolKind.Ssh,
+        ProtocolKind.AnyTls, ProtocolKind.ShadowTls, ProtocolKind.Naive, ProtocolKind.Ssh, ProtocolKind.SingBoxConfig,
     };
 
     /// <summary>CGNAT / mesh-VPN ranges kept outside the tunnel when <see cref="RoutingSettings.PreserveMeshVpnRanges"/> is on.</summary>
@@ -128,6 +128,11 @@ public sealed class SingBoxConfigBuilder
 
     public JsonObject Build(Profile profile, ProfileSecrets secrets, BuildContext ctx)
     {
+        if (profile.Protocol == ProtocolKind.SingBoxConfig)
+        {
+            return BuildCustom(secrets, ctx);
+        }
+
         if (!Supported.Contains(profile.Protocol))
         {
             throw new NotSupportedException($"sing-box adapter does not handle {profile.Protocol}.");
@@ -177,6 +182,67 @@ public sealed class SingBoxConfigBuilder
         }
 
         return root;
+    }
+
+    private static JsonObject BuildCustom(ProfileSecrets secrets, BuildContext ctx)
+    {
+        JsonObject custom;
+        try
+        {
+            custom = CustomJsonConfig.Read(secrets[Keys.RawConfig] ?? "", ProtocolKind.SingBoxConfig);
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or FormatException or InvalidOperationException)
+        {
+            throw new EngineException("import.json.unsafe", localizationKey: "import.json.unsafe");
+        }
+
+        var outbounds = custom["outbounds"]!.AsArray();
+        var first = (string)outbounds[0]!["tag"]!;
+        var direct = outbounds.OfType<JsonObject>().FirstOrDefault(node => (string?)node["type"] == "direct");
+        var directTag = (string?)direct?["tag"] ?? "bydlo-direct";
+        if (direct is null)
+        {
+            if (outbounds.OfType<JsonObject>().Any(node => (string?)node["tag"] == directTag))
+            {
+                throw new EngineException("import.json.unsafe", localizationKey: "import.json.unsafe");
+            }
+            outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = directTag });
+        }
+
+        custom["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true };
+        custom["inbounds"] = new JsonArray(BuildInbound(ctx.Settings, ctx.LocalProxyAuth));
+        custom["dns"] ??= BuildDns(ctx.Settings.Routing, ctx.Settings.Mode, first, ctx.RuleSets);
+        var route = custom["route"] as JsonObject ?? new JsonObject();
+        var rules = route["rules"] as JsonArray ?? new JsonArray();
+        if (ctx.Settings.Routing.PreserveMeshVpnRanges)
+        {
+            rules.Insert(0, new JsonObject { ["ip_cidr"] = ToArray(MeshVpnRanges), ["outbound"] = directTag });
+        }
+        if (ctx.Settings.Routing.BypassPrivateNetworks)
+        {
+            rules.Insert(0, new JsonObject { ["ip_is_private"] = true, ["outbound"] = directTag });
+        }
+        if (ctx.Settings.Mode == ConnectionMode.Tun)
+        {
+            rules.Insert(0, new JsonObject { ["protocol"] = "dns", ["action"] = "hijack-dns" });
+            rules.Insert(0, new JsonObject { ["action"] = "sniff" });
+        }
+        if (rules.Parent is null) { route["rules"] = rules; }
+        route["auto_detect_interface"] = true;
+        route["final"] ??= first;
+        if (route.Parent is null) { custom["route"] = route; }
+        if (ctx.ClashApiPort is { } port)
+        {
+            custom["experimental"] = new JsonObject
+            {
+                ["clash_api"] = new JsonObject
+                {
+                    ["external_controller"] = $"127.0.0.1:{port}",
+                    ["secret"] = ctx.ClashApiSecret ?? "",
+                },
+            };
+        }
+        return custom;
     }
 
     /// <summary>A retained TUN with no Internet-direct fallback. Transport lives in another process.</summary>

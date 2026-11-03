@@ -1,3 +1,4 @@
+using Bydlo.Core.Import.Parsers;
 using Bydlo.Core.Routing;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -15,7 +16,7 @@ public sealed class XrayConfigBuilder
 {
     public static readonly IReadOnlySet<ProtocolKind> Supported = new HashSet<ProtocolKind>
     {
-        ProtocolKind.Vless, ProtocolKind.Vmess, ProtocolKind.Trojan, ProtocolKind.Shadowsocks, ProtocolKind.Socks5, ProtocolKind.Http,
+        ProtocolKind.Vless, ProtocolKind.Vmess, ProtocolKind.Trojan, ProtocolKind.Shadowsocks, ProtocolKind.Socks5, ProtocolKind.Http, ProtocolKind.XrayConfig,
     };
 
     public string BuildJson(Profile profile, ProfileSecrets secrets, BuildContext ctx) =>
@@ -61,6 +62,11 @@ public sealed class XrayConfigBuilder
 
     public JsonObject Build(Profile p, ProfileSecrets s, BuildContext ctx)
     {
+        if (p.Protocol == ProtocolKind.XrayConfig)
+        {
+            return BuildCustom(s, ctx);
+        }
+
         if (!Supported.Contains(p.Protocol))
         {
             throw new NotSupportedException($"Xray adapter does not handle {p.Protocol}.");
@@ -69,6 +75,47 @@ public sealed class XrayConfigBuilder
         var auxiliary = new List<JsonObject>();
         var proxy = BuildOutbound(p, s, ctx.Settings.DpiDefaults, auxiliary);
         return BuildCore(ctx, [proxy, .. auxiliary], "proxy");
+    }
+
+    private static JsonObject BuildCustom(ProfileSecrets secrets, BuildContext ctx)
+    {
+        JsonObject custom;
+        try
+        {
+            custom = CustomJsonConfig.Read(secrets[Keys.RawConfig] ?? "", ProtocolKind.XrayConfig);
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or FormatException or InvalidOperationException)
+        {
+            throw new EngineException("import.json.unsafe", localizationKey: "import.json.unsafe");
+        }
+
+        var template = BuildCore(ctx, [], "proxy");
+        custom["inbounds"] = template["inbounds"]!.DeepClone();
+        custom["log"] = template["log"]!.DeepClone();
+        var outbounds = custom["outbounds"]!.AsArray();
+        var direct = outbounds.OfType<JsonObject>().FirstOrDefault(node => (string?)node["protocol"] == "freedom");
+        var directTag = (string?)direct?["tag"] ?? "bydlo-direct";
+        if (direct is null)
+        {
+            if (outbounds.OfType<JsonObject>().Any(node => (string?)node["tag"] == directTag))
+            {
+                throw new EngineException("import.json.unsafe", localizationKey: "import.json.unsafe");
+            }
+            outbounds.Add(new JsonObject { ["protocol"] = "freedom", ["tag"] = directTag });
+        }
+        var routing = custom["routing"] as JsonObject ?? new JsonObject();
+        var rules = routing["rules"] as JsonArray ?? new JsonArray();
+        if (ctx.Settings.Routing.PreserveMeshVpnRanges)
+        {
+            rules.Insert(0, new JsonObject { ["type"] = "field", ["ip"] = Arr(SingBoxConfigBuilder.MeshVpnRanges), ["outboundTag"] = directTag });
+        }
+        if (ctx.Settings.Routing.BypassPrivateNetworks)
+        {
+            rules.Insert(0, new JsonObject { ["type"] = "field", ["ip"] = new JsonArray("geoip:private"), ["outboundTag"] = directTag });
+        }
+        if (rules.Parent is null) { routing["rules"] = rules; }
+        if (routing.Parent is null) { custom["routing"] = routing; }
+        return custom;
     }
 
     private static JsonObject BuildCore(BuildContext ctx, List<JsonObject> proxies, string proxyTag)

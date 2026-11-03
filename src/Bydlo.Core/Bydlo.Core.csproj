@@ -7,4 +7,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Bydlo.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
 </Project>

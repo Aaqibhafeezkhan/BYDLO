@@ -70,7 +70,7 @@ public sealed class EngineRegistry
         var required = hops.Select(ProtocolNeeds).Where(r => r is not null).Distinct().ToList();
         return [.. _engines
             .Where(e => !e.Descriptor.IsTool && (e.Descriptor.Kind is EngineKind.SingBox or EngineKind.Xray))
-            .Where(e => hops.All(h => e.Descriptor.Protocols.Contains(h.Protocol)))
+            .Where(e => hops.All(h => h.Protocol is not (ProtocolKind.SingBoxConfig or ProtocolKind.XrayConfig) && e.Descriptor.Protocols.Contains(h.Protocol)))
             .Where(e => e.Descriptor.SupportOn(os) != SupportLevel.Unsupported)
             .Where(e => required.Count == 0 || required.Count == 1 && required[0] == e.Descriptor.Kind)
             .OrderBy(e => e.Descriptor.SupportOn(os) == SupportLevel.Implemented ? 0 : 1)
