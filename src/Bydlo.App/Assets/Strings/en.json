@@ -238,13 +238,11 @@
   "share.error": "Could not share this server. Check that its credentials are available. If the QR code is too large, copy the link instead.",
   "app.slogan": "One app. Every protocol.",
   "app.full": "Bypass Your Digital Limitations Online",
-
   "onboarding.title": "Welcome to BYDLO",
   "onboarding.text": "Add a server link, subscription or configuration file. BYDLO can choose a compatible connection engine automatically.",
   "onboarding.skip": "Explore the app",
   "onboarding.start": "Add a configuration",
   "onboarding.appearance": "Language and appearance",
-
   "nav.home.short": "Home",
   "nav.group.network": "Network",
   "settings.section.import": "Import and feeds",
@@ -263,7 +261,6 @@
   "nav.statistics": "Statistics",
   "nav.settings.short": "Settings",
   "nav.settings": "Settings",
-
   "status.connected": "Connected",
   "status.connecting": "Connecting…",
   "status.disconnecting": "Disconnecting…",
@@ -274,7 +271,6 @@
   "status.starting": "Starting…",
   "status.stopping": "Stopping…",
   "status.stopped": "Stopped",
-
   "mock.badge": "MOCK MODE",
   "nav.contributors": "Contributors",
   "nav.contributors.short": "People",
@@ -287,7 +283,6 @@
   "mock.failonconnect": "Fail while connecting",
   "mock.dropafterconnect": "Crash after ~20 s",
   "mock.slowconnect": "Slow connect",
-
   "home.overline": "YOUR CONNECTION",
   "home.title": "Internet, unbound.",
   "home.connect": "Connect",
@@ -317,14 +312,12 @@
   "home.check.mock": "Connection check is unavailable in Mock Mode.",
   "home.check.locked": "Connection check is disabled by the development safety lock (BYDLO_SAFE_DEV=1).",
   "home.best": "Best server",
-
   "connections.subtitle": "Manage servers, proxy chains and subscriptions.",
   "connections.profiles": "Servers",
   "connections.empty": "No servers yet. Paste a link (vless://, vmess://, trojan://, ss://, hy2://, tuic://, socks5://) or open a WireGuard / AmneziaWG / OpenVPN file.",
   "connections.favorite": "Favorite",
   "connections.delete": "Delete",
   "connections.delete.active": "Disconnect before deleting the active server.",
-
   "chain.title": "Proxy chains",
   "chain.hint": "Traffic goes through the servers in order: entry first, exit last. Chains require sing-box or Xray.",
   "chain.empty": "No chains yet. Combine two or more servers into a relay.",
@@ -353,7 +346,6 @@
   "connections.latency.none": "No latency results yet. Check the latency on the Servers page first.",
   "connections.latency.mock": "Latency check is unavailable in Mock Mode.",
   "connections.latency.locked": "Latency check is disabled by the development safety lock (BYDLO_SAFE_DEV=1).",
-
   "import.title": "Add servers",
   "import.link.title": "Link or subscription",
   "import.link.hint": "vless://, vmess://, trojan://, ss://, hy2://, tuic://, socks5:// or an http(s) subscription.",
@@ -377,7 +369,6 @@
   "import.none": "Nothing recognised to import.",
   "import.sub.invalid": "That does not look like a subscription URL.",
   "import.sub.updated": "{0}: {1} server(s).",
-
   "subs.title": "Subscriptions",
   "subs.hint": "Traffic and expiry come from the subscription-userinfo header. Lists refresh only when you add or refresh them, or automatically on schedule.",
   "subs.name": "Name (optional)",
@@ -395,7 +386,6 @@
   "subs.mode.follow": "New servers: added automatically",
   "subs.mode.selected": "New servers: ignored (only selected)",
   "subs.mode.toggle": "Switch mode",
-
   "catalog.title": "Public servers",
   "catalog.hint": "Preview servers from community subscriptions.",
   "catalog.warning": "Public servers are operated by third parties. BYDLO is not responsible for their availability, security or data handling. Avoid sending personal or financial data through them.",
@@ -414,7 +404,6 @@
   "catalog.radikal.verified.desc": "Multi-protocol mix where every server answered through a proxy in three independent test rounds. Contents change over time.",
   "catalog.matin.vless": "MatinGhanbari: VLESS",
   "catalog.matin.vless.desc": "VLESS list refreshed automatically every 15 minutes. Contents change over time.",
-
   "warp.title": "Cloudflare WARP",
   "warp.hint": "Registers a free WARP account and saves it as a WireGuard server. Only on your tap: nothing is registered automatically.",
   "warp.consent": "Registration accepts Cloudflare's Terms of Service through their unofficial client API (the same endpoints the MIT-licensed wgcf uses). Keys stay encrypted on this device.",
@@ -423,7 +412,6 @@
   "warp.added": "WARP profile added.",
   "warp.locked": "WARP registration is disabled in Mock Mode and safe development.",
   "warp.error.register": "Could not register WARP. Check your connection and try again.",
-
   "tools.subtitle": "Standalone helpers that run next to (or without) your VPN.",
   "tools.start": "Start",
   "tools.stop": "Stop",
@@ -448,7 +436,6 @@
   "list.general": "Extra domains (list-general-user)",
   "list.exclude": "Excluded domains (list-exclude-user)",
   "list.ipsetexclude": "Excluded IPs (ipset-exclude-user)",
-
   "tools.tg.desc": "Turn on the proxy, then use the button beside it to open Telegram and confirm the connection.",
   "tools.tg.copy": "Copy Telegram link",
   "tools.tg.open": "Open in Telegram",
@@ -503,7 +490,6 @@
   "engine.notinstalled": "Not installed",
   "engine.planned": "Planned",
   "engine.unsupported": "Unsupported",
-
   "routing.subtitle": "Split tunneling, DNS and rules. Applied on the next connect.",
   "routing.mesh": "Keep mesh VPN ranges direct",
   "routing.mesh.hint": "Leaves 100.64.0.0/10 and fd7a:115c:a1e3::/48 outside the tunnel so other VPN / mesh-network clients keep working.",
@@ -527,7 +513,6 @@
   "routing.process.tun": "App allowlisting requires sing-box in TUN mode.",
   "routing.process.hint": "Process names, e.g. game.exe. sing-box: TUN mode only. Xray: Windows/Linux only.",
   "routing.saved.reconnect": "Saved. Reconnect to apply.",
-
   "stats.subtitle": "Live speed, totals and the event log.",
   "stats.down": "Download",
   "stats.up": "Upload",
@@ -538,7 +523,6 @@
   "stats.log.hint": "Credentials are removed automatically.",
   "stats.log.copy": "Copy",
   "stats.log.clear": "Clear",
-
   "settings.appearance": "Appearance",
   "settings.theme": "Theme",
   "settings.language": "Language",
@@ -604,12 +588,12 @@
   "settings.admin.cancelled": "Elevation did not start. Connections were kept.",
   "settings.admin.failed": "Could not finish stopping connections. BYDLO remains open; the elevated window will not start while this window is running. Retry disconnecting before restarting.",
   "settings.admin.manual": "In-app restart with elevated rights is only available on Windows. On Linux/macOS, restart BYDLO with root rights (for example, via sudo) to use TUN, tunnels and Zapret.",
+  "settings.admin.autorestart": "Run with administrator rights at startup",
+  "settings.admin.autorestart.hint": "Windows only. When enabled, BYDLO asks for elevation (UAC) on startup. If you decline, it keeps working with limited features.",
   "settings.secrets": "Secret storage:",
   "settings.safelock": "Development safety lock is active (BYDLO_SAFE_DEV=1): real engines will refuse to start.",
-
   "about.text": "Free and open-source launcher for VPNs, proxies and open-internet tools. BYDLO is a front-end: the real work is done by the projects below. Huge thanks to their authors.",
   "about.credits": "Built on",
-
   "orphans.text": "Engines from a previous session are still running.",
   "orphans.stop": "Stop them",
   "toast.orphans": "Stopped {0} leftover process(es).",
@@ -622,7 +606,6 @@
   "store.recovered": "Settings or profiles were recovered from a backup copy.",
   "store.reset": "Settings or profiles were damaged and have been reset. The broken file was kept for inspection.",
   "store.newer": "Data was created by a newer BYDLO version. Update the app instead of overwriting it.",
-
   "common.save": "Save",
   "common.cancel": "Cancel",
   "common.advanced": "Advanced settings",
