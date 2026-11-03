@@ -51,6 +51,8 @@ public sealed class AppSettings
     /// <summary>Fresh installs follow the OS (Light or Black).</summary>
     public ThemePreference Theme { get; set; } = ThemePreference.System;
 
+    public bool ReduceMotion { get; set; }
+
     /// <summary>Installed custom theme id (file <c>themes/&lt;id&gt;.json</c>). Used only when <see cref="Theme"/> is Custom.</summary>
     public string? CustomThemeId { get; set; }
 

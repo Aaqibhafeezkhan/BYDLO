@@ -34,6 +34,5 @@
   <SolidColorBrush x:Key="ButtonEdgeBrush" Color="#9676CD" />
   <SolidColorBrush x:Key="NavActiveBrush" Color="#26242E" />
   <SolidColorBrush x:Key="EdgeBrush" Color="#39363F" />
-  <BoxShadows x:Key="ActionShadow">0 4 14 0 #40000000</BoxShadows>
   <SolidColorBrush x:Key="ScrimBrush" Color="#B8000000" />
 </ResourceDictionary>

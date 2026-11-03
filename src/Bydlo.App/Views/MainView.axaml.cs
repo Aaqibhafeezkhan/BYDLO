@@ -77,6 +77,12 @@ public sealed partial class MainView : UserControl
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.Escape && DataContext is MainViewModel { IsChainEditorOpen: true } chainShell)
+        {
+            chainShell.ChainEditor.CloseCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
         // Text boxes retain their normal paste behavior. The import button also accepts QR images.
         var modifier = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
         if (!e.Handled && e.Key == Key.V && e.KeyModifiers == modifier && DataContext is MainViewModel vm)

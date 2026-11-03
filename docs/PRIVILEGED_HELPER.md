@@ -6,7 +6,7 @@ TUN sing-box, Zapret, AmneziaWG и OpenVPN из отдельного защищ�
 
 | Платформа | Установка | IPC | Статус |
 |---|---|---|---|
-| Windows | Windows service `BYDLOHelper`, LocalSystem, UAC | named pipe, ACL и SID | 🧪 требуется ручная проверка |
+| Windows | Windows service `BYDLOHelper`, LocalSystem, UAC | named pipe, ACL и SID | ✅ проверено сопровождающим |
 | Linux | systemd `bydlo-helper.service`, root, polkit/pkexec | Unix-сокет, SO_PEERCRED | 🧪 требуется ручная проверка |
 | macOS Apple Silicon | launchd `online.bydlo.helper`, root, системный диалог администратора | Unix-сокет, getpeereid | 🧪 требуется ручная проверка |
 

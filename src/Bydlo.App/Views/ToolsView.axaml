@@ -6,15 +6,27 @@
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.ToolsView"
              x:DataType="vm:ToolsViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.tool-section">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,1" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+  </UserControl.Styles>
   <ScrollViewer>
-    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
-      <StackPanel Spacing="8">
-        <TextBlock Classes="h1" Text="{l:T nav.tools}" />
-        <TextBlock Classes="muted" Text="{l:T tools.subtitle}" TextWrapping="Wrap" />
-      </StackPanel>
+    <Border Classes="workspace">
+    <StackPanel Classes="page">
+      <Border Classes="page-heading">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="h1" Text="{l:T nav.tools}" />
+          <TextBlock Classes="muted" Text="{l:T tools.subtitle}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
 
+      <StackPanel Spacing="20">
       <!-- Zapret -->
-      <Border Classes="panel">
+      <Border Classes="tool-section" VerticalAlignment="Top">
         <StackPanel Spacing="14">
           <Grid x:Name="ZapretHeader" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
             <Border Width="42" Height="42" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
@@ -24,8 +36,8 @@
               <TextBlock Classes="h2" Text="{l:T home.zapret.title}" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T tools.zapret.desc}" TextWrapping="Wrap" />
             </StackPanel>
-            <StackPanel x:Name="ZapretActions" Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <Border Classes="pill" Classes.ok="{Binding ZapretRunning}">
+            <WrapPanel x:Name="ZapretActions" Grid.Column="2" VerticalAlignment="Center">
+              <Border Classes="pill" Classes.ok="{Binding ZapretRunning}" Margin="0,0,10,0" VerticalAlignment="Center">
                 <TextBlock Text="{Binding ZapretStatus}" />
               </Border>
               <Button Classes="primary" Command="{Binding ToggleZapretCommand}" IsEnabled="{Binding !IsSelecting}">
@@ -34,7 +46,7 @@
                   <TextBlock Text="{l:T tools.stop}" Foreground="{DynamicResource OnPrimaryBrush}" IsVisible="{Binding ZapretRunning}" />
                 </Panel>
               </Button>
-            </StackPanel>
+            </WrapPanel>
           </Grid>
 
           <Border Classes="banner bad" IsVisible="{Binding ZapretError, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -45,27 +57,10 @@
           </Border>
           <Button Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CancelSelectionCommand}" IsVisible="{Binding IsSelecting}" HorizontalAlignment="Left" />
           <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsSelecting}" />
-          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
+          <Expander Header="{l:T tools.setup}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
             <StackPanel Spacing="16">
               <TextBlock Classes="muted" Text="{Binding ZapretInfo}" TextWrapping="Wrap" />
-
-              <StackPanel Spacing="6">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="faint" Text="{l:T tools.startup.title}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                  <Button Grid.Column="1" Classes="ghost" Content="{l:T tools.startup.recheck}" Command="{Binding RecheckStartupCommand}" />
-                </Grid>
-                <TextBlock Classes="muted" Text="{l:T tools.startup.scope}" TextWrapping="Wrap" />
-                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsCheckingStartup}" />
-                <TextBlock Text="{Binding StartupCheckStatus}" TextWrapping="Wrap" IsVisible="{Binding HasStartupCheckStatus}" />
-                <Expander Header="{l:T tools.startup.details}" IsVisible="{Binding HasStartupCheckDetails}">
-                  <ScrollViewer MaxHeight="200">
-                    <SelectableTextBlock Classes="mono" Text="{Binding StartupCheckDetails}" TextWrapping="Wrap" />
-                  </ScrollViewer>
-                </Expander>
-              </StackPanel>
-
-              <Expander Header="{l:T tools.setup}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
-                <StackPanel Spacing="12">
+              <TextBlock Classes="faint" Text="{Binding ZapretPlatformNote}" TextWrapping="Wrap" />
               <WrapPanel>
                 <Button Classes="ghost" Margin="0,0,8,8" Command="{Binding InstallZapretCommand}" IsEnabled="{Binding !IsInstalling}" IsVisible="{Binding CanInstallZapret}">
                   <StackPanel Orientation="Horizontal" Spacing="8">
@@ -83,7 +78,7 @@
 
               <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
                 <TextBlock Classes="caps" Text="{l:T tools.zapret.strategy}" Margin="0,0,0,6" />
-                <ComboBox Grid.Row="1" ItemsSource="{Binding Strategies}" SelectedItem="{Binding SelectedStrategy}" HorizontalAlignment="Stretch">
+                <ComboBox Grid.Row="1" AutomationProperties.Name="{l:T tools.zapret.strategy}" ItemsSource="{Binding Strategies}" SelectedItem="{Binding SelectedStrategy}" HorizontalAlignment="Stretch">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="z:ZapretStrategy">
                       <TextBlock Text="{Binding DisplayName}" />
@@ -91,7 +86,7 @@
                   </ComboBox.ItemTemplate>
                 </ComboBox>
                 <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.zapret.game}" IsVisible="{Binding SupportsGameFilter}" Margin="0,0,0,6" />
-                <ComboBox Grid.Column="2" Grid.Row="1" IsVisible="{Binding SupportsGameFilter}" ItemsSource="{x:Static vm:ToolsViewModel.GameFilterModes}" SelectedItem="{Binding GameFilter}" HorizontalAlignment="Stretch">
+                <ComboBox Grid.Column="2" Grid.Row="1" AutomationProperties.Name="{l:T tools.zapret.game}" IsVisible="{Binding SupportsGameFilter}" ItemsSource="{x:Static vm:ToolsViewModel.GameFilterModes}" SelectedItem="{Binding GameFilter}" HorizontalAlignment="Stretch">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="x:String">
                       <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=game.}" />
@@ -101,19 +96,45 @@
               </Grid>
               <TextBlock Classes="faint" Text="{l:T tools.zapret.tcpts}" IsVisible="{Binding IsWindows}" TextWrapping="Wrap" />
 
-              <TextBlock Classes="faint" Text="{Binding ZapretPlatformNote}" TextWrapping="Wrap" />
-
+              <Expander Header="{l:T tools.zapret.lists}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
+                <StackPanel Spacing="10">
+                  <ComboBox AutomationProperties.Name="{l:T tools.zapret.lists}" ItemsSource="{x:Static vm:ToolsViewModel.UserLists}" SelectedItem="{Binding SelectedList}" HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="z:ZapretUserList">
+                        <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=list.}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <TextBox Text="{Binding ListText}" AutomationProperties.Name="{l:T tools.zapret.lists}" AcceptsReturn="True" MinHeight="140" MaxHeight="300"
+                           FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
+                  <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T common.save}" Command="{Binding SaveListCommand}" />
                 </StackPanel>
               </Expander>
+            </StackPanel>
+          </Expander>
 
+          <Expander Header="{l:T tools.diagnostics}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="16">
+              <StackPanel Spacing="6">
+                <TextBlock Classes="h3" Text="{l:T tools.startup.title}" TextWrapping="Wrap" />
+                <TextBlock Classes="muted" Text="{l:T tools.startup.scope}" TextWrapping="Wrap" />
+                <Button Classes="ghost" Content="{l:T tools.startup.recheck}" Command="{Binding RecheckStartupCommand}" HorizontalAlignment="Left" />
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsCheckingStartup}" />
+                <TextBlock Text="{Binding StartupCheckStatus}" TextWrapping="Wrap" IsVisible="{Binding HasStartupCheckStatus}" />
+                <Expander Header="{l:T tools.startup.details}" IsVisible="{Binding HasStartupCheckDetails}">
+                  <ScrollViewer MaxHeight="200">
+                    <SelectableTextBlock Classes="mono" Text="{Binding StartupCheckDetails}" TextWrapping="Wrap" />
+                  </ScrollViewer>
+                </Expander>
+              </StackPanel>
+              <Expander Header="{l:T tools.select.title}" HorizontalAlignment="Stretch">
               <StackPanel Spacing="10">
-                <TextBlock Classes="h2" Text="{l:T tools.select.title}" />
                 <TextBlock Classes="muted" Text="{l:T tools.select.warning}" TextWrapping="Wrap" />
                 <Expander Header="{l:T tools.select.scope}">
                   <TextBlock Classes="muted" Text="{l:T tools.select.details}" TextWrapping="Wrap" />
                 </Expander>
                 <Expander Header="{l:T tools.select.targets}" IsEnabled="{Binding !IsSelecting}">
-                  <TextBox Text="{Binding TestTargets}" AcceptsReturn="True" MinHeight="80" MaxHeight="180" />
+                  <TextBox Text="{Binding TestTargets}" AutomationProperties.Name="{l:T tools.select.targets}" AcceptsReturn="True" MinHeight="80" MaxHeight="180" />
                 </Expander>
                 <WrapPanel>
                   <Button Margin="0,0,8,8" Classes="primary" Content="{l:T tools.select.title}" Command="{Binding SelectZapretCommand}" />
@@ -154,20 +175,6 @@
                   </ScrollViewer>
                 </Expander>
               </StackPanel>
-
-              <Expander Header="{l:T tools.zapret.lists}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsSelecting}">
-                <StackPanel Spacing="10">
-                  <ComboBox ItemsSource="{x:Static vm:ToolsViewModel.UserLists}" SelectedItem="{Binding SelectedList}" HorizontalAlignment="Stretch">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="z:ZapretUserList">
-                        <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=list.}" />
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                  <TextBox Text="{Binding ListText}" AcceptsReturn="True" MinHeight="140" MaxHeight="300"
-                           FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="12" />
-                  <Button Classes="ghost" HorizontalAlignment="Right" Content="{l:T common.save}" Command="{Binding SaveListCommand}" />
-                </StackPanel>
               </Expander>
 
               <Expander Header="{l:T tools.logs}" HorizontalAlignment="Stretch">
@@ -187,7 +194,7 @@
       </Border>
 
       <!-- TgWsProxy -->
-      <Border Classes="panel">
+      <Border Classes="tool-section" VerticalAlignment="Top">
         <StackPanel Spacing="14">
           <Grid x:Name="TgHeader" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
             <Border Width="42" Height="42" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
@@ -197,23 +204,24 @@
               <TextBlock Classes="h2" Text="{l:T home.tg.title}" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T tools.tg.desc}" TextWrapping="Wrap" />
             </StackPanel>
-            <StackPanel x:Name="TgActions" Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <Border Classes="pill" Classes.ok="{Binding TgRunning}">
+            <WrapPanel x:Name="TgActions" Grid.Column="2" VerticalAlignment="Center">
+              <Border Classes="pill" Classes.ok="{Binding TgRunning}" Margin="0,0,10,0" VerticalAlignment="Center">
                 <TextBlock Text="{Binding TgStatus}" />
               </Border>
               <ToggleSwitch IsChecked="{Binding TgRunning, Mode=OneWay}" Command="{Binding ToggleTgCommand}" AutomationProperties.Name="{l:T tools.tg.toggle}" />
-              <Button Classes="icon" Command="{Binding OpenInTelegramCommand}" IsEnabled="{Binding CanOpenInTelegram}"
-                      ToolTip.Tip="{l:T tools.tg.open}" AutomationProperties.Name="{l:T tools.tg.open}">
-                <c:OutlineIcon Data="{StaticResource LineSend}" Width="16" Height="16" />
-              </Button>
-            </StackPanel>
+            </WrapPanel>
           </Grid>
 
           <Border Classes="banner bad" IsVisible="{Binding TgError, Converter={x:Static ObjectConverters.IsNotNull}}">
             <TextBlock Text="{Binding TgError}" TextWrapping="Wrap" />
           </Border>
 
-          <Button Classes="ghost" Content="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}" IsVisible="{Binding TgRunning}" HorizontalAlignment="Left" />
+          <WrapPanel>
+            <Button Classes="ghost" Margin="0,0,8,4" Content="{l:T tools.tg.open}"
+                    Command="{Binding OpenInTelegramCommand}" IsVisible="{Binding CanOpenInTelegram}" />
+            <Button Classes="ghost" Margin="0,0,0,4" Content="{l:T tools.tg.copy}"
+                    Command="{Binding CopyTgLinkToClipboardCommand}" IsVisible="{Binding TgRunning}" />
+          </WrapPanel>
 
           <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
             <StackPanel Spacing="12">
@@ -221,10 +229,10 @@
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Classes="mono" Text="{Binding TgLink}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
-                <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}">
+                <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.copy}" AutomationProperties.Name="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}">
                   <c:OutlineIcon Data="{StaticResource LineCopy}" Width="16" Height="16" />
                 </Button>
-                <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.regen}" Command="{Binding RegenerateSecretCommand}">
+                <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.regen}" AutomationProperties.Name="{l:T tools.tg.regen}" Command="{Binding RegenerateSecretCommand}">
                   <c:OutlineIcon Data="{StaticResource LineRefresh}" Width="16" Height="16" />
                 </Button>
               </StackPanel>
@@ -233,9 +241,9 @@
 
           <Grid ColumnDefinitions="2*,12,*" RowDefinitions="Auto,Auto">
             <TextBlock Classes="caps" Text="{l:T tools.tg.host}" Margin="0,0,0,6" />
-            <TextBox Grid.Row="1" Text="{Binding TgHost}" />
+            <TextBox Grid.Row="1" Text="{Binding TgHost}" AutomationProperties.Name="{l:T tools.tg.host}" />
             <TextBlock Grid.Column="2" Classes="caps" Text="{l:T tools.tg.port}" Margin="0,0,0,6" />
-            <NumericUpDown Grid.Column="2" Grid.Row="1" Value="{Binding TgPort}" Minimum="1" Maximum="65535" FormatString="0" />
+            <NumericUpDown Grid.Column="2" Grid.Row="1" Value="{Binding TgPort}" AutomationProperties.Name="{l:T tools.tg.port}" Minimum="1" Maximum="65535" FormatString="0" />
           </Grid>
 
           <StackPanel Spacing="6">
@@ -254,11 +262,11 @@
               </StackPanel>
               <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Text="{l:T tools.tg.cf}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding TgCfFallback}" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding TgCfFallback}" AutomationProperties.Name="{l:T tools.tg.cf}" />
               </Grid>
               <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Text="{l:T tools.tg.verbose}" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding TgVerbose}" />
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding TgVerbose}" AutomationProperties.Name="{l:T tools.tg.verbose}" />
               </Grid>
               <StackPanel Spacing="6" IsVisible="{Binding TgCfFallback}">
                 <TextBlock Classes="caps" Text="{l:T tools.tg.cfdomains}" />
@@ -282,6 +290,8 @@
           </Expander>
         </StackPanel>
       </Border>
+
+      </StackPanel>
 
       <!-- Engines -->
       <Expander Header="{l:T tools.engines}" HorizontalAlignment="Stretch">
@@ -326,5 +336,6 @@
         </StackPanel>
       </Expander>
     </StackPanel>
+    </Border>
   </ScrollViewer>
 </UserControl>

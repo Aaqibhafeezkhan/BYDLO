@@ -16,6 +16,10 @@ Environment.SetEnvironmentVariable("BYDLO_SAFE_DEV", "1");
 var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "screenshots"));
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
+if (args.Contains("--verify-overhaul", StringComparer.Ordinal))
+{
+    Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
+}
 if (args.Contains("--verify-server-groups", StringComparer.Ordinal) || args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
     args.Contains("--verify-updates", StringComparer.Ordinal) || args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-theme-gallery", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-rules", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) || args.Contains("--verify-connect-switch", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) || args.Contains("--verify-contributors", StringComparer.Ordinal) || args.Contains("--verify-elevation", StringComparer.Ordinal) ||
@@ -64,6 +68,11 @@ if (args.Contains("--verify-wizard", StringComparer.Ordinal))
     return;
 }
 var shell = new MainViewModel(services);
+if (args.Contains("--verify-overhaul", StringComparer.Ordinal))
+{
+    OverhaulVerification.Run(shell, output);
+    return;
+}
 if (args.Contains("--verify-server-groups", StringComparer.Ordinal))
 {
     ServerGroupVerification.Run(shell, output);
@@ -201,7 +210,7 @@ if (args.Contains("--verify-contributors", StringComparer.Ordinal))
     Shoot("contributors-sidebar", 1180, 780, window =>
     {
         var entry = window.GetVisualDescendants().OfType<RadioButton>().Single(b => b.Name == "ContributorsNavButton");
-        var sidebar = entry.GetVisualAncestors().OfType<Border>().First(b => b.Width == 192);
+        var sidebar = entry.GetVisualAncestors().OfType<Border>().Single(b => b.Name == "DesktopSidebar");
         var bottom = entry.TranslatePoint(new Point(0, entry.Bounds.Height), sidebar) ?? default;
         if (!entry.IsEffectivelyVisible || bottom.Y > sidebar.Bounds.Height || bottom.Y < sidebar.Bounds.Height / 2)
             throw new InvalidOperationException("Contributors entry must sit in the lower sidebar corner.");
@@ -322,6 +331,8 @@ if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
     Pump(100);
     foreach (var page in new[] { "routing", "statistics" })
     {
+        // The standalone SettingsView has no MainView to update the shell breakpoint.
+        shell.IsCompact = true;
         var section = settingsWindow.GetVisualDescendants().OfType<Button>()
             .Single(button => Equals(button.CommandParameter, page));
         if (!section.IsEffectivelyVisible || !section.Focusable)
@@ -332,7 +343,7 @@ if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
         Shoot($"simple-{page}-380", 380, 700);
     }
     if (shell.PrimaryNavItems.Count != 4)
-        throw new InvalidOperationException("The desktop shell must expose four primary destinations.");
+        throw new InvalidOperationException("The compact shell must expose four primary destinations.");
     shell.Navigate("settings");
     var gallery = settingsWindow.GetVisualDescendants().OfType<Button>()
         .Single(button => ReferenceEquals(button.Command, shell.Settings.FetchGalleryCommand));
@@ -340,10 +351,11 @@ if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
         throw new InvalidOperationException("The GitHub theme gallery must be visible without expanding custom themes.");
     var advanced = settingsWindow.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "AdvancedSettings");
     if (advanced.IsExpanded) throw new InvalidOperationException("Advanced settings must start collapsed.");
-    advanced.IsExpanded = true;
+    var categoryPicker = settingsWindow.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "CompactCategory");
+    categoryPicker.SelectedItem = categoryPicker.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Tag, "AdvancedSection"));
     Pump(50);
-    if (!shell.Settings.ShowAdvanced || !services.Settings.ShowAdvanced)
-        throw new InvalidOperationException("Advanced disclosure did not update the saved preference.");
+    if (!advanced.IsExpanded || !shell.Settings.ShowAdvanced || !services.Settings.ShowAdvanced)
+        throw new InvalidOperationException("The settings index must open the advanced disclosure and update the saved preference.");
     advanced.IsExpanded = false;
     Pump(50);
     if (shell.Settings.ShowAdvanced) throw new InvalidOperationException("Advanced disclosure did not close.");
@@ -362,8 +374,8 @@ if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
         .Single(control => ReferenceEquals(control.Command, shell.Home.ToggleTgCommand));
     var telegramButton = homeWindow.GetVisualDescendants().OfType<Button>()
         .Single(button => ReferenceEquals(button.Command, shell.Tools.OpenInTelegramCommand));
-    if (!telegramToggle.IsEffectivelyVisible || !telegramButton.IsEffectivelyVisible || telegramButton.IsEnabled)
-        throw new InvalidOperationException("The Telegram switch must be visible and opening Telegram must require a running proxy.");
+    if (!telegramToggle.IsEffectivelyVisible || telegramButton.IsEffectivelyVisible)
+        throw new InvalidOperationException("The Telegram switch must be visible and its open button hidden until the proxy runs.");
     var publicServers = homeWindow.GetVisualDescendants().OfType<Button>()
         .Single(button => Equals(button.CommandParameter, "catalog"));
     if (!publicServers.IsEffectivelyVisible || !publicServers.Focusable)

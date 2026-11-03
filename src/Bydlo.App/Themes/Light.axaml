@@ -1,39 +1,38 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Color x:Key="AccentColor">#6742AE</Color>
-  <Color x:Key="PrimaryColor">#6742AE</Color>
-  <SolidColorBrush x:Key="BgBrush" Color="#F7F7F9" />
-  <SolidColorBrush x:Key="SidebarBrush" Color="#F0F0F3" />
+  <Color x:Key="AccentColor">#222222</Color>
+  <Color x:Key="PrimaryColor">#191919</Color>
+  <SolidColorBrush x:Key="BgBrush" Color="#F5F5F5" />
+  <SolidColorBrush x:Key="SidebarBrush" Color="#EDEDED" />
   <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="Surface2Brush" Color="#F2F1F5" />
-  <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#E9E7EF" />
-  <SolidColorBrush x:Key="LineBrush" Color="#E1DFE7" />
-  <SolidColorBrush x:Key="AccentBrush" Color="#6742AE" />
-  <SolidColorBrush x:Key="PrimaryBrush" Color="#6742AE" />
-  <SolidColorBrush x:Key="AccentSoftBrush" Color="#EDE7F6" />
-  <SolidColorBrush x:Key="TextBrush" Color="#24212C" />
-  <SolidColorBrush x:Key="TextMutedBrush" Color="#696473" />
-  <SolidColorBrush x:Key="TextFaintBrush" Color="#736D7D" />
-  <SolidColorBrush x:Key="SuccessBrush" Color="#317956" />
-  <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E7F2EB" />
-  <SolidColorBrush x:Key="WarningBrush" Color="#896722" />
-  <SolidColorBrush x:Key="WarningSoftBrush" Color="#F7EFDD" />
-  <SolidColorBrush x:Key="DangerBrush" Color="#B34350" />
-  <SolidColorBrush x:Key="DangerSoftBrush" Color="#F9E9EC" />
+  <SolidColorBrush x:Key="Surface2Brush" Color="#F1F1F1" />
+  <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#E8E8E8" />
+  <SolidColorBrush x:Key="LineBrush" Color="#D8D8D8" />
+  <SolidColorBrush x:Key="AccentBrush" Color="#222222" />
+  <SolidColorBrush x:Key="PrimaryBrush" Color="#191919" />
+  <SolidColorBrush x:Key="AccentSoftBrush" Color="#E4E4E4" />
+  <SolidColorBrush x:Key="TextBrush" Color="#171717" />
+  <SolidColorBrush x:Key="TextMutedBrush" Color="#4C4C4C" />
+  <SolidColorBrush x:Key="TextFaintBrush" Color="#606060" />
+  <SolidColorBrush x:Key="SuccessBrush" Color="#242424" />
+  <SolidColorBrush x:Key="SuccessSoftBrush" Color="#EBEBEB" />
+  <SolidColorBrush x:Key="WarningBrush" Color="#444444" />
+  <SolidColorBrush x:Key="WarningSoftBrush" Color="#EFEFEF" />
+  <SolidColorBrush x:Key="DangerBrush" Color="#262626" />
+  <SolidColorBrush x:Key="DangerSoftBrush" Color="#EAEAEA" />
   <SolidColorBrush x:Key="OnPrimaryBrush" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="BackdropBrush" Color="#F7F7F9" />
+  <SolidColorBrush x:Key="BackdropBrush" Color="#F5F5F5" />
   <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent" />
-  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#E9E7EF" />
-  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#F2F1F5" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#E8E8E8" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#F1F1F1" />
   <SolidColorBrush x:Key="ExpanderContentBackground" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPressed" Color="Transparent" />
-  <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#7550BC" />
-  <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#593796" />
-  <SolidColorBrush x:Key="ButtonEdgeBrush" Color="#8968C0" />
-  <SolidColorBrush x:Key="NavActiveBrush" Color="#E4E0EB" />
-  <SolidColorBrush x:Key="EdgeBrush" Color="#D7D2DF" />
-  <BoxShadows x:Key="ActionShadow">0 3 10 0 #18000000</BoxShadows>
+  <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#353535" />
+  <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#080808" />
+  <SolidColorBrush x:Key="ButtonEdgeBrush" Color="#303030" />
+  <SolidColorBrush x:Key="NavActiveBrush" Color="#DEDEDE" />
+  <SolidColorBrush x:Key="EdgeBrush" Color="#929292" />
   <SolidColorBrush x:Key="ScrimBrush" Color="#66000000" />
 </ResourceDictionary>

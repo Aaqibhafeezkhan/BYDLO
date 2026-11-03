@@ -5,68 +5,75 @@
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.ConnectionsView"
              x:DataType="vm:ConnectionsViewModel">
-  <ScrollViewer>
-    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
-      <StackPanel Spacing="8">
-        <TextBlock Classes="h1" Text="{l:T nav.connections}" />
-        <TextBlock Classes="muted" Text="{l:T connections.subtitle}" TextWrapping="Wrap" />
-      </StackPanel>
+  <UserControl.Styles>
+    <Style Selector="Grid.connection-library">
+      <Setter Property="MaxWidth" Value="1016" />
+      <Setter Property="Margin" Value="20,24,20,0" />
+    </Style>
+    <Style Selector=".desktop Grid.connection-library">
+      <Setter Property="Margin" Value="32,28,32,0" />
+    </Style>
+    <Style Selector="TabItem /template/ Border#PART_SelectedPipe">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.profile-row > Grid">
+      <Setter Property="Margin" Value="12,0" />
+    </Style>
+    <Style Selector="Border.library-empty">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+  </UserControl.Styles>
+  <Border>
+    <Grid Classes="connection-library" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+      <Border Classes="page-heading">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="h1" Text="{l:T nav.connections}" />
+          <TextBlock Classes="muted" Text="{l:T connections.subtitle}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
 
-      <WrapPanel>
-        <Button Classes="primary" Margin="0,0,8,8" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Left" Padding="16,12">
+      <WrapPanel Grid.Row="1">
+        <Button Classes="primary" Margin="0,0,8,8" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Left">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <c:OutlineIcon Data="{StaticResource LinePlus}" Foreground="{DynamicResource OnPrimaryBrush}" />
-            <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" FontSize="16" />
+            <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" />
           </StackPanel>
         </Button>
-        <Button Classes="ghost" Margin="0,0,0,8" Content="{l:T catalog.title}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="catalog" />
+        <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T catalog.title}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="catalog" />
+        <Button Classes="ghost" Margin="0,0,0,8" Content="{l:T import.demo}" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}" />
       </WrapPanel>
-      <Button Classes="ghost" Content="{l:T import.demo}" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}" HorizontalAlignment="Left" />
-      <Expander Header="{l:T warp.title}" HorizontalAlignment="Stretch">
-        <StackPanel Spacing="8">
-          <TextBlock Classes="muted" Text="{l:T warp.hint}" TextWrapping="Wrap" />
-          <TextBlock Classes="faint" Text="{l:T warp.consent}" TextWrapping="Wrap" />
-          <Button Classes="ghost" Content="{l:T warp.register}" Command="{Binding RegisterWarpCommand}" IsEnabled="{Binding CanRegisterWarp}" HorizontalAlignment="Left"
-                  IsVisible="{Binding !IsWarpBusy}" />
-          <Button Classes="ghost" Content="{l:T warp.registering}" HorizontalAlignment="Left" IsEnabled="False" IsVisible="{Binding IsWarpBusy}" />
-          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsWarpBusy}" Height="3" />
-        </StackPanel>
-      </Expander>
-      <Button Classes="ghost" Content="{l:T connections.latency.check}" Command="{Binding CheckLatencyCommand}" IsEnabled="{Binding CanCheckLatency}" HorizontalAlignment="Left" />
-      <TextBlock Classes="faint" Text="{Binding CheckLatencyDisabledReason}" IsVisible="{Binding CheckLatencyDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
-      <CheckBox Content="{l:T connections.latency.sort}" IsChecked="{Binding Shell.SortByLatency}" IsVisible="{Binding !IsEmpty}" />
-      <TextBlock Classes="faint" Text="{l:T connections.latency.udp}" TextWrapping="Wrap" IsVisible="{Binding !IsEmpty}" />
-      <Expander Header="{l:T connections.speed.title}" IsVisible="{Binding !IsEmpty}" HorizontalAlignment="Stretch">
-        <StackPanel Spacing="8">
-          <TextBlock Text="{l:T connections.speed.notice}" Classes="faint" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding SpeedTestDisabledReason}" Classes="faint" TextWrapping="Wrap"
-                     IsVisible="{Binding SpeedTestDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" />
-          <TextBox Watermark="{l:T connections.speed.url}" Text="{Binding SpeedTestUrl}" />
-          <WrapPanel>
-            <Button Content="{l:T connections.speed.start}" Command="{Binding MeasureSpeedCommand}"
-                    IsEnabled="{Binding CanMeasureSpeed}" />
-            <Button Content="{l:T connections.speed.cancel}" Command="{Binding MeasureSpeedCancelCommand}"
-                    IsVisible="{Binding MeasuringSpeed}" />
-          </WrapPanel>
-          <CheckBox Content="{l:T connections.speed.sort}" IsChecked="{Binding Shell.SortBySpeed}" />
-        </StackPanel>
-      </Expander>
-      <!-- Profiles -->
+
+      <TabControl Grid.Row="2" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+      <TabItem Padding="8,6" MinWidth="0" AutomationProperties.Name="{l:T connections.profiles}">
+      <TabItem.Header><TextBlock Text="{l:T connections.profiles}" FontSize="13" FontWeight="Medium" /></TabItem.Header>
+      <ScrollViewer Padding="0,12,0,12">
+      <StackPanel Spacing="12">
       <StackPanel Spacing="10">
-        <TextBlock Classes="caps" Text="{l:T connections.profiles}" />
-        <Border Classes="card" IsVisible="{Binding IsEmpty}">
-          <StackPanel Spacing="6" HorizontalAlignment="Center">
-            <c:OutlineIcon Data="{StaticResource LineServers}" Width="34" Height="34" Foreground="{DynamicResource TextFaintBrush}" />
-            <TextBlock Classes="muted" Text="{l:T connections.empty}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
-          </StackPanel>
+        <TextBox Text="{Binding ProfileSearch}" IsVisible="{Binding !IsEmpty}"
+                 Watermark="{l:T connections.search}" AutomationProperties.Name="{l:T connections.search}" />
+        <WrapPanel IsVisible="{Binding !IsEmpty}">
+          <Button Classes="ghost" Margin="0,0,8,6" Content="{l:T connections.latency.check}" Command="{Binding CheckLatencyCommand}" IsEnabled="{Binding CanCheckLatency}" />
+          <CheckBox Margin="0,0,0,6" Content="{l:T connections.latency.sort}" IsChecked="{Binding Shell.SortByLatency}" />
+        </WrapPanel>
+        <TextBlock Classes="faint" Text="{Binding CheckLatencyDisabledReason}" IsVisible="{Binding CheckLatencyDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+        <TextBlock Classes="muted" Text="{l:T connections.search.empty}" IsVisible="{Binding HasNoMatchingProfiles}" TextWrapping="Wrap" />
+        <Border Classes="library-empty" IsVisible="{Binding IsEmpty}">
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+            <c:OutlineIcon Data="{StaticResource LineServers}" Width="22" Height="22" Foreground="{DynamicResource TextMutedBrush}" />
+            <TextBlock Grid.Column="1" Classes="muted" Text="{l:T connections.empty}" VerticalAlignment="Center" TextWrapping="Wrap" />
+          </Grid>
         </Border>
-        <Border Classes="panel" Padding="18,0" IsVisible="{Binding !IsEmpty}">
-        <ItemsControl ItemsSource="{Binding Shell.Profiles}">
+        <Border Classes="panel" Padding="0" IsVisible="{Binding !IsEmpty}">
+        <ItemsControl ItemsSource="{Binding VisibleProfiles}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ProfileItem">
               <Border Classes="row profile-row" Classes.active="{Binding IsActive}">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                  <Border Width="40" Height="40" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Classes.reflow="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).Shell.IsCompact}">
+                  <Border Width="34" Height="34" CornerRadius="5" Background="{DynamicResource Surface2Brush}">
                     <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource AccentBrush}" />
                   </Border>
                   <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
@@ -87,8 +94,8 @@
                       </Border>
                     </StackPanel>
                   </StackPanel>
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                    <Button Classes="icon" Content="⋯" AutomationProperties.Name="{l:T share.title}" ToolTip.Tip="{l:T share.title}">
+                  <StackPanel Classes="profile-actions" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <Button Classes="icon" Content="⋯" AutomationProperties.Name="{l:T connections.actions}" ToolTip.Tip="{l:T connections.actions}">
                       <Button.Flyout>
                         <Flyout>
                           <StackPanel Spacing="6">
@@ -113,14 +120,20 @@
                         <c:OutlineIcon Data="{StaticResource LineStar}" Width="16" Height="16" IsVisible="{Binding !IsFavorite}" Opacity="0.4" />
                       </Panel>
                     </Button>
-                    <Button Classes="icon" AutomationProperties.Name="{l:T connections.delete}" ToolTip.Tip="{l:T connections.delete}"
-                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteCommand}" CommandParameter="{Binding}">
+                    <Button Classes="icon" AutomationProperties.Name="{l:T connections.delete}" ToolTip.Tip="{l:T connections.delete}">
                       <c:OutlineIcon Data="{StaticResource LineDelete}" Width="16" Height="16" />
+                      <Button.Flyout>
+                        <Flyout>
+                          <StackPanel Spacing="10" MaxWidth="240">
+                            <TextBlock Text="{l:T connections.delete.confirm}" TextWrapping="Wrap" />
+                            <Button Classes="danger" Content="{l:T connections.delete}"
+                                    Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteCommand}" CommandParameter="{Binding}" />
+                          </StackPanel>
+                        </Flyout>
+                      </Button.Flyout>
                     </Button>
-                    <Button AutomationProperties.Name="{l:T home.connect}" Classes="ghost" Margin="6,0,0,0" Padding="10,8"
-                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ConnectToCommand}" CommandParameter="{Binding}">
-                      <c:OutlineIcon Data="{StaticResource LinePower}" Width="16" Height="16" />
-                    </Button>
+                    <Button Content="{l:T home.connect}" Classes="ghost" Margin="6,0,0,0" Padding="10,8"
+                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ConnectToCommand}" CommandParameter="{Binding}" />
                   </StackPanel>
                 </Grid>
               </Border>
@@ -130,21 +143,53 @@
         </Border>
       </StackPanel>
 
+      <Expander Header="{l:T connections.speed.title}" IsVisible="{Binding !IsEmpty}" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{l:T connections.speed.notice}" Classes="faint" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding SpeedTestDisabledReason}" Classes="faint" TextWrapping="Wrap"
+                     IsVisible="{Binding SpeedTestDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <TextBox Watermark="{l:T connections.speed.url}" Text="{Binding SpeedTestUrl}" />
+          <WrapPanel>
+            <Button Content="{l:T connections.speed.start}" Command="{Binding MeasureSpeedCommand}"
+                    IsEnabled="{Binding CanMeasureSpeed}" />
+            <Button Content="{l:T connections.speed.cancel}" Command="{Binding MeasureSpeedCancelCommand}"
+                    IsVisible="{Binding MeasuringSpeed}" />
+          </WrapPanel>
+          <CheckBox Content="{l:T connections.speed.sort}" IsChecked="{Binding Shell.SortBySpeed}" />
+        </StackPanel>
+      </Expander>
+      <TextBlock Classes="faint" Text="{l:T connections.latency.udp}" TextWrapping="Wrap" IsVisible="{Binding !IsEmpty}" />
+      <Expander Header="{l:T warp.title}" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="muted" Text="{l:T warp.hint}" TextWrapping="Wrap" />
+          <TextBlock Classes="faint" Text="{l:T warp.consent}" TextWrapping="Wrap" />
+          <Button Classes="ghost" Content="{l:T warp.register}" Command="{Binding RegisterWarpCommand}" IsEnabled="{Binding CanRegisterWarp}" HorizontalAlignment="Left"
+                  IsVisible="{Binding !IsWarpBusy}" />
+          <Button Classes="ghost" Content="{l:T warp.registering}" HorizontalAlignment="Left" IsEnabled="False" IsVisible="{Binding IsWarpBusy}" />
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsWarpBusy}" Height="3" />
+        </StackPanel>
+      </Expander>
+      </StackPanel>
+      </ScrollViewer>
+      </TabItem>
+
       <!-- Proxy chains -->
+      <TabItem Padding="8,6" MinWidth="0" AutomationProperties.Name="{l:T chain.title}">
+      <TabItem.Header><TextBlock Text="{l:T chain.title}" FontSize="13" FontWeight="Medium" /></TabItem.Header>
+      <ScrollViewer Padding="0,12,0,12">
       <StackPanel Spacing="10">
-        <TextBlock Classes="caps" Text="{l:T chain.title}" />
         <TextBlock Classes="faint" Text="{l:T chain.hint}" TextWrapping="Wrap" />
         <Button Classes="ghost" Content="{l:T chain.new}" Command="{Binding Shell.NewChainCommand}" HorizontalAlignment="Left" />
-        <Border Classes="card" IsVisible="{Binding Shell.HasNoChains}">
-          <TextBlock Classes="muted" Text="{l:T chain.empty}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" />
+        <Border Classes="library-empty" IsVisible="{Binding Shell.HasNoChains}">
+          <TextBlock Classes="muted" Text="{l:T chain.empty}" TextWrapping="Wrap" />
         </Border>
-        <Border Classes="panel" Padding="18,0" IsVisible="{Binding Shell.HasChains}">
+        <Border Classes="panel" Padding="0" IsVisible="{Binding Shell.HasChains}">
         <ItemsControl ItemsSource="{Binding Shell.Chains}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ChainItem">
               <Border Classes="row profile-row" Classes.active="{Binding IsActive}">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                  <Border Width="40" Height="40" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Classes.reflow="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).Shell.IsCompact}">
+                  <Border Width="34" Height="34" CornerRadius="5" Background="{DynamicResource Surface2Brush}">
                     <c:OutlineIcon Data="{StaticResource LineLink}" Foreground="{DynamicResource AccentBrush}" />
                   </Border>
                   <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
@@ -157,7 +202,7 @@
                     <TextBlock Classes="faint" Text="{Binding Details}" />
                     <TextBlock Classes="faint" Text="{Binding HopSummary}" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                  <StackPanel Classes="profile-actions" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                     <Button Classes="icon" AutomationProperties.Name="{l:T connections.favorite}" ToolTip.Tip="{l:T connections.favorite}"
                             Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ToggleChainFavoriteCommand}" CommandParameter="{Binding}">
                       <Panel>
@@ -169,14 +214,20 @@
                             Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).EditChainCommand}" CommandParameter="{Binding}">
                       <c:OutlineIcon Data="{StaticResource LinePencil}" Width="16" Height="16" />
                     </Button>
-                    <Button Classes="icon" AutomationProperties.Name="{l:T chain.delete}" ToolTip.Tip="{l:T chain.delete}"
-                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteChainCommand}" CommandParameter="{Binding}">
+                    <Button Classes="icon" AutomationProperties.Name="{l:T chain.delete}" ToolTip.Tip="{l:T chain.delete}">
                       <c:OutlineIcon Data="{StaticResource LineDelete}" Width="16" Height="16" />
+                      <Button.Flyout>
+                        <Flyout>
+                          <StackPanel Spacing="10" MaxWidth="240">
+                            <TextBlock Text="{l:T chain.delete.confirm}" TextWrapping="Wrap" />
+                            <Button Classes="danger" Content="{l:T chain.delete}"
+                                    Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteChainCommand}" CommandParameter="{Binding}" />
+                          </StackPanel>
+                        </Flyout>
+                      </Button.Flyout>
                     </Button>
-                    <Button AutomationProperties.Name="{l:T home.connect}" Classes="ghost" Margin="6,0,0,0" Padding="10,8"
-                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ConnectChainCommand}" CommandParameter="{Binding}">
-                      <c:OutlineIcon Data="{StaticResource LinePower}" Width="16" Height="16" />
-                    </Button>
+                    <Button Content="{l:T home.connect}" Classes="ghost" Margin="6,0,0,0" Padding="10,8"
+                            Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ConnectChainCommand}" CommandParameter="{Binding}" />
                   </StackPanel>
                 </Grid>
               </Border>
@@ -185,31 +236,47 @@
         </ItemsControl>
         </Border>
       </StackPanel>
+      </ScrollViewer>
+      </TabItem>
 
       <!-- Subscriptions -->
-      <Expander Header="{l:T subs.title}" HorizontalAlignment="Stretch">
+      <TabItem Padding="8,6" MinWidth="0" AutomationProperties.Name="{l:T subs.title}">
+      <TabItem.Header><TextBlock Text="{l:T subs.title}" FontSize="13" FontWeight="Medium" /></TabItem.Header>
+      <ScrollViewer Padding="0,12,0,12">
         <StackPanel Spacing="12">
+          <Button Classes="ghost" Content="{l:T import.link.title}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="link" />
+          <Border Classes="library-empty" IsVisible="{Binding !Subscriptions.Count}">
+            <TextBlock Classes="muted" Text="{l:T subs.empty}" TextWrapping="Wrap" />
+          </Border>
           <TextBlock Classes="faint" Text="{l:T subs.hint}" TextWrapping="Wrap" />
           <ItemsControl ItemsSource="{Binding Subscriptions}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:SubscriptionRow">
                 <Border Classes="tile" Margin="0,0,0,6">
                   <StackPanel Spacing="6">
-                    <Grid ColumnDefinitions="*,Auto">
-                      <TextBox Text="{Binding Name}" VerticalAlignment="Center" />
-                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <StackPanel Spacing="6">
+                      <TextBox Text="{Binding Name}" VerticalAlignment="Center" AutomationProperties.Name="{l:T subs.rename}" />
+                      <WrapPanel>
                         <Button Classes="ghost" Content="{l:T subs.rename}" ToolTip.Tip="{l:T subs.rename}"
                                 Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).RenameSubscriptionCommand}" CommandParameter="{Binding}" />
-                        <Button Classes="icon" ToolTip.Tip="{l:T subs.refresh}"
+                        <Button Classes="icon" ToolTip.Tip="{l:T subs.refresh}" AutomationProperties.Name="{l:T subs.refresh}"
                                 Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).RefreshSubscriptionCommand}" CommandParameter="{Binding}">
                           <c:OutlineIcon Data="{StaticResource LineRefresh}" Width="16" Height="16" />
                         </Button>
-                        <Button Classes="icon" ToolTip.Tip="{l:T subs.delete}"
-                                Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteSubscriptionCommand}" CommandParameter="{Binding}">
+                        <Button Classes="icon" ToolTip.Tip="{l:T subs.delete}" AutomationProperties.Name="{l:T subs.delete}">
                           <c:OutlineIcon Data="{StaticResource LineDelete}" Width="16" Height="16" />
+                          <Button.Flyout>
+                            <Flyout>
+                              <StackPanel Spacing="10" MaxWidth="240">
+                                <TextBlock Text="{l:T subs.delete.confirm}" TextWrapping="Wrap" />
+                                <Button Classes="danger" Content="{l:T subs.delete}"
+                                        Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).DeleteSubscriptionCommand}" CommandParameter="{Binding}" />
+                              </StackPanel>
+                            </Flyout>
+                          </Button.Flyout>
                         </Button>
-                      </StackPanel>
-                    </Grid>
+                      </WrapPanel>
+                    </StackPanel>
                     <TextBlock Classes="faint" Text="{Binding Details}" TextWrapping="Wrap" IsVisible="{Binding HasDetails}" />
                     <ProgressBar Minimum="0" Maximum="1" Value="{Binding TrafficFraction}" IsVisible="{Binding HasTraffic}" />
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -224,7 +291,9 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </StackPanel>
-      </Expander>
-    </StackPanel>
-  </ScrollViewer>
+      </ScrollViewer>
+      </TabItem>
+      </TabControl>
+    </Grid>
+  </Border>
 </UserControl>

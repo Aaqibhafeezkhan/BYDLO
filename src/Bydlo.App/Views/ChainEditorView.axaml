@@ -6,49 +6,42 @@
              x:Class="Bydlo.App.Views.ChainEditorView"
              x:DataType="vm:ChainEditorViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalContentAlignment="Center">
-    <Border Classes="panel" MaxWidth="680" Margin="24" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+    <Border Classes="dialog" MaxWidth="620" Margin="16" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <StackPanel Spacing="20">
-        <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Classes="h1" Text="{l:T chain.new}" IsVisible="{Binding IsNew}" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center" />
-          <TextBlock Classes="h1" Text="{l:T chain.edit}" IsVisible="{Binding !IsNew}" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CloseCommand}" IsEnabled="{Binding !IsSaving}" />
-        </Grid>
+        <Panel>
+          <TextBlock Classes="display" Text="{l:T chain.new}" IsVisible="{Binding IsNew}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <TextBlock Classes="display" Text="{l:T chain.edit}" IsVisible="{Binding !IsNew}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </Panel>
         <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsSaving}" Height="3" />
         <StackPanel Spacing="18" IsEnabled="{Binding !IsSaving}">
-          <TextBlock Classes="muted" Text="{l:T chain.hint}" TextWrapping="Wrap" />
           <StackPanel Spacing="8">
             <TextBlock Classes="caps" Text="{l:T chain.name}" />
             <TextBox Text="{Binding Name}" Watermark="{l:T chain.name}" AutomationProperties.Name="{l:T chain.name}" MaxLength="80" />
           </StackPanel>
           <StackPanel Spacing="8">
-            <TextBlock Classes="caps" Text="{l:T chain.engine}" />
-            <ComboBox SelectedIndex="{Binding EngineIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{l:T chain.engine}">
-              <ComboBoxItem Content="{l:T chain.engine.auto}" />
-              <ComboBoxItem Content="sing-box" />
-              <ComboBoxItem Content="Xray" />
-            </ComboBox>
-          </StackPanel>
-          <StackPanel Spacing="8">
-            <TextBlock Classes="caps" Text="{l:T chain.hops}" />
+            <TextBlock Classes="h2" Text="{l:T chain.hops}" />
+            <TextBlock Classes="muted" Text="{l:T chain.hops.minimum}" TextWrapping="Wrap" />
             <ItemsControl ItemsSource="{Binding Hops}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ProfileItem">
                   <Border Classes="tile" Margin="0,0,0,6">
-                    <Grid ColumnDefinitions="*,Auto">
-                      <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
+                    <Grid ColumnDefinitions="24,*,Auto">
+                      <c:OutlineIcon Data="{StaticResource LineDown}" Width="14" Height="14"
+                                     HorizontalAlignment="Left" VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                         <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                         <TextBlock Classes="faint" Text="{Binding Details}" TextTrimming="CharacterEllipsis" />
                       </StackPanel>
-                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                        <Button Classes="icon" AutomationProperties.Name="{l:T chain.hops}"
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <Button Classes="icon" AutomationProperties.Name="{l:T routing.rules.up}" ToolTip.Tip="{l:T routing.rules.up}"
                                 Command="{Binding $parent[UserControl].((vm:ChainEditorViewModel)DataContext).MoveHopUpCommand}" CommandParameter="{Binding}">
                           <c:OutlineIcon Data="{StaticResource LineUp}" Width="16" Height="16" />
                         </Button>
-                        <Button Classes="icon" AutomationProperties.Name="{l:T chain.hops}"
+                        <Button Classes="icon" AutomationProperties.Name="{l:T routing.rules.down}" ToolTip.Tip="{l:T routing.rules.down}"
                                 Command="{Binding $parent[UserControl].((vm:ChainEditorViewModel)DataContext).MoveHopDownCommand}" CommandParameter="{Binding}">
                           <c:OutlineIcon Data="{StaticResource LineDown}" Width="16" Height="16" />
                         </Button>
-                        <Button Classes="icon" AutomationProperties.Name="{l:T chain.delete}"
+                        <Button Classes="icon" AutomationProperties.Name="{l:T chain.hop.remove}" ToolTip.Tip="{l:T chain.hop.remove}"
                                 Command="{Binding $parent[UserControl].((vm:ChainEditorViewModel)DataContext).RemoveHopCommand}" CommandParameter="{Binding}">
                           <c:OutlineIcon Data="{StaticResource LineDelete}" Width="16" Height="16" />
                         </Button>
@@ -58,12 +51,11 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Classes="faint" Text="{l:T chain.empty}" IsVisible="{Binding !HasHops}" TextWrapping="Wrap" />
           </StackPanel>
           <StackPanel Spacing="8">
             <TextBlock Classes="caps" Text="{l:T chain.add.hop}" />
             <ComboBox ItemsSource="{Binding AvailableServers}" SelectedItem="{Binding PickedServer}" HorizontalAlignment="Stretch"
-                      PlaceholderText="{l:T chain.add.pick}">
+                      PlaceholderText="{l:T chain.add.pick}" AutomationProperties.Name="{l:T chain.add.pick}">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:ProfileItem">
                   <StackPanel Spacing="3">
@@ -75,6 +67,17 @@
             </ComboBox>
             <Button Classes="ghost" Content="{l:T chain.add.hop}" Command="{Binding AddHopCommand}" IsEnabled="{Binding CanAddHop}" HorizontalAlignment="Left" />
           </StackPanel>
+          <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="caps" Text="{l:T chain.engine}" />
+              <TextBlock Classes="faint" Text="{l:T chain.hint}" TextWrapping="Wrap" />
+              <ComboBox SelectedIndex="{Binding EngineIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{l:T chain.engine}">
+                <ComboBoxItem Content="{l:T chain.engine.auto}" />
+                <ComboBoxItem Content="sing-box" />
+                <ComboBoxItem Content="Xray" />
+              </ComboBox>
+            </StackPanel>
+          </Expander>
           <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
             <Button Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CloseCommand}" />
             <Button Classes="primary" Content="{l:T common.save}" Command="{Binding SaveCommand}" IsEnabled="{Binding HasHops}" />

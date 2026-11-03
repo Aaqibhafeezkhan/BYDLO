@@ -48,6 +48,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         var s = Services.Settings;
         _theme = s.Theme;
+        _reduceMotion = s.ReduceMotion;
         _language = s.Language;
         _mockMode = Services.IsMock;
         _mockScenario = s.MockScenario;
@@ -75,6 +76,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         OnPropertyChanged(nameof(SecretProtection));
         var s = Services.Settings;
         Theme = s.Theme;
+        ReduceMotion = s.ReduceMotion;
         Language = s.Language;
         MockMode = Services.IsMock;
         MockScenario = s.MockScenario;
@@ -103,6 +105,14 @@ public sealed partial class SettingsViewModel : PageViewModel
     }
 
     public static IReadOnlyList<string> Languages { get; } = ["auto", "en", "ru"];
+
+    [ObservableProperty] private bool _reduceMotion;
+
+    partial void OnReduceMotionChanged(bool value)
+    {
+        Services.Settings.ReduceMotion = value;
+        Persist();
+    }
 
     public bool AutostartSupported => new Bydlo.Platform.AutostartService().IsSupported;
 

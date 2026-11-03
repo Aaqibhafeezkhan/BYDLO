@@ -4,7 +4,7 @@
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
 <i>One app. Every protocol. Zero bullshit.</i></p>
 
-<p align="center"><img src="docs/images/home-purple-9541745d6150.png" width="880" alt="Главный экран BYDLO: импорт, Zapret и Telegram-прокси"></p>
+<p align="center"><img src="docs/images/desktop-workspace-80de20d841c0.png" width="880" alt="Главный экран BYDLO в Mock-режиме"></p>
 
 BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
@@ -12,9 +12,8 @@ BYDLO не изобретает протоколы заново: он управ
 AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-discord-youtube) и
 [tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) от Flowseal — через один понятный интерфейс.
 
-> **v0.2.0 — первый публичный релиз BYDLO на GitHub.** Логика покрыта изолированными тестами, а реальные подключения мейнтейнер
-> проверяет вручную: Zapret и TgWsProxy уже работают в реальной сети на Windows x64. Что проверено на каждой платформе,
-> а что ещё ждёт ручного прогона, — в [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) и [docs/TESTING.md](docs/TESTING.md).
+> **v0.2.0 — первый публичный релиз BYDLO на GitHub.** Сопровождающий подтвердил работу поддерживаемых сценариев Windows, включая реальные подключения.
+> Статусы и ограничения платформ описаны в [матрице совместимости](docs/COMPATIBILITY.md), а порядок ручной проверки — в [руководстве](docs/TESTING.md).
 
 ## Возможности
 
@@ -49,23 +48,23 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 Скриншоты сняты на русском языке в Mock Mode; подключение и трафик на них имитируются.
 
 <p align="center">
-  <img src="docs/images/home-light-7aca239315ce.png" width="48%" alt="Главный экран: светлая тема">
-  <img src="docs/images/home-oled-9ec9b6ae8fc0.png" width="48%" alt="Главный экран: чёрная тема">
+  <img src="docs/images/home-light-a7505feeb075.png" width="48%" alt="Главный экран: светлая тема">
+  <img src="docs/images/home-oled-89759eed9efe.png" width="48%" alt="Главный экран: чёрная тема">
 </p>
 <p align="center">
-  <img src="docs/images/connections-69a32ddff54f.png" width="48%" alt="Подключения: импорт и список серверов">
-  <img src="docs/images/tools-d5900adc97c5.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
+  <img src="docs/images/connections-e9fdb6b6de6b.png" width="48%" alt="Подключения: импорт и список серверов">
+  <img src="docs/images/tools-bc106a90a49f.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
 </p>
 <p align="center">
-  <img src="docs/images/routing-c3c80b7721d8.png" width="48%" alt="Маршрутизация: режимы, DNS и правила">
-  <img src="docs/images/statistics-8cf86a998e5e.png" width="48%" alt="Статистика: скорость, трафик и журнал">
+  <img src="docs/images/routing-e8a4c176997d.png" width="48%" alt="Маршрутизация: режимы, DNS и правила">
+  <img src="docs/images/statistics-d027558d0332.png" width="48%" alt="Статистика: скорость, трафик и журнал">
 </p>
 <p align="center">
-  <img src="docs/images/settings-c32aae72a1c1.png" width="70%" alt="Настройки приложения">
+  <img src="docs/images/settings-36d91ee504e3.png" width="70%" alt="Настройки приложения">
 </p>
 <p align="center">
-  <img src="docs/images/mobile-home-1b038ba9ca7b.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
-  <img src="docs/images/mobile-connections-c00d5317b89c.png" width="260" alt="Узкое окно: список серверов">
+  <img src="docs/images/mobile-home-ecdc58e8cd6d.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
+  <img src="docs/images/mobile-connections-42d5d33d5c64.png" width="260" alt="Узкое окно: список серверов">
 </p>
 
 ## Платформы
@@ -153,6 +152,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 - [Совместимость протоколов и платформ](docs/COMPATIBILITY.md)
 - [Редактирование профилей и учётные данные OpenVPN](docs/PROFILE_EDITOR.md)
 - [Руководство по ручному тестированию](docs/TESTING.md)
+- [Интерфейс BYDLO и проверка в Mock Mode](docs/DESKTOP-UX.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Сторонние компоненты и лицензии](THIRD_PARTY_NOTICES.md)
 - [Как помочь проекту](CONTRIBUTING.md)

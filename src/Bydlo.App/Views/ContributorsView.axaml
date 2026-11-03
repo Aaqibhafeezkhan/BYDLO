@@ -1,35 +1,37 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Bydlo.App.ViewModels"
-             xmlns:c="using:Bydlo.App.Controls"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.ContributorsView"
              x:DataType="vm:ContributorsViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
-      <StackPanel Spacing="8">
-        <TextBlock Classes="h1" Text="{l:T nav.contributors}" />
-        <TextBlock Classes="muted" Text="{l:T contributors.subtitle}" TextWrapping="Wrap" />
-      </StackPanel>
+    <Border Classes="workspace">
+    <StackPanel Classes="page">
+      <Border Classes="page-heading">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="h1" Text="{l:T nav.contributors}" />
+          <TextBlock Classes="muted" Text="{l:T contributors.subtitle}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
 
-      <Border Classes="tile" IsVisible="{Binding !HasContributors}">
+      <Border Classes="utility-list" Padding="16" IsVisible="{Binding !HasContributors}">
         <TextBlock Classes="muted" Text="{l:T contributors.empty}" TextWrapping="Wrap" />
       </Border>
 
       <ItemsControl x:Name="ContributorList" ItemsSource="{Binding Items}" IsVisible="{Binding HasContributors}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ContributorRow">
-            <Border Classes="tile" Margin="0,0,0,6">
+            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,9">
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="1" VerticalAlignment="Center">
                   <TextBlock Text="{Binding Login}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                   <TextBlock Classes="faint" Text="{Binding CommitsText}" />
                 </StackPanel>
-                <Button Grid.Column="1" Classes="icon" VerticalAlignment="Center"
-                        ToolTip.Tip="{l:T contributors.open}" AutomationProperties.Name="{Binding Login}"
+                <Button Grid.Column="1" Classes="text-action" VerticalAlignment="Center"
+                        ToolTip.Tip="{l:T contributors.open}" AutomationProperties.Name="{l:T contributors.open}"
                         Command="{Binding $parent[UserControl].((vm:ContributorsViewModel)DataContext).OpenContributorCommand}"
                         CommandParameter="{Binding}">
-                  <c:OutlineIcon Data="{StaticResource LineLink}" Width="15" Height="15" />
+                  <TextBlock Text="{l:T contributors.open}" TextWrapping="Wrap" />
                 </Button>
               </Grid>
             </Border>
@@ -39,5 +41,6 @@
 
       <Button Classes="ghost" HorizontalAlignment="Left" Content="{l:T contributors.all}" Command="{Binding OpenAllCommand}" />
     </StackPanel>
+    </Border>
   </ScrollViewer>
 </UserControl>
