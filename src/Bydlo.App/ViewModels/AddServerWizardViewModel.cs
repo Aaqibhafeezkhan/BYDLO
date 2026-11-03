@@ -34,6 +34,8 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     [ObservableProperty] private bool _busy;
     [ObservableProperty] private bool _isSaving;
     [ObservableProperty] private string _input = "";
+    // Matches the localized Auto / Profile / Subscription choices in the link form.
+    [ObservableProperty] private int _importTypeIndex;
     [ObservableProperty] private string? _errorKey;
     [ObservableProperty] private string _summary = "";
     [ObservableProperty]
@@ -101,6 +103,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         ErrorKey = null;
         SkippedCount = 0;
         Protocol = ProtocolKind.Vless;
+        ImportTypeIndex = 0;
         ShowSecrets = false;
         Port = 443;
         Method = "aes-256-gcm";
@@ -180,7 +183,10 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     {
         if (string.IsNullOrWhiteSpace(text)) { ErrorKey = "wizard.error.empty"; return; }
         if (text.Length > 2 * 1024 * 1024) { ErrorKey = "wizard.error.large"; return; }
-        if (ProfileImporter.LooksLikeSubscriptionUrl(text, allowRoot: true))
+        var subscription = IsLink && ImportTypeIndex != 0
+            ? ImportTypeIndex == 2
+            : ProfileImporter.LooksLikeSubscriptionUrl(text, allowRoot: true);
+        if (subscription)
         {
             try
             {
