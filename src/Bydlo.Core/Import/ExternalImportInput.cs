@@ -55,7 +55,9 @@ public sealed class ClipboardSuggestionHistory
 
     public bool TryOffer(string? text, bool enabled)
     {
-        if (!enabled || ExternalImportInput.LinkKind(text) is null)
+        // An HTTP(S) URL alone cannot distinguish a subscription from an ordinary page.
+        // Keep URL import available explicitly, without fetching clipboard contents to classify them.
+        if (!enabled || ExternalImportInput.LinkKind(text) is null or "subscription")
         {
             return false;
         }
