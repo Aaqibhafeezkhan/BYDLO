@@ -56,10 +56,21 @@ public sealed class VmessParser : IProfileParser
 
     public ImportedProfile Parse(string input)
     {
-        var body = input.Trim()[8..];
-        if (!TryDecodeBase64(body.Split('#')[0], out var json))
+        var parts = input.Trim()[8..].Split('#', 2)[0].Split('?', 2);
+        if (!TryDecodeBase64(parts[0], out var json))
         {
             throw new ImportException("VMess link is not valid base64 JSON.");
+        }
+
+        string? fingerprint = null;
+        if (parts.Length == 2)
+        {
+            var query = System.Web.HttpUtility.ParseQueryString(parts[1]);
+            fingerprint = query["fp"];
+            if (query.Count != 1 || string.IsNullOrWhiteSpace(fingerprint))
+            {
+                throw new ImportException("VMess link has unsupported query options.");
+            }
         }
 
         JsonElement root;
@@ -89,7 +100,7 @@ public sealed class VmessParser : IProfileParser
         void Opt(string key, string value) { if (!string.IsNullOrWhiteSpace(value)) { p.Options[key] = value; } }
         Opt(Keys.Sni, S("sni"));
         Opt(Keys.Alpn, S("alpn"));
-        Opt(Keys.Fingerprint, S("fp"));
+        Opt(Keys.Fingerprint, fingerprint ?? S("fp"));
         Opt(Keys.HostHeader, S("host"));
         Opt(p.Options[Keys.Transport] == "grpc" ? Keys.ServiceName : Keys.Path, S("path"));
         Opt("headerType", S("type"));
