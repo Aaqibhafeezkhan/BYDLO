@@ -109,6 +109,13 @@
           </StackPanel>
           <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
           <TextBlock Classes="faint" Text="{l:T settings.admin.manual}" TextWrapping="Wrap" IsVisible="{Binding ShowElevationManualHint}" />
+          <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding CanRestartElevated}">
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T settings.admin.autorestart}" FontWeight="Medium" TextWrapping="Wrap" />
+              <TextBlock Classes="faint" Text="{l:T settings.admin.autorestart.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding RunElevatedOnStartup}" />
+          </Grid>
           <TextBlock Text="{l:T helper.title}" FontWeight="Medium" />
           <TextBlock Classes="faint" Text="{l:T helper.hint}" TextWrapping="Wrap" />
           <TextBlock Classes="faint" Text="{l:T helper.unsupported}" IsVisible="{Binding !HelperSupported}" TextWrapping="Wrap" />

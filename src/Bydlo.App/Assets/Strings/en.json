@@ -605,6 +605,8 @@
   "settings.admin.cancelled": "Elevation did not start. Connections were kept.",
   "settings.admin.failed": "Could not finish stopping connections. BYDLO remains open; the elevated window will not start while this window is running. Retry disconnecting before restarting.",
   "settings.admin.manual": "In-app restart with elevated rights is only available on Windows. On Linux/macOS, restart BYDLO with root rights (for example, via sudo) to use TUN, tunnels and Zapret.",
+  "settings.admin.autorestart": "Run with administrator rights at startup",
+  "settings.admin.autorestart.hint": "Windows only. When enabled, BYDLO asks for elevation (UAC) on startup. If you decline, it keeps working with limited features.",
   "settings.secrets": "Secret storage:",
   "settings.safelock": "Development safety lock is active (BYDLO_SAFE_DEV=1): real engines will refuse to start.",
 

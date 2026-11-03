@@ -68,6 +68,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _subscriptionAutoUpdate = s.SubscriptionAutoUpdate;
         _subscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         _checkForUpdates = s.CheckForUpdates;
+        _runElevatedOnStartup = s.RunElevatedOnStartup;
     }
 
     /// <summary>Re-read settings changed outside this page, e.g. by the first-run onboarding.</summary>
@@ -240,6 +241,9 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     private bool _setSystemProxy;
+
+    [ObservableProperty]
+    private bool _runElevatedOnStartup;
 
     [ObservableProperty]
     private bool _autoReconnect;
@@ -503,6 +507,12 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         Services.Settings.SetSystemProxy = value;
         OnPropertyChanged(nameof(LanSysProxyConflict));
+        Persist();
+    }
+
+    partial void OnRunElevatedOnStartupChanged(bool value)
+    {
+        Services.Settings.RunElevatedOnStartup = value;
         Persist();
     }
 
