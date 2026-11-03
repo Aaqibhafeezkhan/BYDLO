@@ -11,6 +11,7 @@
         <!-- Index 0 is the active palette; ThemeService swaps it at runtime. -->
         <ResourceInclude Source="avares://Bydlo.App/Themes/Purple.axaml" />
         <ResourceInclude Source="avares://Bydlo.App/Themes/Icons.axaml" />
+        <ResourceInclude Source="avares://Bydlo.App/Themes/Brand.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

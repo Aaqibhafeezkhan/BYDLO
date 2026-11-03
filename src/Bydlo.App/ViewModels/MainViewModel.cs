@@ -119,6 +119,29 @@ public sealed partial class MainViewModel : ViewModelBase
         IsAddServerOpen = true;
     }
 
+    [RelayCommand]
+    private async Task OpenImport(string source)
+    {
+        if (IsAddServerOpen || AddServerWizard.Busy || HasImportPreview || IsImportBusy) { return; }
+        OpenAddServer();
+        if (!IsAddServerOpen || AddServerWizard.Busy) { return; }
+        switch (source)
+        {
+            case "file":
+                AddServerWizard.ChooseFileCommand.Execute(null);
+                await AddServerWizard.SelectFileCommand.ExecuteAsync(null);
+                break;
+            case "qr":
+                AddServerWizard.ChooseQrCommand.Execute(null);
+                await AddServerWizard.SelectQrCommand.ExecuteAsync(null);
+                break;
+            default:
+                AddServerWizard.ChooseLinkCommand.Execute(null);
+                if (source == "clipboard") { await AddServerWizard.PasteCommand.ExecuteAsync(null); }
+                break;
+        }
+    }
+
     public ChainEditorViewModel ChainEditor { get; }
 
     [ObservableProperty] private bool _isChainEditorOpen;
