@@ -38,6 +38,24 @@ public class ConnectionManagerTests
     }
 
     [Fact]
+    public async Task Active_connections_follow_the_mock_session_lifecycle()
+    {
+        var (manager, _) = Create();
+        await using var cleanup = manager;
+        Assert.Null(await manager.ListActiveConnectionsAsync());
+        await manager.ConnectAsync(Demo(), new AppSettings { MockMode = true });
+        var connection = Assert.Single((await manager.ListActiveConnectionsAsync())!);
+        await manager.CloseActiveConnectionAsync("unknown-id");
+        Assert.Single((await manager.ListActiveConnectionsAsync())!);
+        await manager.CloseActiveConnectionAsync(connection.Id);
+        Assert.Empty((await manager.ListActiveConnectionsAsync())!);
+        await manager.DisconnectAsync();
+        Assert.Null(await manager.ListActiveConnectionsAsync());
+        await manager.ConnectAsync(Demo(), new AppSettings { MockMode = true });
+        Assert.Single((await manager.ListActiveConnectionsAsync())!);
+    }
+
+    [Fact]
     public async Task Mock_connect_produces_traffic_and_disconnects()
     {
         var (m, _) = Create();

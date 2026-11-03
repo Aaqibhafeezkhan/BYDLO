@@ -16,6 +16,25 @@ public class ConfigBuilderTests
         new SingBoxConfigBuilder().Build(p.Profile, p.Secrets, new BuildContext(s ?? new AppSettings(), 9090, "sec"));
 
     [Fact]
+    public void Clash_controller_is_authenticated_and_loopback_only()
+    {
+        var root = SingBox(Import("trojan://pw@t.example.com:443"));
+        Assert.Equal("127.0.0.1:9090", (string?)root["experimental"]!["clash_api"]!["external_controller"]);
+        Assert.Equal("sec", (string?)root["experimental"]!["clash_api"]!["secret"]);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Clash_controller_requires_a_secret(string? secret)
+    {
+        var imported = Import("trojan://pw@t.example.com:443");
+        Assert.ThrowsAny<ArgumentException>(() => new SingBoxConfigBuilder().Build(imported.Profile, imported.Secrets,
+            new BuildContext(new AppSettings(), 9090, secret)));
+    }
+
+    [Fact]
     public void SingBox_vless_reality_outbound()
     {
         var root = SingBox(Import("vless://11111111-2222-3333-4444-555555555555@example.com:443?security=reality&sni=www.microsoft.com&fp=chrome&pbk=PBK&sid=ab&flow=xtls-rprx-vision"));

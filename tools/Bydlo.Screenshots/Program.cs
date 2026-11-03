@@ -271,11 +271,28 @@ if (args.Contains("--verify-active-connections", StringComparer.Ordinal))
     shell.FinishOnboardingCommand.Execute(null);
     Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
     Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
-    shell.Navigate("statistics");
-    var stats = shell.Statistics;
+    shell.Navigate("settings");
+    shell.Settings.ShowAdvanced = true;
+    var stats = shell.ActiveConnections;
     stats.ActiveConnectionsExpanded = true;
     Pump(200);
+    var primarySnapshot = shell.Primary;
+    foreach (var engine in new[] { EngineKind.Xray, EngineKind.WireGuard, EngineKind.OpenVpn })
+    {
+        shell.Primary = primarySnapshot with { Engine = engine, IsMock = false };
+        if (stats.SupportsActiveConnections || stats.FilteredConnections.Any())
+        {
+            throw new InvalidOperationException("Unsupported engine offered active connections.");
+        }
+    }
+    shell.Primary = primarySnapshot;
+    Pump(200);
     var connection = stats.FilteredConnections.Single();
+    foreach (var filter in new[] { " EXAMPLE.INVALID ", "BROWSER", "mock", "proxy" })
+    {
+        stats.ConnectionFilter = filter;
+        if (stats.FilteredConnections.Single() != connection) { throw new InvalidOperationException("Connection field filter failed."); }
+    }
     stats.ConnectionFilter = "missing";
     if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Filter did not hide the mock connection."); }
     stats.ConnectionFilter = "browser";
@@ -283,12 +300,34 @@ if (args.Contains("--verify-active-connections", StringComparer.Ordinal))
     foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled })
     {
         services.Theme.Apply(theme);
-        Shoot($"active-connections-{theme.ToString().ToLowerInvariant()}", 1180, 900);
+        Shoot($"active-connections-{theme.ToString().ToLowerInvariant()}", 1180, 900,
+            window => window.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "ActiveConnectionsList").BringIntoView());
         Shoot($"active-connections-{theme.ToString().ToLowerInvariant()}-minimum", 380, 700,
-            window => window.GetVisualDescendants().OfType<Expander>().Single().BringIntoView());
+            window => window.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "ActiveConnectionsList").BringIntoView());
     }
+    shell.Settings.ShowAdvanced = false;
+    Pump(2200);
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Collapsed advanced section kept polling."); }
+    shell.Settings.ShowAdvanced = true;
+    Pump(200);
+    if (!stats.FilteredConnections.Any()) { throw new InvalidOperationException("Reopening advanced did not refresh."); }
+    shell.Navigate("home");
+    Pump(2200);
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Hidden page kept polling."); }
+    shell.Navigate("settings");
+    Pump(200);
+    stats.ActiveConnectionsExpanded = false;
+    Pump(2200);
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Collapsed list kept polling."); }
+    stats.ActiveConnectionsExpanded = true;
+    Pump(200);
+    if (!stats.FilteredConnections.Any()) { throw new InvalidOperationException("Reopening list did not refresh."); }
     Wait(stats.CloseConnectionCommand.ExecuteAsync(connection));
     if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Mock connection remained after closing it."); }
+    if (stats.AddConnectionRuleCommand.CanExecute(connection with { Host = "192.0.2.1" }))
+    {
+        throw new InvalidOperationException("A domain rule must not be offered for an IP address.");
+    }
     stats.AddConnectionRuleCommand.Execute(connection);
     if (shell.Routing.RuleValue != "example.invalid" || !shell.Routing.ShowRuleEditor)
     {

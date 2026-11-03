@@ -15,14 +15,15 @@ public sealed class ClashConnectionsClient(HttpClient http, int port, string sec
         var payload = await response.Content.ReadFromJsonAsync<ConnectionList>(cancellationToken: ct).ConfigureAwait(false);
         return payload?.Connections?.Where(item => !string.IsNullOrEmpty(item.Id)).Select(item =>
             new ActiveConnection(item.Id!, item.Metadata?.Host is { Length: > 0 } host ? host : item.Metadata?.DestinationIp ?? "",
-                item.Metadata?.Process ?? item.Metadata?.ProcessPath ?? "", item.RulePayload ?? item.Rule ?? "",
+                item.Metadata?.Process is { Length: > 0 } process ? process : item.Metadata?.ProcessPath ?? "",
+                string.Join(": ", new[] { item.Rule, item.RulePayload }.Where(value => !string.IsNullOrEmpty(value))),
                 string.Join(" → ", item.Chains ?? []), item.Download, item.Upload)).ToArray() ?? [];
     }
 
     public async Task CloseConnectionAsync(string id, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        if (id is "." or ".." || id.Length > 128)
+        if (id.Length > 128 || id.Any(c => !char.IsAsciiLetterOrDigit(c) && c is not '-' and not '_'))
         {
             throw new ArgumentException("Invalid connection ID.", nameof(id));
         }
@@ -36,6 +37,9 @@ public sealed class ClashConnectionsClient(HttpClient http, int port, string sec
 
     private HttpRequestMessage Request(HttpMethod method, string path)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(port, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
+        ArgumentException.ThrowIfNullOrWhiteSpace(secret);
         var request = new HttpRequestMessage(method, $"http://127.0.0.1:{port}/{path}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secret);
         return request;

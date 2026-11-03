@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:v="using:Bydlo.App.Views"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
@@ -146,6 +147,7 @@
       <!-- Advanced -->
       <Expander x:Name="AdvancedSettings" Header="{l:T common.advanced}" IsExpanded="{Binding ShowAdvanced, Mode=TwoWay}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="14">
+          <v:ActiveConnectionsView DataContext="{Binding Shell.ActiveConnections}" />
           <TextBlock Classes="faint" Text="{l:T settings.associations.hint}" TextWrapping="Wrap" />
           <WrapPanel IsEnabled="{Binding CanRegisterAssociations}">
             <Button Classes="ghost" Content="{l:T settings.associations.register}" Command="{Binding RegisterAssociationsCommand}" Margin="0,0,8,8" />
