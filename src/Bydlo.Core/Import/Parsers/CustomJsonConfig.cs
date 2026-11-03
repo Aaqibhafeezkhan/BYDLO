@@ -144,6 +144,7 @@ internal static class CustomJsonConfig
             throw new FormatException();
         }
         Validate(root, null);
+        CustomInboundRouting.Map(root, singBox);
         return root;
     }
 

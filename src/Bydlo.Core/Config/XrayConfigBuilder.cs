@@ -83,6 +83,7 @@ public sealed class XrayConfigBuilder
         try
         {
             custom = CustomJsonConfig.Read(secrets[Keys.RawConfig] ?? "", ProtocolKind.XrayConfig);
+            CustomInboundRouting.Map(custom, false, ["socks-in", "http-in"]);
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or FormatException or InvalidOperationException)
         {
