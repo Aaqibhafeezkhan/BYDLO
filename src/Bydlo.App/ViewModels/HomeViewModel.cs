@@ -144,6 +144,26 @@ public sealed partial class HomeViewModel : PageViewModel
         }
     }
 
+    public IReadOnlyList<string> RoutingPresetOptions => Shell.Routing.PresetOptions;
+
+    public int RoutingPresetIndex
+    {
+        get => (int)Services.Settings.Routing.Preset;
+        set
+        {
+            if (value is < 0 or > 2 || value == RoutingPresetIndex)
+            {
+                return;
+            }
+
+            Services.Settings.Routing.Preset = (RoutingPreset)value;
+            OnPropertyChanged();
+            _ = Shell.Guard(async () => await Services.SaveSettingsAsync());
+        }
+    }
+
+    public override void OnShown() => OnPropertyChanged(nameof(RoutingPresetIndex));
+
     public string ModeHint => IsTun ? L["home.tun.hint"] : Loc.T("home.mode.proxy.hint", Services.Settings.LocalProxyPort);
 
     [ObservableProperty]

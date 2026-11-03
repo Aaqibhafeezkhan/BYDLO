@@ -93,6 +93,7 @@ public sealed record EngineStartRequest
 
     /// <summary>Per-session working directory for generated configs (inside BYDLO's data dir).</summary>
     public required string WorkDirectory { get; init; }
+    public string? RuleSetDirectory { get; init; }
 }
 
 public sealed class EngineStateChangedEventArgs(EngineState state, string? error = null) : EventArgs

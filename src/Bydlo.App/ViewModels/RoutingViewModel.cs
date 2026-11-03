@@ -1,3 +1,9 @@
+using System.Collections.ObjectModel;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Avalonia.Platform.Storage;
+using Bydlo.Core.Routing;
+using Bydlo.Core.Security;
 using Bydlo.Platform;
 using Bydlo.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -11,6 +17,7 @@ public sealed partial class RoutingViewModel : PageViewModel
     public RoutingViewModel(MainViewModel shell)
         : base(shell)
     {
+        OrderedRules.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanDownloadPreset));
         Load();
     }
 
@@ -83,6 +90,157 @@ public sealed partial class RoutingViewModel : PageViewModel
         }
     }
 
+    public IReadOnlyList<string> PresetOptions => [L["routing.preset.all"], L["routing.preset.blocked"], L["routing.preset.local"]];
+    public IReadOnlyList<string> Countries => [L["routing.preset.ru"], L["routing.preset.cn"]];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLocalPreset))]
+    [NotifyPropertyChangedFor(nameof(CanDownloadPreset))]
+    private int _presetIndex;
+
+    [ObservableProperty]
+    private int _countryIndex;
+
+    public bool IsLocalPreset => PresetIndex == (int)RoutingPreset.ExceptLocal;
+    public bool CanDownloadPreset => (PresetIndex > 0 || OrderedRules.Count > 0) && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
+    private string Country => CountryIndex == 1 ? "cn" : "ru";
+
+    [RelayCommand]
+    private Task<bool> DownloadPreset() => Shell.Guard(async () =>
+    {
+        if (!CanDownloadPreset)
+        {
+            return;
+        }
+        var cache = new RuleSetCache(RoutingPresets.CacheDirectory(Services.Paths.DataDirectory), Services.Http);
+        foreach (var source in RoutingPresets.Sources((RoutingPreset)PresetIndex, Country)
+            .Concat(OrderedRules.Where(rule => rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp)
+                .Select(rule => RoutingPresets.Find(rule.Value)).OfType<RuleSetSource>())
+            .Concat(OrderedRules
+                .Select(rule => RoutingPresets.XraySource(rule.Condition)).OfType<RuleSetSource>())
+            .DistinctBy(source => source.Tag))
+        {
+            await cache.UpdateAsync(source, Services.ShutdownToken);
+        }
+        Shell.ShowToast(L["routing.preset.updated"]);
+    });
+
+    private static readonly JsonSerializerOptions RulesJson = new()
+    {
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter<RoutingCondition>(), new JsonStringEnumConverter<RoutingAction>() },
+    };
+
+    public ObservableCollection<OrderedRoutingRule> OrderedRules { get; } = [];
+    public IReadOnlyList<string> RuleConditions => Enum.GetValues<RoutingCondition>()
+        .Select(condition => L["routing.rules.condition." + condition]).ToArray();
+    public IReadOnlyList<string> RuleActions => Enum.GetValues<RoutingAction>()
+        .Select(action => L["routing.rules.action." + action]).ToArray();
+
+    [ObservableProperty] private int _ruleConditionIndex;
+    [ObservableProperty] private int _ruleActionIndex;
+    [ObservableProperty] private string _ruleValue = "";
+    [ObservableProperty] private OrderedRoutingRule? _selectedRule;
+
+    [RelayCommand]
+    private void AddRule()
+    {
+        if (string.IsNullOrWhiteSpace(RuleValue) || RuleConditionIndex < 0 || RuleActionIndex < 0)
+        {
+            return;
+        }
+        var rule = new OrderedRoutingRule((RoutingCondition)RuleConditionIndex, RuleValue.Trim(), (RoutingAction)RuleActionIndex);
+        OrderedRules.Add(rule);
+        SelectedRule = rule;
+        RuleValue = "";
+    }
+
+    [RelayCommand]
+    private void RemoveRule()
+    {
+        if (SelectedRule is { } rule)
+        {
+            OrderedRules.Remove(rule);
+        }
+    }
+
+    [RelayCommand]
+    private void MoveRuleUp() => MoveRule(-1);
+
+    [RelayCommand]
+    private void MoveRuleDown() => MoveRule(1);
+
+    private void MoveRule(int step)
+    {
+        if (SelectedRule is not { } rule)
+        {
+            return;
+        }
+        var index = OrderedRules.IndexOf(rule);
+        var next = index + step;
+        if (index >= 0 && next >= 0 && next < OrderedRules.Count)
+        {
+            OrderedRules.Move(index, next);
+        }
+    }
+
+    [RelayCommand]
+    private Task<bool> ExportRules() => Shell.Guard(async () =>
+    {
+        if (Services.TopLevel()?.StorageProvider is not { } storage)
+        {
+            return;
+        }
+        using var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = L["routing.rules.export"], SuggestedFileName = "routing.json", DefaultExtension = "json",
+        });
+        if (file is not null)
+        {
+            await using var stream = await file.OpenWriteAsync();
+            stream.SetLength(0);
+            await JsonSerializer.SerializeAsync(stream, OrderedRules, RulesJson);
+        }
+    });
+
+    [RelayCommand]
+    private Task<bool> ImportRules() => Shell.Guard(async () =>
+    {
+        if (Services.TopLevel()?.StorageProvider is not { } storage)
+        {
+            return;
+        }
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = L["routing.rules.import"], AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("JSON") { Patterns = ["*.json"] }],
+        });
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        using var file = files[0];
+        await using var stream = await file.OpenReadAsync();
+        var buffer = new byte[1024 * 1024 + 1];
+        var length = await stream.ReadAtLeastAsync(buffer, buffer.Length, false);
+        if (length == buffer.Length)
+        {
+            throw new InvalidDataException(L["routing.rules.invalid"]);
+        }
+        var rules = JsonSerializer.Deserialize<List<OrderedRoutingRule>>(buffer.AsSpan(0, length), RulesJson);
+        if (rules is null || rules.Any(rule => rule is null || string.IsNullOrWhiteSpace(rule.Value)
+            || !Enum.IsDefined(rule.Condition) || !Enum.IsDefined(rule.Action)))
+        {
+            throw new InvalidDataException(L["routing.rules.invalid"]);
+        }
+        OrderedRules.Clear();
+        foreach (var rule in rules)
+        {
+            OrderedRules.Add(rule);
+        }
+    });
+
     public bool IsTunMode => Services.Settings.Mode == ConnectionMode.Tun;
 
     public override void OnShown()
@@ -95,6 +253,9 @@ public sealed partial class RoutingViewModel : PageViewModel
     private async Task Save()
     {
         var r = Services.Settings.Routing;
+        r.OrderedRules = [.. OrderedRules];
+        r.Preset = (RoutingPreset)Math.Max(PresetIndex, 0);
+        r.PresetCountry = Country;
         r.PreserveMeshVpnRanges = PreserveMesh;
         r.BypassPrivateNetworks = BypassPrivate;
         r.ProxyOnlyListed = ProxyOnlyListed;
@@ -113,6 +274,13 @@ public sealed partial class RoutingViewModel : PageViewModel
     private void Load()
     {
         var r = Services.Settings.Routing;
+        OrderedRules.Clear();
+        foreach (var rule in r.OrderedRules)
+        {
+            OrderedRules.Add(rule);
+        }
+        PresetIndex = (int)r.Preset;
+        CountryIndex = r.PresetCountry == "cn" ? 1 : 0;
         PreserveMesh = r.PreserveMeshVpnRanges;
         BypassPrivate = r.BypassPrivateNetworks;
         ProxyOnlyListed = r.ProxyOnlyListed;

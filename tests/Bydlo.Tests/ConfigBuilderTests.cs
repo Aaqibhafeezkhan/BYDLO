@@ -1,3 +1,4 @@
+using Bydlo.Core.Routing;
 using System.Text.Json.Nodes;
 using Bydlo.Core.Config;
 using Bydlo.Core.Engines;
@@ -221,5 +222,59 @@ public class ConfigBuilderTests
         Assert.Contains(rules, r =>
             r!["process"] is JsonArray d && d.Any(n => (string?)n == "game.exe") &&
             (string?)r["outboundTag"] == "direct");
+    }
+    [Theory]
+    [InlineData(RoutingPreset.All, "ru", "proxy", null, null)]
+    [InlineData(RoutingPreset.BlockedOnly, "ru", "direct", "blocked-ru", "proxy")]
+    [InlineData(RoutingPreset.ExceptLocal, "cn", "proxy", "geosite-cn", "direct")]
+    [InlineData(RoutingPreset.ExceptLocal, "ru", "proxy", "geosite-ru", "direct")]
+    public void SingBox_applies_the_selected_routing_preset(
+        RoutingPreset preset, string country, string final, string? firstRuleSet, string? ruleOutbound)
+    {
+        var settings = new AppSettings { Routing = { Preset = preset, PresetCountry = country } };
+        var profile = Import("trojan://pw@t.example.com:443");
+        var sources = Bydlo.Core.Routing.RoutingPresets.Sources(preset, country);
+        var paths = sources.ToDictionary(s => s.Tag, s => s.Tag + ".srs");
+        var route = new SingBoxConfigBuilder().Build(profile.Profile, profile.Secrets, new BuildContext(settings, RuleSets: paths))["route"]!;
+        Assert.Equal(final, (string?)route["final"]);
+        Assert.Equal(firstRuleSet, (string?)route["rule_set"]?[0]?["tag"]);
+        var rule = route["rules"]!.AsArray().SingleOrDefault(r => r?["rule_set"] is JsonArray);
+        Assert.Equal(ruleOutbound, (string?)rule?["outbound"]);
+    }
+
+    [Fact]
+    public void SingBox_rejects_regional_preset_when_verified_sets_are_missing()
+    {
+        var settings = new AppSettings { Routing = { Preset = RoutingPreset.BlockedOnly } };
+        var profile = Import("trojan://pw@t.example.com:443");
+        Assert.Equal("routing.preset.missing",
+            Assert.Throws<EngineException>(() => SingBox(profile, settings)).LocalizationKey);
+    }
+    [Fact]
+    public void Ordered_rules_keep_precedence_for_both_engines()
+    {
+        var settings = new AppSettings
+        {
+            Routing =
+            {
+                OrderedRules =
+                [
+                    new(RoutingCondition.Domain, "example.test", RoutingAction.Direct),
+                    new(RoutingCondition.Suffix, "example.test", RoutingAction.Block),
+                    new(RoutingCondition.Port, "443", RoutingAction.Proxy),
+                ],
+            },
+        };
+        var profile = Import("trojan://pw@t.example.com:443");
+        var singBox = SingBox(profile, settings)["route"]!["rules"]!.AsArray();
+        var xray = new XrayConfigBuilder().Build(profile.Profile, profile.Secrets, new BuildContext(settings))["routing"]!["rules"]!.AsArray();
+        var singBoxStart = singBox.IndexOf(singBox.Single(rule => rule?["domain"] is JsonArray));
+        var xrayStart = xray.IndexOf(xray.Single(rule => (string?)rule?["domain"]?[0] == "full:example.test"));
+        Assert.Equal("direct", (string?)singBox[singBoxStart]?["outbound"]);
+        Assert.Equal("reject", (string?)singBox[singBoxStart + 1]?["action"]);
+        Assert.Equal(443, (int?)singBox[singBoxStart + 2]?["port"]?[0]);
+        Assert.Equal("direct", (string?)xray[xrayStart]?["outboundTag"]);
+        Assert.Equal("block", (string?)xray[xrayStart + 1]?["outboundTag"]);
+        Assert.Equal("443", (string?)xray[xrayStart + 2]?["port"]);
     }
 }

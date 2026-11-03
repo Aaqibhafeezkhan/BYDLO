@@ -69,6 +69,9 @@
             <c:OutlineIcon Data="{StaticResource LineInfo}" Width="16" Height="16" />
           </Button>
         </StackPanel>
+        <ComboBox ItemsSource="{Binding RoutingPresetOptions}" SelectedIndex="{Binding RoutingPresetIndex}"
+                  HorizontalAlignment="Center" IsEnabled="{Binding !IsBusy}"
+                  AutomationProperties.Name="{l:T routing.preset.label}" />
         <TextBlock Classes="faint" Text="{Binding ModeHint}" IsVisible="{Binding ShowModeHint}" TextAlignment="Center" TextWrapping="Wrap" Margin="12,12,12,0" />
         <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,20,0,0">
           <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />

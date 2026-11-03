@@ -1,3 +1,4 @@
+using Bydlo.Core.Routing;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bydlo.Core.Diagnostics;
@@ -8,7 +9,7 @@ using Bydlo.Core.Models;
 namespace Bydlo.Core.Config;
 
 /// <summary>Options that are not part of the profile itself.</summary>
-public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null, LocalProxyAuth? LocalProxyAuth = null);
+public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null, LocalProxyAuth? LocalProxyAuth = null, IReadOnlyDictionary<string, string>? RuleSets = null);
 
 /// <summary>
 /// Generates sing-box configuration (schema of sing-box 1.12+, verified against the 1.14 migration guide):
@@ -106,7 +107,7 @@ public sealed class SingBoxConfigBuilder
 
         outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
         root["outbounds"] = outbounds;
-        root["route"] = BuildRoute(routing, settings.Mode, exitTag);
+        root["route"] = BuildRoute(routing, settings.Mode, exitTag, ctx.RuleSets);
 
         if (ctx.ClashApiPort is { } apiPort)
         {
@@ -161,7 +162,7 @@ public sealed class SingBoxConfigBuilder
 
         outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
         root["outbounds"] = outbounds;
-        root["route"] = BuildRoute(routing, settings.Mode);
+        root["route"] = BuildRoute(routing, settings.Mode, ruleSets: ctx.RuleSets);
 
         if (ctx.ClashApiPort is { } apiPort)
         {
@@ -311,7 +312,7 @@ public sealed class SingBoxConfigBuilder
         return inbound;
     }
 
-    private static JsonObject BuildRoute(RoutingSettings routing, ConnectionMode mode, string proxyTag = ProxyTag)
+    private static JsonObject BuildRoute(RoutingSettings routing, ConnectionMode mode, string proxyTag = ProxyTag, IReadOnlyDictionary<string, string>? ruleSets = null)
     {
         var rules = new JsonArray
         {
@@ -327,6 +328,11 @@ public sealed class SingBoxConfigBuilder
         if (routing.PreserveMeshVpnRanges)
         {
             rules.Add(new JsonObject { ["ip_cidr"] = ToArray(MeshVpnRanges), ["outbound"] = "direct" });
+        }
+
+        foreach (var rule in routing.OrderedRules)
+        {
+            rules.Add(OrderedRoutingRules.Compile(rule, true, mode, proxyTag, ruleSets));
         }
 
         if (routing.BlockDomains.Count > 0)
@@ -345,23 +351,63 @@ public sealed class SingBoxConfigBuilder
         }
 
         var onlyListedProcesses = mode == ConnectionMode.Tun && routing.ProxyOnlyListedProcesses;
-        if (mode == ConnectionMode.Tun && routing.DirectProcesses.Count > 0)
+        if (onlyListedProcesses && routing.Preset != RoutingPreset.All)
+        {
+            rules.Add(routing.DirectProcesses.Count == 0
+                ? new JsonObject { ["outbound"] = "direct" }
+                : new JsonObject { ["process_name"] = ToArray(routing.DirectProcesses), ["invert"] = true, ["outbound"] = "direct" });
+        }
+        else if (mode == ConnectionMode.Tun && routing.DirectProcesses.Count > 0)
         {
             rules.Add(new JsonObject { ["process_name"] = ToArray(routing.DirectProcesses), ["outbound"] = onlyListedProcesses ? proxyTag : "direct" });
         }
 
-        if (!onlyListedProcesses && routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0)
+        if (!onlyListedProcesses && (routing.ProxyOnlyListed || routing.Preset == RoutingPreset.BlockedOnly) && routing.ProxyDomains.Count > 0)
         {
             rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.ProxyDomains), ["outbound"] = proxyTag });
         }
 
-        return new JsonObject
+        var preset = routing.Preset;
+        var sources = RoutingPresets.Sources(preset, routing.PresetCountry);
+        var localSets = new JsonArray();
+        if (sources.Count > 0)
+        {
+            if (ruleSets is null || sources.Any(source => !ruleSets.ContainsKey(source.Tag)))
+            {
+                throw new Bydlo.Core.Engines.EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
+            }
+
+            rules.Add(new JsonObject
+            {
+                ["rule_set"] = ToArray(sources.Select(source => source.Tag)),
+                ["outbound"] = preset == RoutingPreset.ExceptLocal ? "direct" : proxyTag,
+            });
+        }
+
+        if (ruleSets is not null)
+        {
+            foreach (var (tag, path) in ruleSets)
+            {
+                localSets.Add(new JsonObject
+                {
+                    ["type"] = "local", ["format"] = "binary", ["tag"] = tag, ["path"] = path,
+                });
+            }
+        }
+
+        var route = new JsonObject
         {
             ["rules"] = rules,
-            ["final"] = onlyListedProcesses || (routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0) ? "direct" : proxyTag,
+            ["final"] = (onlyListedProcesses && preset == RoutingPreset.All) || preset == RoutingPreset.BlockedOnly
+                || (routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0) ? "direct" : proxyTag,
             ["auto_detect_interface"] = true,
             ["default_domain_resolver"] = "local",
         };
+        if (localSets.Count > 0)
+        {
+            route["rule_set"] = localSets;
+        }
+        return route;
     }
 
     private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, string tag = ProxyTag)

@@ -354,6 +354,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 Chain = session.Hops,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
+                RuleSetDirectory = Bydlo.Core.Routing.RoutingPresets.CacheDirectory(_paths.DataDirectory),
             }, ct).ConfigureAwait(false);
             session.Status = ConnectionStatus.Connected;
             session.ConnectedSince = DateTimeOffset.Now;
@@ -481,6 +482,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 Chain = session.Hops,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
+                RuleSetDirectory = Bydlo.Core.Routing.RoutingPresets.CacheDirectory(_paths.DataDirectory),
             };
             if (session.Engine is IReconnectableEngine retained)
             {

@@ -1,3 +1,4 @@
+using Bydlo.Core.Routing;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bydlo.Core.Diagnostics;
@@ -85,6 +86,11 @@ public sealed class XrayConfigBuilder
         if (routing.PreserveMeshVpnRanges)
         {
             rules.Add(new JsonObject { ["type"] = "field", ["ip"] = Arr(SingBoxConfigBuilder.MeshVpnRanges), ["outboundTag"] = "direct" });
+        }
+
+        foreach (var rule in routing.OrderedRules)
+        {
+            rules.Add(OrderedRoutingRules.Compile(rule, false, settings.Mode, proxyTag, null));
         }
 
         if (routing.BlockDomains.Count > 0)

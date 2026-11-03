@@ -124,6 +124,13 @@ public sealed class AppSettings
     public Dictionary<string, string> EnginePaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+public enum RoutingPreset
+{
+    All,
+    BlockedOnly,
+    ExceptLocal,
+}
+
 public sealed class RoutingSettings
 {
     /// <summary>
@@ -133,6 +140,9 @@ public sealed class RoutingSettings
     public bool PreserveMeshVpnRanges { get; set; } = true;
 
     public bool BypassPrivateNetworks { get; set; } = true;
+    public List<Routing.OrderedRoutingRule> OrderedRules { get; set; } = [];
+    public RoutingPreset Preset { get; set; }
+    public string PresetCountry { get; set; } = "ru";
 
     /// <summary>DNS-over-HTTPS server used through the tunnel.</summary>
     public string RemoteDns { get; set; } = "1.1.1.1";

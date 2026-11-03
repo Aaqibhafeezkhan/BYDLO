@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:r="using:Bydlo.Core.Routing"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.RoutingView"
              x:DataType="vm:RoutingViewModel">
@@ -26,6 +27,13 @@
 
       <Border Classes="panel">
         <StackPanel Spacing="14">
+          <TextBlock Classes="caps" Text="{l:T routing.preset.label}" />
+          <ComboBox ItemsSource="{Binding PresetOptions}" SelectedIndex="{Binding PresetIndex}" HorizontalAlignment="Stretch" />
+          <ComboBox ItemsSource="{Binding Countries}" SelectedIndex="{Binding CountryIndex}"
+                    IsVisible="{Binding IsLocalPreset}" HorizontalAlignment="Stretch" />
+          <Button Content="{l:T routing.preset.download}" IsEnabled="{Binding CanDownloadPreset}"
+                  Command="{Binding DownloadPresetCommand}" />
+          <TextBlock Classes="faint" Text="{l:T routing.preset.singbox}" TextWrapping="Wrap" />
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Margin="0,0,18,0">
               <TextBlock Text="{l:T routing.mesh}" FontWeight="Medium" TextWrapping="Wrap" />
@@ -74,6 +82,29 @@
           <TextBox Classes="list" Text="{Binding BlockDomains}" Watermark="ads.example.com" />
           <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
             <StackPanel Spacing="10">
+              <TextBlock Classes="caps" Text="{l:T routing.rules.ordered}" />
+              <ComboBox ItemsSource="{Binding RuleConditions}" SelectedIndex="{Binding RuleConditionIndex}" />
+              <TextBox Text="{Binding RuleValue}" Watermark="{l:T routing.rules.value}" />
+              <ComboBox ItemsSource="{Binding RuleActions}" SelectedIndex="{Binding RuleActionIndex}" />
+              <Button Content="{l:T routing.rules.add}" Command="{Binding AddRuleCommand}" />
+              <ListBox ItemsSource="{Binding OrderedRules}" SelectedItem="{Binding SelectedRule}" MaxHeight="240">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="r:OrderedRoutingRule">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Condition}" />
+                      <TextBlock Text="{Binding Value}" />
+                      <TextBlock Text="{Binding Action}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <WrapPanel>
+                <Button Content="{l:T routing.rules.up}" Command="{Binding MoveRuleUpCommand}" />
+                <Button Content="{l:T routing.rules.down}" Command="{Binding MoveRuleDownCommand}" />
+                <Button Content="{l:T routing.rules.remove}" Command="{Binding RemoveRuleCommand}" />
+                <Button Content="{l:T routing.rules.import}" Command="{Binding ImportRulesCommand}" />
+                <Button Content="{l:T routing.rules.export}" Command="{Binding ExportRulesCommand}" />
+              </WrapPanel>
               <TextBlock Classes="caps" Text="{l:T routing.cidr}" />
               <TextBox Classes="list" Text="{Binding DirectCidrs}" Watermark="192.0.2.0/24" />
               <TextBlock Classes="caps" Text="{l:T routing.process}" />

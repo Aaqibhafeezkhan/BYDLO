@@ -1,3 +1,4 @@
+using Bydlo.Core.Routing;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -72,7 +73,34 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             Redactor.RegisterSecret(lan.Password);
         }
 
-        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth);
+        var routing = request.Settings.Routing;
+        var ruleSets = new Dictionary<string, string>(StringComparer.Ordinal);
+        var sources = RoutingPresets.Sources(routing.Preset, routing.PresetCountry).ToDictionary(source => source.Tag);
+        foreach (var rule in routing.OrderedRules.Where(rule => rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp))
+        {
+            if (RoutingPresets.Find(rule.Value.Trim()) is { } source)
+            {
+                sources.TryAdd(source.Tag, source);
+            }
+        }
+        foreach (var source in sources.Values)
+        {
+            if (request.RuleSetDirectory is not { } directory)
+            {
+                throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
+            }
+            var path = RoutingPresets.CachedPath(directory, source);
+            try
+            {
+                await IntegrityVerifier.VerifyFileAsync(path, source.Sha256, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is IOException or IntegrityException)
+            {
+                throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
+            }
+            ruleSets.Add(source.Tag, path);
+        }
+        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth, ruleSets);
         var json = request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
         var configPath = Path.Combine(request.WorkDirectory, "sing-box.json");
         await SecureFile.WriteAsync(configPath, json, ct).ConfigureAwait(false);

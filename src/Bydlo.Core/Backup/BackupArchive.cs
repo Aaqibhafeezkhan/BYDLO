@@ -115,6 +115,7 @@ public static class BackupArchive
             r.BlockDomains = Union(c.BlockDomains, r.BlockDomains);
             r.DirectCidrs = Union(c.DirectCidrs, r.DirectCidrs);
             r.DirectProcesses = Union(c.DirectProcesses, r.DirectProcesses);
+            r.OrderedRules = [.. c.OrderedRules.Concat(r.OrderedRules).Distinct()];
         }
         return settings;
     }
@@ -131,7 +132,7 @@ public static class BackupArchive
         var s = data.Settings;
         if (s.Routing is null || s.Zapret is null || s.TgWsProxy is null || s.EnginePaths is null ||
             s.Routing.DirectDomains is null || s.Routing.ProxyDomains is null || s.Routing.BlockDomains is null ||
-            s.Routing.DirectCidrs is null || s.Routing.DirectProcesses is null ||
+            s.Routing.DirectCidrs is null || s.Routing.DirectProcesses is null || s.Routing.OrderedRules is null ||
             s.Routing.RemoteDns is null || s.Routing.DirectDns is null ||
             s.Zapret.TestTargets is null || s.Zapret.GameFilter is not ("disabled" or "all" or "tcp" or "udp") ||
             s.TgWsProxy.DcIps is null || s.TgWsProxy.CfProxyDomains is null || s.TgWsProxy.Host is null || s.TgWsProxy.FakeTlsDomain is null ||

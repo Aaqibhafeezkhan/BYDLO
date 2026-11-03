@@ -52,6 +52,15 @@ public sealed class EngineRegistry
             throw new EngineException("error.killswitch.engine");
         }
 
+        if (settings.Routing.Preset != RoutingPreset.All && kind != EngineKind.SingBox)
+        {
+            throw new EngineException("routing.preset.singbox", localizationKey: "routing.preset.singbox");
+        }
+        if (settings.Routing.Preset != RoutingPreset.All && settings.KillSwitch && settings.Mode == ConnectionMode.Tun)
+        {
+            throw new EngineException("routing.preset.killswitch", localizationKey: "routing.preset.killswitch");
+        }
+
         return Create(kind, settings);
     }
 
@@ -97,6 +106,15 @@ public sealed class EngineRegistry
         if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
         {
             throw new EngineException("error.killswitch.engine");
+        }
+
+        if (settings.Routing.Preset != RoutingPreset.All && kind != EngineKind.SingBox)
+        {
+            throw new EngineException("routing.preset.singbox", localizationKey: "routing.preset.singbox");
+        }
+        if (settings.Routing.Preset != RoutingPreset.All && settings.KillSwitch && settings.Mode == ConnectionMode.Tun)
+        {
+            throw new EngineException("routing.preset.killswitch", localizationKey: "routing.preset.killswitch");
         }
 
         return Create(kind, settings);
