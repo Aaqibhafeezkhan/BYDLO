@@ -172,6 +172,50 @@ public sealed class BackupTests
         Assert.Null(await store.GetSubscriptionUrlAsync(next.Subscriptions[0].Subscription.Id));
     }
 
+    [Fact]
+    public async Task Merge_updates_only_tool_secrets_present_in_archive()
+    {
+        var store = new ProfileStore(Path.Combine(TestDirs.New("backup-merge-tools"), "profiles.json"), new InMemorySecretStore());
+        await store.Secrets.SaveAsync(ConnectionManager.TgWsProxySecretId, new ProfileSecrets { Values = { ["secret"] = "old-tg" } });
+        await store.Secrets.SaveAsync(ConnectionManager.LocalProxySecretId, new ProfileSecrets { Values = { ["password"] = "old-lan" } });
+
+        // Archive carries a fresh Telegram secret but no LAN password.
+        var data = new BackupData { ToolSecrets = new ProfileSecrets { Values = { ["secret"] = "new-tg" } } };
+        await store.RestoreBackupAsync(data, BackupImportMode.Merge);
+        Assert.Equal("new-tg", (await store.Secrets.LoadAsync(ConnectionManager.TgWsProxySecretId))["secret"]);
+        Assert.Equal("old-lan", (await store.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId))["password"]);
+
+        // Reverse direction: archive carries only the LAN password.
+        var reverse = new BackupData { ToolSecrets = new ProfileSecrets { Values = { ["localproxy-password"] = "new-lan" } } };
+        await store.RestoreBackupAsync(reverse, BackupImportMode.Merge);
+        Assert.Equal("new-tg", (await store.Secrets.LoadAsync(ConnectionManager.TgWsProxySecretId))["secret"]);
+        Assert.Equal("new-lan", (await store.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId))["password"]);
+    }
+
+    [Fact]
+    public async Task Merge_with_empty_tool_bag_keeps_existing_tool_secrets()
+    {
+        var store = new ProfileStore(Path.Combine(TestDirs.New("backup-merge-tools-empty"), "profiles.json"), new InMemorySecretStore());
+        await store.Secrets.SaveAsync(ConnectionManager.TgWsProxySecretId, new ProfileSecrets { Values = { ["secret"] = "old-tg" } });
+        await store.Secrets.SaveAsync(ConnectionManager.LocalProxySecretId, new ProfileSecrets { Values = { ["password"] = "old-lan" } });
+
+        await store.RestoreBackupAsync(new BackupData(), BackupImportMode.Merge);
+        Assert.Equal("old-tg", (await store.Secrets.LoadAsync(ConnectionManager.TgWsProxySecretId))["secret"]);
+        Assert.Equal("old-lan", (await store.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId))["password"]);
+    }
+
+    [Fact]
+    public async Task Replace_with_empty_tool_bag_clears_tool_secrets()
+    {
+        var store = new ProfileStore(Path.Combine(TestDirs.New("backup-replace-tools-empty"), "profiles.json"), new InMemorySecretStore());
+        await store.Secrets.SaveAsync(ConnectionManager.TgWsProxySecretId, new ProfileSecrets { Values = { ["secret"] = "old-tg" } });
+        await store.Secrets.SaveAsync(ConnectionManager.LocalProxySecretId, new ProfileSecrets { Values = { ["password"] = "old-lan" } });
+
+        await store.RestoreBackupAsync(new BackupData(), BackupImportMode.Replace);
+        Assert.Null((await store.Secrets.LoadAsync(ConnectionManager.TgWsProxySecretId))["secret"]);
+        Assert.Null((await store.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId))["password"]);
+    }
+
     private sealed class FailingSecretStore : ISecretStore
     {
         private readonly InMemorySecretStore _inner = new();
