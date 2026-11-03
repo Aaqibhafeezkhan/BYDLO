@@ -58,7 +58,7 @@ public sealed partial class ConnectionManager
                 WorkDirectory = work,
             };
 
-            var httpPort = kind == EngineKind.Xray ? port + 1 : port;
+            var httpPort = ProxyPorts.HttpPort(port, kind);
             using var http = new HttpClient(new SocketsHttpHandler
             {
                 Proxy = new WebProxy($"http://127.0.0.1:{httpPort}"),

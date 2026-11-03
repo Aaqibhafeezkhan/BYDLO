@@ -233,7 +233,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             {
                 EnsureSystemProxyAllowed();
                 await _systemProxy.SetAsync("127.0.0.1",
-                    session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
+                    ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
                 session.SystemProxySet = true;
             }
         }
@@ -284,7 +284,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             {
                 EnsureSystemProxyAllowed();
                 await _systemProxy.SetAsync("127.0.0.1",
-                    session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
+                    ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
                 session.SystemProxySet = true;
             }
         }

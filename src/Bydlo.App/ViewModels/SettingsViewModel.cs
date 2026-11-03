@@ -390,7 +390,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     partial void OnLocalPortChanged(int value)
     {
-        if (value is > 0 and < 65536)
+        if (value is > 0 and <= Bydlo.Core.Connection.ProxyPorts.MaxLocalProxyPort)
         {
             Services.Settings.LocalProxyPort = value;
             Persist();

@@ -2,6 +2,7 @@ using Bydlo.Core.Import.Parsers;
 using Bydlo.Core.Routing;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bydlo.Core.Connection;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
@@ -130,6 +131,10 @@ public sealed partial class XrayConfigBuilder
     private static JsonObject BuildCore(BuildContext ctx, List<JsonObject> proxies, string proxyTag)
     {
         var settings = ctx.Settings;
+        if (settings.LocalProxyPort is < 1 or > ProxyPorts.MaxLocalProxyPort)
+        {
+            throw new EngineException($"Local proxy port {settings.LocalProxyPort} is invalid for Xray (HTTP port out of range). Use a port ≤ {ProxyPorts.MaxLocalProxyPort}.");
+        }
         var routing = settings.Routing;
         var rules = new JsonArray
         {
@@ -219,7 +224,7 @@ public sealed partial class XrayConfigBuilder
                 {
                     ["tag"] = "http-in",
                     ["listen"] = listen,
-                    ["port"] = settings.LocalProxyPort + 1,
+                    ["port"] = ProxyPorts.HttpPort(settings, EngineKind.Xray),
                     ["protocol"] = "http",
                     ["settings"] = httpSettings,
                 }),
