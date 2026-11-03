@@ -2,6 +2,7 @@ using Bydlo.Core.Models;
 using Bydlo.Engines.Installation;
 using Bydlo.Core.Security;
 using System.Text.Json;
+using System.Security.Cryptography;
 
 // Packaging only: never executes an engine, strategy or privileged helper.
 if (args.Length != 3)
@@ -78,6 +79,23 @@ try
         File.Copy(file, Path.Combine(licenses, Path.GetFileName(file)), overwrite: true);
     }
 
+    // Package corresponding sources on the cross-build host too.
+    using var inputs = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(repo, "engines", "bundle-inputs.lock.json")));
+    foreach (var sourceId in new[] { "sing-box-source", "xray-source" })
+    {
+        var asset = inputs.RootElement.GetProperty(sourceId);
+        var archive = Path.Combine(staging, sourceId + ".tar.gz");
+        await using (var sourceStream = await http.GetStreamAsync(asset.GetProperty("url").GetString()!))
+        await using (var targetStream = File.Create(archive))
+        {
+            await sourceStream.CopyToAsync(targetStream);
+        }
+        await IntegrityVerifier.VerifyFileAsync(archive, asset.GetProperty("sha256").GetString()!);
+        var targetDirectory = Path.Combine(output, "engines", "sources");
+        Directory.CreateDirectory(targetDirectory);
+        File.Copy(archive, Path.Combine(targetDirectory, sourceId + ".tar.gz"), overwrite: true);
+    }
+
     // Corresponding source is distributed alongside LGPL libraries, never just an unversioned link.
     using var sources = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(repo, "engines", "zapret-sources.lock.json")));
     if (sources.RootElement.TryGetProperty(platform.Rid, out var sourceAssets))
@@ -97,8 +115,14 @@ try
             File.Copy(archive, Path.Combine(targetDirectory, Path.GetFileName(archive)), overwrite: true);
         }
     }
-
-
+    var manifest = new List<string>();
+    foreach (var file in Directory.EnumerateFiles(Path.Combine(output, "engines"), "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
+    {
+        await using var stream = File.OpenRead(file);
+        var hash = Convert.ToHexString(await SHA256.HashDataAsync(stream)).ToLowerInvariant();
+        manifest.Add($"{hash}  {Path.GetRelativePath(output, file).Replace('\\', '/')}");
+    }
+    await File.WriteAllLinesAsync(Path.Combine(output, "ENGINES-SHA256SUMS.txt"), manifest);
 }
 finally
 {

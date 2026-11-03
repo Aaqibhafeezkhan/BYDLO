@@ -14,6 +14,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -45,31 +49,59 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/test-native-build-cache.ps1
+      - name: Bundle verification self-test (synthetic files, never execute engines)
+        if: github.server_url == 'https://github.com'
+        shell: pwsh
+        run: ./scripts/test-engine-bundle.ps1
       - name: Build
-        run: dotnet build BYDLO.slnx -c Release -warnaserror
+        run: |
+          source scripts/env.sh
+          dotnet build BYDLO.slnx -c Release -warnaserror
       - name: Test
-        run: dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
+        run: |
+          source scripts/env.sh
+          dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
       - name: Verify import flows (headless, no engines or network)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/import-verification en --verify-import
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/import-verification en --mock --verify-import
       - name: Verify add-server wizard (headless, mock only, fake HTTP)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/wizard-verification ru --mock --verify-wizard
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/wizard-verification ru --mock --verify-wizard
       - name: Verify Zapret selection UI (headless, no engines or network)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/selection-verification en --verify-zapret-selection
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/selection-verification en --mock --verify-zapret-selection
       - name: Verify desktop integration (headless, mock only, no OS registration)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-verification en --verify-desktop
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-verification en --mock --verify-desktop
       - name: Verify bundled engine UI (headless, mock only, no driver setup)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verification en --mock --verify-bundled-engines
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verification en --mock --verify-bundled-engines
       - name: Verify custom themes (headless, mock only, no network)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/theme-verification en --mock --verify-themes
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/theme-verification en --mock --verify-themes
       - name: Verify Windows application picker (headless, mock only, no engines)
         if: runner.os == 'Windows'
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/routing-verification ru --mock --verify-routing-picker
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/routing-verification ru --mock --verify-routing-picker
       - name: Verify active connections (headless, mock only, no network)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connections-verification ru --mock --verify-active-connections
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connections-verification ru --mock --verify-active-connections
       - name: Verify backup restore (headless, mock only, no network)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/backup-verification ru --mock --verify-backup
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/backup-verification ru --mock --verify-backup
       - name: Verify profile menu and sharing (headless, mock only, no network)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/share-verification ru --mock --verify-share
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/share-verification ru --mock --verify-share
       # Artifacts are kept on GitHub only: artifact actions v4 refuse to run on Gitea (it looks like GHES),
       # and GitHub fails the whole job if a step even references the deprecated v3.
       - uses: actions/upload-artifact@v4
@@ -93,15 +125,17 @@ jobs:
           global-json-file: global.json
       - name: Publish
         shell: bash
-        run: >
-          dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }}
-          --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
-          -o publish/BYDLO-${{ matrix.rid }}
+        run: |
+          source scripts/env.sh
+          dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }} \
+            --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            -o publish/BYDLO-${{ matrix.rid }}
       - name: Bundle pinned sing-box, Xray and Zapret (never execute engines)
         shell: bash
-        run: >
-          dotnet run --project tools/Bydlo.BundleEngines -c Release --
-          ${{ matrix.rid }} publish/BYDLO-${{ matrix.rid }} .
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.BundleEngines -c Release -- \
+            ${{ matrix.rid }} publish/BYDLO-${{ matrix.rid }} .
       - uses: actions/setup-go@v6
         if: ${{ !matrix.managedOnly }}
         with:
@@ -138,9 +172,8 @@ jobs:
         shell: pwsh
         run: ./scripts/build-bundled-engines.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
       - name: Verify offline bundle contents and architecture (never execute engines)
-        if: ${{ !matrix.managedOnly }}
         shell: pwsh
-        run: ./scripts/verify-engine-bundle.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
+        run: ./scripts/verify-engine-bundle.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}' -PrebuiltOnly:$${{ matrix.managedOnly == true }}
       - name: Add notices
         if: ${{ !matrix.managedOnly }}
         shell: bash
@@ -155,14 +188,21 @@ jobs:
     name: Verify and bundle macOS Apple Silicon
     if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
     needs: desktop
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
       - name: Run isolated tests
-        run: dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release
+        run: |
+          source scripts/env.sh
+          test "$(uname -m)" = arm64
+          dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release
+      - name: Verify macOS UI (headless, mock only)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/macos-wizard ru --mock --verify-wizard
       - uses: actions/download-artifact@v4
         with:
           name: managed-osx-arm64
@@ -172,7 +212,7 @@ jobs:
         run: |
           fingerprint=$( (xcodebuild -version; xcrun --sdk macosx --show-sdk-build-version; clang --version) | shasum -a 256 | cut -d ' ' -f 1)
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
-          echo "cache-key=openvpn-osx-arm64-$fingerprint-${{ hashFiles('engines/*.lock.json', 'scripts/build-openvpn.sh', 'scripts/build-bundled-engines.ps1', 'scripts/native-build-cache.ps1') }}" >> "$GITHUB_OUTPUT"
+          echo "cache-key=openvpn-osx-arm64-v3-$fingerprint-${{ hashFiles('engines/*.lock.json', 'scripts/build-openvpn.sh', 'scripts/build-bundled-engines.ps1', 'scripts/native-build-cache.ps1', 'scripts/openvpn-cache.ps1') }}" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         with:
           path: .tmp/macos-openvpn-cache
@@ -197,20 +237,24 @@ jobs:
           name: BYDLO-osx-arm64
           path: publish/BYDLO-osx-arm64
 
-  release:
-    name: Draft release
-    # Releases are published on GitHub only; the Gitea mirror just builds.
-    if: startsWith(github.ref, 'refs/tags/v') && github.server_url == 'https://github.com'
+  package:
+    name: Verify release archives
+    # Manual runs rehearse release packaging without creating a tag or draft release.
+    if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
     needs: [desktop, macos]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
           pattern: BYDLO-*
+      - name: Verify downloaded bundles before packaging (never execute engines)
+        shell: pwsh
+        run: |
+          foreach ($rid in @('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-arm64')) {
+            ./scripts/verify-engine-bundle.ps1 -Rid $rid -PublishDirectory "dist/BYDLO-$rid"
+          }
       - name: Package and checksum
         run: |
           cd dist
@@ -224,6 +268,30 @@ jobs:
             (cd "$d" && zip -qr "../$d.zip" .)
           done
           sha256sum *.zip > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          for archive in *.zip; do unzip -tq "$archive"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  release:
+    name: Draft release
+    # Releases are published on GitHub only; the Gitea mirror just builds.
+    if: startsWith(github.ref, 'refs/tags/v') && github.server_url == 'https://github.com'
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-packages
+          path: dist
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
