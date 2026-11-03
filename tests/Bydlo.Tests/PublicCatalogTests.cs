@@ -57,11 +57,32 @@ public class PublicCatalogTests
         Assert.NotEmpty(preview.Import.Errors);
     }
 
+    [Fact]
+    public async Task Refresh_of_saved_catalog_mirror_falls_back_to_primary()
+    {
+        var source = PublicSubscriptionCatalog.Sources[0];
+        var handler = new MapHandler(new Dictionary<string, HttpResponseMessage>
+        {
+            [source.Urls[1]] = new(HttpStatusCode.ServiceUnavailable),
+            [source.Urls[0]] = new(HttpStatusCode.OK) { Content = new StringContent("trojan://fixture@node.invalid:443") },
+        });
+        using var http = new HttpClient(handler);
+        var client = new SubscriptionClient(http, new ProfileImporter());
+
+        var preview = await client.FetchRefreshAsync(source.Urls[1]);
+
+        Assert.Single(preview.Import.Profiles);
+        Assert.Equal([source.Urls[1], source.Urls[0]], handler.Requests);
+    }
+
     private sealed class MapHandler(Dictionary<string, HttpResponseMessage> responses) : HttpMessageHandler
     {
+        public List<string> Requests { get; } = [];
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var key = request.RequestUri?.ToString() ?? "";
+            Requests.Add(key);
             return Task.FromResult(responses.TryGetValue(key, out var response) ? response : new HttpResponseMessage(HttpStatusCode.NotFound));
         }
     }

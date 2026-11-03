@@ -185,7 +185,7 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
             {
                 result = await FetchOneAsync(uri, ct).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+            catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException && !ct.IsCancellationRequested)
             {
                 last = new(new ImportResult([], [ex.Message]), new());
                 continue;
@@ -209,6 +209,15 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
         }
 
         return (last, null);
+    }
+
+    public async Task<SubscriptionPreview> FetchRefreshAsync(string url, CancellationToken ct = default)
+    {
+        var source = PublicSubscriptionCatalog.Sources.FirstOrDefault(item => item.Urls.Contains(url, StringComparer.Ordinal));
+        if (source is null) { return await FetchPreviewAsync(url, ct).ConfigureAwait(false); }
+        var mirrors = source.Urls.Where(mirror => !string.Equals(mirror, url, StringComparison.Ordinal)).Prepend(url);
+        var (preview, _) = await FetchFirstAsync(mirrors, ct).ConfigureAwait(false);
+        return preview;
     }
 
     private async Task<SubscriptionPreview> FetchOneAsync(Uri uri, CancellationToken ct)
