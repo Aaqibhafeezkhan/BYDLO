@@ -21,7 +21,7 @@ internal sealed class SingBoxTunGuard(IProcessRunner runner, LogRedactor redacto
 
     protected override async Task<ProcessSpec> PrepareAsync(EngineStartRequest request, EngineAvailability availability, CancellationToken ct)
     {
-        var config = new SingBoxConfigBuilder().BuildKillSwitch(request.Settings, request.Settings.LocalProxyPort);
+        var config = new SingBoxConfigBuilder().BuildKillSwitch(request.Settings, request.Settings.LocalProxyPort, locator.Platform.Os);
         var path = Path.Combine(request.WorkDirectory, "tun.json");
         await SecureFile.WriteAsync(path, config.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), ct).ConfigureAwait(false);
         return new ProcessSpec
