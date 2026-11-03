@@ -436,6 +436,7 @@
   "tools.zapret.nostrategy": "No strategy selected",
   "tools.zapret.game": "Game filter",
   "tools.zapret.lists": "User lists",
+  "tools.zapret.lists.helper": "Zapret runs through the privileged helper, which uses its own lists. Lists from this editor are not used, so editing and saving are disabled. To use your own lists, remove the helper in Settings → Advanced and run BYDLO with administrator privileges.",
   "tools.zapret.missing": "Zapret files are missing or quarantined. Restore the official release, download the pinned engine, or choose a folder. See the testing guide for recovery.",
   "tools.zapret.platform": "No compatible Zapret build on this platform. Windows ARM64 needs a compatible WinDivert driver; Android support is tracked separately.",
   "tools.zapret.found": "Version {0} · {1} strategies · {2}",

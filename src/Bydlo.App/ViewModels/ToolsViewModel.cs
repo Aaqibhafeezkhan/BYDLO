@@ -73,6 +73,8 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     public static IReadOnlyList<ZapretUserList> UserLists { get; } = Enum.GetValues<ZapretUserList>();
 
+    public bool CanEditZapretLists => !Services.UsesPrivilegedHelper;
+
     public ObservableCollection<ZapretStrategy> Strategies { get; } = [];
 
     public ObservableCollection<EngineRow> Engines { get; } = [];
@@ -284,9 +286,16 @@ public sealed partial class ToolsViewModel : PageViewModel
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEditZapretLists))]
     private void SaveList()
     {
+        // Recheck here as well: helper installation can change while Tools is open.
+        if (!CanEditZapretLists)
+        {
+            Shell.ShowToast(L["tools.zapret.lists.helper"], isError: true);
+            return;
+        }
+
         if (Services.Zapret.ResolveInstallation(Services.Settings) is { IsValid: true } install)
         {
             install.WriteUserList(SelectedList, ListText);
@@ -308,6 +317,7 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     private void RefreshZapret()
     {
+        RefreshListEditing();
         var install = Services.Zapret.ResolveInstallation(Services.Settings);
         if (install is null || !install.IsValid)
         {
@@ -530,6 +540,11 @@ public sealed partial class ToolsViewModel : PageViewModel
 
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(MainViewModel.IsMock))
+        {
+            RefreshListEditing();
+        }
+
         if (e.PropertyName == nameof(MainViewModel.Zapret))
         {
             OnPropertyChanged(nameof(ZapretRunning));
@@ -545,5 +560,11 @@ public sealed partial class ToolsViewModel : PageViewModel
             OnPropertyChanged(nameof(TgStatus));
             OnPropertyChanged(nameof(TgError));
         }
+    }
+
+    private void RefreshListEditing()
+    {
+        OnPropertyChanged(nameof(CanEditZapretLists));
+        SaveListCommand.NotifyCanExecuteChanged();
     }
 }
