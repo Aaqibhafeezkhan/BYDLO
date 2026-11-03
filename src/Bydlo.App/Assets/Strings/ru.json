@@ -1,4 +1,13 @@
 {
+  "connections.speed.title": "Тест скорости серверов",
+  "connections.speed.notice": "До 4 МиБ загрузки на каждый поддерживаемый сервер. Тест расходует трафик.",
+  "connections.speed.url": "HTTPS-адрес тестового файла",
+  "connections.speed.start": "Измерить скорость загрузки",
+  "connections.speed.cancel": "Отменить тест",
+  "connections.speed.sort": "Сортировать по скорости",
+  "connections.speed.invalid": "Введите HTTPS-адрес без учётных данных.",
+  "connections.speed.failed": "Не удалось измерить скорость.",
+  "connections.speed.unavailable": "Тест скорости недоступен в этом режиме.",
   "stats.connections.title": "Активные соединения",
   "stats.connections.unavailable": "Доступно при подключении через sing-box или в режиме имитации.",
   "stats.connections.error": "Не удалось прочитать или закрыть соединения.",

@@ -68,6 +68,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         RefreshCatalog();
         OnPropertyChanged(nameof(IsEmpty));
         _ = AutoRefreshIfDueAsync();
+        OnPropertyChanged(nameof(CanMeasureSpeed));
         OnPropertyChanged(nameof(CanCheckLatency));
         OnPropertyChanged(nameof(CheckLatencyDisabledReason));
     }

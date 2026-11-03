@@ -1,4 +1,13 @@
 {
+  "connections.speed.title": "Server speed test",
+  "connections.speed.notice": "Downloads up to 4 MiB per supported server. Uses data from your plan.",
+  "connections.speed.url": "HTTPS test file URL",
+  "connections.speed.start": "Measure download speed",
+  "connections.speed.cancel": "Cancel test",
+  "connections.speed.sort": "Sort by measured speed",
+  "connections.speed.invalid": "Enter an HTTPS URL without credentials.",
+  "connections.speed.failed": "Speed test failed.",
+  "connections.speed.unavailable": "Real speed tests are unavailable in this session.",
   "stats.connections.title": "Active connections",
   "stats.connections.unavailable": "Available during a sing-box connection or in Mock Mode.",
   "stats.connections.error": "Could not read or close connections.",

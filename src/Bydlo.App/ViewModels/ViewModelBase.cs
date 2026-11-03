@@ -72,6 +72,12 @@ public sealed partial class ProfileItem(Profile profile) : ObservableObject
     [ObservableProperty]
     private bool _latencyFailed;
 
+    public long? MeasuredSpeed { get; init; }
+
+    public bool HasMeasuredSpeed => MeasuredSpeed.HasValue;
+
+    public string MeasuredSpeedText => MeasuredSpeed is > 0 ? Format.Speed(MeasuredSpeed.Value) : "—";
+
     public bool HasLatency => Latency is not null || LatencyFailed;
 
     public string LatencyText => LatencyFailed ? "✕" : Latency is { } t ? Format.Latency(t) : "—";

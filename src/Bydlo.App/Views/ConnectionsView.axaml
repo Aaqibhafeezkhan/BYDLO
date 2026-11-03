@@ -34,6 +34,19 @@
       <TextBlock Classes="faint" Text="{Binding CheckLatencyDisabledReason}" IsVisible="{Binding CheckLatencyDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
       <CheckBox Content="{l:T connections.latency.sort}" IsChecked="{Binding Shell.SortByLatency}" IsVisible="{Binding !IsEmpty}" />
       <TextBlock Classes="faint" Text="{l:T connections.latency.udp}" TextWrapping="Wrap" IsVisible="{Binding !IsEmpty}" />
+      <Expander Header="{l:T connections.speed.title}" IsVisible="{Binding !IsEmpty}" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{l:T connections.speed.notice}" Classes="faint" TextWrapping="Wrap" />
+          <TextBox Watermark="{l:T connections.speed.url}" Text="{Binding SpeedTestUrl}" />
+          <WrapPanel>
+            <Button Content="{l:T connections.speed.start}" Command="{Binding MeasureSpeedCommand}"
+                    IsEnabled="{Binding CanMeasureSpeed}" />
+            <Button Content="{l:T connections.speed.cancel}" Command="{Binding MeasureSpeedCancelCommand}"
+                    IsVisible="{Binding MeasuringSpeed}" />
+          </WrapPanel>
+          <CheckBox Content="{l:T connections.speed.sort}" IsChecked="{Binding Shell.SortBySpeed}" />
+        </StackPanel>
+      </Expander>
       <!-- Profiles -->
       <StackPanel Spacing="10">
         <TextBlock Classes="caps" Text="{l:T connections.profiles}" />
@@ -55,6 +68,8 @@
                   <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
                     <StackPanel Spacing="4">
                       <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="faint" Text="{Binding MeasuredSpeedText}" IsVisible="{Binding HasMeasuredSpeed}"
+                                 ToolTip.Tip="{l:T connections.speed.title}" />
                       <Border Classes="pill ok" HorizontalAlignment="Left" Padding="7,1" IsVisible="{Binding IsActive}">
                         <TextBlock Text="{l:T status.connected}" FontSize="10" />
                       </Border>

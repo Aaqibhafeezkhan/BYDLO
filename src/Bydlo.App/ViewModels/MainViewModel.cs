@@ -299,11 +299,28 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public void RefreshMock() => IsMock = Services.IsMock;
 
+    [ObservableProperty] private bool _sortBySpeed;
+    private IReadOnlyDictionary<Guid, long> _serverSpeeds = new Dictionary<Guid, long>();
+
+    partial void OnSortBySpeedChanged(bool value) => ReloadProfiles();
+
+    public void SetServerSpeeds(IReadOnlyDictionary<Guid, long> results)
+    {
+        _serverSpeeds = results;
+        ReloadProfiles();
+    }
+
     public void ReloadProfiles()
     {
         var activeId = Primary.Profile?.Id;
-        var items = ServerListOrdering.Order(Services.Profiles.Profiles, Latencies, SortByLatency)
-            .Select(p => new ProfileItem(p) { IsActive = p.Id == activeId })
+        var ordered = ServerListOrdering.Order(Services.Profiles.Profiles, Latencies, SortByLatency);
+        var profiles = SortBySpeed ? ordered.OrderByDescending(p => _serverSpeeds.GetValueOrDefault(p.Id)).ToList() : ordered;
+        var items = profiles
+            .Select(p => new ProfileItem(p)
+            {
+                IsActive = p.Id == activeId,
+                MeasuredSpeed = _serverSpeeds.TryGetValue(p.Id, out var speed) ? speed : null,
+            })
             .ToList();
         foreach (var item in items)
         {
