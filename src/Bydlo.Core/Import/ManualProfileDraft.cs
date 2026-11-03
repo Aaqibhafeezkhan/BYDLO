@@ -25,6 +25,12 @@ public sealed class ManualProfileDraft
             { throw new FormatException("Configuration does not match the selected protocol."); }
             var imported = result.Profiles[0];
             if (!string.IsNullOrWhiteSpace(Name)) { imported.Profile.Name = Name.Trim(); }
+            if (Protocol == ProtocolKind.OpenVpn && imported.Profile.Option("authUserPass") == "true")
+            {
+                Security.OpenVpnCredentials.Validate(Identifier, Password);
+                imported.Secrets.Values[Keys.Username] = Identifier;
+                imported.Secrets.Values[Keys.Password] = Password;
+            }
             return imported;
         }
         var host = Host.Trim().Trim('[', ']');

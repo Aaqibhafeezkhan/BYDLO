@@ -9,6 +9,36 @@ namespace Bydlo.Tests;
 
 public sealed class ServerWizardTests
 {
+    [Fact]
+    public void Manual_OpenVpn_form_stores_credentials_as_secrets()
+    {
+        var item = new ManualProfileDraft { Protocol = ProtocolKind.OpenVpn,
+            Configuration = "client\ndev tun\nremote server.example 1194\nauth-user-pass",
+            Identifier = "private-user", Password = "private-password" }.Build();
+        Assert.Equal("private-user", item.Secrets[Keys.Username]);
+        Assert.Equal("private-password", item.Secrets[Keys.Password]);
+        Assert.DoesNotContain("private-user", item.Profile.Options.Values);
+        Assert.DoesNotContain("private-password", item.Profile.Options.Values);
+    }
+
+    [Theory]
+    [InlineData("", "password")]
+    [InlineData("user", "")]
+    [InlineData("user\ninjected", "password")]
+    [InlineData("user", "password\r\ninjected")]
+    [InlineData("user", "password\0")]
+    public void OpenVpn_forms_reject_missing_or_multiline_credentials(string username, string password)
+    {
+        const string config = "client\ndev tun\nremote server.example 1194\nauth-user-pass";
+        Assert.Throws<FormatException>(() => new ManualProfileDraft { Protocol = ProtocolKind.OpenVpn,
+            Configuration = config, Identifier = username, Password = password }.Build());
+        var source = new ProfileImporter().ImportText(config).Profiles[0];
+        var draft = new ProfileEditDraft(source.Profile, source.Secrets);
+        draft.Secrets.Values[Keys.Username] = username;
+        draft.Secrets.Values[Keys.Password] = password;
+        Assert.Throws<FormatException>(() => draft.Build());
+    }
+
     [Theory]
     [InlineData("https://subscription.example", true)]
     [InlineData("https://subscription.example/token", true)]

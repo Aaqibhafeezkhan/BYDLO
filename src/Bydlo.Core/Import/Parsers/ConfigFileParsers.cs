@@ -202,24 +202,25 @@ public sealed class OpenVpnParser : IProfileParser
             {
                 case "remote" when host is null && parts.Length >= 2:
                     host = parts[1];
-                    if (parts.Length >= 3 && int.TryParse(parts[2], out var rp))
+                    if (parts.Length >= 3 && !parts[2].StartsWith('#') && !parts[2].StartsWith(';'))
                     {
+                        if (!int.TryParse(parts[2], out var rp) || rp is < 1 or > 65535)
+                        { throw new ImportException("Invalid OpenVPN remote port."); }
                         port = rp;
-                    }
-
-                    if (parts.Length >= 4)
-                    {
-                        proto = parts[3];
+                        if (parts.Length >= 4 && !parts[3].StartsWith('#') && !parts[3].StartsWith(';'))
+                        { proto = parts[3]; }
                     }
 
                     break;
-                case "port" when parts.Length >= 2 && int.TryParse(parts[1], out var pp):
+                case "port":
+                    if (parts.Length < 2 || !int.TryParse(parts[1], out var pp) || pp is < 1 or > 65535)
+                    { throw new ImportException("Invalid OpenVPN port."); }
                     port = pp;
                     break;
                 case "proto" when parts.Length >= 2:
                     proto = parts[1];
                     break;
-                case "auth-user-pass" when parts.Length == 1:
+                case "auth-user-pass" when parts.Length == 1 || parts[1].StartsWith('#') || parts[1].StartsWith(';'):
                     needsAuth = true;
                     break;
             }

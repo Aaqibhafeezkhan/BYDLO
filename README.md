@@ -151,6 +151,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Сборка](docs/BUILD.md)
 - [Совместимость протоколов и платформ](docs/COMPATIBILITY.md)
+- [Редактирование профилей и учётные данные OpenVPN](docs/PROFILE_EDITOR.md)
 - [Руководство по ручному тестированию](docs/TESTING.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Сторонние компоненты и лицензии](THIRD_PARTY_NOTICES.md)

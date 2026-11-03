@@ -51,6 +51,10 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     [ObservableProperty] private string _method = "aes-256-gcm";
     [ObservableProperty] private string _sni = "";
     [ObservableProperty] private string _configuration = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SecretMask))]
+    private bool _showSecrets;
+    public char SecretMask => ShowSecrets ? '\0' : '●';
 
     public ObservableCollection<ServerPreviewItem> PreviewItems { get; } = [];
     public static IReadOnlyList<ProtocolKind> Protocols { get; } = Enum.GetValues<ProtocolKind>()
@@ -69,8 +73,8 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     public string Error => ErrorKey is { } key ? L[key] : "";
     public string Skipped => SkippedCount > 0 ? Loc.T("wizard.skipped", SkippedCount) : "";
     public bool UsesConfiguration => Protocol is ProtocolKind.WireGuard or ProtocolKind.AmneziaWG or ProtocolKind.OpenVpn;
-    public bool UsesIdentifier => Protocol is ProtocolKind.Vless or ProtocolKind.Vmess or ProtocolKind.Tuic or ProtocolKind.Http or ProtocolKind.Socks5;
-    public bool UsesPassword => !UsesConfiguration && Protocol is not (ProtocolKind.Vless or ProtocolKind.Vmess);
+    public bool UsesIdentifier => Protocol is ProtocolKind.Vless or ProtocolKind.Vmess or ProtocolKind.Tuic or ProtocolKind.Http or ProtocolKind.Socks5 or ProtocolKind.OpenVpn;
+    public bool UsesPassword => Protocol == ProtocolKind.OpenVpn || !UsesConfiguration && Protocol is not (ProtocolKind.Vless or ProtocolKind.Vmess);
     public bool UsesMethod => Protocol == ProtocolKind.Shadowsocks;
     public bool UsesTls => Protocol is ProtocolKind.Vless or ProtocolKind.Vmess or ProtocolKind.Trojan or ProtocolKind.Hysteria2 or ProtocolKind.Tuic;
 
@@ -97,6 +101,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         ErrorKey = null;
         SkippedCount = 0;
         Protocol = ProtocolKind.Vless;
+        ShowSecrets = false;
         Port = 443;
         Method = "aes-256-gcm";
         PreviewItems.Clear();
