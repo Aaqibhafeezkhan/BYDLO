@@ -2,8 +2,9 @@ name: Auto-merge
 
 # Turns on GitHub's native auto-merge for pull requests from trusted maintainers into the default branch.
 # GitHub then merges only after every rule of the default-branch ruleset passes, required CI checks included;
-# the merge is made as github-actions[bot], which is not a ruleset bypass actor. Source branches are removed
-# by the repository setting "Automatically delete head branches". Every other pull request stays manual.
+# the merge is made as github-actions[bot], which is not a ruleset bypass actor. GitHub neither closes linked
+# issues nor deletes the head branch for such merges; post-merge-cleanup.yml does both. Every other pull
+# request stays manual.
 #
 # pull_request_target runs this file from the base branch with a write token. It must never check out,
 # build or run code from the pull request, and must never interpolate PR text (title, branch name) into a shell.

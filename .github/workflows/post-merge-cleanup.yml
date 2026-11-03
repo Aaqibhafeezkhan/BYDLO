@@ -1,0 +1,153 @@
+name: Post-merge cleanup
+
+# Auto-merge merges as github-actions[bot] using GITHUB_TOKEN. For such merges GitHub skips closing
+# keywords (Closes #N), skips "Automatically delete head branches" and triggers no further workflow, so
+# a pull_request "closed" trigger never fires. This workflow does that cleanup instead:
+# - workflow_run: right after CI finishes for a PR, wait until GitHub completes the auto-merge;
+# - schedule: fallback for missed runs (GitHub may delay or drop cron runs);
+# - workflow_dispatch: manual run for one PR or for recent merges, dry run by default.
+#
+# Runs from the default branch with a write token. It must never check out or run PR code, and must never
+# interpolate PR text into a shell; only GitHub's structured fields are read.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  schedule:
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'Merged pull request number (blank scans recent merges)'
+        type: string
+      dry_run:
+        description: 'Report what would be closed or deleted without changing anything'
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  cleanup:
+    # Every step is idempotent, so overlapping runs need no concurrency group (a shared group would
+    # silently drop queued runs).
+    if: >-
+      github.server_url == 'https://github.com'
+      && (github.event_name != 'workflow_run'
+        || (github.event.workflow_run.event == 'pull_request'
+          && github.event.workflow_run.conclusion == 'success'
+          && github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Close linked issues and delete merged branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ inputs.pr }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_BRANCH=$(gh api "repos/$GH_REPO" --jq .default_branch)
+          [[ "$GITHUB_REF" == "refs/heads/$BASE_BRANCH" ]] || exit 0
+          fields=number,state,baseRefName,headRefName,headRefOid,isCrossRepository,mergedAt,mergedBy,autoMergeRequest,closingIssuesReferences
+
+          act() {
+            if [[ "$DRY_RUN" == true ]]; then echo "Would $1."; return 1; fi
+          }
+
+          # GitHub merges a few seconds after the last required check; give it up to 10 minutes.
+          wait_for_merge() {
+            local pr=$1 data
+            for _ in $(seq 40); do
+              data=$(gh pr view "$pr" --json "$fields")
+              case $(jq -r .state <<< "$data") in
+                MERGED) echo "$data"; return 0 ;;
+                CLOSED) return 1 ;;
+              esac
+              jq -e '.autoMergeRequest != null' <<< "$data" >/dev/null || return 1
+              sleep 15
+            done
+            echo "PR #$pr is still not merged; the scheduled run will clean up." >&2
+            return 1
+          }
+
+          if [[ "$EVENT" == workflow_run ]]; then
+            # workflow_run.pull_requests is empty once the PR is merged, so match by branch and head commit.
+            [[ "$RUN_BRANCH" =~ ^[A-Za-z0-9._/-]+$ && "$RUN_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 0
+            prs='[]'
+            for pr in $(gh pr list --state all --head "$RUN_BRANCH" --base "$BASE_BRANCH" --json number,headRefOid \
+                          --jq ".[] | select(.headRefOid == \"$RUN_SHA\") | .number"); do
+              data=$(wait_for_merge "$pr") || continue
+              prs=$(jq --argjson pr "$data" '. + [$pr]' <<< "$prs")
+            done
+          elif [[ -n "$PR_NUMBER" ]]; then
+            [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo 'Expected a numeric PR number.' >&2; exit 1; }
+            prs=$(gh pr view "$PR_NUMBER" --json "$fields" --jq '[.]')
+          else
+            since=$(date -u -d '2 days ago' +%F)
+            prs=$(gh pr list --state merged --base "$BASE_BRANCH" --search "merged:>=$since" --limit 100 --json "$fields")
+          fi
+
+          # Only same-repository PRs that the auto-merge bot merged into the default branch.
+          prs=$(jq -c --arg base "$BASE_BRANCH" '
+            [.[] | select(.mergedAt != null and .baseRefName == $base
+              and (.isCrossRepository | not)
+              and .mergedBy.is_bot == true and .mergedBy.login == "app/github-actions")]
+          ' <<< "$prs")
+
+          # Linked issues: GitHub's closing references in this repository.
+          candidates=$(jq -r --arg repo "$GH_REPO" '
+            .[] | . as $pr
+            | .closingIssuesReferences[]
+            | select((.repository.owner.login + "/" + .repository.name) == $repo)
+            | [$pr.number, $pr.mergedAt, .number] | @tsv
+          ' <<< "$prs")
+
+          while IFS=$'\t' read -r pr merged_at issue; do
+            [[ -n "$issue" ]] || continue
+            issue_data=$(gh api "repos/$GH_REPO/issues/$issue")
+            if ! jq -e --arg merged "$merged_at" '
+              .state == "open" and (.pull_request | not) and .created_at <= $merged
+            ' <<< "$issue_data" >/dev/null; then
+              continue
+            fi
+
+            # Respect a maintainer who reopened the issue after this PR merged.
+            timeline=$(gh api --paginate --slurp "repos/$GH_REPO/issues/$issue/timeline?per_page=100")
+            if jq -e --arg merged "$merged_at" '
+              any(.[][]; .event == "reopened" and .created_at >= $merged)
+            ' <<< "$timeline" >/dev/null; then
+              continue
+            fi
+
+            act "close issue #$issue (merged PR #$pr)" || continue
+            gh api --method PATCH "repos/$GH_REPO/issues/$issue" -f state=closed -f state_reason=completed --silent
+            echo "Closed issue #$issue (merged PR #$pr)."
+          done <<< "$candidates"
+
+          # Head branches: delete only when the branch still points at the merged head commit and no open
+          # PR uses it, so later pushes and stacked PRs are never lost.
+          branches=$(jq -r '.[] | [.number, .headRefName, .headRefOid] | @tsv' <<< "$prs")
+          while IFS=$'\t' read -r pr branch head; do
+            [[ -n "$branch" && "$branch" != "$BASE_BRANCH" ]] || continue
+            [[ "$branch" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "Skipping branch of PR #$pr: unexpected name." >&2; continue; }
+            sha=$(gh api "repos/$GH_REPO/git/ref/heads/$branch" --jq .object.sha 2>/dev/null) || continue
+            [[ "$sha" == "$head" ]] || { echo "Keeping $branch: it has commits after PR #$pr."; continue; }
+            as_head=$(gh pr list --state open --head "$branch" --json number --jq length)
+            as_base=$(gh pr list --state open --base "$branch" --json number --jq length)
+            (( as_head + as_base == 0 )) || { echo "Keeping $branch: an open PR uses it."; continue; }
+
+            act "delete branch $branch (merged PR #$pr)" || continue
+            gh api --method DELETE "repos/$GH_REPO/git/refs/heads/$branch" --silent \
+              && echo "Deleted branch $branch (merged PR #$pr)." \
+              || echo "Could not delete $branch (merged PR #$pr)." >&2
+          done <<< "$branches"
