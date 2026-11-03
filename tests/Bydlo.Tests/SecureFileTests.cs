@@ -57,6 +57,7 @@ public sealed class SecureFileTests
     {
         if (!OperatingSystem.IsWindows()) return;
 
+        using var identity = WindowsIdentity.GetCurrent();
         var directory = TestDirs.New("secure-file-denied");
         var path = Path.Combine(directory, "credentials.txt");
         await File.WriteAllTextAsync(path, "old content");
@@ -69,6 +70,10 @@ public sealed class SecureFileTests
         var denied = file.GetAccessControl();
         // OWNER RIGHTS overrides the owner's implicit WRITE_DAC permission.
         denied.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier("S-1-3-4"),
+            FileSystemRights.ChangePermissions, AccessControlType.Deny));
+        // Also deny the user directly: an elevated runner can otherwise obtain
+        // WRITE_DAC through Administrators even after removing implicit owner rights.
+        denied.AddAccessRule(new FileSystemAccessRule(identity.User!,
             FileSystemRights.ChangePermissions, AccessControlType.Deny));
         file.SetAccessControl(denied);
         try
