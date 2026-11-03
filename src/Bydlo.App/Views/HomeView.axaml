@@ -146,29 +146,35 @@
                 </StackPanel>
 
                 <Border Classes="readout" IsVisible="{Binding IsConnected}" Margin="0,16,0,0">
-                  <Grid ColumnDefinitions="*,*,*">
-                    <StackPanel Spacing="7" HorizontalAlignment="Center">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <c:OutlineIcon Data="{StaticResource LineDown}" Width="13" Height="13" />
-                        <TextBlock Classes="faint" Text="{l:T stats.down}" />
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,*,*" IsVisible="{Binding HasTraffic}">
+                      <StackPanel Spacing="7" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <c:OutlineIcon Data="{StaticResource LineDown}" Width="13" Height="13" />
+                          <TextBlock Classes="faint" Text="{l:T stats.down}" />
+                        </StackPanel>
+                        <TextBlock Classes="metric" Text="{Binding DownSpeed}" />
                       </StackPanel>
-                      <TextBlock Classes="metric" Text="{Binding DownSpeed}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="7" HorizontalAlignment="Center">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <c:OutlineIcon Data="{StaticResource LineUp}" Width="13" Height="13" />
-                        <TextBlock Classes="faint" Text="{l:T stats.up}" />
+                      <StackPanel Grid.Column="1" Spacing="7" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <c:OutlineIcon Data="{StaticResource LineUp}" Width="13" Height="13" />
+                          <TextBlock Classes="faint" Text="{l:T stats.up}" />
+                        </StackPanel>
+                        <TextBlock Classes="metric" Text="{Binding UpSpeed}" />
                       </StackPanel>
-                      <TextBlock Classes="metric" Text="{Binding UpSpeed}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Spacing="7" HorizontalAlignment="Center">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <c:OutlineIcon Data="{StaticResource LineClock}" Width="13" Height="13" />
-                        <TextBlock Classes="faint" Text="{l:T home.duration}" />
+                      <StackPanel Grid.Column="2" Spacing="7" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <c:OutlineIcon Data="{StaticResource LineClock}" Width="13" Height="13" />
+                          <TextBlock Classes="faint" Text="{l:T home.duration}" />
+                        </StackPanel>
+                        <TextBlock Classes="metric" Text="{Binding Elapsed}" />
                       </StackPanel>
-                      <TextBlock Classes="metric" Text="{Binding Elapsed}" />
+                    </Grid>
+                    <StackPanel Spacing="4" IsVisible="{Binding NoStatsEngine}">
+                      <TextBlock Classes="muted" Text="{l:T stats.nostats}" TextWrapping="Wrap" HorizontalAlignment="Center" />
+                      <TextBlock Classes="faint" Text="{Binding Elapsed}" HorizontalAlignment="Center" />
                     </StackPanel>
-                  </Grid>
+                  </StackPanel>
                 </Border>
               </StackPanel>
             </Border>
