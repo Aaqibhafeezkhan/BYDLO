@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Net;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Models;
@@ -19,10 +20,13 @@ public sealed class ProjectNoticeTests
         """;
 
     [Fact]
-    public void Repository_notice_file_is_empty_and_parses_to_nothing()
+    public void Repository_notice_file_is_empty_or_a_valid_notice()
     {
-        var path = Path.Combine(RepoRoot(), "notice.json");
-        Assert.Null(ProjectNoticeClient.ParseNotice(File.ReadAllText(path)));
+        var json = File.ReadAllText(Path.Combine(RepoRoot(), "notice.json"));
+        using var doc = JsonDocument.Parse(json);
+        var published = doc.RootElement.GetProperty("id").GetString() is { Length: > 0 };
+        // A published notice that fails to parse would silently show nothing to users.
+        Assert.Equal(published, ProjectNoticeClient.ParseNotice(json) is not null);
     }
 
     [Fact]
