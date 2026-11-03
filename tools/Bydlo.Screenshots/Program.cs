@@ -24,6 +24,12 @@ if (args.Contains("--verify-server-groups", StringComparer.Ordinal) || args.Cont
     Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
 }
 
+if (args.Contains("--verify-startup-error", StringComparer.Ordinal))
+{
+    StartupErrorVerification.Run(output, lang);
+    return;
+}
+
 Bydlo.App.App.Args = ["--mock"];
 AppBuilder.Configure<Bydlo.App.App>()
     .UseSkia()

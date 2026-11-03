@@ -30,6 +30,20 @@ env:
   BYDLO_MOCK: "1"
 
 jobs:
+  unix-activation:
+    name: Verify macOS single-instance activation
+    if: github.server_url == 'https://github.com'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Test owner-only local IPC (no engines or network)
+        run: |
+          source scripts/env.sh
+          dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --filter FullyQualifiedName~UnixActivationBrokerTests
+
   amnezia-macos:
     name: Cross-build AmneziaWG for macOS ARM64
     runs-on: ubuntu-latest
@@ -101,6 +115,11 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/import-verification en --mock --verify-import
+      - name: Verify activation failure window (headless, no services or engines)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/startup-error-en en --mock --verify-startup-error
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/startup-error-ru ru --mock --verify-startup-error
       - name: Verify add-server wizard (headless, mock only, fake HTTP)
         run: |
           source scripts/env.sh
