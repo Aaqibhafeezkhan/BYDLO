@@ -208,6 +208,56 @@ internal static class WizardVerification
         var publicSubscription = services.Profiles.Subscriptions.Single(s => s.Name == source.Name);
         Require(services.Profiles.GetSubscriptionUrlAsync(publicSubscription.Id).GetAwaiter().GetResult() == source.Source.Urls[1], "The working mirror is saved as subscription provenance");
         Require(services.Profiles.Profiles.Count(p => p.SubscriptionId == publicSubscription.Id) == 2, "Confirmed profiles belong to the public subscription");
+        foreach (var url in new[] { "https://proxy.example:443", "https://proxy.example", "http://proxy.example:8080", "https://proxy.example:8443" })
+        {
+            shell.OpenAddServerCommand.Execute(null);
+            wizard.ChooseLinkCommand.Execute(null);
+            wizard.Input = url;
+            Pump();
+            var importType = window.GetVisualDescendants().OfType<ComboBox>()
+                .Single(box => box.IsEffectivelyVisible);
+            Require(importType.SelectedIndex == 0 && wizard.ImportTypeIndex == 0, "A new wizard starts with automatic import");
+            importType.SelectedIndex = 1;
+            Pump();
+            Require(wizard.ImportTypeIndex == 1, "The rendered selector changes the import type");
+            Capture(url == "https://proxy.example:443" ? "wizard-import-type-wide" : "wizard-import-type-narrow",
+                url == "https://proxy.example:443" ? 1180 : 400, 860);
+            previousRequests = handler.Requests;
+            previousProfiles = services.Profiles.Profiles.Count;
+            var previousSubscriptions = services.Profiles.Subscriptions.Count;
+            Wait(wizard.ContinueCommand.ExecuteAsync(null));
+            Require(wizard.IsPreview && wizard.PreviewItems.Count == 1 && handler.Requests == previousRequests,
+                "Explicit server import previews an anonymous HTTP(S) proxy without HTTP requests");
+            Require(services.Profiles.Profiles.Count == previousProfiles, "Proxy preview does not persist");
+            Wait(wizard.AddCommand.ExecuteAsync(null));
+            var proxy = services.Profiles.Profiles[^1];
+            Require(proxy.Protocol == ProtocolKind.Http && proxy.Host == "proxy.example" && proxy.Port == new Uri(url).Port &&
+                proxy.Option(Keys.Tls) == (url.StartsWith("https", StringComparison.Ordinal) ? "true" : null) && proxy.SubscriptionId is null,
+                "Explicit server import saves the proxy endpoint and TLS without a subscription");
+            Require(services.Profiles.Subscriptions.Count == previousSubscriptions && handler.Requests == previousRequests,
+                "Saving the proxy never downloads or creates a subscription");
+
+            shell.OpenAddServerCommand.Execute(null);
+            wizard.ChooseLinkCommand.Execute(null);
+            wizard.Input = url;
+            wizard.ImportTypeIndex = 2;
+            Wait(wizard.ContinueCommand.ExecuteAsync(null));
+            Require(wizard.IsPreview && wizard.PreviewItems.Count == 2 && handler.Requests == previousRequests + 1,
+                "The same URL explicitly selected as a subscription downloads through the fake handler");
+            Require(services.Profiles.Profiles.Count == previousProfiles + 1 && services.Profiles.Subscriptions.Count == previousSubscriptions,
+                "Subscription preview does not persist");
+            wizard.BackCommand.Execute(null);
+            Require(wizard.IsLink && wizard.ImportTypeIndex == 2 && wizard.Input == url, "Back preserves the import choice and input");
+            Wait(wizard.ContinueCommand.ExecuteAsync(null));
+            previousRequests = handler.Requests;
+            Wait(wizard.AddCommand.ExecuteAsync(null));
+            var subscription = services.Profiles.Subscriptions[^1];
+            Require(services.Profiles.Subscriptions.Count == previousSubscriptions + 1 &&
+                services.Profiles.GetSubscriptionUrlAsync(subscription.Id).GetAwaiter().GetResult() == url &&
+                services.Profiles.Profiles.Count(p => p.SubscriptionId == subscription.Id) == 2 && handler.Requests == previousRequests,
+                "Explicit subscription saves its URL and downloaded snapshot without refetching");
+            Require(wizard.ImportTypeIndex == 0, "Completing import resets the type");
+        }
         window.Close();
         Console.WriteLine("Wizard verification passed: source cards, preview, cancel, base64, files, QR image/clipboard, subscription snapshot/metadata/errors/cancellation, manual input.");
 
