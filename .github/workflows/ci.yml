@@ -134,6 +134,10 @@ jobs:
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/simple-ui-verification ru --mock --verify-simple-ui
       - name: Verify contributors page (headless, mock only, no network)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/contributors-verification ru --mock --verify-contributors
+      - name: Verify settings section navigation (headless, mock only, no network)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/settings-navigation-verification ru --mock --verify-settings-navigation
       - name: Verify Zapret selection UI (headless, no engines or network)
         run: |
           source scripts/env.sh
