@@ -1,0 +1,87 @@
+name: Reconcile issues after auto-merge
+
+# Merges made using GITHUB_TOKEN can leave closing references open and do not
+# reliably trigger another workflow. Reconcile from the default branch instead.
+on:
+  schedule:
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'Merged pull request number (blank scans recent merges)'
+        type: string
+      dry_run:
+        description: 'Report matching issues without closing them'
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: reconcile-merged-issues
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Close issues linked to merged bot PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_BRANCH=$(gh api "repos/$GH_REPO" --jq .default_branch)
+          [[ "$GITHUB_REF" == "refs/heads/$BASE_BRANCH" ]] || exit 0
+          fields=number,baseRefName,isCrossRepository,mergedAt,mergedBy,closingIssuesReferences
+          if [[ -n "$PR_NUMBER" ]]; then
+            [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo 'Expected a numeric PR number.' >&2; exit 1; }
+            prs=$(gh pr view "$PR_NUMBER" --json "$fields" --jq '[.]')
+          else
+            since=$(date -u -d '2 days ago' +%F)
+            prs=$(gh pr list --state merged --base "$BASE_BRANCH" --search "merged:>=$since" --limit 100 --json "$fields")
+          fi
+
+          # Read only GitHub's closing references. Never execute or parse PR text.
+          candidates=$(jq -r --arg base "$BASE_BRANCH" --arg repo "$GH_REPO" '
+            .[] | select(.mergedAt != null and .baseRefName == $base
+              and (.isCrossRepository | not)
+              and .mergedBy.is_bot == true and .mergedBy.login == "app/github-actions")
+            | . as $pr
+            | .closingIssuesReferences[]
+            | select((.repository.owner.login + "/" + .repository.name) == $repo)
+            | [$pr.number, $pr.mergedAt, .number] | @tsv
+          ' <<< "$prs")
+
+          while IFS=$'\t' read -r pr merged_at issue; do
+            [[ -n "$issue" ]] || continue
+            issue_data=$(gh api "repos/$GH_REPO/issues/$issue")
+            if ! jq -e --arg merged "$merged_at" '
+              .state == "open" and (.pull_request | not) and .created_at <= $merged
+            ' <<< "$issue_data" >/dev/null; then
+              continue
+            fi
+
+            # Respect a maintainer who reopened the issue after this PR merged.
+            timeline=$(gh api --paginate --slurp "repos/$GH_REPO/issues/$issue/timeline?per_page=100")
+            if jq -e --arg merged "$merged_at" '
+              any(.[][]; .event == "reopened" and .created_at >= $merged)
+            ' <<< "$timeline" >/dev/null; then
+              continue
+            fi
+
+            if [[ "$DRY_RUN" == true ]]; then
+              echo "Would close issue #$issue (merged PR #$pr)."
+            else
+              gh api --method PATCH "repos/$GH_REPO/issues/$issue" -f state=closed -f state_reason=completed --silent
+              echo "Closed issue #$issue (merged PR #$pr)."
+            fi
+          done <<< "$candidates"
