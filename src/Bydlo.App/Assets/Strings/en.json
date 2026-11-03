@@ -349,6 +349,7 @@
   "error.chain.engine": "These servers cannot be chained with one engine. Use servers supported by sing-box or Xray.",
   "connections.latency.check": "Check latency",
   "connections.latency.sort": "Sort by latency",
+  "connections.filter.working": "Working only",
   "connections.latency.udp": "For UDP-based protocols (Hysteria2, TUIC, WireGuard, AmneziaWG) the TCP measurement is approximate.",
   "connections.latency.none": "No latency results yet. Check the latency on the Servers page first.",
   "connections.latency.mock": "Latency check is unavailable in Mock Mode.",

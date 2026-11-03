@@ -349,6 +349,7 @@
   "error.chain.engine": "Эти серверы нельзя объединить одним движком. Используйте серверы, поддерживаемые sing-box или Xray.",
   "connections.latency.check": "Проверить задержку",
   "connections.latency.sort": "Сортировать по задержке",
+  "connections.filter.working": "Только рабочие",
   "connections.latency.udp": "Для UDP-протоколов (Hysteria2, TUIC, WireGuard, AmneziaWG) TCP-замер приблизительный.",
   "connections.latency.none": "Замеров задержки пока нет. Сначала проверьте задержку на странице «Серверы».",
   "connections.latency.mock": "Проверка задержки недоступна в Mock-режиме.",
