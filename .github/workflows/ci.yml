@@ -126,6 +126,10 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connections-verification ru --mock --verify-active-connections
+      - name: Verify routing rules and sources (headless, mock only, no network)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/routing-rules-verification ru --mock --verify-routing-rules
       - name: Verify backup restore (headless, mock only, no network)
         run: |
           source scripts/env.sh
