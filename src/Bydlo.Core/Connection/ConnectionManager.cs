@@ -125,12 +125,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             var session = new Session(PrimaryKey, engine, profiles[0], members[0].Secrets, settings, auth,
                 group: group, groupMembers: members);
             await StartSessionUnsafeAsync(session, ct).ConfigureAwait(false);
-            if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
-            {
-                EnsureSystemProxyAllowed();
-                await _systemProxy.SetAsync("127.0.0.1", group.Engine == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
-                session.SystemProxySet = true;
-            }
+            await SetSystemProxyUnsafeAsync(session, ct).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
     }
@@ -243,34 +238,14 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false);
-            var engine = _registry.CreateFor(profile, settings, _os);
             var secrets = await _secrets.LoadAsync(profile.Id.ToString(), ct).ConfigureAwait(false);
+            var engine = _registry.CreateFor(profile, settings, _os);
+            try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
+            catch { await engine.DisposeAsync().ConfigureAwait(false); throw; }
             var session = new Session(PrimaryKey, engine, profile, secrets, settings, lanAuth);
             await StartSessionUnsafeAsync(session, ct).ConfigureAwait(false);
 
-            if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
-            {
-                try
-                {
-                    EnsureSystemProxyAllowed();
-                    await _systemProxy.SetAsync("127.0.0.1",
-                        ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
-                    session.SystemProxySet = true;
-                }
-                catch (Exception ex)
-                {
-                    var message = _log.Redactor.Redact(ex.Message);
-                    _log.Error(PrimaryKey, message);
-                    try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
-                    catch (Exception stopError)
-                    {
-                        throw new AggregateException(message, stopError);
-                    }
-                    Fail(PrimaryKey, profile, settings, message, (ex as EngineException)?.LocalizationKey ?? "error.systemproxy.failed");
-                    throw ex as EngineException ?? new EngineException(message, ex, "error.systemproxy.failed");
-                }
-            }
+            await SetSystemProxyUnsafeAsync(session, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -310,37 +285,47 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false);
             var engine = _registry.CreateForChain(hopProfiles, chain.PreferredEngine, settings, _os);
+            try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
+            catch { await engine.DisposeAsync().ConfigureAwait(false); throw; }
             var session = new Session(PrimaryKey, engine, exit, hops[^1].Secrets, settings, lanAuth, chain, hops);
             await StartSessionUnsafeAsync(session, ct).ConfigureAwait(false);
 
-            if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
-            {
-                try
-                {
-                    EnsureSystemProxyAllowed();
-                    await _systemProxy.SetAsync("127.0.0.1",
-                        ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
-                    session.SystemProxySet = true;
-                }
-                catch (Exception ex)
-                {
-                    var message = _log.Redactor.Redact(ex.Message);
-                    _log.Error(PrimaryKey, message);
-                    try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
-                    catch (Exception stopError)
-                    {
-                        throw new AggregateException(message, stopError);
-                    }
-                    Fail(PrimaryKey, exit, settings, message, (ex as EngineException)?.LocalizationKey ?? "error.systemproxy.failed");
-                    throw ex as EngineException ?? new EngineException(message, ex, "error.systemproxy.failed");
-                }
-            }
+            await SetSystemProxyUnsafeAsync(session, ct).ConfigureAwait(false);
         }
         finally
         {
             _gate.Release();
+        }
+    }
+
+    private async Task SetSystemProxyUnsafeAsync(Session session, CancellationToken ct)
+    {
+        var settings = session.Settings;
+        if (!settings.SetSystemProxy || settings.Mode != ConnectionMode.LocalProxy || session.IsMock || !_systemProxy.IsSupported)
+        {
+            return;
+        }
+
+        try
+        {
+            EnsureSystemProxyAllowed();
+            // SetAsync can partially apply the proxy before throwing; retain ownership for cleanup/retry.
+            session.SystemProxySet = true;
+            await _systemProxy.SetAsync("127.0.0.1",
+                ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            var message = _log.Redactor.Redact(ex.Message);
+            _log.Error(session.Key, message);
+            try { await StopSessionUnsafeAsync(session.Key).ConfigureAwait(false); }
+            catch (Exception stopError)
+            {
+                throw new AggregateException(message, stopError);
+            }
+            Fail(session.Key, session.Profile, settings, message, (ex as EngineException)?.LocalizationKey ?? "error.systemproxy.failed");
+            throw ex as EngineException ?? new EngineException(message, ex, "error.systemproxy.failed");
         }
     }
 
