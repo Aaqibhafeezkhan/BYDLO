@@ -59,7 +59,9 @@
 
           <StackPanel IsVisible="{Binding IsCatalog}" Spacing="12">
             <TextBlock Classes="h2" Text="{l:T catalog.title}" TextWrapping="Wrap" />
-            <TextBlock Classes="muted" Text="{l:T catalog.warning}" TextWrapping="Wrap" />
+            <Border Classes="banner">
+              <TextBlock Text="{l:T catalog.warning}" TextWrapping="Wrap" />
+            </Border>
             <ItemsControl ItemsSource="{Binding CatalogSources}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:CatalogRow">

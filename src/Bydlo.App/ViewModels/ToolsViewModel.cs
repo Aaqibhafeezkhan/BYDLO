@@ -176,6 +176,7 @@ public sealed partial class ToolsViewModel : PageViewModel
     [ObservableProperty]
     private string _tgRuntimeInfo = "";
 
+    public bool CanOpenInTelegram => Shell.Tg.Status == ConnectionStatus.Connected && !Shell.Tg.CleanupPending;
     public bool TgRunning => Shell.Tg.CleanupPending || Shell.Tg.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
     public string TgStatus => StatusOf(Shell.Tg);
@@ -383,10 +384,10 @@ public sealed partial class ToolsViewModel : PageViewModel
     {
         await Shell.Guard(async () =>
         {
-            if (!TgRunning && !SaveTgSettings()) { return; }
-            var connection = new TelegramProxyConnection(Services.Connections, Services.TgSecrets);
-            var opened = await connection.OpenAsync(Services.EffectiveSettings, async uri =>
-                Services.TopLevel()?.Launcher is { } launcher && await launcher.LaunchUriAsync(uri));
+            var session = await Services.Connections.GetRunningTgWsProxyAsync(Services.ShutdownToken);
+            if (session is not { } active) { return; }
+            var link = TgLinkBuilder.Build(active.Settings.Host, active.Settings.Port, active.Secret, active.Settings.FakeTlsDomain);
+            var opened = Services.TopLevel()?.Launcher is { } launcher && await launcher.LaunchUriAsync(new Uri(link));
             if (!opened) { Shell.ShowToast(L["tools.tg.notelegram"], isError: true); }
             await RefreshTgAsync();
         });
@@ -540,6 +541,7 @@ public sealed partial class ToolsViewModel : PageViewModel
         else if (e.PropertyName == nameof(MainViewModel.Tg))
         {
             OnPropertyChanged(nameof(TgRunning));
+            OnPropertyChanged(nameof(CanOpenInTelegram));
             OnPropertyChanged(nameof(TgStatus));
             OnPropertyChanged(nameof(TgError));
         }

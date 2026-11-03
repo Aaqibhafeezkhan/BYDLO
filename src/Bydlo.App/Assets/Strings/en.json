@@ -1,4 +1,5 @@
 {
+  "tools.tg.toggle": "Telegram proxy",
   "nav.settings.back": "Back to settings",
   "settings.network.sections": "Network and diagnostics",
   "home.import.options": "More import options",
@@ -354,9 +355,9 @@
   "subs.auto.hint": "Refreshes lists whose data is older than the interval. Only on explicit schedule; disabled in Mock Mode and safe development.",
   "subs.interval": "Update interval (hours)",
 
-  "catalog.title": "Public lists",
+  "catalog.title": "Public servers",
   "catalog.hint": "Preview servers from community subscriptions.",
-  "catalog.warning": "These servers are run by third parties. Avoid sending personal or financial data through them. Choose a list to download its preview.",
+  "catalog.warning": "The igareck servers are operated by third parties. BYDLO is not responsible for their availability, security or data handling. Avoid sending personal or financial data through them.",
   "catalog.locked": "Real downloads are disabled in Mock Mode and safe development.",
   "catalog.igareck.top150": "igareck: Top-150 mix",
   "catalog.igareck.top150.desc": "VLESS / Reality / Shadowsocks mix for mobile networks, checked by the community.",
@@ -403,7 +404,7 @@
   "list.exclude": "Excluded domains (list-exclude-user)",
   "list.ipsetexclude": "Excluded IPs (ipset-exclude-user)",
 
-  "tools.tg.desc": "TG WS Proxy helps Telegram connect. Choose Open in Telegram and confirm the connection.",
+  "tools.tg.desc": "Turn on the proxy, then use the button beside it to open Telegram and confirm the connection.",
   "tools.tg.copy": "Copy Telegram link",
   "tools.tg.open": "Open in Telegram",
   "tools.tg.regen": "New secret",
@@ -508,7 +509,7 @@
   "theme.custom.import": "Import from file",
   "theme.custom.export": "Export current",
   "theme.custom.exported": "Theme template exported.",
-  "theme.custom.gallery": "Theme gallery",
+  "theme.custom.gallery": "Browse themes from GitHub",
   "theme.custom.install": "Install",
   "theme.custom.imported": "Theme installed: {0}",
   "theme.custom.imported.ignored": "Theme installed: {0} ({1} unknown keys ignored)",
@@ -731,7 +732,7 @@
   "home.tools.hint": "These tools work independently. Enable only what you need.",
   "home.zapret.title": "Unblock websites · Zapret",
   "home.tg.title": "Telegram · TG WS Proxy",
-  "home.tg.hint": "A separate proxy for Telegram. One button starts the proxy and opens Telegram.",
+  "home.tg.hint": "Turn on the proxy, then open Telegram with the button beside it.",
   "home.tg.open": "Connect in Telegram",
   "home.tools.shortcut": "Enable Zapret or Telegram proxy"
 }

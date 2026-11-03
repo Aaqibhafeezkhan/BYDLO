@@ -26,6 +26,7 @@
               <Button Classes="primary" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
                 <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />
               </Button>
+              <Button Classes="ghost" Content="{l:T catalog.title}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="catalog" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
               <Expander Header="{l:T home.import.options}" HorizontalAlignment="Stretch">
                 <StackPanel Spacing="8">
                   <Grid ColumnDefinitions="*,12,*">
@@ -187,7 +188,12 @@
                 </StackPanel>
                 <Button Grid.Row="1" Grid.Column="1" Classes="text-action" Content="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkCommand}" IsVisible="{Binding TgOn}" Margin="0,8,0,0"
                         AutomationProperties.Name="{l:T tools.tg.copy}" ToolTip.Tip="{l:T tools.tg.copy}" />
-                <Button Grid.Column="2" Classes="ghost" Content="{l:T tools.stop}" Command="{Binding ToggleTgCommand}" IsVisible="{Binding TgOn}" />
+                <ToggleSwitch Grid.Column="2" IsChecked="{Binding TgOn, Mode=OneWay}" Command="{Binding ToggleTgCommand}" AutomationProperties.Name="{l:T tools.tg.toggle}" />
+                <Button Grid.Row="1" Grid.Column="2" Classes="icon" HorizontalAlignment="Right"
+                        Command="{Binding Shell.Tools.OpenInTelegramCommand}" IsEnabled="{Binding Shell.Tools.CanOpenInTelegram}"
+                        ToolTip.Tip="{l:T tools.tg.open}" AutomationProperties.Name="{l:T tools.tg.open}">
+                  <c:OutlineIcon Data="{StaticResource LineSend}" Width="16" Height="16" />
+                </Button>
               </Grid>
             </StackPanel>
           </Border>
@@ -197,7 +203,6 @@
           <Border Classes="banner bad" IsVisible="{Binding Shell.Tools.TgError, Converter={x:Static ObjectConverters.IsNotNull}}">
             <TextBlock Text="{Binding Shell.Tools.TgError}" TextWrapping="Wrap" />
           </Border>
-          <Button Classes="ghost" Content="{l:T tools.tg.open}" Command="{Binding Shell.Tools.OpenInTelegramCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
           <Button Classes="text-action" Content="{l:T common.advanced}" Command="{Binding Shell.NavigateCommand}" CommandParameter="tools" />
         </StackPanel>
       </Grid>

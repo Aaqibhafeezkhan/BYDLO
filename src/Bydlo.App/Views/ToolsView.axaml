@@ -201,7 +201,11 @@
               <Border Classes="pill" Classes.ok="{Binding TgRunning}">
                 <TextBlock Text="{Binding TgStatus}" />
               </Border>
-              <Button Classes="ghost" Content="{l:T tools.stop}" Command="{Binding ToggleTgCommand}" IsVisible="{Binding TgRunning}" />
+              <ToggleSwitch IsChecked="{Binding TgRunning, Mode=OneWay}" Command="{Binding ToggleTgCommand}" AutomationProperties.Name="{l:T tools.tg.toggle}" />
+              <Button Classes="icon" Command="{Binding OpenInTelegramCommand}" IsEnabled="{Binding CanOpenInTelegram}"
+                      ToolTip.Tip="{l:T tools.tg.open}" AutomationProperties.Name="{l:T tools.tg.open}">
+                <c:OutlineIcon Data="{StaticResource LineSend}" Width="16" Height="16" />
+              </Button>
             </StackPanel>
           </Grid>
 
@@ -209,7 +213,6 @@
             <TextBlock Text="{Binding TgError}" TextWrapping="Wrap" />
           </Border>
 
-          <Button Classes="primary" Content="{l:T tools.tg.open}" Command="{Binding OpenInTelegramCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
           <Button Classes="ghost" Content="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}" IsVisible="{Binding TgRunning}" HorizontalAlignment="Left" />
 
           <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">
@@ -220,9 +223,6 @@
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
                 <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}">
                   <c:OutlineIcon Data="{StaticResource LineCopy}" Width="16" Height="16" />
-                </Button>
-                <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.open}" Command="{Binding OpenInTelegramCommand}">
-                  <c:OutlineIcon Data="{StaticResource LineSend}" Width="16" Height="16" />
                 </Button>
                 <Button Classes="icon" ToolTip.Tip="{l:T tools.tg.regen}" Command="{Binding RegenerateSecretCommand}">
                   <c:OutlineIcon Data="{StaticResource LineRefresh}" Width="16" Height="16" />

@@ -42,6 +42,25 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
+          <Button Classes="ghost" Content="{l:T theme.custom.gallery}" Command="{Binding FetchGalleryCommand}"
+                  IsEnabled="{Binding !CustomThemesBusy}" HorizontalAlignment="Left" />
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding CustomThemesBusy}" />
+          <ItemsControl ItemsSource="{Binding GalleryThemes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:GalleryThemeRow">
+                <Border Classes="tile" Margin="0,0,0,6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                      <TextBlock Classes="faint" Text="{Binding Author}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="primary" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Content="{l:T theme.custom.install}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallGalleryThemeCommand}" CommandParameter="{Binding Id}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
           <Expander Header="{l:T theme.custom.title}" HorizontalAlignment="Stretch">
             <StackPanel Spacing="10">
               <TextBlock Classes="muted" Text="{l:T theme.custom.hint}" TextWrapping="Wrap" />
@@ -74,25 +93,7 @@
               <WrapPanel>
                 <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T theme.custom.import}" Command="{Binding ImportCustomThemeCommand}" />
                 <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T theme.custom.export}" Command="{Binding ExportCustomThemeCommand}" />
-                <Button Classes="ghost" Margin="0,0,8,0" Content="{l:T theme.custom.gallery}" Command="{Binding FetchGalleryCommand}" />
               </WrapPanel>
-              <ProgressBar IsIndeterminate="True" IsVisible="{Binding CustomThemesBusy}" />
-              <ItemsControl ItemsSource="{Binding GalleryThemes}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:GalleryThemeRow">
-                    <Border Classes="tile" Margin="0,0,0,6">
-                      <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel VerticalAlignment="Center">
-                          <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
-                          <TextBlock Classes="faint" Text="{Binding Author}" />
-                        </StackPanel>
-                        <Button Grid.Column="1" Classes="primary" Margin="8,0,0,0" VerticalAlignment="Center"
-                                Content="{l:T theme.custom.install}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallGalleryThemeCommand}" CommandParameter="{Binding Id}" />
-                      </Grid>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
             </StackPanel>
           </Expander>
         </StackPanel>

@@ -130,6 +130,9 @@ public sealed partial class MainViewModel : ViewModelBase
         if (!IsAddServerOpen || AddServerWizard.Busy) { return; }
         switch (source)
         {
+            case "catalog":
+                AddServerWizard.ChooseCatalogCommand.Execute(null);
+                break;
             case "file":
                 AddServerWizard.ChooseFileCommand.Execute(null);
                 await AddServerWizard.SelectFileCommand.ExecuteAsync(null);

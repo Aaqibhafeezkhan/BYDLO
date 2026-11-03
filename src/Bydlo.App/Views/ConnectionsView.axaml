@@ -12,12 +12,15 @@
         <TextBlock Classes="muted" Text="{l:T connections.subtitle}" TextWrapping="Wrap" />
       </StackPanel>
 
-      <Button Classes="primary" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Left" Padding="16,12">
-        <StackPanel Orientation="Horizontal" Spacing="10">
-          <c:OutlineIcon Data="{StaticResource LinePlus}" Foreground="{DynamicResource OnPrimaryBrush}" />
-          <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" FontSize="16" />
-        </StackPanel>
-      </Button>
+      <WrapPanel>
+        <Button Classes="primary" Margin="0,0,8,8" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Left" Padding="16,12">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <c:OutlineIcon Data="{StaticResource LinePlus}" Foreground="{DynamicResource OnPrimaryBrush}" />
+            <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" FontSize="16" />
+          </StackPanel>
+        </Button>
+        <Button Classes="ghost" Margin="0,0,0,8" Content="{l:T catalog.title}" Command="{Binding Shell.OpenImportCommand}" CommandParameter="catalog" />
+      </WrapPanel>
       <Button Classes="ghost" Content="{l:T import.demo}" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}" HorizontalAlignment="Left" />
       <Expander Header="{l:T warp.title}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="8">
