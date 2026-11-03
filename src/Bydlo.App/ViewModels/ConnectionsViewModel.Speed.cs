@@ -12,6 +12,11 @@ public sealed partial class ConnectionsViewModel
 
     public bool CanMeasureSpeed => !MeasuringSpeed && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
 
+    public string? SpeedTestDisabledReason => !MeasuringSpeed && (Services.IsMock || NetworkSafetyGuard.IsLocked)
+        ? L["connections.speed.unavailable"] : null;
+
+    partial void OnMeasuringSpeedChanged(bool value) => OnPropertyChanged(nameof(SpeedTestDisabledReason));
+
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task MeasureSpeed(CancellationToken cancellationToken)
     {
@@ -36,6 +41,10 @@ public sealed partial class ConnectionsViewModel
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested)
         {
+        }
+        catch (Bydlo.Core.Engines.EngineException ex) when (ex.LocalizationKey == "error.engine.cleanup")
+        {
+            Shell.ShowToast(L["error.engine.cleanup"], isError: true);
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or Bydlo.Core.Engines.EngineException)
         {

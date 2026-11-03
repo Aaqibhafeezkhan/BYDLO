@@ -19,10 +19,100 @@ public sealed class ServerSpeedTests
         using var http = new HttpClient(new Handler((request, _) =>
         {
             Assert.Equal(ServerSpeedProbe.MaximumBytes - 1, request.Headers.Range!.Ranges.Single().To);
+            Assert.True(request.Headers.CacheControl!.NoCache);
+            Assert.True(request.Headers.CacheControl.NoStore);
+            Assert.Equal("identity", Assert.Single(request.Headers.AcceptEncoding).Value);
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
         }));
         Assert.True(await ServerSpeedProbe.DownloadAsync(http, Url) > 0);
         Assert.Equal(ServerSpeedProbe.MaximumBytes, stream.PositionAfterDispose);
+    }
+
+    [Fact]
+    public async Task Download_deadline_returns_the_speed_of_bytes_already_read()
+    {
+        using var stream = new StallingStream();
+        using var http = new HttpClient(new Handler((_, _) => Task.FromResult(
+            new HttpResponseMessage(HttpStatusCode.PartialContent) { Content = new StreamContent(stream) })));
+        Assert.True(await ServerSpeedProbe.DownloadAsync(http, Url, TimeSpan.FromMilliseconds(100)) > 0);
+        Assert.True(stream.Disposed);
+    }
+
+    [Fact]
+    public async Task User_cancellation_during_streaming_is_not_a_successful_partial_result()
+    {
+        using var cancellation = new CancellationTokenSource();
+        using var stream = new StallingStream(cancellation.Cancel);
+        using var http = new HttpClient(new Handler((_, _) => Task.FromResult(
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) })));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ServerSpeedProbe.DownloadAsync(http, Url, cancellation.Token));
+        Assert.True(stream.Disposed);
+    }
+
+    [Theory]
+    [InlineData("http://example.invalid/test")]
+    [InlineData("https://user:password@example.invalid/test")]
+    [InlineData("/test")]
+    public async Task Invalid_targets_are_rejected_before_starting_measurements(string target)
+    {
+        var probe = new ServerSpeedProbe((_, _, _) => throw new InvalidOperationException("Must not run"));
+        await Assert.ThrowsAsync<ArgumentException>(() => probe.RunAsync([Profile], new Uri(target, UriKind.RelativeOrAbsolute)));
+    }
+
+    [Fact]
+    public async Task Batch_does_not_hide_cleanup_failures_as_zero_speed()
+    {
+        var probe = new ServerSpeedProbe((_, _, _) => throw new EngineException(
+            "Cleanup failed", localizationKey: "error.engine.cleanup"));
+        var error = await Assert.ThrowsAsync<EngineException>(() => probe.RunAsync([Profile], Url));
+        Assert.Equal("error.engine.cleanup", error.LocalizationKey);
+    }
+
+    [Fact]
+    public async Task Batch_cancellation_waits_for_all_active_measurements_to_clean_up()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var active = 0;
+        var started = 0;
+        var probe = new ServerSpeedProbe(async (_, _, token) =>
+        {
+            Interlocked.Increment(ref active);
+            try
+            {
+                if (Interlocked.Increment(ref started) == 2) { cancellation.Cancel(); }
+                await Task.Delay(System.Threading.Timeout.Infinite, token);
+                return 1L;
+            }
+            finally { Interlocked.Decrement(ref active); }
+        });
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => probe.RunAsync(
+            Enumerable.Range(0, 6).Select(_ => new Profile()).ToArray(), Url, cancellation.Token));
+        Assert.Equal(0, active);
+        Assert.Equal(2, started);
+    }
+
+    private sealed class StallingStream(Action? afterFirstRead = null) : System.IO.MemoryStream(new byte[64])
+    {
+        public bool Disposed { get; private set; }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (Position == 0)
+            {
+                var count = await base.ReadAsync(buffer, cancellationToken);
+                afterFirstRead?.Invoke();
+                return count;
+            }
+            await Task.Delay(System.Threading.Timeout.Infinite, cancellationToken);
+            return 0;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            Disposed = true;
+            base.Dispose(disposing);
+        }
     }
 
     [Fact]

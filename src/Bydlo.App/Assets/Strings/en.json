@@ -33,7 +33,7 @@
   "profile.dpi.value.xray": "Mux (Xray)",
   "profile.dpi.value.xudp": "XUDP (Xray)",
   "connections.speed.title": "Server speed test",
-  "connections.speed.notice": "Downloads up to 4 MiB per supported server. Uses data from your plan.",
+  "connections.speed.notice": "Downloads up to 4 MiB per server through sing-box or Xray: up to 12 s for startup and 12 s for download, two servers at a time. Uses data from your plan. Custom JSON configs and other engines are skipped.",
   "connections.speed.url": "HTTPS test file URL",
   "connections.speed.start": "Measure download speed",
   "connections.speed.cancel": "Cancel test",

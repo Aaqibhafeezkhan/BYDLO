@@ -37,6 +37,8 @@
       <Expander Header="{l:T connections.speed.title}" IsVisible="{Binding !IsEmpty}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="8">
           <TextBlock Text="{l:T connections.speed.notice}" Classes="faint" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding SpeedTestDisabledReason}" Classes="faint" TextWrapping="Wrap"
+                     IsVisible="{Binding SpeedTestDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" />
           <TextBox Watermark="{l:T connections.speed.url}" Text="{Binding SpeedTestUrl}" />
           <WrapPanel>
             <Button Content="{l:T connections.speed.start}" Command="{Binding MeasureSpeedCommand}"
