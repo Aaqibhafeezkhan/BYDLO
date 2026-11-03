@@ -183,6 +183,10 @@ public sealed class AppServices
     }
 
     private readonly CancellationTokenSource _shutdownCancellation = new();
+    private Task? _subscriptionRefreshTask;
+
+    public void StartSubscriptionAutoRefresh(Func<CancellationToken, Task> run) =>
+        _subscriptionRefreshTask ??= run(ShutdownToken);
 
     public CancellationToken ShutdownToken => _shutdownCancellation.Token;
 
@@ -220,6 +224,7 @@ public sealed class AppServices
     private async Task ShutdownCoreAsync()
     {
         _shutdownCancellation.Cancel();
+        if (_subscriptionRefreshTask is not null) { await _subscriptionRefreshTask.ConfigureAwait(false); }
         await Connections.StopAllAsync().ConfigureAwait(false);
         await SaveSettingsAsync().ConfigureAwait(false);
         Http.Dispose();

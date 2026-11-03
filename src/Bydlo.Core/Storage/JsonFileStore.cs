@@ -103,7 +103,7 @@ internal sealed class ProfileDocument
 
 /// <summary>Profile list persisted as JSON; secrets are delegated to <see cref="ISecretStore"/>.</summary>
 #pragma warning disable CA1001 // lives for the whole app lifetime
-public sealed partial class ProfileStore(string path, ISecretStore secrets)
+public sealed partial class ProfileStore(string path, ISecretStore secrets, TimeProvider? time = null)
 #pragma warning restore CA1001
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -240,7 +240,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
         var sub = new Subscription
         {
             Name = name,
-            LastUpdated = DateTimeOffset.UtcNow,
+            LastUpdated = (time ?? TimeProvider.System).GetUtcNow(),
             Upload = metadata?.Upload,
             Download = metadata?.Download,
             Total = metadata?.Total,
