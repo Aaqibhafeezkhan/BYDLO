@@ -34,11 +34,13 @@ public sealed class SystemProxyPortTests
     }
 
     [Theory]
-    [InlineData(EngineKind.Xray, false, 2346)]
-    [InlineData(EngineKind.Xray, true, 2346)]
-    [InlineData(EngineKind.SingBox, false, 2345)]
-    [InlineData(EngineKind.SingBox, true, 2345)]
-    public async Task System_proxy_uses_the_http_inbound(EngineKind kind, bool chain, int expectedPort)
+    [InlineData(EngineKind.Xray, "profile", 2346)]
+    [InlineData(EngineKind.Xray, "chain", 2346)]
+    [InlineData(EngineKind.Xray, "group", 2346)]
+    [InlineData(EngineKind.SingBox, "profile", 2345)]
+    [InlineData(EngineKind.SingBox, "chain", 2345)]
+    [InlineData(EngineKind.SingBox, "group", 2345)]
+    public async Task System_proxy_uses_the_http_inbound(EngineKind kind, string target, int expectedPort)
     {
         var runner = new FakeProcessRunner();
         var engine = new RecordingEngine(runner, kind);
@@ -55,7 +57,12 @@ public sealed class SystemProxyPortTests
         var settings = new AppSettings { LocalProxyPort = 2345, SetSystemProxy = true, AutoReconnect = false };
         var first = new Profile { Protocol = ProtocolKind.Trojan, Host = "first.invalid", Port = 443 };
         var last = new Profile { Protocol = ProtocolKind.Trojan, Host = "last.invalid", Port = 443 };
-        if (chain)
+        if (target == "group")
+        {
+            var group = new ServerGroup { Name = "test", ProfileIds = [first.Id, last.Id], Engine = kind };
+            await manager.ConnectGroupAsync(group, [new(first, new()), new(last, new())], settings);
+        }
+        else if (target == "chain")
         {
             var relay = new ProxyChain { Name = "test", ProfileIds = [first.Id, last.Id], PreferredEngine = kind };
             await manager.ConnectChainAsync(relay, [new(first, new()), new(last, new())], settings);
