@@ -9,7 +9,7 @@
         <GeometryDrawing Brush="{StaticResource BrandTileBrush}"
                          Geometry="M11 1H53Q63 1 63 11V53Q63 63 53 63H11Q1 63 1 53V11Q1 1 11 1Z" />
         <GeometryDrawing Brush="{StaticResource BrandInkBrush}"
-                         Geometry="F0 M16 11H37L46 20V26L41 31L48 38V45L40 53H16Z M25 19V28H34L38 24L34 19Z M25 36V45H36L40 41L36 36Z" />
+                         Geometry="M13 15H30L26 22H20V30H13Z M51 49H34L38 42H44V34H51Z M13 37H25L34 23H51V30H38L29 44H13Z" />
       </DrawingGroup>
     </DrawingImage.Drawing>
   </DrawingImage>
