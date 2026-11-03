@@ -192,7 +192,12 @@ if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
     Pump(100);
     var toggles = homeWindow.GetVisualDescendants().OfType<ToggleSwitch>()
         .Where(c => c.IsEffectivelyVisible && (Avalonia.Automation.AutomationProperties.GetName(c) is "Zapret" or "TgWsProxy")).ToArray();
-    if (toggles.Length != 2) throw new InvalidOperationException("Tools must be visible without profiles.");
+    if (toggles.Length != 1 || Avalonia.Automation.AutomationProperties.GetName(toggles[0]) != "Zapret")
+        throw new InvalidOperationException("Only Zapret should use a toggle.");
+    var telegramButton = homeWindow.GetVisualDescendants().OfType<Button>()
+        .Single(b => ReferenceEquals(b.Command, shell.Tools.OpenInTelegramCommand));
+    if (!telegramButton.IsEffectivelyVisible || !telegramButton.IsEnabled)
+        throw new InvalidOperationException("Telegram connection must be available before the proxy starts.");
     homeWindow.Width = 380;
     Pump(100);
     var shortcut = homeWindow.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ToolShortcut");
@@ -205,8 +210,15 @@ if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
     Wait(shell.Home.ToggleZapretCommand.ExecuteAsync(null));
     Pump(50); // Session notifications are posted to the UI dispatcher.
     if (shell.Home.ZapretOn) throw new InvalidOperationException("Mock Zapret tool did not stop.");
-    Wait(shell.Home.ToggleTgCommand.ExecuteAsync(null));
+    // No OS launcher in headless mode: exercise startup and the missing-Telegram fallback safely.
+    services.TopLevel = () => null;
+    Wait(shell.Tools.OpenInTelegramCommand.ExecuteAsync(null));
+    Pump(50);
     if (!shell.Home.TgOn) throw new InvalidOperationException("Mock Telegram tool did not start.");
+    var telegramStarted = services.Connections.TgWsProxy.ConnectedSince;
+    Wait(shell.Tools.OpenInTelegramCommand.ExecuteAsync(null));
+    if (services.Connections.TgWsProxy.ConnectedSince != telegramStarted)
+        throw new InvalidOperationException("Opening Telegram twice restarted the proxy.");
     Shoot("simple-home-telegram-enabled", 1180, 780);
     Wait(services.Connections.StopAllAsync());
     Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));

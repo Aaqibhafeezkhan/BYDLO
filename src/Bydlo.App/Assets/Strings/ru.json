@@ -365,7 +365,7 @@
   "list.exclude": "Исключённые домены (list-exclude-user)",
   "list.ipsetexclude": "Исключённые IP (ipset-exclude-user)",
 
-  "tools.tg.desc": "TG WS Proxy помогает Telegram подключиться. Включите его и нажмите «Подключить в Telegram».",
+  "tools.tg.desc": "TG WS Proxy помогает Telegram подключиться. Нажмите «Открыть в Telegram» и подтвердите подключение.",
   "tools.tg.copy": "Ссылка для Telegram",
   "tools.tg.open": "Открыть в Telegram",
   "tools.tg.regen": "Новый секрет",
@@ -691,7 +691,7 @@
   "home.tools.hint": "Эти инструменты работают отдельно. Включите тот, который вам нужен.",
   "home.zapret.title": "Доступ к сайтам · Zapret",
   "home.tg.title": "Telegram · TG WS Proxy",
-  "home.tg.hint": "Отдельный прокси для Telegram. Включите его, затем подключите в Telegram.",
+  "home.tg.hint": "Отдельный прокси для Telegram. Одна кнопка запускает прокси и открывает Telegram.",
   "home.tg.open": "Подключить в Telegram",
   "home.tools.shortcut": "Включить Zapret или Telegram-прокси"
 }

@@ -201,12 +201,7 @@
               <Border Classes="pill" Classes.ok="{Binding TgRunning}">
                 <TextBlock Text="{Binding TgStatus}" />
               </Border>
-              <Button Classes="primary" Command="{Binding ToggleTgCommand}">
-                <Panel>
-                  <TextBlock Text="{l:T tools.start}" Foreground="{DynamicResource OnPrimaryBrush}" IsVisible="{Binding !TgRunning}" />
-                  <TextBlock Text="{l:T tools.stop}" Foreground="{DynamicResource OnPrimaryBrush}" IsVisible="{Binding TgRunning}" />
-                </Panel>
-              </Button>
+              <Button Classes="ghost" Content="{l:T tools.stop}" Command="{Binding ToggleTgCommand}" IsVisible="{Binding TgRunning}" />
             </StackPanel>
           </Grid>
 
@@ -214,7 +209,7 @@
             <TextBlock Text="{Binding TgError}" TextWrapping="Wrap" />
           </Border>
 
-          <Button Classes="primary" Content="{l:T home.tg.open}" Command="{Binding OpenInTelegramCommand}" IsVisible="{Binding TgRunning}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+          <Button Classes="primary" Content="{l:T tools.tg.open}" Command="{Binding OpenInTelegramCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
           <Button Classes="ghost" Content="{l:T tools.tg.copy}" Command="{Binding CopyTgLinkToClipboardCommand}" IsVisible="{Binding TgRunning}" HorizontalAlignment="Left" />
 
           <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch">

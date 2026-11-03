@@ -291,6 +291,24 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     public Task StartTgWsProxyAsync(AppSettings settings, CancellationToken ct = default) =>
         StartToolAsync(TgWsProxyKey, EngineKind.TgWsProxy, settings, _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey)), ct);
 
+    /// <summary>Start once and return the credentials of the actual running session.</summary>
+    public async Task<(TgWsProxySettings Settings, string Secret)> EnsureTgWsProxyAsync(AppSettings settings, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (TgWsProxy.Status != ConnectionStatus.Connected || TgWsProxy.CleanupPending)
+            {
+                await StartToolUnsafeAsync(TgWsProxyKey, EngineKind.TgWsProxy, CloneSettings(settings),
+                    _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey)), ct).ConfigureAwait(false);
+            }
+
+            var session = _sessions[TgWsProxyKey];
+            return (CloneSettings(session.Settings).TgWsProxy, session.Secrets["secret"]!);
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task StopToolAsync(string key, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -333,6 +351,13 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     private async Task StartToolAsync(string key, EngineKind kind, AppSettings settings, IReadOnlyList<ConflictIssue> issues, CancellationToken ct)
     {
         settings = CloneSettings(settings);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try { await StartToolUnsafeAsync(key, kind, settings, issues, ct).ConfigureAwait(false); }
+        finally { _gate.Release(); }
+    }
+
+    private async Task StartToolUnsafeAsync(string key, EngineKind kind, AppSettings settings, IReadOnlyList<ConflictIssue> issues, CancellationToken ct)
+    {
         foreach (var w in issues.Where(i => i.Severity == ConflictSeverity.Warning))
         {
             _log.Warn(key, w.Message);
@@ -345,18 +370,10 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             throw new EngineException(blocking.Message);
         }
 
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            await StopSessionUnsafeAsync(key).ConfigureAwait(false);
-            var engine = _registry.Create(kind, settings);
-            var secrets = await _secrets.LoadAsync(key == TgWsProxyKey ? TgWsProxySecretId : key, ct).ConfigureAwait(false);
-            await StartSessionUnsafeAsync(new Session(key, engine, null, secrets, settings), ct).ConfigureAwait(false);
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        await StopSessionUnsafeAsync(key).ConfigureAwait(false);
+        var engine = _registry.Create(kind, settings);
+        var secrets = await _secrets.LoadAsync(key == TgWsProxyKey ? TgWsProxySecretId : key, ct).ConfigureAwait(false);
+        await StartSessionUnsafeAsync(new Session(key, engine, null, secrets, settings), ct).ConfigureAwait(false);
     }
 
     private bool IsActive(string key)
