@@ -20,6 +20,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             ChainValidator.ThrowIfInvalid(chain, FindStored);
             ThrowIfUnchainable(chain);
             var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains, chain] };
@@ -43,6 +44,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var i = _doc.Chains.FindIndex(c => c.Id == chain.Id);
             if (i < 0)
             {
@@ -68,6 +70,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var remaining = _doc.Chains.Where(c => c.Id != id).ToList();
             if (remaining.Count == _doc.Chains.Count)
             {
@@ -94,6 +97,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var chain = _doc.Chains.FirstOrDefault(c => c.Id == id) ?? throw new InvalidDataException("Chain not found.");
             var renamed = CopyChain(chain);
             renamed.Name = name.Trim();

@@ -106,8 +106,32 @@ public sealed partial class MainViewModel : ViewModelBase
         Contributors.Show(services.Settings.Contributors);
         Loc.Instance.PropertyChanged += (_, _) => OnNoticeLanguageChanged();
         RefreshCrashReports();
+        ShowStoreRecoveryToasts();
         _ = RunStartupChecksAsync();
         services.StartSubscriptionAutoRefresh(Connections.RunAutoRefreshAsync);
+    }
+
+    private void ShowStoreRecoveryToasts()
+    {
+        var profiles = Services.Profiles.LoadStatus;
+        var settings = Services.SettingsStore.LoadStatus;
+        if (profiles == Bydlo.Core.Storage.StoreLoadStatus.NewerVersion ||
+            settings == Bydlo.Core.Storage.StoreLoadStatus.NewerVersion)
+        {
+            ShowToast(L["store.newer"], isError: true, localizationKey: "store.newer");
+            return;
+        }
+        if (profiles == Bydlo.Core.Storage.StoreLoadStatus.RecoveredFromBackup ||
+            settings == Bydlo.Core.Storage.StoreLoadStatus.RecoveredFromBackup)
+        {
+            ShowToast(L["store.recovered"], isError: true, localizationKey: "store.recovered");
+            return;
+        }
+        if (profiles == Bydlo.Core.Storage.StoreLoadStatus.ResetEmpty ||
+            settings == Bydlo.Core.Storage.StoreLoadStatus.ResetEmpty)
+        {
+            ShowToast(L["store.reset"], isError: true, localizationKey: "store.reset");
+        }
     }
 
     public AppServices Services { get; }

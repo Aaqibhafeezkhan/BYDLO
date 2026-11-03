@@ -13,6 +13,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
                 ?? throw new InvalidDataException("Subscription not found.");
             var existingIds = _doc.Profiles.Select(profile => profile.Id).ToHashSet();

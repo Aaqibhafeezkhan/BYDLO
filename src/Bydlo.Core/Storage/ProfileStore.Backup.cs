@@ -34,6 +34,7 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var incoming = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = data.Profiles.Select(p => p.Profile).ToList(), Subscriptions = data.Subscriptions.Select(s => s.Subscription).ToList() };
             if (mode == BackupImportMode.Merge)
             {
