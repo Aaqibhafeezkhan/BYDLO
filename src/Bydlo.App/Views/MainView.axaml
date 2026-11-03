@@ -7,7 +7,18 @@
              x:Class="Bydlo.App.Views.MainView"
              x:DataType="vm:MainViewModel"
              Background="{DynamicResource BackdropBrush}">
-  <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*" ClipToBounds="True">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="Auto,*" ClipToBounds="True">
+    <!-- Persistent release notice has its own row, including during onboarding. -->
+    <Border Grid.ColumnSpan="2" Classes="banner" IsVisible="{Binding HasReleaseNotification}" Margin="12,8">
+      <StackPanel Spacing="8">
+        <TextBlock Text="{Binding ReleaseNotificationText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <WrapPanel>
+          <Button Classes="primary" Content="{l:T update.notification.open}" Command="{Binding OpenReleaseNotificationCommand}" Margin="0,0,8,0" />
+          <Button Classes="ghost" Content="{l:T update.notification.dismiss}" Command="{Binding DismissReleaseNotificationCommand}" />
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="2" RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*">
     <!-- Desktop sidebar -->
     <Border Grid.RowSpan="3" Width="220" IsVisible="{Binding !IsCompact}"
             Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
@@ -188,5 +199,6 @@
         </Border>
       </ScrollViewer>
     </Border>
+    </Grid>
   </Grid>
 </UserControl>

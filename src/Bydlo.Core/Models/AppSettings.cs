@@ -114,6 +114,9 @@ public sealed class AppSettings
 
     public DateTimeOffset? LastUpdateCheck { get; set; }
 
+    /// <summary>Unacknowledged stable release, retained across startup check intervals.</summary>
+    public Diagnostics.GitHubRelease? PendingUpdate { get; set; }
+
     public RoutingSettings Routing { get; set; } = new();
     public DpiSettings DpiDefaults { get; set; } = new();
 

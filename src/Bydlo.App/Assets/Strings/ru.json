@@ -621,6 +621,8 @@
   "import.manual": "Ввести конфигурацию вручную",
   "settings.about": "О приложении и лицензии",
   "settings.update.auto": "Автоматически проверять новые версии",
+  "update.notification.open": "Открыть релиз",
+  "update.notification.dismiss": "Закрыть",
   "settings.update.auto.hint": "Не чаще раза в сутки при запуске. В Mock-режиме и безопасной разработке выключено.",
   "settings.update.check": "Проверить сейчас",
   "settings.update.checking": "Проверяем обновления…",
