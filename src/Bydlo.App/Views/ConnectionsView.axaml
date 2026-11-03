@@ -57,7 +57,8 @@
                  Watermark="{l:T connections.search}" AutomationProperties.Name="{l:T connections.search}" />
         <WrapPanel IsVisible="{Binding !IsEmpty}">
           <Button Classes="ghost" Margin="0,0,8,6" Content="{l:T connections.latency.check}" Command="{Binding CheckLatencyCommand}" IsEnabled="{Binding CanCheckLatency}" />
-          <CheckBox Margin="0,0,0,6" Content="{l:T connections.latency.sort}" IsChecked="{Binding Shell.SortByLatency}" />
+          <CheckBox Margin="0,0,8,6" Content="{l:T connections.latency.sort}" IsChecked="{Binding Shell.SortByLatency}" />
+          <CheckBox Margin="0,0,0,6" Content="{l:T connections.filter.working}" IsChecked="{Binding OnlyWorking}" />
         </WrapPanel>
         <TextBlock Classes="faint" Text="{Binding CheckLatencyDisabledReason}" IsVisible="{Binding CheckLatencyDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
         <TextBlock Classes="muted" Text="{l:T connections.search.empty}" IsVisible="{Binding HasNoMatchingProfiles}" TextWrapping="Wrap" />

@@ -352,6 +352,10 @@ public sealed partial class XrayConfigBuilder
                 };
                 break;
             case ProtocolKind.Shadowsocks:
+                if (p.Option(Keys.Plugin) is not null)
+                {
+                    throw new NotSupportedException("Shadowsocks plugins require the sing-box engine; Xray silently drops the plugin.");
+                }
                 o["protocol"] = "shadowsocks";
                 o["settings"] = new JsonObject
                 {
@@ -364,6 +368,10 @@ public sealed partial class XrayConfigBuilder
                 break;
             case ProtocolKind.Socks5:
             case ProtocolKind.Http:
+                if (p.Option(Keys.Tls) == "true")
+                {
+                    throw new NotSupportedException("TLS-wrapped HTTP/SOCKS requires the sing-box engine; Xray silently drops TLS here.");
+                }
                 o["protocol"] = p.Protocol == ProtocolKind.Socks5 ? "socks" : "http";
                 var server = new JsonObject { ["address"] = p.Host, ["port"] = p.Port };
                 if (p.Option(Keys.Username) is { } user)

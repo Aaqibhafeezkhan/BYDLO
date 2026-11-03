@@ -238,13 +238,11 @@
   "share.error": "Не удалось поделиться сервером. Проверьте доступность данных доступа. Если QR-код слишком большой, скопируйте ссылку.",
   "app.slogan": "Одно приложение. Все протоколы.",
   "app.full": "Bypass Your Digital Limitations Online",
-
   "onboarding.title": "Добро пожаловать в BYDLO",
   "onboarding.text": "Добавьте ссылку на сервер, подписку или файл конфигурации. BYDLO может автоматически выбрать совместимый движок подключения.",
   "onboarding.skip": "Перейти на главную",
   "onboarding.start": "Добавить конфигурацию",
   "onboarding.appearance": "Язык и оформление",
-
   "nav.home.short": "Главная",
   "nav.group.network": "Сеть",
   "settings.section.import": "Импорт и подписки",
@@ -263,7 +261,6 @@
   "nav.statistics": "Статистика",
   "nav.settings.short": "Настройки",
   "nav.settings": "Настройки",
-
   "status.connected": "Подключено",
   "status.connecting": "Подключение…",
   "status.disconnecting": "Отключение…",
@@ -274,7 +271,6 @@
   "status.starting": "Запуск…",
   "status.stopping": "Остановка…",
   "status.stopped": "Остановлен",
-
   "mock.badge": "MOCK-РЕЖИМ",
   "nav.contributors": "Участники",
   "nav.contributors.short": "Люди",
@@ -287,7 +283,6 @@
   "mock.failonconnect": "Ошибка при подключении",
   "mock.dropafterconnect": "Сбой через ~20 с",
   "mock.slowconnect": "Медленное подключение",
-
   "home.overline": "ВАШЕ ПОДКЛЮЧЕНИЕ",
   "home.title": "Интернет без границ.",
   "home.connect": "Подключить",
@@ -317,14 +312,12 @@
   "home.check.mock": "В Mock-режиме проверка соединения недоступна.",
   "home.check.locked": "Проверка соединения отключена блокировкой разработки (BYDLO_SAFE_DEV=1).",
   "home.best": "Лучший сервер",
-
   "connections.subtitle": "Управляйте серверами, цепочками и подписками.",
   "connections.profiles": "Серверы",
   "connections.empty": "Серверов пока нет. Вставьте ссылку (vless://, vmess://, trojan://, ss://, hy2://, tuic://, socks5://) или откройте файл WireGuard / AmneziaWG / OpenVPN.",
   "connections.favorite": "В избранное",
   "connections.delete": "Удалить",
   "connections.delete.active": "Отключитесь перед удалением активного сервера.",
-
   "chain.title": "Цепочки прокси",
   "chain.hint": "Трафик идёт через серверы по порядку: сначала входной, затем выходной. Для цепочек нужен sing-box или Xray.",
   "chain.empty": "Цепочек пока нет. Объедините два или более серверов в relay.",
@@ -349,11 +342,11 @@
   "error.chain.engine": "Эти серверы нельзя объединить одним движком. Используйте серверы, поддерживаемые sing-box или Xray.",
   "connections.latency.check": "Проверить задержку",
   "connections.latency.sort": "Сортировать по задержке",
+  "connections.filter.working": "Только рабочие",
   "connections.latency.udp": "Для UDP-протоколов (Hysteria2, TUIC, WireGuard, AmneziaWG) TCP-замер приблизительный.",
   "connections.latency.none": "Замеров задержки пока нет. Сначала проверьте задержку на странице «Серверы».",
   "connections.latency.mock": "Проверка задержки недоступна в Mock-режиме.",
   "connections.latency.locked": "Проверка задержки отключена блокировкой разработки (BYDLO_SAFE_DEV=1).",
-
   "import.title": "Добавить серверы",
   "import.link.title": "Ссылка или подписка",
   "import.link.hint": "vless://, vmess://, trojan://, ss://, hy2://, tuic://, socks5:// или http(s)-подписка.",
@@ -377,7 +370,6 @@
   "import.none": "Не найдено ничего для импорта.",
   "import.sub.invalid": "Это не похоже на адрес подписки.",
   "import.sub.updated": "{0}: серверов — {1}.",
-
   "subs.title": "Подписки",
   "subs.hint": "Трафик и срок берутся из заголовка subscription-userinfo. Списки обновляются при добавлении и обновлении вручную или автоматически по расписанию.",
   "subs.name": "Название (необязательно)",
@@ -395,7 +387,6 @@
   "subs.mode.follow": "Новые серверы: добавляются автоматически",
   "subs.mode.selected": "Новые серверы: игнорируются (только выбранные)",
   "subs.mode.toggle": "Сменить режим",
-
   "catalog.title": "Публичные серверы",
   "catalog.hint": "Просмотрите серверы из подписок сообщества.",
   "catalog.warning": "Публичными серверами управляют сторонние владельцы. BYDLO не отвечает за их доступность, безопасность или обработку данных. Не передавайте через них личные или финансовые данные.",
@@ -414,7 +405,6 @@
   "catalog.radikal.verified.desc": "Микс протоколов, где каждый сервер ответил через прокси в трёх независимых проверках. Состав меняется со временем.",
   "catalog.matin.vless": "MatinGhanbari: VLESS",
   "catalog.matin.vless.desc": "VLESS-список с автообновлением каждые 15 минут. Состав меняется со временем.",
-
   "warp.title": "Cloudflare WARP",
   "warp.hint": "Регистрирует бесплатный аккаунт WARP и сохраняет его как сервер WireGuard. Только по вашему нажатию: автоматически ничего не регистрируется.",
   "warp.consent": "Регистрация принимает условия использования Cloudflare через неофициальный клиентский API (те же endpoints, что использует wgcf под лицензией MIT). Ключи хранятся в зашифрованном виде на этом устройстве.",
@@ -423,7 +413,6 @@
   "warp.added": "WARP-профиль добавлен.",
   "warp.locked": "Регистрация WARP отключена в Mock-режиме и безопасной разработке.",
   "warp.error.register": "Не удалось зарегистрировать WARP. Проверьте соединение и попробуйте снова.",
-
   "tools.subtitle": "Отдельные инструменты, работающие вместе с VPN или без него.",
   "tools.start": "Запустить",
   "tools.stop": "Остановить",
@@ -448,7 +437,6 @@
   "list.general": "Дополнительные домены (list-general-user)",
   "list.exclude": "Исключённые домены (list-exclude-user)",
   "list.ipsetexclude": "Исключённые IP (ipset-exclude-user)",
-
   "tools.tg.desc": "Включите прокси переключателем, затем откройте Telegram кнопкой рядом и подтвердите подключение.",
   "tools.tg.copy": "Ссылка для Telegram",
   "tools.tg.open": "Открыть в Telegram",
@@ -503,7 +491,6 @@
   "engine.notinstalled": "Не установлен",
   "engine.planned": "Запланирован",
   "engine.unsupported": "Не поддерживается",
-
   "routing.subtitle": "Раздельное туннелирование, DNS и правила. Применяются при следующем подключении.",
   "routing.mesh": "Mesh-VPN диапазоны — напрямую",
   "routing.mesh.hint": "Оставляет 100.64.0.0/10 и fd7a:115c:a1e3::/48 вне туннеля, чтобы другие VPN и mesh-сети продолжали работать.",
@@ -527,7 +514,6 @@
   "routing.process.tun": "Выбор приложений для VPN доступен в sing-box в режиме TUN.",
   "routing.process.hint": "Имена процессов, например game.exe. sing-box: только режим TUN. Xray: только Windows/Linux.",
   "routing.saved.reconnect": "Сохранено. Переподключитесь, чтобы применить.",
-
   "stats.subtitle": "Скорость в реальном времени, объём трафика и журнал событий.",
   "stats.down": "Загрузка",
   "stats.up": "Отдача",
@@ -538,7 +524,6 @@
   "stats.log.hint": "Учётные данные удаляются автоматически.",
   "stats.log.copy": "Скопировать",
   "stats.log.clear": "Очистить",
-
   "settings.appearance": "Внешний вид",
   "settings.theme": "Тема",
   "settings.language": "Язык",
@@ -606,10 +591,8 @@
   "settings.admin.manual": "Перезапуск с повышенными правами из приложения доступен только на Windows. На Linux/macOS перезапустите BYDLO с правами root (например, через sudo), чтобы работали TUN, туннели и Zapret.",
   "settings.secrets": "Хранилище секретов:",
   "settings.safelock": "Активна блокировка разработки (BYDLO_SAFE_DEV=1): реальные движки не запустятся.",
-
   "about.text": "Свободный open-source лаунчер для VPN, прокси и инструментов свободного доступа к интернету. BYDLO — это оболочка: настоящую работу делают проекты ниже. Огромное спасибо их авторам.",
   "about.credits": "Основано на",
-
   "orphans.text": "Движки из прошлого сеанса всё ещё запущены.",
   "orphans.stop": "Остановить",
   "toast.orphans": "Остановлено оставшихся процессов: {0}.",
@@ -622,7 +605,6 @@
   "store.recovered": "Настройки или профили восстановлены из резервной копии.",
   "store.reset": "Настройки или профили были повреждены и сброшены. Повреждённый файл сохранён для проверки.",
   "store.newer": "Данные созданы более новой версией BYDLO. Обновите приложение вместо перезаписи.",
-
   "common.save": "Сохранить",
   "common.cancel": "Отмена",
   "common.advanced": "Расширенные настройки",

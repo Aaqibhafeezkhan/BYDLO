@@ -150,6 +150,23 @@ public sealed class EngineRegistry
             return EngineKind.Xray;
         }
 
+        // Xray removed HTTP/2 transport; sing-box still carries h2/http (issue #242).
+        if (transport is not null && (transport.Equals("h2", StringComparison.OrdinalIgnoreCase) || transport.Equals("http", StringComparison.OrdinalIgnoreCase)))
+        {
+            return EngineKind.SingBox;
+        }
+
+        // sing-box carries TLS-wrapped HTTP/SOCKS and Shadowsocks plugins; Xray silently drops them (issue #242).
+        if (profile.Protocol is ProtocolKind.Http or ProtocolKind.Socks5 && profile.Option(Keys.Tls) == "true")
+        {
+            return EngineKind.SingBox;
+        }
+
+        if (profile.Protocol == ProtocolKind.Shadowsocks && profile.Option(Keys.Plugin) is not null)
+        {
+            return EngineKind.SingBox;
+        }
+
         return null;
     }
 }
