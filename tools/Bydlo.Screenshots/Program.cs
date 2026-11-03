@@ -28,6 +28,11 @@ if (args.Contains("--verify-server-groups", StringComparer.Ordinal) || args.Cont
     Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
 }
 
+if (args.Contains("--verify-disclosure", StringComparer.Ordinal))
+{
+    Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
+}
+
 if (args.Contains("--verify-startup-error", StringComparer.Ordinal))
 {
     StartupErrorVerification.Run(output, lang);
@@ -59,6 +64,12 @@ if (args.Contains("--verify-elevation", StringComparer.Ordinal))
 if (args.Contains("--export-brand-icon", StringComparer.Ordinal))
 {
     BrandIconExport.Run(output);
+    return;
+}
+
+if (args.Contains("--verify-disclosure", StringComparer.Ordinal))
+{
+    DisclosureVerification.Run(new MainViewModel(services), output);
     return;
 }
 
