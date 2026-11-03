@@ -9,6 +9,26 @@
     <!-- Self-contained single-file publishing is configured per RID in CI (see .github/workflows). -->
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
+  <!-- The manifest carries the app version, so it is stamped from Directory.Build.props at build time (issue #143). -->
+  <UsingTask TaskName="StampManifestVersion" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Template ParameterType="System.String" Required="true" />
+      <Output ParameterType="System.String" Required="true" />
+      <ManifestVersion ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs">
+        System.IO.File.WriteAllText(Output, System.IO.File.ReadAllText(Template).Replace("@BYDLO_MANIFEST_VERSION@", ManifestVersion));
+      </Code>
+    </Task>
+  </UsingTask>
+  <Target Name="StampAppManifest" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <_ManifestVersion>$([System.Version]::Parse('$(Version)').Major).$([System.Version]::Parse('$(Version)').Minor).$([System.Version]::Parse('$(Version)').Build).0</_ManifestVersion>
+      <ApplicationManifest>$(IntermediateOutputPath)app.manifest</ApplicationManifest>
+    </PropertyGroup>
+    <StampManifestVersion Template="app.manifest" Output="$(IntermediateOutputPath)app.manifest" ManifestVersion="$(_ManifestVersion)" />
+  </Target>
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Diagnostics" Condition="'$(Configuration)' == 'Debug'" />
