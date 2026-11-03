@@ -90,6 +90,7 @@ public sealed class SubscriptionAutoRefreshTests
         Assert.Null(store.Subscriptions.Single(s => s.Id == bad.Id).LastUpdated);
         Assert.Equal(throws ? 1 : 0, errors.Count);
         handler.FailBadHost = false;
+        clock.Advance(TimeSpan.FromMinutes(2));
         Assert.Equal(1, await updater.RefreshIfDueAsync(new AppSettings(), false, Fail));
         Assert.Equal(3, handler.Requests);
         Assert.All(store.Subscriptions, s => Assert.NotNull(s.LastUpdated));
