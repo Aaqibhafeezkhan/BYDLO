@@ -4,6 +4,9 @@
     <AvaloniaVersion>11.3.22</AvaloniaVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Grpc.Net.Client" Version="2.85.0" />
+    <PackageVersion Include="Google.Protobuf" Version="3.36.2" />
+    <PackageVersion Include="Grpc.Tools" Version="2.85.0" />
     <PackageVersion Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />

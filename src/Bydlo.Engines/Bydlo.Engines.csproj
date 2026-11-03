@@ -4,6 +4,10 @@
     <AssemblyName>Bydlo.Engines</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+    <Protobuf Include="Groups/Protos/*.proto" GrpcServices="Client" />
     <ProjectReference Include="..\Bydlo.Core\Bydlo.Core.csproj" />
   </ItemGroup>
   <ItemGroup>

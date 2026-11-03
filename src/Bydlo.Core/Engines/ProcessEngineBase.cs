@@ -78,6 +78,13 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             }
 
             // Chain hops carry their own secrets; every one must be masked before configs are built.
+            if (request.GroupMembers is { } members)
+            {
+                foreach (var member in members)
+                {
+                    foreach (var secret in member.Secrets.Values.Values) { redactor.RegisterSecret(secret); }
+                }
+            }
             if (request.Chain is { } chainHops)
             {
                 foreach (var hop in chainHops)

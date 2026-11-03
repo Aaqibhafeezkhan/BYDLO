@@ -25,6 +25,7 @@ public sealed record HelperRequest
 
 public sealed record HelperReply
 {
+    public Guid? SelectedGroupProfileId { get; init; }
     public EngineAvailability? Availability { get; init; }
     public EngineState State { get; init; }
     public string? Error { get; init; }
