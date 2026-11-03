@@ -168,6 +168,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("Avalonia UI", "AvaloniaUI OÜ", "MIT", "https://github.com/AvaloniaUI/Avalonia", "Cross-platform UI framework"),
         new("CommunityToolkit.Mvvm", ".NET Foundation", "MIT", "https://github.com/CommunityToolkit/dotnet", "MVVM helpers"),
         new("ZXing.Net", "Michael Jahn", "Apache-2.0", "https://github.com/micjahn/ZXing.Net", "QR code decoding"),
+        new("gRPC for .NET", "The gRPC Authors", "Apache-2.0", "https://github.com/grpc/grpc-dotnet", "Xray group control API"),
+        new("Protocol Buffers", "Google LLC", "BSD-3-Clause", "https://github.com/protocolbuffers/protobuf", "Xray group API messages"),
         new("Inter", "Rasmus Andersson", "OFL-1.1", "https://github.com/rsms/inter", "Typeface"),
         new("Material Design Icons", "Pictogrammers", "Apache-2.0", "https://github.com/Templarian/MaterialDesign", "Icons"),
     ];

@@ -29,7 +29,11 @@ public sealed partial class HomeViewModel : PageViewModel
             OnPropertyChanged(nameof(HasProfiles));
         };
         L.PropertyChanged += (_, _) => RefreshAll();
-        _clock = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => OnPropertyChanged(nameof(Elapsed)));
+        _clock = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) =>
+        {
+            OnPropertyChanged(nameof(Elapsed));
+            Services.Connections.RefreshGroupSelection();
+        });
         _clock.Start();
     }
 
@@ -260,6 +264,12 @@ public sealed partial class HomeViewModel : PageViewModel
             return;
         }
 
+        if (UseGroup)
+        {
+            await Shell.Guard(async () => await ConnectGroupAsync(SelectedGroup ?? throw ServerGroup.Invalid()));
+            return;
+        }
+
         if (Shell.SelectedChain is { } chainItem)
         {
             await Shell.Guard(async () =>
@@ -348,6 +358,7 @@ public sealed partial class HomeViewModel : PageViewModel
     [RelayCommand]
     private async Task BestServer()
     {
+        UseGroup = false;
         var best = BestServerPicker.PickBest(Shell.Profiles.Select(i => i.Profile), Shell.Latencies);
         if (best is null)
         {
@@ -401,6 +412,7 @@ public sealed partial class HomeViewModel : PageViewModel
 
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(MainViewModel.SelectedChain) && Shell.SelectedChain is not null) { UseGroup = false; }
         if (e.PropertyName is nameof(MainViewModel.SelectedProfile) or nameof(MainViewModel.SelectedChain) or nameof(MainViewModel.IsMock))
         {
             ResetCheck();
@@ -426,7 +438,7 @@ public sealed partial class HomeViewModel : PageViewModel
                      nameof(Elapsed), nameof(DownSpeed), nameof(UpSpeed), nameof(EngineLabel), nameof(ZapretOn), nameof(ZapretState), nameof(TgOn), nameof(TgState),
                      nameof(IsTun), nameof(IsProxy), nameof(IsWholeDevice), nameof(ModeHint), nameof(HasProfiles), nameof(CanCheckConnection), nameof(CanRunCheck), nameof(CheckDisabledReason), nameof(CheckButtonText),
                       nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult), nameof(HasLatencyResults),
-                      nameof(IsChainActive), nameof(ActiveChainName),
+                      nameof(IsChainActive), nameof(ActiveChainName), nameof(IsGroupActive), nameof(ActiveGroupServer),
                  })
         {
             OnPropertyChanged(name);

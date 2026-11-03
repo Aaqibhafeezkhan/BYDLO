@@ -222,7 +222,9 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         // could misread it mid-switch. Disconnect and connect explicitly instead (issue #141).
         var alreadyActive = Shell.Home.IsConnected
             && Shell.Primary.Chain is null
+            && Shell.Primary.Group is null
             && Shell.Primary.Profile?.Id == item.Id;
+        Shell.Home.UseGroup = false;
         Shell.SelectedProfile = item;
         Shell.SelectedChain = null;
         Shell.Navigate("home");

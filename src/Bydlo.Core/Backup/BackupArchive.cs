@@ -109,6 +109,7 @@ public static class BackupArchive
         }
         if (mode == BackupImportMode.Merge)
         {
+            settings.ServerGroups = [.. current.ServerGroups.Where(g => settings.ServerGroups.All(i => i.Id != g.Id)), .. settings.ServerGroups];
             var r = settings.Routing;
             var c = current.Routing;
             r.DirectDomains = Union(c.DirectDomains, r.DirectDomains);

@@ -36,6 +36,8 @@ public enum MockScenario
 
 public sealed class AppSettings
 {
+    public List<ServerGroup> ServerGroups { get; set; } = [];
+
     public bool StartWithSystem { get; set; }
 
     public bool ConnectOnStartup { get; set; }

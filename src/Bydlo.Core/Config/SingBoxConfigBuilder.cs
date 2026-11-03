@@ -15,7 +15,7 @@ public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null
 /// Generates sing-box configuration (schema of sing-box 1.12+, verified against the 1.14 migration guide):
 /// new DNS server format, rule actions instead of special outbounds, WireGuard as an endpoint.
 /// </summary>
-public sealed class SingBoxConfigBuilder
+public sealed partial class SingBoxConfigBuilder
 {
     public const string ProxyTag = "proxy";
 

@@ -5,8 +5,10 @@ using Bydlo.Core.Security;
 namespace Bydlo.Core.Engines;
 
 /// <summary>Keeps the local adapter as fallback; a privileged lease is owned by a single IPC connection.</summary>
-public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> connect, Func<bool> installed) : IEngine, IReconnectableEngine, IActiveConnectionSource
+public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> connect, Func<bool> installed) : IEngine, IReconnectableEngine, IActiveConnectionSource, IServerGroupSource
 {
+    private Guid? _remoteGroupProfileId;
+    public Guid? SelectedGroupProfileId => _usingRemote ? _remoteGroupProfileId : (local as IServerGroupSource)?.SelectedGroupProfileId;
     private IPrivilegedOperations? _remote;
     private CancellationTokenSource? _pollCancellation;
     private Task? _poll;
@@ -111,6 +113,7 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
 
     private void Apply(HelperReply reply)
     {
+        _remoteGroupProfileId = reply.SelectedGroupProfileId;
         foreach (var line in reply.Logs) { Log?.Invoke(this, line); }
         if (reply.Traffic is { } traffic) { Traffic?.Invoke(this, traffic); }
         if (_state != reply.State)
