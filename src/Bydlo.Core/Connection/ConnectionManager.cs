@@ -185,8 +185,11 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         }
     }
 
-    public IReadOnlyList<ConflictIssue> PreviewConflicts(Profile profile, AppSettings settings) =>
-        _conflicts.CheckPrimary(profile, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey));
+    public IReadOnlyList<ConflictIssue> PreviewConflicts(Profile profile, AppSettings settings)
+    {
+        var issues = _conflicts.CheckPrimary(profile, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey));
+        return FilterOwnPrimaryPort(issues, settings);
+    }
 
     /// <summary>Aggregates per-hop checks for a relay chain (deduped by issue code).</summary>
     public IReadOnlyList<ConflictIssue> PreviewChainConflicts(IReadOnlyList<Profile> hops, AppSettings settings)
@@ -204,7 +207,24 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             }
         }
 
-        return issues;
+        return FilterOwnPrimaryPort(issues, settings);
+    }
+
+    /// <summary>An active primary owns its local proxy port; reconnecting on the same port is not a conflict (issue #202).</summary>
+    private List<ConflictIssue> FilterOwnPrimaryPort(IReadOnlyList<ConflictIssue> issues, AppSettings settings)
+    {
+        if (issues.Count == 0 || !IsActive(PrimaryKey))
+        {
+            return [.. issues];
+        }
+
+        var ownPort = Snapshot(PrimaryKey).LocalProxyPort;
+        if (ownPort == 0 || ownPort != settings.LocalProxyPort)
+        {
+            return [.. issues];
+        }
+
+        return issues.Where(i => !string.Equals(i.Code, "port.local-proxy", StringComparison.Ordinal)).ToList();
     }
 
     /// <summary>Connects the primary tunnel. Disconnects a previous primary first.</summary>
