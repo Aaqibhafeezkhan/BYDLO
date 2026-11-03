@@ -176,9 +176,29 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
     }
 
     /// <summary>Reads the Clash API <c>/traffic</c> stream (one JSON line per second) from the local controller.</summary>
+    internal static bool TryParseTrafficLine(string line, out long up, out long down)
+    {
+        up = 0;
+        down = 0;
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            up = doc.RootElement.GetProperty("up").GetInt64();
+            down = doc.RootElement.GetProperty("down").GetInt64();
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException)
+        {
+            return false;
+        }
+    }
+
     private async Task ReadTrafficAsync(CancellationToken ct)
     {
-        using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        // Direct loopback must bypass any system proxy (see #220): when LocalProxy or
+        // SetSystemProxy routes through our own engine, the default handler would send
+        // 127.0.0.1 traffic into the tunnel and Traffic would never arrive.
+        using var http = new HttpClient(new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan };
         long totalUp = 0, totalDown = 0;
         while (!ct.IsCancellationRequested)
         {
@@ -191,9 +211,10 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
                 using var reader = new StreamReader(stream);
                 while (!ct.IsCancellationRequested && await reader.ReadLineAsync(ct).ConfigureAwait(false) is { } line)
                 {
-                    using var doc = JsonDocument.Parse(line);
-                    var up = doc.RootElement.GetProperty("up").GetInt64();
-                    var down = doc.RootElement.GetProperty("down").GetInt64();
+                    if (!TryParseTrafficLine(line, out var up, out var down))
+                    {
+                        continue;
+                    }
                     totalUp += up;
                     totalDown += down;
                     EmitTraffic(new TrafficSample(DateTimeOffset.Now, up, down, totalUp, totalDown));
