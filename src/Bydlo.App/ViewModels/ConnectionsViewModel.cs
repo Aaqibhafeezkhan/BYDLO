@@ -359,7 +359,8 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         }
         else
         {
-            Shell.ShowToast((result.Errors.Count > 0 ? result.Errors[0] : null) ?? L["import.none"], isError: true);
+            var error = result.Errors.Count > 0 ? result.Errors[0] : null;
+            Shell.ShowToast(error == "import.openvpn.unsafe" ? L[error] : error ?? L["import.none"], isError: true);
         }
 
         OnPropertyChanged(nameof(IsEmpty));

@@ -129,6 +129,7 @@
   "profile.edit.method": "Cipher",
   "profile.edit.engine.invalid": "The options changed. Choose a compatible engine and save again.",
   "error.engine.openvpn.credentials": "Enter a valid username and password in the OpenVPN profile editor. Line breaks are not allowed.",
+  "import.openvpn.unsafe": "This OpenVPN profile contains unsafe or unsupported directives. External commands, plugins, nested configurations and external certificate or key files are not allowed. Use a client configuration with inline certificates and keys.",
   "profile.edit.engine": "Engine",
   "profile.edit.auto": "Automatic",
   "profile.edit.invalid": "Check the name, server, port, options, configuration and credentials.",
