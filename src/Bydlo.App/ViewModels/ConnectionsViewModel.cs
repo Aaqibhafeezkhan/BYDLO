@@ -234,6 +234,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     private async Task Select(ProfileItem item)
     {
         Shell.SelectedProfile = item;
+        Shell.SelectedChain = null;
         await Task.CompletedTask;
     }
 
@@ -241,6 +242,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     private async Task ConnectTo(ProfileItem item)
     {
         Shell.SelectedProfile = item;
+        Shell.SelectedChain = null;
         Shell.Navigate("home");
         if (!Shell.Home.IsConnected)
         {
@@ -301,6 +303,12 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         if (Shell.Primary.Profile?.Id == item.Id)
         {
             Shell.ShowToast(L["connections.delete.active"], isError: true);
+            return;
+        }
+
+        if (Shell.Primary.Chain?.ProfileIds.Contains(item.Id) == true)
+        {
+            Shell.ShowToast(L["chain.delete.active"], isError: true);
             return;
         }
 

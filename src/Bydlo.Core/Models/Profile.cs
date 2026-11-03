@@ -78,9 +78,21 @@ public static class Keys
     public const string Username = "username";
     public const string Tls = "tls";
 
+    /// <summary>WireGuard <c>reserved</c> bytes (comma-separated, e.g. WARP client id).</summary>
+    public const string Reserved = "reserved";
+
     // Secrets
     public const string Uuid = "uuid";
     public const string Password = "password";
     public const string ObfsPassword = "obfs-password";
     public const string RawConfig = "config";
+
+    /// <summary>Cloudflare WARP account id from in-app registration (issue #85).</summary>
+    public const string WarpAccountId = "warp-account-id";
+
+    /// <summary>Cloudflare WARP API token from in-app registration. Never logged.</summary>
+    public const string WarpToken = "warp-token";
+
+    /// <summary>Cloudflare WARP license key returned at registration.</summary>
+    public const string WarpLicense = "warp-license";
 }

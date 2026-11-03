@@ -86,6 +86,9 @@ public sealed record EngineStartRequest
     /// <summary>LAN proxy credentials, set only when <see cref="AppSettings.AllowLan"/> is on.</summary>
     public LocalProxyAuth? LocalProxyAuth { get; init; }
 
+    /// <summary>Relay chain hops (entry first, exit last). <c>null</c> for a direct connection.</summary>
+    public IReadOnlyList<ChainHop>? Chain { get; init; }
+
     public required AppSettings Settings { get; init; }
 
     /// <summary>Per-session working directory for generated configs (inside BYDLO's data dir).</summary>

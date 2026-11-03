@@ -51,6 +51,12 @@ public sealed class MockEngine : IEngine
 
     public async Task StartAsync(EngineStartRequest request, CancellationToken ct = default)
     {
+        // The mock simulates end-to-end traffic, so chains are structurally validated like everywhere else.
+        if (request.Chain is { } chain && chain.Count < ChainValidator.MinHops)
+        {
+            throw new EngineException("A chain needs at least two servers.", localizationKey: "error.chain.toofew");
+        }
+
         var scenario = request.Settings.MockScenario;
         Set(EngineState.Starting);
         Log?.Invoke(this, $"[mock] starting simulated session for '{request.Profile?.Name ?? Descriptor.DisplayName}' (scenario: {scenario})");

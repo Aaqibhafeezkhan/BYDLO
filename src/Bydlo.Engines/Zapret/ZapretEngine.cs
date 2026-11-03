@@ -120,6 +120,7 @@ public sealed class ZapretEngine(IProcessRunner runner, LogRedactor redactor, En
 
     protected override async Task<ProcessSpec> PrepareAsync(EngineStartRequest request, EngineAvailability availability, CancellationToken ct)
     {
+        ChainGuards.ThrowIfChained(EngineKind.Zapret, request);
         var install = ResolveInstallation(request.Settings)!;
         var names = locator.Platform.Os == OsFamily.Windows ? ConflictingProcesses : ["nfqws", "tpws"];
         var running = names.SelectMany(SafeGetProcesses).Distinct().ToArray();

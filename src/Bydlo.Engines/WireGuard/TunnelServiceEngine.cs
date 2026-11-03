@@ -103,6 +103,7 @@ public sealed class TunnelServiceEngine : IEngine
 
     public async Task StartAsync(EngineStartRequest request, CancellationToken ct = default)
     {
+        ChainGuards.ThrowIfChained(EngineKind.WireGuard, request);
         Set(EngineState.Starting);
         try
         {

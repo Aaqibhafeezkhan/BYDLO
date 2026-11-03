@@ -32,6 +32,9 @@ public sealed record SessionSnapshot(
 {
     public string? ErrorLocalizationKey { get; init; }
     public bool CleanupPending { get; init; }
+
+    /// <summary>Active relay chain, if the session carries chained traffic (issue #75).</summary>
+    public ProxyChain? Chain { get; init; }
 }
 
 /// <summary>
@@ -100,6 +103,25 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     public IReadOnlyList<ConflictIssue> PreviewConflicts(Profile profile, AppSettings settings) =>
         _conflicts.CheckPrimary(profile, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey));
 
+    /// <summary>Aggregates per-hop checks for a relay chain (deduped by issue code).</summary>
+    public IReadOnlyList<ConflictIssue> PreviewChainConflicts(IReadOnlyList<Profile> hops, AppSettings settings)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var issues = new List<ConflictIssue>();
+        foreach (var hop in hops)
+        {
+            foreach (var issue in _conflicts.CheckPrimary(hop, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey)))
+            {
+                if (seen.Add(issue.Code))
+                {
+                    issues.Add(issue);
+                }
+            }
+        }
+
+        return issues;
+    }
+
     /// <summary>Connects the primary tunnel. Disconnects a previous primary first.</summary>
     public async Task ConnectAsync(Profile profile, AppSettings settings, CancellationToken ct = default)
     {
@@ -120,6 +142,56 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             var engine = _registry.CreateFor(profile, settings, _os);
             var secrets = await _secrets.LoadAsync(profile.Id.ToString(), ct).ConfigureAwait(false);
             var session = new Session(PrimaryKey, engine, profile, secrets, settings, lanAuth);
+            await StartSessionUnsafeAsync(session, ct).ConfigureAwait(false);
+
+            if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
+            {
+                NetworkSafetyGuard.EnsureAllowed("set the system proxy");
+                await _systemProxy.SetAsync("127.0.0.1", settings.LocalProxyPort, ct).ConfigureAwait(false);
+                session.SystemProxySet = true;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Connects a relay chain (entry first, exit last). Disconnects a previous primary first.</summary>
+    public async Task ConnectChainAsync(ProxyChain chain, IReadOnlyList<ChainHop> hops, AppSettings settings, CancellationToken ct = default)
+    {
+        settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        if (hops.Count != chain.ProfileIds.Count)
+        {
+            throw new EngineException("Chain hops do not match the saved chain.", localizationKey: "error.chain.unknown");
+        }
+
+        for (var i = 0; i < hops.Count; i++)
+        {
+            if (hops[i].Profile.Id != chain.ProfileIds[i])
+            {
+                throw new EngineException("Chain hops do not match the saved chain.", localizationKey: "error.chain.unknown");
+            }
+        }
+
+        ChainValidator.ThrowIfInvalid(chain, id => hops.FirstOrDefault(h => h.Profile.Id == id)?.Profile);
+        var hopProfiles = hops.Select(h => h.Profile).ToList();
+        var blocking = PreviewChainConflicts(hopProfiles, settings).Where(i => i.Severity == ConflictSeverity.Blocking).ToList();
+        if (blocking.Count > 0)
+        {
+            Fail(PrimaryKey, hopProfiles[^1], settings, string.Join(" ", blocking.Select(b => b.Message)));
+            throw new EngineException(blocking[0].Message);
+        }
+
+        var exit = hopProfiles[^1];
+        var lanAuth = await LoadLocalProxyAuthAsync(settings, exit, ct).ConfigureAwait(false);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false);
+            var engine = _registry.CreateForChain(hopProfiles, chain.PreferredEngine, settings, _os);
+            var session = new Session(PrimaryKey, engine, exit, hops[^1].Secrets, settings, lanAuth, chain, hops);
             await StartSessionUnsafeAsync(session, ct).ConfigureAwait(false);
 
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
@@ -269,7 +341,8 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         session.Error = null;
         session.ErrorLocalizationKey = null;
         Publish(session);
-        _log.Info(session.Key, $"Starting {session.Engine.Descriptor.DisplayName}{(session.Profile is null ? "" : $" for '{session.Profile.Name}'")}");
+        var target = session.Chain is { } chain ? $"chain '{chain.Name}'" : session.Profile is null ? "" : $" for '{session.Profile.Name}'";
+        _log.Info(session.Key, $"Starting {session.Engine.Descriptor.DisplayName}{target}");
 
         try
         {
@@ -278,6 +351,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 Profile = session.Profile,
                 Secrets = session.Secrets,
                 LocalProxyAuth = session.LocalProxyAuth,
+                Chain = session.Hops,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
             }, ct).ConfigureAwait(false);
@@ -404,6 +478,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 Profile = session.Profile,
                 Secrets = session.Secrets,
                 LocalProxyAuth = session.LocalProxyAuth,
+                Chain = session.Hops,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
             };
@@ -453,15 +528,20 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
     private void Publish(Session session) => SessionChanged?.Invoke(this, session.ToSnapshot());
 
-    private sealed class Session(string key, IEngine engine, Profile? profile, ProfileSecrets secrets, AppSettings settings, LocalProxyAuth? lanAuth = null)
+    private sealed class Session(string key, IEngine engine, Profile? profile, ProfileSecrets secrets, AppSettings settings, LocalProxyAuth? lanAuth = null, ProxyChain? chain = null, IReadOnlyList<ChainHop>? hops = null)
     {
         public string Key { get; } = key;
 
         public IEngine Engine { get; } = engine;
 
+        /// <summary>Exit hop for chain sessions; the connected profile otherwise.</summary>
         public Profile? Profile { get; } = profile;
 
         public ProfileSecrets Secrets { get; } = secrets;
+
+        public ProxyChain? Chain { get; } = chain;
+
+        public IReadOnlyList<ChainHop>? Hops { get; } = hops;
 
         public LocalProxyAuth? LocalProxyAuth { get; } = lanAuth;
 
@@ -494,6 +574,6 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
         public SessionSnapshot ToSnapshot() =>
             new(Key, Status, Profile, Engine.Descriptor.Kind, IsMock, ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort)
-            { ErrorLocalizationKey = ErrorLocalizationKey, CleanupPending = CleanupPending };
+            { ErrorLocalizationKey = ErrorLocalizationKey, CleanupPending = CleanupPending, Chain = Chain };
     }
 }

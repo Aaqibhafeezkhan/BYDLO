@@ -40,6 +40,9 @@
         </ComboBox>
         <Button Classes="text-action" Content="{l:T import.title}" Command="{Binding Shell.NavigateCommand}" CommandParameter="connections"
                 HorizontalAlignment="Center" Margin="0,10,0,0" IsVisible="{Binding !HasProfiles}" />
+        <Border Classes="pill ok" IsVisible="{Binding IsChainActive}" HorizontalAlignment="Center" Margin="0,10,0,0" Padding="10,4">
+          <TextBlock Text="{Binding ActiveChainName}" FontSize="12" TextTrimming="CharacterEllipsis" />
+        </Border>
         <Button Classes="text-action" Content="{l:T home.best}" Command="{Binding BestServerCommand}"
                 HorizontalAlignment="Center" Margin="0,10,0,0" IsVisible="{Binding HasProfiles}" />
         <Border Width="224" Height="54" HorizontalAlignment="Center" Margin="0,22,0,20" CornerRadius="12" BoxShadow="{DynamicResource ActionShadow}">

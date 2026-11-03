@@ -77,6 +77,18 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
                 redactor.RegisterSecret(secret);
             }
 
+            // Chain hops carry their own secrets; every one must be masked before configs are built.
+            if (request.Chain is { } chainHops)
+            {
+                foreach (var hop in chainHops)
+                {
+                    foreach (var secret in hop.Secrets.Values.Values)
+                    {
+                        redactor.RegisterSecret(secret);
+                    }
+                }
+            }
+
             Directory.CreateDirectory(request.WorkDirectory);
             var spec = await PrepareAsync(request, availability, ct).ConfigureAwait(false);
             _stopping = false;
