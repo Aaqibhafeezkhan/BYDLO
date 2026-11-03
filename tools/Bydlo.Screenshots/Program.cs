@@ -17,7 +17,7 @@ var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
 if (args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
-    args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
+    args.Contains("--verify-updates", StringComparer.Ordinal) || args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
@@ -124,6 +124,45 @@ void Shoot(string name, double width, double height, Action<Window>? arrange = n
     frame.Save(Path.Combine(output, name + ".png"));
     window.Close();
     Console.WriteLine($"saved {name}.png");
+}
+
+if (args.Contains("--verify-updates", StringComparer.Ordinal))
+{
+    if (shell.HasReleaseNotification || services.Settings.LastUpdateCheck is not null)
+        throw new InvalidOperationException("Mock startup must skip release HTTP checks.");
+    var release = new Bydlo.Core.Diagnostics.GitHubRelease("v9.9.9", "");
+    shell.ShowReleaseNotification(release);
+    services.Settings.PendingUpdate = release;
+    shell.IsOnboardingVisible = true;
+    foreach (var width in new[] { 1180, 380 })
+    {
+        Shoot("update-onboarding-" + width, width, 780, window =>
+        {
+            var open = window.GetVisualDescendants().OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, shell.OpenReleaseNotificationCommand));
+            if (!open.IsEffectivelyVisible || open.Bounds.Width <= 0)
+                throw new InvalidOperationException("Release action must be visible during onboarding.");
+        });
+    }
+    shell.FinishOnboardingCommand.Execute(null);
+    Shoot("update-home-compact", 380, 700, _ =>
+    {
+        shell.ShowToast("Temporary notification");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(4.5));
+        Dispatcher.UIThread.MainLoop(timeout.Token);
+        if (!shell.HasReleaseNotification || shell.Toast is not null)
+            throw new InvalidOperationException("Release notice must outlive unrelated toasts.");
+    });
+    Bydlo.App.Services.Loc.Instance.SetLanguage("en");
+    if (!shell.ReleaseNotificationText.Contains("v9.9.9", StringComparison.Ordinal))
+        throw new InvalidOperationException("Release version must survive a language change.");
+    Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
+    Wait(shell.DismissReleaseNotificationCommand.ExecuteAsync(null));
+    if (shell.HasReleaseNotification || services.Settings.PendingUpdate is not null)
+        throw new InvalidOperationException("Dismiss must clear the notification and persisted release.");
+    Shoot("update-dismissed", 1180, 780);
+    Console.WriteLine("Release notification verification passed (Mock Mode, no network).");
+    return;
 }
 
 if (args.Contains("--preview-brand", StringComparer.Ordinal))

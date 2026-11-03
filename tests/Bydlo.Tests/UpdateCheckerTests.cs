@@ -49,6 +49,16 @@ public sealed class UpdateCheckerTests
         Assert.Null(await client.CheckBydloAsync("0.1.0"));
     }
 
+    [Theory]
+    [InlineData("draft")]
+    [InlineData("prerelease")]
+    public async Task Bydlo_check_ignores_unpublished_or_preview_releases(string flag)
+    {
+        var client = new GitHubUpdateClient(() => new Stub(
+            $$"""{"tag_name":"v9.9.9","{{flag}}":true}"""));
+        Assert.Null(await client.CheckBydloAsync("0.1.0"));
+    }
+
     [Fact]
     public async Task Engine_check_compares_pinned_version()
     {

@@ -48,6 +48,11 @@ public sealed class GitHubUpdateClient(Func<HttpMessageHandler>? handlerFactory 
             {
                 return null;
             }
+            if ((root.TryGetProperty("draft", out var draft) && draft.ValueKind != JsonValueKind.False) ||
+                (root.TryGetProperty("prerelease", out var prerelease) && prerelease.ValueKind != JsonValueKind.False))
+            {
+                return null;
+            }
             if (!root.TryGetProperty("tag_name", out var tag) || tag.ValueKind != JsonValueKind.String)
             {
                 return null;

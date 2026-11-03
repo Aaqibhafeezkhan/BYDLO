@@ -54,6 +54,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Services = services;
         L.PropertyChanged += (_, _) =>
         {
+            OnPropertyChanged(nameof(ReleaseNotificationText));
             if (Toast is not null && _toastLocalizationKey is not null)
             {
                 Toast = Loc.Error(Toast, _toastLocalizationKey);
