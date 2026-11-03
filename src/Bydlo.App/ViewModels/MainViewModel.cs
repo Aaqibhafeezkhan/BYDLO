@@ -244,8 +244,6 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private ThemePreference _onboardingTheme = ThemePreference.System;
 
-    public bool OnboardingThemePurple { get => OnboardingTheme == ThemePreference.Purple; set { if (value) { OnboardingTheme = ThemePreference.Purple; } } }
-
     public bool OnboardingThemeLight { get => OnboardingTheme == ThemePreference.Light; set { if (value) { OnboardingTheme = ThemePreference.Light; } } }
 
     public bool OnboardingThemeOled { get => OnboardingTheme == ThemePreference.Oled; set { if (value) { OnboardingTheme = ThemePreference.Oled; } } }
@@ -304,7 +302,6 @@ public sealed partial class MainViewModel : ViewModelBase
         Services.Settings.Theme = value;
         Services.Theme.Apply(value);
         _ = Services.SaveSettingsAsync();
-        OnPropertyChanged(nameof(OnboardingThemePurple));
         OnPropertyChanged(nameof(OnboardingThemeLight));
         OnPropertyChanged(nameof(OnboardingThemeOled));
         OnPropertyChanged(nameof(OnboardingThemeSystem));

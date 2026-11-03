@@ -44,7 +44,8 @@ public sealed class AppSettings
 
     public bool SuggestClipboardLinks { get; set; } = true;
 
-    public ThemePreference Theme { get; set; } = ThemePreference.Purple;
+    /// <summary>Fresh installs follow the OS (Light or Black); saved choices, Purple included, are kept as stored.</summary>
+    public ThemePreference Theme { get; set; } = ThemePreference.System;
 
     /// <summary>Installed custom theme id (file <c>themes/&lt;id&gt;.json</c>). Used only when <see cref="Theme"/> is Custom.</summary>
     public string? CustomThemeId { get; set; }

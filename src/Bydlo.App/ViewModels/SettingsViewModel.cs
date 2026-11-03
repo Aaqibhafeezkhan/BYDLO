@@ -46,6 +46,8 @@ public sealed partial class SettingsViewModel : PageViewModel
     public SettingsViewModel(MainViewModel shell)
         : base(shell)
     {
+        // The built-in Purple row carries a localized name.
+        Loc.Instance.PropertyChanged += (_, _) => RefreshCustomThemes();
         var s = Services.Settings;
         _theme = s.Theme;
         _language = s.Language;
@@ -335,8 +337,6 @@ public sealed partial class SettingsViewModel : PageViewModel
         });
     }
 
-    public bool ThemePurple { get => Theme == ThemePreference.Purple; set { if (value) { Theme = ThemePreference.Purple; } } }
-
     public bool ThemeLight { get => Theme == ThemePreference.Light; set { if (value) { Theme = ThemePreference.Light; } } }
 
     public bool ThemeOled { get => Theme == ThemePreference.Oled; set { if (value) { Theme = ThemePreference.Oled; } } }
@@ -348,8 +348,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         Services.Settings.Theme = value;
         if (value == ThemePreference.Custom && !ApplyStoredCustom())
         {
-            // The custom file is gone: fall back to Purple instead of a half-applied UI.
-            Theme = ThemePreference.Purple;
+            // The custom file is gone: fall back to System instead of a half-applied UI.
+            Theme = ThemePreference.System;
             return;
         }
         if (value != ThemePreference.Custom)
@@ -358,11 +358,11 @@ public sealed partial class SettingsViewModel : PageViewModel
             UpdateWarning(false);
         }
         Persist();
-        OnPropertyChanged(nameof(ThemePurple));
         OnPropertyChanged(nameof(ThemeLight));
         OnPropertyChanged(nameof(ThemeOled));
         OnPropertyChanged(nameof(ThemeSystem));
         OnPropertyChanged(nameof(ThemeCustom));
+        OnPropertyChanged(nameof(IsCustomGroupActive));
         RefreshCustomThemes();
     }
 

@@ -104,7 +104,7 @@ public static class BackupArchive
         settings.CustomThemeId = current.CustomThemeId;
         if (settings.Theme == ThemePreference.Custom && settings.CustomThemeId is null)
         {
-            settings.Theme = ThemePreference.Purple;
+            settings.Theme = ThemePreference.System;
         }
         if (mode == BackupImportMode.Merge)
         {

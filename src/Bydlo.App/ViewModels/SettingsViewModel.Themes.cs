@@ -11,16 +11,23 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Bydlo.App.ViewModels;
 
-/// <summary>Installed custom theme with the active marker (issue #41).</summary>
-public sealed class CustomThemeRow(CustomThemeDocument doc, bool isActive) : ObservableObject
+/// <summary>Theme in the custom group with the active marker (issue #41); built-in Purple cannot be deleted (issue #134).</summary>
+public sealed class CustomThemeRow(string id, string name, string author, bool isActive, bool isBuiltIn = false) : ObservableObject
 {
-    public string Id => doc.Id;
+    public CustomThemeRow(CustomThemeDocument doc, bool isActive)
+        : this(doc.Id, doc.Name, doc.Author, isActive)
+    {
+    }
 
-    public string Name => doc.Name;
+    public string Id => id;
 
-    public string Author => doc.Author;
+    public string Name => name;
+
+    public string Author => author;
 
     public bool IsActive => isActive;
+
+    public bool CanDelete => !isBuiltIn;
 }
 
 /// <summary>One downloadable theme from the repository gallery.</summary>
@@ -39,7 +46,13 @@ public sealed class GalleryThemeRow(ThemeGalleryEntry entry)
 public sealed partial class SettingsViewModel
 {
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
+    /// <summary>Row id of the built-in Purple theme; the colon keeps it apart from installed theme ids.</summary>
+    public const string BuiltInPurpleId = "builtin:purple";
+
     public bool ThemeCustom => Theme == ThemePreference.Custom;
+
+    /// <summary>Purple and installed JSON themes are listed together, outside the base theme switch.</summary>
+    public bool IsCustomGroupActive => Theme is ThemePreference.Purple or ThemePreference.Custom;
 
     public ObservableCollection<CustomThemeRow> InstalledThemes { get; } = [];
 
@@ -56,7 +69,8 @@ public sealed partial class SettingsViewModel
     public void RefreshCustomThemes()
     {
         var active = Theme == ThemePreference.Custom ? Services.Settings.CustomThemeId : null;
-        InstalledThemes.ReplaceWith(CustomThemeStore.ListAll(ThemesDirectory).Select(d => new CustomThemeRow(d, d.Id == active)));
+        var purple = new CustomThemeRow(BuiltInPurpleId, L["theme.purple"], L["theme.builtin"], Theme == ThemePreference.Purple, isBuiltIn: true);
+        InstalledThemes.ReplaceWith(CustomThemeStore.ListAll(ThemesDirectory).Select(d => new CustomThemeRow(d, d.Id == active)).Prepend(purple));
         UpdateContrastWarning();
     }
 
@@ -67,13 +81,13 @@ public sealed partial class SettingsViewModel
         CustomThemeWarning = low ? L["theme.custom.lowcontrast"] : "";
     }
 
-    /// <summary>Applies the stored custom theme; falls back to Purple when the file is gone or unappliable.</summary>
+    /// <summary>Applies the stored custom theme; falls back to System when the file is gone or unappliable.</summary>
     private bool ApplyStoredCustom()
     {
         var doc = Services.Settings.CustomThemeId is { } id ? CustomThemeStore.TryLoad(ThemesDirectory, id) : null;
         if (doc is null)
         {
-            Services.Theme.Apply(ThemePreference.Purple);
+            Services.Theme.Apply(ThemePreference.System);
             return false;
         }
         try
@@ -83,7 +97,7 @@ public sealed partial class SettingsViewModel
         }
         catch (Exception ex) when (ex is FormatException or InvalidOperationException or CustomThemeException)
         {
-            Services.Theme.Apply(ThemePreference.Purple);
+            Services.Theme.Apply(ThemePreference.System);
             UpdateWarning(false);
             return false;
         }
@@ -136,6 +150,11 @@ public sealed partial class SettingsViewModel
     [RelayCommand]
     private void ApplyCustomTheme(string id)
     {
+        if (id == BuiltInPurpleId)
+        {
+            Theme = ThemePreference.Purple;
+            return;
+        }
         var doc = CustomThemeStore.TryLoad(ThemesDirectory, id);
         if (doc is null) { Shell.ShowToast(L["theme.custom.broken"], isError: true); return; }
         ApplyCustomDocument(doc);
@@ -151,10 +170,10 @@ public sealed partial class SettingsViewModel
         }
         catch (Exception ex) when (ex is FormatException or InvalidOperationException or CustomThemeException)
         {
-            Services.Theme.Apply(ThemePreference.Purple);
+            Services.Theme.Apply(ThemePreference.System);
             Services.Settings.CustomThemeId = null;
             Shell.ShowToast(L["theme.custom.broken"], isError: true);
-            Theme = ThemePreference.Purple;
+            Theme = ThemePreference.System;
             Persist();
             RefreshCustomThemes();
             return;
@@ -167,6 +186,7 @@ public sealed partial class SettingsViewModel
     [RelayCommand]
     private void DeleteCustomTheme(string id)
     {
+        if (id == BuiltInPurpleId) { return; }
         if (!CustomThemeStore.Exists(ThemesDirectory, id))
         {
             RefreshCustomThemes();
@@ -179,7 +199,7 @@ public sealed partial class SettingsViewModel
         }
         if (Services.Settings.CustomThemeId == id && Theme == ThemePreference.Custom)
         {
-            Theme = ThemePreference.Purple;
+            Theme = ThemePreference.System;
         }
         Persist();
         RefreshCustomThemes();
