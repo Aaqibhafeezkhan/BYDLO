@@ -4,17 +4,20 @@ using Avalonia.Platform.Storage;
 using Bydlo.App.Services;
 using Bydlo.Core.Import;
 using Bydlo.Core.Models;
+using Bydlo.Core.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Bydlo.App.ViewModels;
 
-public enum AddServerStep { Source, Link, File, Qr, Manual, Preview }
+public enum AddServerStep { Source, Link, File, Qr, Manual, Preview, Catalog }
 public sealed record ServerPreviewItem(string Name, string Protocol, string Endpoint);
 
 public sealed partial class AddServerWizardViewModel : PageViewModel
 {
     private readonly SubscriptionClient _subscriptions;
+    private readonly bool _usesDefaultSubscriptions;
+    private string? _pendingName;
     private ImportResult? _pending;
     private string? _pendingUrl;
     private SubscriptionMetadata? _pendingMetadata;
@@ -22,7 +25,10 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     private CancellationTokenSource? _preparation;
 
     public AddServerWizardViewModel(MainViewModel shell, SubscriptionClient? subscriptions = null) : base(shell)
-    { _subscriptions = subscriptions ?? Services.Subscriptions; }
+    {
+        _subscriptions = subscriptions ?? Services.Subscriptions;
+        _usesDefaultSubscriptions = subscriptions is null;
+    }
 
     [ObservableProperty] private AddServerStep _step;
     [ObservableProperty] private bool _busy;
@@ -54,6 +60,8 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     public bool IsFile => Step == AddServerStep.File;
     public bool IsQr => Step == AddServerStep.Qr;
     public bool IsManual => Step == AddServerStep.Manual;
+    public bool IsCatalog => Step == AddServerStep.Catalog;
+    public IReadOnlyList<CatalogRow> CatalogSources => PublicSubscriptionCatalog.Sources.Select(source => new CatalogRow(source)).ToArray();
     public bool IsPreview => Step == AddServerStep.Preview;
     public bool HasError => ErrorKey is not null;
     public bool HasSubscriptionDetails => SubscriptionDetails.Length > 0;
@@ -68,7 +76,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
 
     partial void OnStepChanged(AddServerStep value)
     {
-        foreach (var name in new[] { nameof(IsSource), nameof(IsLink), nameof(IsFile), nameof(IsQr), nameof(IsManual), nameof(IsPreview) })
+        foreach (var name in new[] { nameof(IsSource), nameof(IsLink), nameof(IsFile), nameof(IsQr), nameof(IsManual), nameof(IsCatalog), nameof(IsPreview) })
         { OnPropertyChanged(name); }
     }
     partial void OnErrorKeyChanged(string? value) { OnPropertyChanged(nameof(Error)); OnPropertyChanged(nameof(HasError)); }
@@ -84,6 +92,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pending = null;
         _pendingUrl = null;
         _pendingMetadata = null;
+        _pendingName = null;
         Input = Identifier = Password = Configuration = ServerName = Host = Sni = Summary = SubscriptionDetails = "";
         ErrorKey = null;
         SkippedCount = 0;
@@ -97,6 +106,32 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     [RelayCommand] private void ChooseLink() => Choose(AddServerStep.Link);
     [RelayCommand] private void ChooseFile() => Choose(AddServerStep.File);
     [RelayCommand] private void ChooseQr() => Choose(AddServerStep.Qr);
+    [RelayCommand]
+    private void ChooseCatalog()
+    {
+        OnPropertyChanged(nameof(CatalogSources));
+        Choose(AddServerStep.Catalog);
+    }
+
+    [RelayCommand]
+    private Task PreviewCatalog(CatalogRow row) => RunPreparation(async () =>
+    {
+        if (_usesDefaultSubscriptions && (Services.IsMock || NetworkSafetyGuard.IsLocked))
+        {
+            ErrorKey = "catalog.locked";
+            return;
+        }
+
+        var (preview, url) = await _subscriptions.FetchFirstAsync(row.Source.Urls, _preparation!.Token);
+        if (url is null)
+        {
+            ErrorKey = "wizard.error.subscription";
+            return;
+        }
+
+        ShowPreview(preview.Import, url, preview.Metadata, row.Name);
+    });
+
     [RelayCommand] private void ChooseManual() => Choose(AddServerStep.Manual);
 
     private void Choose(AddServerStep step) { if (!Busy) { ErrorKey = null; Step = step; } }
@@ -109,6 +144,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pending = null;
         _pendingUrl = null;
         _pendingMetadata = null;
+        _pendingName = null;
         PreviewItems.Clear();
         Step = IsPreview ? _previousStep : AddServerStep.Source;
     }
@@ -153,7 +189,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         else { ShowPreview(Services.Importer.ImportText(text)); }
     }
 
-    private void ShowPreview(ImportResult result, string? url = null, SubscriptionMetadata? metadata = null)
+    private void ShowPreview(ImportResult result, string? url = null, SubscriptionMetadata? metadata = null, string? name = null)
     {
         if (_preparation?.IsCancellationRequested == true) { return; }
         if (result.IsEmpty)
@@ -165,6 +201,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pending = result;
         _pendingUrl = url;
         _pendingMetadata = metadata;
+        _pendingName = name;
         _previousStep = Step;
         PreviewItems.ReplaceWith(result.Profiles.Select(p => new ServerPreviewItem(Safe(p.Profile.Name, p.Secrets), Labels.Protocol(p.Profile.Protocol), Safe(p.Profile.Endpoint, p.Secrets))));
         Summary = Loc.T(url is null ? "wizard.recognized" : "wizard.subscription.recognized", result.Profiles.Count);
@@ -267,6 +304,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pending = null;
         _pendingUrl = null;
         _pendingMetadata = null;
+        _pendingName = null;
         PreviewItems.Clear();
         if (IsPreview) { Step = _previousStep; }
         try { await action(); }
@@ -284,7 +322,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         try
         {
             if (_pendingUrl is { } url)
-            { await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, pending.Profiles, _pendingMetadata); }
+            { await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? new Uri(url).Host, url, pending.Profiles, _pendingMetadata); }
             else { await Services.Profiles.AddAsync(pending.Profiles); }
             Shell.ReloadProfiles();
             Shell.SelectedProfile = Shell.Profiles.FirstOrDefault(p => p.Id == pending.Profiles[0].Profile.Id) ?? Shell.SelectedProfile;
@@ -297,4 +335,11 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         catch (Exception) { ErrorKey = "wizard.error.save"; }
         finally { Busy = false; IsSaving = false; }
     }
+}
+
+public sealed class CatalogRow(PublicSubscriptionSource source)
+{
+    public PublicSubscriptionSource Source => source;
+    public string Name => Loc.Instance[source.NameKey];
+    public string Description => Loc.Instance[source.DescriptionKey];
 }

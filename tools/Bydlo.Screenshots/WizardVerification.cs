@@ -32,7 +32,7 @@ internal static class WizardVerification
         Pump();
         Require(shell.IsAddServerOpen && wizard.IsSource && !shell.CanReceiveActivation, "Wizard owns the current import flow");
         var cards = window.GetVisualDescendants().OfType<Button>().Count(b => b.Classes.Contains("source-card") && b.IsEffectivelyVisible);
-        Require(cards == 3, "Three source cards are shown");
+        Require(cards == 4, "Four source cards are shown");
         Capture("wizard-source", 1180, 780);
         Capture("wizard-source-narrow", 400, 860);
 
@@ -125,6 +125,25 @@ internal static class WizardVerification
         Wait(wizard.AddCommand.ExecuteAsync(null));
         Require(services.Profiles.Profiles.Count == 4 && !shell.IsAddServerOpen, "Manual server is saved only on confirmation");
         Require(services.Connections.Primary.Status == Bydlo.Core.Connection.ConnectionStatus.Disconnected, "Import does not start an engine");
+        shell.OpenAddServerCommand.Execute(null);
+        wizard.ChooseCatalogCommand.Execute(null);
+        foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled, ThemePreference.System })
+        {
+            services.Theme.Apply(theme);
+            Capture($"wizard-catalog-{theme}-wide", 1180, 780);
+            Capture($"wizard-catalog-{theme}-narrow", 380, 740);
+        }
+        services.Theme.Apply(ThemePreference.Purple);
+        var source = wizard.CatalogSources[0];
+        handler.FailNext = true;
+        var previousRequests = handler.Requests;
+        Wait(wizard.PreviewCatalogCommand.ExecuteAsync(source));
+        Require(wizard.IsPreview && wizard.PreviewItems.Count == 2 && wizard.SkippedCount == 1, "Catalog uses the shared preview and deduplicates nodes");
+        Require(handler.Requests == previousRequests + 2 && services.Profiles.Profiles.Count == 4, "Catalog falls back without saving");
+        Wait(wizard.AddCommand.ExecuteAsync(null));
+        var publicSubscription = services.Profiles.Subscriptions.Single(s => s.Name == source.Name);
+        Require(services.Profiles.GetSubscriptionUrlAsync(publicSubscription.Id).GetAwaiter().GetResult() == source.Source.Urls[1], "The working mirror is saved as subscription provenance");
+        Require(services.Profiles.Profiles.Count(p => p.SubscriptionId == publicSubscription.Id) == 2, "Confirmed profiles belong to the public subscription");
         window.Close();
         Console.WriteLine("Wizard verification passed: source cards, preview, cancel, base64, files, QR image/clipboard, subscription snapshot/metadata/errors/cancellation, manual input.");
 
@@ -160,13 +179,25 @@ internal static class WizardVerification
         public int Requests { get; private set; }
         public bool Fail { get; set; }
         public bool Delay { get; set; }
+        public bool FailNext { get; set; }
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests++;
+            if (FailNext)
+            {
+                FailNext = false;
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            }
             if (Delay) { await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken); }
             if (Fail) { throw new HttpRequestException("fake-token must not appear in the UI"); }
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             { Content = new StringContent(Link + "\nvless://11111111-2222-3333-4444-555555555555@second.example.invalid:443#%D0%92%D1%82%D0%BE%D1%80%D0%BE%D0%B9%20%D1%81%D0%B5%D1%80%D0%B2%D0%B5%D1%80") };
+            if (request.RequestUri?.Host.EndsWith("gitlab.com", StringComparison.Ordinal) == true)
+            {
+                var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+                response.Content.Dispose();
+                response.Content = new StringContent(payload + "\n" + Link + "\nunsupported://fixture");
+            }
             response.Headers.TryAddWithoutValidation("subscription-userinfo", "upload=1048576; download=5242880; total=10737418240; expire=2000000000");
             return response;
         }

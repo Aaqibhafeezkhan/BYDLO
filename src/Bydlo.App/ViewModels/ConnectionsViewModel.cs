@@ -16,6 +16,8 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     [ObservableProperty] private bool _isWorking;
 
+    partial void OnIsWorkingChanged(bool value) => OnPropertyChanged(nameof(CanRegisterWarp));
+
     private bool _autoRefreshInProgress;
 
     [ObservableProperty] private bool _isCheckingLatency;
@@ -65,7 +67,6 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     public override void OnShown()
     {
         Subscriptions.ReplaceWith(Services.Profiles.Subscriptions.Select(s => new SubscriptionRow(s)));
-        RefreshCatalog();
         OnPropertyChanged(nameof(IsEmpty));
         _ = AutoRefreshIfDueAsync();
         OnPropertyChanged(nameof(CanMeasureSpeed));

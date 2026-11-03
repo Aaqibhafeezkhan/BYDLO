@@ -30,7 +30,8 @@ public class PublicCatalogTests
     [Fact]
     public async Task FetchFirst_tries_mirrors_in_order_and_returns_working_url()
     {
-        var good = Convert.ToBase64String(Encoding.UTF8.GetBytes("vless://u@h.example.com:443#1"));
+        var good = Convert.ToBase64String(Encoding.UTF8.GetBytes(
+            "vless://u@h.example.com:443#1\nvless://u@h.example.com:443#duplicate\nvless://other@h.example.com:443#other"));
         using var http = new HttpClient(new MapHandler(new Dictionary<string, HttpResponseMessage>
         {
             ["https://one.invalid/s"] = new(HttpStatusCode.InternalServerError),
@@ -38,7 +39,7 @@ public class PublicCatalogTests
         }));
         var client = new SubscriptionClient(http, new ProfileImporter());
         var (preview, url) = await client.FetchFirstAsync(["https://one.invalid/s", "https://two.invalid/s"]);
-        Assert.False(preview.Import.IsEmpty);
+        Assert.Equal(["1", "other"], preview.Import.Profiles.Select(p => p.Profile.Name));
         Assert.Equal("https://two.invalid/s", url);
     }
 

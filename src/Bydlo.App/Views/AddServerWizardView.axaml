@@ -45,7 +45,35 @@
                 </StackPanel>
               </Grid>
             </Button>
+            <Button Classes="source-card" Command="{Binding ChooseCatalogCommand}">
+              <Grid ColumnDefinitions="Auto,*">
+                <c:OutlineIcon Data="{StaticResource LineServers}" Width="26" Height="26" Foreground="{DynamicResource AccentBrush}" Margin="0,0,18,0" />
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Classes="h2" Text="{l:T catalog.title}" TextWrapping="Wrap" />
+                  <TextBlock Classes="muted" Text="{l:T catalog.hint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid>
+            </Button>
             <Button Classes="text-action" Content="{l:T wizard.manual}" Command="{Binding ChooseManualCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsCatalog}" Spacing="12">
+            <TextBlock Classes="h2" Text="{l:T catalog.title}" TextWrapping="Wrap" />
+            <TextBlock Classes="muted" Text="{l:T catalog.warning}" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding CatalogSources}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CatalogRow">
+                  <Button Classes="source-card" Margin="0,0,0,8"
+                          Command="{Binding $parent[UserControl].((vm:AddServerWizardViewModel)DataContext).PreviewCatalogCommand}"
+                          CommandParameter="{Binding}">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                      <TextBlock Classes="muted" Text="{Binding Description}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
 
           <StackPanel IsVisible="{Binding IsLink}" Spacing="14">
