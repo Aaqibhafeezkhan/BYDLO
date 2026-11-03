@@ -91,6 +91,7 @@ public sealed class EngineRegistry
             throw new EngineException("No chain-capable engine supports every hop on this OS.", localizationKey: "error.chain.engine");
         }
 
+        var kind = candidates[0];
         if (preferred is { } wanted)
         {
             // An explicit engine that cannot carry the chain is an honest NotImplemented, not a silent fallback.
@@ -99,10 +100,9 @@ public sealed class EngineRegistry
                 throw new EngineException($"Engine {wanted} cannot carry this chain.", localizationKey: "error.chain.engine");
             }
 
-            return Create(wanted, settings);
+            kind = wanted;
         }
 
-        var kind = candidates[0];
         if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
         {
             throw new EngineException("error.killswitch.engine");

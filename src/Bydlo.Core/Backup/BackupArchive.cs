@@ -130,10 +130,13 @@ public static class BackupArchive
         if (data.Version != 1 || data.Settings is null || data.Profiles is null || data.Subscriptions is null || data.ToolSecrets?.Values is null || data.Chains is null)
         { throw new InvalidDataException("Invalid backup."); }
         var s = data.Settings;
-        if (s.Routing is null || s.Zapret is null || s.TgWsProxy is null || s.EnginePaths is null ||
+        if (s.Routing is null || s.DpiDefaults is null || s.Zapret is null || s.TgWsProxy is null || s.EnginePaths is null ||
             s.Routing.DirectDomains is null || s.Routing.ProxyDomains is null || s.Routing.BlockDomains is null ||
             s.Routing.DirectCidrs is null || s.Routing.DirectProcesses is null || s.Routing.OrderedRules is null ||
             s.Routing.RemoteDns is null || s.Routing.DirectDns is null ||
+            s.Routing.FakeIpExceptions is null || s.Routing.RemoteDnsDomains is null || s.Routing.DirectDnsDomains is null ||
+            s.Routing.RemoteDnsRuleSets is null || s.Routing.DirectDnsRuleSets is null || s.Routing.PresetCountry is null ||
+            !Enum.IsDefined(s.Routing.Preset) || !Enum.IsDefined(s.Routing.RemoteDnsTransport) || !Enum.IsDefined(s.Routing.DirectDnsTransport) ||
             s.Zapret.TestTargets is null || s.Zapret.GameFilter is not ("disabled" or "all" or "tcp" or "udp") ||
             s.TgWsProxy.DcIps is null || s.TgWsProxy.CfProxyDomains is null || s.TgWsProxy.Host is null || s.TgWsProxy.FakeTlsDomain is null ||
             s.LocalProxyUsername is null ||
@@ -141,6 +144,14 @@ public static class BackupArchive
             !Enum.IsDefined(s.Theme) || !Enum.IsDefined(s.Mode) || !Enum.IsDefined(s.MockScenario) || !Enum.IsDefined(s.IpCheckProvider) ||
             s.Language is not ("auto" or "en" or "ru"))
         { throw new InvalidDataException("Invalid settings."); }
+        if (s.DpiDefaults.Fragment is null || s.DpiDefaults.Mux is null || s.DpiDefaults.Size is null || s.DpiDefaults.Interval is null ||
+            s.Routing.OrderedRules.Any(rule => rule is null || string.IsNullOrWhiteSpace(rule.Value) ||
+                !Enum.IsDefined(rule.Condition) || !Enum.IsDefined(rule.Action)) ||
+            new[] { s.Routing.FakeIpExceptions, s.Routing.RemoteDnsDomains, s.Routing.DirectDnsDomains,
+                s.Routing.RemoteDnsRuleSets, s.Routing.DirectDnsRuleSets }.Any(values => values.Any(value => value is null)))
+        { throw new InvalidDataException("Invalid routing or DPI settings."); }
+        try { s.DpiDefaults.ValidateFormat(); }
+        catch (Bydlo.Core.Engines.EngineException ex) { throw new InvalidDataException("Invalid DPI settings.", ex); }
         var ids = new HashSet<Guid>();
         foreach (var sub in data.Subscriptions)
         {

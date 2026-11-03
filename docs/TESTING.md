@@ -425,7 +425,7 @@ dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/desktop-ui ru --
 `DesktopIntegrationTests` проверяют настройки, параллельное сохранение, переходы уведомлений,
 раздельность сессий и экранирование регистраций. Headless-проверка использует только MockEngine:
 подключение при старте, меню/состояние трея, отключение, настройки, запрет регистрации
-при safety lock, выход и рендер широкого/узкого окна. CI на GitHub выполняет её на Ubuntu, Windows и macOS, зеркало на Gitea — только на Linux x64.
+при safety lock, выход и рендер широкого/узкого окна. CI на GitHub выполняет её на Ubuntu и Windows, зеркало на Gitea — только на Linux x64.
 Safety lock также подавляет доставку системных уведомлений.
 
 Ручная проверка владельцем на каждой ОС: включить/отключить автозапуск в опубликованной
@@ -436,3 +436,25 @@ Safety lock также подавляет доставку системных у
 уведомлений и режим «Не беспокоить». Агенты не выполняют нативную регистрацию и не запускают
 реальные сетевые сценарии. Нативная доставка, поведение оболочек Linux и вход в систему
 не подтверждены headless-тестами.
+
+## Регрессионные проверки PR #96
+
+`ConfigImportTests` проверяет типы секций JSON и ссылки на исходящие подключения;
+`BackupSettingsValidationTests` — новые поля DNS/DPI и совместимость со старыми копиями;
+`ChainTests` — ограничения готовых режимов при явном выборе движка;
+`ServerSpeedTests` — отмену и повторную очистку временных движков с фейковым запуском.
+
+Безопасные проверки интерфейса и кеша:
+
+```powershell
+. ./scripts/env.ps1
+./scripts/test-native-build-cache.ps1
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/routing-ui ru --mock --verify-routing-picker
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connections-ui ru --mock --verify-active-connections
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/backup-ui ru --mock --verify-backup
+```
+
+Каталог приложений проверяется только на Windows. Первые два UI-сценария снимают
+Purple, Light и OLED на широком экране и при ширине 380 пикселей. Проверка кеша
+использует фиктивные файлы и ничего не запускает. Полный macOS-комплект и нативные
+хранилища Linux/macOS требуют отдельных проверок на соответствующих платформах.

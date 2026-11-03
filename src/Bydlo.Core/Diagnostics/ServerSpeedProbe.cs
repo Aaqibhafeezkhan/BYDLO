@@ -45,10 +45,28 @@ public sealed class ServerSpeedProbe(
     public static async Task<long> MeasureThroughEngineAsync(IEngine engine, EngineStartRequest start, HttpClient http,
         Uri target, CancellationToken ct = default)
     {
-        await using (engine.ConfigureAwait(false))
+        try
         {
             await engine.StartAsync(start, ct).ConfigureAwait(false);
             return await DownloadAsync(http, target, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            await StopEngineAsync(engine).ConfigureAwait(false);
+        }
+    }
+
+    internal static async Task StopEngineAsync(IEngine engine)
+    {
+        // Stop independently of request cancellation. Dispose retries a transient stop failure.
+        Exception? stopError = null;
+        try { await engine.StopAsync(CancellationToken.None).ConfigureAwait(false); }
+        catch (Exception ex) { stopError = ex; }
+        try { await engine.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception ex)
+        {
+            throw new EngineException("Temporary speed-test engine cleanup failed.",
+                stopError is null ? ex : new AggregateException(stopError, ex), "error.engine.cleanup");
         }
     }
 

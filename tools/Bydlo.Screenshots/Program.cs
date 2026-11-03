@@ -104,11 +104,16 @@ void Pump(int ms)
     }
 }
 
-void Shoot(string name, double width, double height)
+void Shoot(string name, double width, double height, Action<Window>? arrange = null)
 {
     var window = new Window { Width = width, Height = height, Content = new MainView { DataContext = shell } };
     window.Show();
     Pump(400);
+    if (arrange is not null)
+    {
+        arrange(window);
+        Pump(150);
+    }
     using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException("No rendered frame: " + name);
     frame.Save(Path.Combine(output, name + ".png"));
     window.Close();
@@ -117,6 +122,7 @@ void Shoot(string name, double width, double height)
 
 if (args.Contains("--verify-routing-picker", StringComparer.Ordinal))
 {
+    shell.FinishOnboardingCommand.Execute(null);
     if (OperatingSystem.IsWindows())
     {
         shell.Home.IsTun = true;
@@ -134,7 +140,16 @@ if (args.Contains("--verify-routing-picker", StringComparer.Ordinal))
         {
             throw new InvalidOperationException("The selected Windows application or routing mode was not saved.");
         }
-        Shoot("routing-application-picker", 1180, 900);
+        foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled })
+        {
+            services.Theme.Apply(theme);
+            foreach (var (width, height) in new[] { (1180, 900), (380, 700) })
+            {
+                Shoot($"routing-application-picker-{theme.ToString().ToLowerInvariant()}-{width}", width, height,
+                    window => window.GetVisualDescendants().OfType<ComboBox>()
+                        .Single(control => control.Name == "ApplicationPicker").BringIntoView());
+            }
+        }
         Console.WriteLine("Routing picker verification passed: Windows catalog, filtering, selection and saving.");
     }
     return;
@@ -142,6 +157,7 @@ if (args.Contains("--verify-routing-picker", StringComparer.Ordinal))
 
 if (args.Contains("--verify-active-connections", StringComparer.Ordinal))
 {
+    shell.FinishOnboardingCommand.Execute(null);
     Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
     Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
     shell.Navigate("statistics");
@@ -153,7 +169,13 @@ if (args.Contains("--verify-active-connections", StringComparer.Ordinal))
     if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Filter did not hide the mock connection."); }
     stats.ConnectionFilter = "browser";
     if (stats.FilteredConnections.Single() != connection) { throw new InvalidOperationException("Filter lost the matching connection."); }
-    Shoot("active-connections", 1180, 900);
+    foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled })
+    {
+        services.Theme.Apply(theme);
+        Shoot($"active-connections-{theme.ToString().ToLowerInvariant()}", 1180, 900);
+        Shoot($"active-connections-{theme.ToString().ToLowerInvariant()}-minimum", 380, 700,
+            window => window.GetVisualDescendants().OfType<Expander>().Single().BringIntoView());
+    }
     Wait(stats.CloseConnectionCommand.ExecuteAsync(connection));
     if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Mock connection remained after closing it."); }
     stats.AddConnectionRuleCommand.Execute(connection);

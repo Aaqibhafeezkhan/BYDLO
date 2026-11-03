@@ -311,6 +311,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 try { await StopSessionUnsafeAsync(key).ConfigureAwait(false); }
                 catch (Exception ex) { errors.Add(ex); }
             }
+            await RetrySpeedProbeCleanupAsync(errors).ConfigureAwait(false);
             if (errors.Count > 0) { throw new AggregateException("Session cleanup failed.", errors); }
         }
         finally

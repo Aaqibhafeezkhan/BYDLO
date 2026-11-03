@@ -89,6 +89,54 @@ internal static class CustomJsonConfig
         {
             throw new FormatException();
         }
+        foreach (var section in new[] { "log", "dns", "route", "routing" })
+        {
+            if (root.ContainsKey(section) && root[section] is not JsonObject)
+            {
+                throw new FormatException();
+            }
+        }
+        if (root.ContainsKey("inbounds") && root["inbounds"] is not JsonArray)
+        {
+            throw new FormatException();
+        }
+        var route = root[singBox ? "route" : "routing"] as JsonObject;
+        if (route is not null)
+        {
+            if (route.ContainsKey("rules") && route["rules"] is not JsonArray)
+            {
+                throw new FormatException();
+            }
+            if (route["rules"] is JsonArray rules)
+            {
+                foreach (var node in rules)
+                {
+                    if (node is not JsonObject rule)
+                    {
+                        throw new FormatException();
+                    }
+                    CheckReference(rule, singBox ? "outbound" : "outboundTag", tags);
+                }
+            }
+            if (singBox) { CheckReference(route, "final", tags); }
+        }
+        foreach (var outbound in outbounds.OfType<JsonObject>())
+        {
+            CheckReference(outbound, "detour", tags);
+            if (singBox && (string?)outbound["type"] is "selector" or "urltest")
+            {
+                if (outbound["outbounds"] is not JsonArray { Count: > 0 } members ||
+                    members.Any(member => member is not JsonValue scalar || !scalar.TryGetValue<string>(out var tag) || !tags.Contains(tag)))
+                {
+                    throw new FormatException();
+                }
+                CheckReference(outbound, "default", tags);
+            }
+        }
+        if (root["dns"] is JsonObject dns && dns.ContainsKey("servers") && dns["servers"] is not JsonArray)
+        {
+            throw new FormatException();
+        }
         if (root["dns"]?["servers"] is JsonArray servers && singBox &&
             servers.Any(server => (string?)server?["type"] is not ("local" or "udp" or "tcp" or "https" or "tls" or "quic" or "fakeip")))
         {
@@ -96,6 +144,15 @@ internal static class CustomJsonConfig
         }
         Validate(root, null);
         return root;
+    }
+
+    private static void CheckReference(JsonObject source, string key, HashSet<string> tags)
+    {
+        if (source.ContainsKey(key) && (source[key] is not JsonValue scalar ||
+            !scalar.TryGetValue<string>(out var tag) || !tags.Contains(tag)))
+        {
+            throw new FormatException();
+        }
     }
 
     private static IEnumerable<string> Credentials(JsonNode? node)

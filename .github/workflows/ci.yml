@@ -41,6 +41,10 @@ jobs:
       - name: Hook self-test
         shell: bash
         run: bash scripts/test-hooks.sh
+      - name: Native cache self-test (dummy files only)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/test-native-build-cache.ps1
       - name: Build
         run: dotnet build BYDLO.slnx -c Release -warnaserror
       - name: Test
@@ -57,6 +61,15 @@ jobs:
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verification en --mock --verify-bundled-engines
       - name: Verify custom themes (headless, mock only, no network)
         run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/theme-verification en --mock --verify-themes
+      - name: Verify Windows application picker (headless, mock only, no engines)
+        if: runner.os == 'Windows'
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/routing-verification ru --mock --verify-routing-picker
+      - name: Verify active connections (headless, mock only, no network)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connections-verification ru --mock --verify-active-connections
+      - name: Verify backup restore (headless, mock only, no network)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/backup-verification ru --mock --verify-backup
+      - name: Verify profile menu and sharing (headless, mock only, no network)
+        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/share-verification ru --mock --verify-share
       # Artifacts are kept on GitHub only: artifact actions v4 refuse to run on Gitea (it looks like GHES),
       # and GitHub fails the whole job if a step even references the deprecated v3.
       - uses: actions/upload-artifact@v4
@@ -159,10 +172,11 @@ jobs:
         run: |
           fingerprint=$( (xcodebuild -version; xcrun --sdk macosx --show-sdk-build-version; clang --version) | shasum -a 256 | cut -d ' ' -f 1)
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "cache-key=openvpn-osx-arm64-$fingerprint-${{ hashFiles('engines/*.lock.json', 'scripts/build-openvpn.sh', 'scripts/build-bundled-engines.ps1', 'scripts/native-build-cache.ps1') }}" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         with:
           path: .tmp/macos-openvpn-cache
-          key: openvpn-osx-arm64-${{ steps.toolchain.outputs.fingerprint }}-${{ hashFiles('engines/*.lock.json', 'scripts/build-openvpn.sh', 'scripts/build-bundled-engines.ps1') }}
+          key: ${{ steps.toolchain.outputs.cache-key }}
       - uses: actions/setup-go@v6
         with:
           go-version: '1.27.3'
@@ -171,6 +185,7 @@ jobs:
         shell: pwsh
         env:
           BYDLO_OPENVPN_BUILD_CACHE: .tmp/macos-openvpn-cache
+          BYDLO_OPENVPN_CACHE_ID: ${{ steps.toolchain.outputs.cache-key }}
         run: ./scripts/build-bundled-engines.ps1 -Rid osx-arm64 -PublishDirectory publish/BYDLO-osx-arm64
       - name: Verify offline bundle
         shell: pwsh

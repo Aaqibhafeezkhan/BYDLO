@@ -25,6 +25,24 @@ public class ChainTests
         return new ChainHop(p.Profile, p.Secrets);
     }
 
+    [Theory]
+    [InlineData(EngineKind.Xray, ConnectionMode.LocalProxy, false, "routing.preset.singbox")]
+    [InlineData(EngineKind.SingBox, ConnectionMode.Tun, true, "routing.preset.killswitch")]
+    public void Explicit_chain_engine_respects_routing_restrictions(EngineKind kind, ConnectionMode mode, bool killSwitch, string key)
+    {
+        var registry = new EngineRegistry(() => new MockEngine())
+            .Register(new EngineDescriptor
+            {
+                Kind = kind, DisplayName = "fake", Upstream = "", License = "",
+                Protocols = new HashSet<ProtocolKind> { ProtocolKind.Trojan },
+                Platforms = new Dictionary<OsFamily, SupportLevel> { [OsFamily.Windows] = SupportLevel.Implemented },
+            }, () => throw new InvalidOperationException("An incompatible engine must not be created."));
+        var profile = Hop("trojan://pw@one.example.com:443").Profile;
+        var settings = new AppSettings { Mode = mode, KillSwitch = killSwitch, Routing = { Preset = RoutingPreset.BlockedOnly } };
+        var error = Assert.Throws<EngineException>(() => registry.CreateForChain([profile, profile], kind, settings, OsFamily.Windows));
+        Assert.Equal(key, error.LocalizationKey);
+    }
+
     private static ProxyChain Chain(params Guid[] ids) =>
         new() { Name = "Test chain", ProfileIds = [.. ids] };
 

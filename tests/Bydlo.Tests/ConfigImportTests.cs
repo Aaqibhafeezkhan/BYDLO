@@ -58,4 +58,57 @@ public sealed class ConfigImportTests
         Assert.Empty(result.Profiles);
         Assert.Equal("import.json.unsafe", Assert.Single(result.Errors));
     }
+
+    [Theory]
+    [InlineData("\"dns\":[]")]
+    [InlineData("\"dns\":{\"servers\":{}}")]
+    [InlineData("\"inbounds\":{}")]
+    [InlineData("\"route\":{\"rules\":{}}")]
+    [InlineData("\"route\":{\"rules\":[null]}")]
+    [InlineData("\"route\":{\"final\":\"missing\"}")]
+    [InlineData("\"route\":{\"rules\":[{\"outbound\":\"missing\"}]}")]
+    public void Rejects_invalid_section_shapes_and_unknown_route_targets(string section)
+    {
+        var raw = "{\"outbounds\":[{\"type\":\"direct\",\"tag\":\"direct\"}]," + section + "}";
+        var result = new ProfileImporter().ImportText(raw);
+        Assert.Empty(result.Profiles);
+        Assert.Equal("import.json.unsafe", Assert.Single(result.Errors));
+    }
+
+    [Theory]
+    [InlineData("""{"type":"selector","tag":"proxy","outbounds":["missing"]}""")]
+    [InlineData("""{"type":"urltest","tag":"proxy","outbounds":[]}""")]
+    [InlineData("""{"type":"trojan","tag":"proxy","detour":"missing"}""")]
+    public void Rejects_unknown_outbound_members_and_detours(string outbound)
+    {
+        var result = new ProfileImporter().ImportText("{\"outbounds\":[" + outbound + "]}");
+        Assert.Empty(result.Profiles);
+    }
+
+    [Fact]
+    public void Preserves_valid_selector_members_and_custom_route_targets()
+    {
+        var result = new ProfileImporter().ImportText("""
+            {"outbounds":[
+                {"type":"selector","tag":"proxy","outbounds":["remote"],"default":"remote"},
+                {"type":"trojan","tag":"remote","server":"proxy.invalid","server_port":443,"password":"hidden"}],
+             "route":{"final":"proxy","rules":[{"domain":["example.invalid"],"outbound":"remote"}]}}
+            """);
+        var imported = Assert.Single(result.Profiles);
+        var config = new SingBoxConfigBuilder().Build(imported.Profile, imported.Secrets, new BuildContext(new AppSettings()));
+        Assert.Equal("proxy", (string?)config["route"]!["final"]);
+        Assert.Equal("remote", (string?)config["outbounds"]![0]!["outbounds"]![0]);
+    }
+
+    [Theory]
+    [InlineData("\"routing\":{\"rules\":[{\"type\":\"field\",\"outboundTag\":\"missing\"}]}")]
+    [InlineData("\"routing\":{\"rules\":{}}")]
+    [InlineData("\"dns\":[]")]
+    public void Rejects_invalid_xray_sections_and_route_targets(string section)
+    {
+        var raw = "{\"outbounds\":[{\"protocol\":\"freedom\",\"tag\":\"direct\"}]," + section + "}";
+        var result = new ProfileImporter().ImportText(raw);
+        Assert.Empty(result.Profiles);
+        Assert.Equal("import.json.unsafe", Assert.Single(result.Errors));
+    }
 }
