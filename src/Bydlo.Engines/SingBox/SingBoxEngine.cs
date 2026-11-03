@@ -14,7 +14,7 @@ namespace Bydlo.Engines.SingBox;
 
 /// <summary>sing-box adapter: VLESS/REALITY, VMess, Trojan, Shadowsocks, Hysteria 2, TUIC, SOCKS/HTTP, WireGuard.</summary>
 public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator, IPrivilegeService privileges)
-    : ProcessEngineBase(runner, redactor)
+    : ProcessEngineBase(runner, redactor), IActiveConnectionSource
 {
     public static readonly EngineDescriptor Info = new()
     {
@@ -31,6 +31,17 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             [OsFamily.Android] = SupportLevel.Planned,
         },
     };
+
+    private static readonly HttpClient ClashHttp = new(new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false })
+    {
+        Timeout = TimeSpan.FromSeconds(5),
+    };
+
+    public Task<IReadOnlyList<ActiveConnection>> ListConnectionsAsync(CancellationToken ct = default) =>
+        new ClashConnectionsClient(ClashHttp, _apiPort, _apiSecret).ListConnectionsAsync(ct);
+
+    public Task CloseConnectionAsync(string id, CancellationToken ct = default) =>
+        new ClashConnectionsClient(ClashHttp, _apiPort, _apiSecret).CloseConnectionAsync(id, ct);
 
     private readonly SingBoxConfigBuilder _builder = new();
     private CancellationTokenSource? _trafficCts;
@@ -76,9 +87,11 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
         var routing = request.Settings.Routing;
         var ruleSets = new Dictionary<string, string>(StringComparer.Ordinal);
         var sources = RoutingPresets.Sources(routing.Preset, routing.PresetCountry).ToDictionary(source => source.Tag);
-        foreach (var rule in routing.OrderedRules.Where(rule => rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp))
+        var referencedSets = routing.OrderedRules.Where(rule => rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp)
+            .Select(rule => rule.Value).Concat(routing.DirectDnsRuleSets).Concat(routing.RemoteDnsRuleSets);
+        foreach (var tag in referencedSets)
         {
-            if (RoutingPresets.Find(rule.Value.Trim()) is { } source)
+            if (RoutingPresets.Find(tag.Trim()) is { } source)
             {
                 sources.TryAdd(source.Tag, source);
             }

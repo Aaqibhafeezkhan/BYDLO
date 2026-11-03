@@ -1,3 +1,6 @@
+using Bydlo.Core.Engines;
+using Bydlo.Core.Models;
+using Bydlo.Core.Routing;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia.Threading;
@@ -15,12 +18,121 @@ public sealed partial class StatisticsViewModel : PageViewModel
         : base(shell)
     {
         shell.PropertyChanged += OnShellChanged;
+        _connectionTimer.Tick += (_, _) => _ = RefreshConnectionsAsync();
         foreach (var e in Services.Log.Snapshot().TakeLast(300))
         {
             Log.Add(e.ToString());
         }
 
         Services.Log.EntryAdded += (_, e) => Dispatcher.UIThread.Post(() => AddLog(e));
+    }
+
+    private readonly DispatcherTimer _connectionTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private CancellationTokenSource? _connectionPage;
+    private IReadOnlyList<ActiveConnection> _connections = [];
+    private bool _refreshing;
+
+    [ObservableProperty] private bool _activeConnectionsExpanded;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(FilteredConnections))]
+    private string _connectionFilter = "";
+    [ObservableProperty] private bool _connectionListError;
+
+    public bool SupportsActiveConnections => Shell.Primary.Status == ConnectionStatus.Connected
+        && Shell.Primary.Engine is EngineKind.SingBox or EngineKind.Mock;
+
+    public IEnumerable<ActiveConnection> FilteredConnections => _connections.Where(connection =>
+        string.IsNullOrWhiteSpace(ConnectionFilter) ||
+        connection.Host.Contains(ConnectionFilter, StringComparison.OrdinalIgnoreCase) ||
+        connection.Process.Contains(ConnectionFilter, StringComparison.OrdinalIgnoreCase) ||
+        connection.Rule.Contains(ConnectionFilter, StringComparison.OrdinalIgnoreCase) ||
+        connection.Outbound.Contains(ConnectionFilter, StringComparison.OrdinalIgnoreCase));
+
+    public override void OnShown() => UpdateConnectionPolling();
+
+    partial void OnActiveConnectionsExpandedChanged(bool value) => UpdateConnectionPolling();
+
+    private void UpdateConnectionPolling()
+    {
+        if (!ActiveConnectionsExpanded || !ReferenceEquals(Shell.CurrentPage, this) || !SupportsActiveConnections)
+        {
+            _connectionTimer.Stop();
+            _connectionPage?.Cancel();
+            _connectionPage?.Dispose();
+            _connectionPage = null;
+            _connections = [];
+            ConnectionListError = false;
+            OnPropertyChanged(nameof(FilteredConnections));
+        }
+        else if (_connectionPage is null)
+        {
+            _connectionPage = CancellationTokenSource.CreateLinkedTokenSource(Services.ShutdownToken);
+            _connectionTimer.Start();
+            _ = RefreshConnectionsAsync();
+        }
+    }
+
+    private async Task RefreshConnectionsAsync()
+    {
+        if (_refreshing || _connectionPage is not { } page)
+        {
+            return;
+        }
+        _refreshing = true;
+        try
+        {
+            var connections = await Services.Connections.ListActiveConnectionsAsync(page.Token);
+            if (ReferenceEquals(_connectionPage, page))
+            {
+                _connections = connections ?? [];
+                ConnectionListError = false;
+                OnPropertyChanged(nameof(FilteredConnections));
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or HttpRequestException or IOException or System.Text.Json.JsonException)
+        {
+            if (ReferenceEquals(_connectionPage, page))
+            {
+                ConnectionListError = true;
+            }
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CloseConnection(ActiveConnection connection)
+    {
+        if (_connectionPage is not { } page)
+        {
+            return;
+        }
+        try
+        {
+            await Services.Connections.CloseActiveConnectionAsync(connection.Id, page.Token);
+            await RefreshConnectionsAsync();
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or HttpRequestException or IOException)
+        {
+            if (ReferenceEquals(_connectionPage, page))
+            {
+                ConnectionListError = true;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void AddConnectionRule(ActiveConnection connection)
+    {
+        if (Uri.CheckHostName(connection.Host) == UriHostNameType.Dns)
+        {
+            Shell.Navigate("routing");
+            Shell.Routing.RuleConditionIndex = (int)RoutingCondition.Domain;
+            Shell.Routing.RuleValue = connection.Host;
+            Shell.Routing.RuleActionIndex = (int)RoutingAction.Proxy;
+            Shell.Routing.ShowRuleEditor = true;
+        }
     }
 
     public ObservableCollection<string> Log { get; } = [];
@@ -69,11 +181,17 @@ public sealed partial class StatisticsViewModel : PageViewModel
 
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(MainViewModel.CurrentPage))
+        {
+            UpdateConnectionPolling();
+        }
         if (e.PropertyName != nameof(MainViewModel.Primary))
         {
             return;
         }
 
+        OnPropertyChanged(nameof(SupportsActiveConnections));
+        UpdateConnectionPolling();
         foreach (var n in new[] { nameof(Down), nameof(Up), nameof(TotalDown), nameof(TotalUp), nameof(Engine), nameof(Server), nameof(HasTraffic), nameof(NoStatsEngine) })
         {
             OnPropertyChanged(n);

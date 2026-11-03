@@ -36,6 +36,19 @@ public sealed partial class RoutingViewModel : PageViewModel
     [ObservableProperty]
     private string _directDns = "";
 
+    public IReadOnlyList<string> DnsTransports => [L["routing.dns.system"], "UDP", "TCP", "DoH", "DoT", "DoQ"];
+
+    [ObservableProperty] private int _remoteDnsTransport;
+    [ObservableProperty] private int _directDnsTransport;
+    [ObservableProperty] private bool _remoteDnsThroughProxy;
+    [ObservableProperty] private bool _directDnsThroughProxy;
+    [ObservableProperty] private bool _fakeIp;
+    [ObservableProperty] private string _fakeIpExceptions = "";
+    [ObservableProperty] private string _remoteDnsDomains = "";
+    [ObservableProperty] private string _directDnsDomains = "";
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanDownloadPreset))] private string _remoteDnsRuleSets = "";
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanDownloadPreset))] private string _directDnsRuleSets = "";
+
     [ObservableProperty]
     private string _directDomains = "";
 
@@ -102,7 +115,7 @@ public sealed partial class RoutingViewModel : PageViewModel
     private int _countryIndex;
 
     public bool IsLocalPreset => PresetIndex == (int)RoutingPreset.ExceptLocal;
-    public bool CanDownloadPreset => (PresetIndex > 0 || OrderedRules.Count > 0) && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
+    public bool CanDownloadPreset => (PresetIndex > 0 || OrderedRules.Count > 0 || RemoteDnsRuleSets.Length > 0 || DirectDnsRuleSets.Length > 0) && !Services.IsMock && !NetworkSafetyGuard.IsLocked;
     private string Country => CountryIndex == 1 ? "cn" : "ru";
 
     [RelayCommand]
@@ -118,6 +131,7 @@ public sealed partial class RoutingViewModel : PageViewModel
                 .Select(rule => RoutingPresets.Find(rule.Value)).OfType<RuleSetSource>())
             .Concat(OrderedRules
                 .Select(rule => RoutingPresets.XraySource(rule.Condition)).OfType<RuleSetSource>())
+            .Concat(Split(RemoteDnsRuleSets).Concat(Split(DirectDnsRuleSets)).Select(RoutingPresets.Find).OfType<RuleSetSource>())
             .DistinctBy(source => source.Tag))
         {
             await cache.UpdateAsync(source, Services.ShutdownToken);
@@ -137,6 +151,7 @@ public sealed partial class RoutingViewModel : PageViewModel
     public IReadOnlyList<string> RuleActions => Enum.GetValues<RoutingAction>()
         .Select(action => L["routing.rules.action." + action]).ToArray();
 
+    [ObservableProperty] private bool _showRuleEditor;
     [ObservableProperty] private int _ruleConditionIndex;
     [ObservableProperty] private int _ruleActionIndex;
     [ObservableProperty] private string _ruleValue = "";
@@ -155,12 +170,63 @@ public sealed partial class RoutingViewModel : PageViewModel
         RuleValue = "";
     }
 
+    partial void OnSelectedRuleChanged(OrderedRoutingRule? value)
+    {
+        if (value is not null)
+        {
+            RuleConditionIndex = (int)value.Condition;
+            RuleActionIndex = (int)value.Action;
+            RuleValue = value.Value;
+        }
+    }
+
+    [RelayCommand]
+    private void UpdateRule()
+    {
+        if (SelectedRule is not { } selected || string.IsNullOrWhiteSpace(RuleValue)
+            || RuleConditionIndex < 0 || RuleActionIndex < 0)
+        {
+            return;
+        }
+        var index = IndexOfRule(selected);
+        if (index >= 0)
+        {
+            var rule = new OrderedRoutingRule((RoutingCondition)RuleConditionIndex, RuleValue.Trim(), (RoutingAction)RuleActionIndex);
+            OrderedRules[index] = rule;
+            SelectedRule = rule;
+        }
+    }
+
+    public void MoveRuleTo(OrderedRoutingRule source, OrderedRoutingRule destination)
+    {
+        var from = IndexOfRule(source);
+        var to = IndexOfRule(destination);
+        if (from >= 0 && to >= 0 && from != to)
+        {
+            OrderedRules.Move(from, to);
+            SelectedRule = source;
+        }
+    }
+
+    private int IndexOfRule(OrderedRoutingRule rule)
+    {
+        for (var i = 0; i < OrderedRules.Count; i++)
+        {
+            if (ReferenceEquals(OrderedRules[i], rule))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     [RelayCommand]
     private void RemoveRule()
     {
         if (SelectedRule is { } rule)
         {
-            OrderedRules.Remove(rule);
+            var index = IndexOfRule(rule);
+            if (index >= 0) { OrderedRules.RemoveAt(index); }
         }
     }
 
@@ -176,7 +242,7 @@ public sealed partial class RoutingViewModel : PageViewModel
         {
             return;
         }
-        var index = OrderedRules.IndexOf(rule);
+        var index = IndexOfRule(rule);
         var next = index + step;
         if (index >= 0 && next >= 0 && next < OrderedRules.Count)
         {
@@ -261,6 +327,16 @@ public sealed partial class RoutingViewModel : PageViewModel
         r.ProxyOnlyListed = ProxyOnlyListed;
         r.RemoteDns = string.IsNullOrWhiteSpace(RemoteDns) ? "1.1.1.1" : RemoteDns.Trim();
         r.DirectDns = string.IsNullOrWhiteSpace(DirectDns) ? "local" : DirectDns.Trim();
+        r.RemoteDnsTransport = (DnsTransport)Math.Clamp(RemoteDnsTransport, 0, 5);
+        r.DirectDnsTransport = (DnsTransport)Math.Clamp(DirectDnsTransport, 0, 5);
+        r.RemoteDnsThroughProxy = RemoteDnsThroughProxy;
+        r.DirectDnsThroughProxy = DirectDnsThroughProxy;
+        r.FakeIp = FakeIp;
+        r.FakeIpExceptions = Split(FakeIpExceptions);
+        r.RemoteDnsDomains = Split(RemoteDnsDomains);
+        r.DirectDnsDomains = Split(DirectDnsDomains);
+        r.RemoteDnsRuleSets = Split(RemoteDnsRuleSets);
+        r.DirectDnsRuleSets = Split(DirectDnsRuleSets);
         r.DirectDomains = Split(DirectDomains);
         r.ProxyDomains = Split(ProxyDomains);
         r.BlockDomains = Split(BlockDomains);
@@ -286,6 +362,16 @@ public sealed partial class RoutingViewModel : PageViewModel
         ProxyOnlyListed = r.ProxyOnlyListed;
         RemoteDns = r.RemoteDns;
         DirectDns = r.DirectDns;
+        RemoteDnsTransport = (int)r.RemoteDnsTransport;
+        DirectDnsTransport = (int)r.DirectDnsTransport;
+        RemoteDnsThroughProxy = r.RemoteDnsThroughProxy;
+        DirectDnsThroughProxy = r.DirectDnsThroughProxy;
+        FakeIp = r.FakeIp;
+        FakeIpExceptions = string.Join('\n', r.FakeIpExceptions);
+        RemoteDnsDomains = string.Join('\n', r.RemoteDnsDomains);
+        DirectDnsDomains = string.Join('\n', r.DirectDnsDomains);
+        RemoteDnsRuleSets = string.Join('\n', r.RemoteDnsRuleSets);
+        DirectDnsRuleSets = string.Join('\n', r.DirectDnsRuleSets);
         DirectDomains = string.Join('\n', r.DirectDomains);
         ProxyDomains = string.Join('\n', r.ProxyDomains);
         BlockDomains = string.Join('\n', r.BlockDomains);

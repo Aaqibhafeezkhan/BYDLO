@@ -88,6 +88,44 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
     public SessionSnapshot Primary => Snapshot(PrimaryKey);
 
+    public async Task<IReadOnlyList<ActiveConnection>?> ListActiveConnectionsAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return ActiveConnectionSource() is { } source ? await source.ListConnectionsAsync(ct).ConfigureAwait(false) : null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task CloseActiveConnectionAsync(string id, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (ActiveConnectionSource() is { } source)
+            {
+                await source.CloseConnectionAsync(id, ct).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private IActiveConnectionSource? ActiveConnectionSource()
+    {
+        lock (_sessions)
+        {
+            return _sessions.TryGetValue(PrimaryKey, out var session) && session.Status == ConnectionStatus.Connected
+                ? session.Engine as IActiveConnectionSource : null;
+        }
+    }
+
     public SessionSnapshot Zapret => Snapshot(ZapretKey);
 
     public SessionSnapshot TgWsProxy => Snapshot(TgWsProxyKey);

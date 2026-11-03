@@ -131,6 +131,16 @@ public enum RoutingPreset
     ExceptLocal,
 }
 
+public enum DnsTransport
+{
+    System,
+    Udp,
+    Tcp,
+    Https,
+    Tls,
+    Quic,
+}
+
 public sealed class RoutingSettings
 {
     /// <summary>
@@ -148,6 +158,16 @@ public sealed class RoutingSettings
     public string RemoteDns { get; set; } = "1.1.1.1";
 
     public string DirectDns { get; set; } = "local";
+    public DnsTransport RemoteDnsTransport { get; set; } = DnsTransport.Https;
+    public DnsTransport DirectDnsTransport { get; set; } = DnsTransport.Udp;
+    public bool RemoteDnsThroughProxy { get; set; } = true;
+    public bool DirectDnsThroughProxy { get; set; }
+    public bool FakeIp { get; set; }
+    public List<string> FakeIpExceptions { get; set; } = [];
+    public List<string> RemoteDnsDomains { get; set; } = [];
+    public List<string> DirectDnsDomains { get; set; } = [];
+    public List<string> RemoteDnsRuleSets { get; set; } = [];
+    public List<string> DirectDnsRuleSets { get; set; } = [];
 
     public List<string> DirectDomains { get; set; } = [];
 

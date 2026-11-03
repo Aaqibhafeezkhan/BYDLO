@@ -17,7 +17,7 @@ var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
 if (args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
-    args.Contains("--verify-themes", StringComparer.Ordinal) ||
+    args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
@@ -113,6 +113,32 @@ void Shoot(string name, double width, double height)
     frame.Save(Path.Combine(output, name + ".png"));
     window.Close();
     Console.WriteLine($"saved {name}.png");
+}
+
+if (args.Contains("--verify-active-connections", StringComparer.Ordinal))
+{
+    Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
+    Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+    shell.Navigate("statistics");
+    var stats = shell.Statistics;
+    stats.ActiveConnectionsExpanded = true;
+    Pump(200);
+    var connection = stats.FilteredConnections.Single();
+    stats.ConnectionFilter = "missing";
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Filter did not hide the mock connection."); }
+    stats.ConnectionFilter = "browser";
+    if (stats.FilteredConnections.Single() != connection) { throw new InvalidOperationException("Filter lost the matching connection."); }
+    Shoot("active-connections", 1180, 900);
+    Wait(stats.CloseConnectionCommand.ExecuteAsync(connection));
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Mock connection remained after closing it."); }
+    stats.AddConnectionRuleCommand.Execute(connection);
+    if (shell.Routing.RuleValue != "example.invalid" || !shell.Routing.ShowRuleEditor)
+    {
+        throw new InvalidOperationException("Connection rule was not prefilled.");
+    }
+    Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+    Console.WriteLine("Active connections verification passed: mock list, filter, close, prefilled routing rule.");
+    return;
 }
 
 if (shell.IsOnboardingVisible)

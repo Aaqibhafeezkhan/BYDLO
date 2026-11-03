@@ -66,7 +66,7 @@ public sealed class SingBoxConfigBuilder
         var root = new JsonObject
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
-            ["dns"] = BuildDns(routing, exitTag),
+            ["dns"] = BuildDns(routing, settings.Mode, exitTag, ctx.RuleSets),
             ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth)),
         };
 
@@ -138,7 +138,7 @@ public sealed class SingBoxConfigBuilder
         var root = new JsonObject
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
-            ["dns"] = BuildDns(routing),
+            ["dns"] = BuildDns(routing, settings.Mode, ruleSets: ctx.RuleSets),
             ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth)),
         };
 
@@ -213,7 +213,7 @@ public sealed class SingBoxConfigBuilder
         return new JsonObject
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
-            ["dns"] = BuildDns(routing),
+            ["dns"] = BuildDns(routing, ConnectionMode.Tun),
             ["inbounds"] = new JsonArray(inbound),
             ["outbounds"] = new JsonArray(
                 new JsonObject { ["type"] = "socks", ["tag"] = ProxyTag, ["server"] = "127.0.0.1", ["server_port"] = backendPort, ["version"] = "5" },
@@ -243,23 +243,69 @@ public sealed class SingBoxConfigBuilder
             "fd7a:115c:a1e2::/48",
         ];
 
-    private static JsonObject BuildDns(RoutingSettings routing, string proxyTag = ProxyTag)
+    private static JsonObject BuildDns(RoutingSettings routing, ConnectionMode mode, string proxyTag = ProxyTag,
+        IReadOnlyDictionary<string, string>? ruleSets = null)
     {
         var servers = new JsonArray
         {
-            new JsonObject { ["type"] = "https", ["tag"] = "remote", ["server"] = routing.RemoteDns, ["detour"] = proxyTag },
+            Server("remote", routing.RemoteDnsTransport, routing.RemoteDns, routing.RemoteDnsThroughProxy),
+            Server("local", routing.DirectDnsTransport, routing.DirectDns, routing.DirectDnsThroughProxy),
+            new JsonObject { ["type"] = "local", ["tag"] = "bootstrap" },
         };
-        servers.Add(routing.DirectDns is "local" or ""
-            ? new JsonObject { ["type"] = "local", ["tag"] = "local" }
-            : new JsonObject { ["type"] = "udp", ["tag"] = "local", ["server"] = routing.DirectDns });
-
         var rules = new JsonArray();
-        if (routing.DirectDomains.Count > 0)
+        AddRules("remote", routing.RemoteDnsDomains, routing.RemoteDnsRuleSets);
+        AddRules("local", routing.DirectDomains.Concat(routing.DirectDnsDomains).Distinct(), routing.DirectDnsRuleSets);
+        if (mode == ConnectionMode.Tun && routing.FakeIp)
         {
-            rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.DirectDomains), ["server"] = "local" });
+            servers.Add(new JsonObject
+            {
+                ["type"] = "fakeip", ["tag"] = "fakeip", ["inet4_range"] = "198.18.0.0/15", ["inet6_range"] = "fc00::/18",
+            });
+            if (routing.FakeIpExceptions.Count > 0)
+            {
+                rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.FakeIpExceptions), ["server"] = "remote" });
+            }
+            rules.Add(new JsonObject { ["query_type"] = new JsonArray("A", "AAAA"), ["server"] = "fakeip" });
         }
 
         return new JsonObject { ["servers"] = servers, ["rules"] = rules, ["final"] = "remote" };
+
+        JsonObject Server(string tag, DnsTransport transport, string address, bool throughProxy)
+        {
+            if (transport == DnsTransport.System || address is "local" or "")
+            {
+                return new JsonObject { ["type"] = "local", ["tag"] = tag };
+            }
+            var server = new JsonObject
+            {
+                ["type"] = transport.ToString().ToLowerInvariant(),
+                ["tag"] = tag,
+                ["server"] = address,
+                ["domain_resolver"] = "bootstrap",
+            };
+            if (throughProxy)
+            {
+                server["detour"] = proxyTag;
+            }
+            return server;
+        }
+
+        void AddRules(string server, IEnumerable<string> domains, IReadOnlyCollection<string> sets)
+        {
+            var suffixes = ToArray(domains);
+            if (suffixes.Count > 0)
+            {
+                rules.Add(new JsonObject { ["domain_suffix"] = suffixes, ["server"] = server });
+            }
+            if (sets.Count > 0)
+            {
+                if (ruleSets is null || sets.Any(tag => !ruleSets.ContainsKey(tag)))
+                {
+                    throw new Bydlo.Core.Engines.EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
+                }
+                rules.Add(new JsonObject { ["rule_set"] = ToArray(sets), ["server"] = server });
+            }
+        }
     }
 
     private static JsonObject BuildInbound(AppSettings settings, LocalProxyAuth? lanAuth = null)
