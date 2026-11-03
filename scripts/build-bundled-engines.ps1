@@ -4,6 +4,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'env.ps1')
+. (Join-Path $PSScriptRoot 'openvpn-cache.ps1')
 $repo = $env:BYDLO_ROOT
 $output = [IO.Path]::GetFullPath($PublishDirectory)
 $stage = Join-Path $repo ('.tmp/native-build-' + $Rid)
@@ -25,7 +26,7 @@ function Fetch([string]$Id) {
 }
 function CheckExit([string]$Action) { if ($LASTEXITCODE -ne 0) { throw "$Action failed: $LASTEXITCODE" } }
 
-foreach ($sourceId in @('sing-box-source','xray-source','openssl-source')) {
+foreach ($sourceId in @('openssl-source')) {
     Copy-Item (Fetch $sourceId) (Join-Path $sources ($sourceId + '.tar.gz')) -Force
 }
 
@@ -91,8 +92,8 @@ if ($Rid.StartsWith('win-')) {
     $cache = $env:BYDLO_OPENVPN_BUILD_CACHE
     $files = @('openvpn', 'COPYING', 'openssl.cnf')
     $useCache = $Rid -eq 'osx-arm64' -and $cache
-    $missing = if ($useCache) { $files | Where-Object { !(Test-Path -LiteralPath (Join-Path $cache $_) -PathType Leaf) } }
-    if ($useCache -and !$missing) {
+    if ($useCache -and (Test-OpenVpnCache $cache)) {
+        Write-Host 'Using SHA-256 verified OpenVPN/OpenSSL cache.'
         foreach ($name in $files) {
             Copy-Item -LiteralPath (Join-Path $cache $name) -Destination $ovpnDir -Force
         }
@@ -104,6 +105,15 @@ if ($Rid.StartsWith('win-')) {
             foreach ($name in $files) {
                 Copy-Item -LiteralPath (Join-Path $ovpnDir $name) -Destination $cache -Force
             }
+            Write-OpenVpnCacheManifest $cache
+        }
+    }
+    if ($Rid -eq 'osx-arm64') {
+        # Repeat on cache hits: do not trust a cached host-specific library reference.
+        $dependencies = & otool -L (Join-Path $ovpnDir 'openvpn')
+        CheckExit 'OpenVPN dependency inspection'
+        if ($dependencies | Select-Object -Skip 1 | Where-Object { $_ -notmatch '^\s*(/usr/lib/|/System/Library/)' }) {
+            throw 'Unexpected external OpenVPN dependency'
         }
     }
 }
@@ -113,6 +123,7 @@ Copy-Item (Join-Path $repo 'engines/bundle-inputs.lock.json') (Join-Path $output
 Copy-Item (Join-Path $repo 'engines/engines.lock.json') (Join-Path $output 'engines') -Force
 Copy-Item (Join-Path $repo 'scripts/build-openvpn.sh') $sources -Force
 Copy-Item (Join-Path $repo 'scripts/build-bundled-engines.ps1') $sources -Force
+Copy-Item (Join-Path $repo 'scripts/openvpn-cache.ps1') $sources -Force
 Get-ChildItem (Join-Path $output 'engines') -Recurse -File | Sort-Object FullName | ForEach-Object {
     '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), ([IO.Path]::GetRelativePath($output, $_.FullName).Replace('\','/'))
 } | Set-Content (Join-Path $output 'ENGINES-SHA256SUMS.txt') -Encoding utf8NoBOM
