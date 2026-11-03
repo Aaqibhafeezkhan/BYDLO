@@ -35,9 +35,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
             Acquire();
             await RestoreAsync(ct).ConfigureAwait(false);
             var changes = await CaptureAsync(host, port, ct).ConfigureAwait(false);
-            var temporary = Journal + ".tmp";
-            await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(new ProxyJournal(kind, changes)), ct).ConfigureAwait(false);
-            File.Move(temporary, Journal, overwrite: true);
+            await SaveJournalAsync(new ProxyJournal(kind, changes), ct).ConfigureAwait(false);
             foreach (var change in changes)
             {
                 await WriteAsync(change.Scope, change.Key, change.Applied, ct).ConfigureAwait(false);
@@ -94,14 +92,34 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
             throw new InvalidDataException("Proxy recovery belongs to another desktop environment.");
         }
 
-        foreach (var change in journal.Changes.Reverse())
+        for (var index = journal.Changes.Length - 1; index >= 0; index--)
         {
-            if (await ReadAsync(change.Scope, change.Key, ct).ConfigureAwait(false) == change.Applied)
+            var change = journal.Changes[index];
+            var current = await ReadAsync(change.Scope, change.Key, ct).ConfigureAwait(false);
+            if (kind == DesktopProxyKind.MacOs && journal.RestoringIndex == index &&
+                JsonSerializer.Deserialize<MacProxy>(change.Previous) is { Enabled: false, Port: > 0 } previous &&
+                current == JsonSerializer.Serialize(previous with { Enabled = true }))
             {
+                await RunAsync("networksetup", true, ct, "-set" + change.Key + "proxystate", change.Scope, "off").ConfigureAwait(false);
+            }
+            else if (current == change.Applied)
+            {
+                if (kind == DesktopProxyKind.MacOs && journal.RestoringIndex != index)
+                {
+                    journal = journal with { RestoringIndex = index };
+                    await SaveJournalAsync(journal, ct).ConfigureAwait(false);
+                }
                 await WriteAsync(change.Scope, change.Key, change.Previous, ct).ConfigureAwait(false);
             }
         }
         File.Delete(Journal);
+    }
+
+    private async Task SaveJournalAsync(ProxyJournal journal, CancellationToken ct)
+    {
+        var temporary = Journal + ".tmp";
+        await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(journal), ct).ConfigureAwait(false);
+        File.Move(temporary, Journal, overwrite: true);
     }
 
     private async Task<ProxyChange[]> CaptureAsync(string host, int port, CancellationToken ct)
@@ -257,7 +275,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
         else { NetworkSafetyGuard.EnsureAllowed("change the system proxy"); }
     }
 
-    private sealed record ProxyJournal(DesktopProxyKind Kind, ProxyChange[] Changes);
+    private sealed record ProxyJournal(DesktopProxyKind Kind, ProxyChange[] Changes, int? RestoringIndex = null);
     private sealed record ProxyChange(string Scope, string Key, string Previous, string Applied);
     private sealed record MacProxy(bool Enabled, string Host, int Port, bool Authenticated);
 }

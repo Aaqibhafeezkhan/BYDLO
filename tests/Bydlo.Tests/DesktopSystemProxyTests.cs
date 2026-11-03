@@ -82,13 +82,17 @@ public sealed class DesktopSystemProxyTests
         Assert.Empty(values);
     }
 
-    [Fact]
-    public async Task Mac_ignores_disabled_services_and_restores_both_web_proxies()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Mac_ignores_disabled_services_and_restores_both_web_proxies(bool failFirstRestore)
     {
+        var failDisable = failFirstRestore;
+        var previousSecure = failFirstRestore ? ("old.invalid", "8443", false) : ("", "0", false);
         var values = new Dictionary<string, (string Host, string Port, bool Enabled)>
         {
             ["web"] = ("proxy.invalid", "8888", true),
-            ["secureweb"] = ("", "0", false),
+            ["secureweb"] = previousSecure,
         };
         var runner = new FakeProcessRunner
         {
@@ -114,6 +118,11 @@ public sealed class DesktopSystemProxyTests
                     return (0, $"Enabled: {(current.Enabled ? "Yes" : "No")}\nServer: {current.Host}\nPort: {current.Port}\nAuthenticated Proxy Enabled: 0");
                 }
 
+                if (failDisable && key == "secureweb" && args[0] == "-setsecurewebproxystate" && args[2] == "off")
+                {
+                    failDisable = false;
+                    return (1, "");
+                }
                 values[key] = args[0].EndsWith("state", StringComparison.Ordinal)
                     ? current with { Enabled = args[2] == "on" } : (args[2], args[3], true);
                 return (0, "");
@@ -122,8 +131,17 @@ public sealed class DesktopSystemProxyTests
         var proxy = new JournaledSystemProxyService(runner, DesktopProxyKind.MacOs, TestDirs.New("mac-proxy"), () => { });
         await proxy.SetAsync("127.0.0.1", 2080);
         Assert.Equal(("127.0.0.1", "2080", true), values["secureweb"]);
+        if (failFirstRestore)
+        {
+            await Assert.ThrowsAsync<IOException>(() => proxy.ClearAsync());
+            Assert.Equal(("old.invalid", "8443", true), values["secureweb"]);
+        }
         await proxy.ClearAsync();
         Assert.Equal(("proxy.invalid", "8888", true), values["web"]);
         Assert.False(values["secureweb"].Enabled);
+        if (failFirstRestore)
+        {
+            Assert.Equal(previousSecure, values["secureweb"]);
+        }
     }
 }
