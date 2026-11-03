@@ -44,6 +44,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     /// <summary>Re-read settings changed outside this page, e.g. by the first-run onboarding.</summary>
     public override void OnShown()
     {
+        OnPropertyChanged(nameof(SecretProtection));
         var s = Services.Settings;
         Theme = s.Theme;
         Language = s.Language;
@@ -145,7 +146,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public string DataDirectory => Services.Paths.DataDirectory;
 
-    public string SecretProtection => Services.Secrets.ProtectionDescription;
+    public string SecretProtection => Bydlo.Platform.SecretStoreFactory.IsUsingSystemFallback(Services.Secrets)
+        ? L["settings.secrets.fallback"] : Services.Secrets.ProtectionDescription;
 
     public bool IsElevated => Services.Privileges.IsElevated;
 

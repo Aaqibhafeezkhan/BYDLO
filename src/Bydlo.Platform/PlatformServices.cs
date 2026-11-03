@@ -104,10 +104,34 @@ public sealed class PrivilegeService : IPrivilegeService
 
 public static class SecretStoreFactory
 {
-    public static ISecretStore Create(IAppPaths paths) =>
-        OperatingSystem.IsWindows()
-            ? new DpapiSecretStore(Path.Combine(paths.DataDirectory, "secrets"))
-            : new AesFileSecretStore(Path.Combine(paths.DataDirectory, "secrets"));
+    public static ISecretStore Create(IAppPaths paths, bool isolated = false)
+    {
+        var directory = Path.Combine(paths.DataDirectory, "secrets");
+        if (OperatingSystem.IsWindows())
+        {
+            return new DpapiSecretStore(directory);
+        }
+
+        var fallback = new AesFileSecretStore(directory);
+        if (isolated || NetworkSafetyGuard.IsLocked)
+        {
+            return fallback;
+        }
+
+        var scope = "BYDLO-" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(Path.GetFullPath(paths.DataDirectory))));
+        if (OperatingSystem.IsMacOS())
+        {
+            return new MigratingSecretStore(new MacKeychainBackend(scope), fallback);
+        }
+        if (OperatingSystem.IsLinux())
+        {
+            return new MigratingSecretStore(new LinuxSecretBackend(scope), fallback);
+        }
+        return fallback;
+    }
+
+    public static bool IsUsingSystemFallback(ISecretStore store) => store is MigratingSecretStore { UsingFallback: true };
 }
 
 public static class SystemProxyFactory

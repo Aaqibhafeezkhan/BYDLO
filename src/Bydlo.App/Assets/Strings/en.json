@@ -1,4 +1,6 @@
 {
+  "settings.secrets.locked": "Unlock the system credential store to access this secret.",
+  "settings.secrets.fallback": "System credential storage is unavailable. Using encrypted files.",
   "profile.dpi.title": "TLS and multiplexing",
   "profile.dpi.defaults": "Default TLS and mux settings",
   "profile.dpi.override": "Override defaults for this profile",
