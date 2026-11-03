@@ -27,11 +27,8 @@ internal sealed class PfTpwsBackend : IZapretBackend
 {
     public Task<ParsedStrategy> PrepareAsync(ZapretInstallation install, string strategy, ZapretSettings settings, CancellationToken ct)
     {
-        if (settings.GameFilter != "disabled")
-        {
-            throw new EngineException("macOS Zapret supports IPv4 TCP 80/443 only; disable the game filter.");
-        }
-
-        return Task.FromResult(new ParsedStrategy(NativeZapretStrategy.Build(OsFamily.MacOS, install, strategy, settings.GameFilter), []));
+        // Backups can carry a Windows/Linux game filter. Keep the saved preference, but
+        // ignore it here: tpws and the macOS PF rules only handle IPv4 TCP 80/443.
+        return Task.FromResult(new ParsedStrategy(NativeZapretStrategy.Build(OsFamily.MacOS, install, strategy, "disabled"), []));
     }
 }
