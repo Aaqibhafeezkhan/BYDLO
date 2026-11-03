@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Bydlo.Core.Models;
+using Bydlo.Core.Engines;
 using Bydlo.Core.Platform;
 using Bydlo.Core.Processes;
 
@@ -75,7 +76,7 @@ public static partial class ZapretFirewallRules
         if (parts.Length > 2 || !IPAddress.TryParse(parts[0], out var ip) ||
             (parts.Length == 2 && (!int.TryParse(parts[1], out var prefix) || prefix < 0 || prefix > (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128))))
         {
-            throw new FormatException("Invalid IP exclusion in Zapret user list.");
+            throw new EngineException("Invalid IP exclusion in Zapret user list.", localizationKey: "error.engine.zapret.exclusion");
         }
 
         return ip + (parts.Length == 2 ? "/" + int.Parse(parts[1]) : "");

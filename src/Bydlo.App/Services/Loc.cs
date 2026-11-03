@@ -27,8 +27,10 @@ public sealed class Loc : INotifyPropertyChanged
         _strings.TryGetValue(key, out var v) ? v : _fallback.TryGetValue(key, out var f) ? f : key;
 
     /// <summary>Localizes a structured diagnostic, retaining unknown third-party details.</summary>
-    public static string Error(string message, string? key) =>
-        key is not null && Instance[key] != key ? Instance[key] : Instance[message];
+    public static string Error(string message, string? key, string[]? arguments = null) =>
+        key is not null && Instance[key] != key
+            ? arguments is { Length: > 0 } ? T(key, arguments.Cast<object>().ToArray()) : Instance[key]
+            : Instance[message];
 
     /// <summary>Formats a string with arguments: <c>T("home.reconnect", 2)</c>.</summary>
     public static string T(string key, params object[] args) =>

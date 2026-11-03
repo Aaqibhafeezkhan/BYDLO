@@ -31,6 +31,7 @@ public sealed record SessionSnapshot(
     int LocalProxyPort = 0)
 {
     public string? ErrorLocalizationKey { get; init; }
+    public string[] ErrorLocalizationArguments { get; init; } = [];
     public bool CleanupPending { get; init; }
 
     /// <summary>Active relay chain, if the session carries chained traffic (issue #75).</summary>
@@ -493,6 +494,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         session.Status = ConnectionStatus.Connecting;
         session.Error = null;
         session.ErrorLocalizationKey = null;
+        session.ErrorLocalizationArguments = [];
         Publish(session);
         var target = session.Chain is { } chain ? $"chain '{chain.Name}'" : session.Profile is null ? "" : $" for '{session.Profile.Name}'";
         _log.Info(session.Key, $"Starting {session.Engine.Descriptor.DisplayName}{target}");
@@ -520,6 +522,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             session.Status = ConnectionStatus.Error;
             session.Error = _log.Redactor.Redact(ex.Message);
             session.ErrorLocalizationKey = (ex as EngineException)?.LocalizationKey;
+            session.ErrorLocalizationArguments = (ex as EngineException)?.LocalizationArguments.Select(_log.Redactor.Redact).ToArray() ?? [];
             _log.Error(session.Key, session.Error);
             Publish(session);
             try { await session.Engine.DisposeAsync().ConfigureAwait(false); }
@@ -597,6 +600,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
         session.Error = e.Error;
         session.ErrorLocalizationKey = null;
+        session.ErrorLocalizationArguments = [];
         _log.Error(session.Key, e.Error ?? "Engine failed");
         if (session.Settings.AutoReconnect && session.ReconnectAttempts < MaxReconnectAttempts)
         {
@@ -675,6 +679,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             session.Status = ConnectionStatus.Connected;
             session.Error = null;
             session.ErrorLocalizationKey = null;
+            session.ErrorLocalizationArguments = [];
             session.ConnectedSince = DateTimeOffset.Now;
             session.ReconnectAttempts = 0;
             Publish(session);
@@ -684,6 +689,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         {
             session.Error = _log.Redactor.Redact(ex.Message);
             session.ErrorLocalizationKey = (ex as EngineException)?.LocalizationKey;
+            session.ErrorLocalizationArguments = (ex as EngineException)?.LocalizationArguments.Select(_log.Redactor.Redact).ToArray() ?? [];
             if (session.ReconnectAttempts < MaxReconnectAttempts && session.Settings.AutoReconnect)
             {
                 _ = ReconnectAsync(session);
@@ -743,6 +749,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         public string? Error { get; set; }
 
         public string? ErrorLocalizationKey { get; set; }
+        public string[] ErrorLocalizationArguments { get; set; } = [];
 
         public DateTimeOffset? ConnectedSince { get; set; }
 
@@ -763,7 +770,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             return new(Key, Status, Group is null ? Profile : selected, Engine.Descriptor.Kind, IsMock,
                 ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort)
             {
-                ErrorLocalizationKey = ErrorLocalizationKey, CleanupPending = CleanupPending, Chain = Chain,
+                ErrorLocalizationKey = ErrorLocalizationKey, ErrorLocalizationArguments = ErrorLocalizationArguments, CleanupPending = CleanupPending, Chain = Chain,
                 Group = Group, SelectedGroupProfile = selected,
             };
         }

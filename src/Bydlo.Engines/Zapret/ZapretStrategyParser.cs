@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Bydlo.Core.Platform;
 using Bydlo.Core.Models;
+using Bydlo.Core.Engines;
 
 namespace Bydlo.Engines.Zapret;
 
@@ -63,7 +64,7 @@ public static partial class ZapretStrategyParser
         };
 
         var line = JoinContinuations(batchText).FirstOrDefault(l => l.Contains("winws.exe", StringComparison.OrdinalIgnoreCase))
-            ?? throw new FormatException("Strategy file does not start winws.exe.");
+            ?? throw new EngineException("Strategy file does not start winws.exe.", localizationKey: "error.engine.zapret.strategy.executable");
 
         var idx = line.IndexOf("winws.exe", StringComparison.OrdinalIgnoreCase) + "winws.exe".Length;
         if (idx < line.Length && line[idx] == '"')
@@ -101,7 +102,7 @@ public static partial class ZapretStrategyParser
 
         if (args.Count == 0)
         {
-            throw new FormatException("Strategy has no winws.exe arguments.");
+            throw new EngineException("Strategy has no winws.exe arguments.", localizationKey: "error.engine.zapret.strategy.arguments");
         }
 
         return new ParsedStrategy(args, warnings);

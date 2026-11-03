@@ -1,4 +1,5 @@
 using Bydlo.Core.Models;
+using Bydlo.Core.Engines;
 
 namespace Bydlo.Engines.Zapret;
 
@@ -21,7 +22,7 @@ public static class NativeZapretStrategy
     {
         if (!Strategies.Any(s => s.FileName == strategy))
         {
-            throw new FormatException("Unknown native Zapret strategy.");
+            throw new EngineException("Unknown native Zapret strategy.", localizationKey: "error.engine.zapret.strategy.unknown");
         }
 
         var hosts = Path.Combine(install.UserListsDirectory, "default-hosts.txt");

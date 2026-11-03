@@ -157,7 +157,7 @@ public class ZapretPlatformTests
         Assert.Contains("ip6 daddr 2001:db8::/32 return", rules, StringComparison.Ordinal);
         Assert.DoesNotContain("flush ruleset", rules, StringComparison.Ordinal);
         Assert.Throws<FormatException>(() => ZapretFirewallRules.Build(lease, "80; flush ruleset", "443", []));
-        Assert.Throws<FormatException>(() => ZapretFirewallRules.Build(lease, "80", "443", ["1.2.3.4; flush ruleset"]));
+        Assert.Equal("error.engine.zapret.exclusion", Assert.Throws<Bydlo.Core.Engines.EngineException>(() => ZapretFirewallRules.Build(lease, "80", "443", ["1.2.3.4; flush ruleset"])).LocalizationKey);
         Assert.Throws<InvalidDataException>(() => ZapretFirewallRules.Scope(lease with { Id = "../other" }));
     }
 
