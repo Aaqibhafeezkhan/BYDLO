@@ -1,4 +1,5 @@
 using Bydlo.Core.Backup;
+using Bydlo.Core.Config;
 using Bydlo.Core.Connection;
 using Bydlo.Core.Models;
 
@@ -42,12 +43,18 @@ public sealed partial class ProfileStore
 
             // Chains travel with the profiles they reference; keep only structurally valid,
             // fully resolvable chains so a stale chain can never break the restore.
+            // Raw JSON configs were never chainable (issue #187): drop them like any stale chain.
             var chainIds = new HashSet<Guid>(incoming.Profiles.Select(p => p.Id));
+            var chainProtocols = incoming.Profiles.ToDictionary(p => p.Id, p => p.Protocol);
+            static bool Chainable(IEnumerable<ProtocolKind> protocols) =>
+                protocols.All(SingBoxConfigBuilder.ChainSupported.Contains)
+                || protocols.All(XrayConfigBuilder.ChainSupported.Contains);
             var incomingChains = data.Chains
                 .Where(c => c.Id != Guid.Empty && !string.IsNullOrWhiteSpace(c.Name))
                 .Where(c => c.ProfileIds.Count >= ChainValidator.MinHops && c.ProfileIds.Count <= ChainValidator.MaxHops)
                 .Where(c => c.ProfileIds.Distinct().Count() == c.ProfileIds.Count)
                 .Where(c => c.ProfileIds.All(chainIds.Contains))
+                .Where(c => Chainable(c.ProfileIds.Select(id => chainProtocols[id])))
                 .Where(c => c.PreferredEngine is null or Models.EngineKind.SingBox or Models.EngineKind.Xray)
                 .GroupBy(c => c.Id).Select(g => g.First()).ToList();
             incoming.Chains = mode == BackupImportMode.Merge
