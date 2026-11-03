@@ -200,9 +200,10 @@ internal static class WizardVerification
         var source = wizard.CatalogSources[0];
         handler.FailNext = true;
         var previousRequests = handler.Requests;
+        var previousProfiles = services.Profiles.Profiles.Count;
         Wait(wizard.PreviewCatalogCommand.ExecuteAsync(source));
         Require(wizard.IsPreview && wizard.PreviewItems.Count == 2 && wizard.SkippedCount == 1, "Catalog uses the shared preview and deduplicates nodes");
-        Require(handler.Requests == previousRequests + 2 && services.Profiles.Profiles.Count == 4, "Catalog falls back without saving");
+        Require(handler.Requests == previousRequests + 2 && services.Profiles.Profiles.Count == previousProfiles, "Catalog falls back without saving");
         Wait(wizard.AddCommand.ExecuteAsync(null));
         var publicSubscription = services.Profiles.Subscriptions.Single(s => s.Name == source.Name);
         Require(services.Profiles.GetSubscriptionUrlAsync(publicSubscription.Id).GetAwaiter().GetResult() == source.Source.Urls[1], "The working mirror is saved as subscription provenance");

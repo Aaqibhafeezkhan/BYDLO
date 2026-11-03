@@ -74,13 +74,16 @@ public class ImportTests
         Assert.Single(r.Errors);
     }
 
-    [Fact]
-    public void Vmess_base64_json_is_parsed()
+    [Theory]
+    [InlineData("", null)]
+    [InlineData("?fp=chrome#fixture", "chrome")]
+    public void Vmess_base64_json_is_parsed(string suffix, string? fingerprint)
     {
         var json = """{"v":"2","ps":"VM","add":"vm.example.com","port":"8443","id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","aid":"0","scy":"auto","net":"ws","type":"none","host":"cdn.example.com","path":"/ws","tls":"tls","sni":"vm.example.com"}""";
-        var p = One("vmess://" + Convert.ToBase64String(Encoding.UTF8.GetBytes(json)));
+        var p = One("vmess://" + Convert.ToBase64String(Encoding.UTF8.GetBytes(json)) + suffix);
         Assert.Equal(ProtocolKind.Vmess, p.Profile.Protocol);
         Assert.Equal(8443, p.Profile.Port);
+        Assert.Equal(fingerprint, p.Profile.Option(Keys.Fingerprint));
         Assert.Equal("ws", p.Profile.Option(Keys.Transport));
         Assert.Equal("/ws", p.Profile.Option(Keys.Path));
         Assert.Equal("tls", p.Profile.Option(Keys.Security));
