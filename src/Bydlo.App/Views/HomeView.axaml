@@ -8,7 +8,7 @@
   <ScrollViewer>
     <Border Classes="workspace">
     <StackPanel Classes="page">
-      <StackPanel Spacing="6">
+      <StackPanel Classes="home-intro" Spacing="6">
         <TextBlock Classes="h1" Text="{l:T nav.home}" TextWrapping="Wrap" />
         <TextBlock Classes="muted" Text="{l:T home.welcome.hint}" TextWrapping="Wrap" />
 
@@ -59,7 +59,7 @@
                     <TextBlock x:Name="StatusTitle" Classes="display" Text="{Binding StatusText}" TextWrapping="Wrap" />
                     <TextBlock Classes="muted" Text="{Binding Hint}" TextWrapping="Wrap" />
                   </StackPanel>
-                  <Border Grid.Column="1" Classes="connection-mark" Classes.connected="{Binding IsConnected}"
+                  <Border Grid.Column="1" Classes="connection-mark status-icon" Classes.connected="{Binding IsConnected}"
                           Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}" Width="36" Height="36" VerticalAlignment="Top">
                     <c:OutlineIcon Data="{StaticResource LineShield}" Width="20" Height="20" />
                   </Border>
@@ -104,7 +104,7 @@
                 </Button>
               </StackPanel>
               <Border MinHeight="48" HorizontalAlignment="Stretch" Margin="0,10,0,12">
-                <Button Classes="primary connect-action" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
+                <Button Classes="primary connect-action" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
                         Command="{Binding ToggleConnectionCommand}" AutomationProperties.Name="{Binding ButtonText}">
                   <StackPanel Orientation="Horizontal" Spacing="10">
                     <c:OutlineIcon Data="{StaticResource LinePower}" Width="20" Height="20" Foreground="{DynamicResource OnPrimaryBrush}" />
@@ -173,7 +173,7 @@
             </StackPanel>
           </Expander>
         </StackPanel>
-        <StackPanel x:Name="QuickTools" Grid.Column="2" Spacing="14">
+        <StackPanel x:Name="QuickTools" Grid.Column="2" Spacing="10">
           <TextBlock Classes="h2" Text="{l:T home.tools.title}" TextWrapping="Wrap" />
         <Button x:Name="ToolShortcut" Classes="quiet" Command="{Binding Shell.NavigateCommand}" CommandParameter="tools" HorizontalAlignment="Left" Margin="0,2,0,0">
           <TextBlock Text="{l:T home.tools.shortcut}" TextWrapping="Wrap" />

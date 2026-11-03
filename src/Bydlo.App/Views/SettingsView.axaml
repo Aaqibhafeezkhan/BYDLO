@@ -10,7 +10,7 @@
   <ScrollViewer>
     <Border Classes="workspace">
     <StackPanel Classes="page">
-      <Border Classes="page-heading">
+      <Border Classes="page-heading settings-heading">
         <StackPanel Spacing="10">
           <TextBlock Classes="h1" Text="{l:T nav.settings}" />
           <WrapPanel>
