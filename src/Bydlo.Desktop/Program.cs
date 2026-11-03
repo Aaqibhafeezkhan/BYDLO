@@ -8,7 +8,16 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        using var activation = OperatingSystem.IsWindows() ? new WindowsActivationBroker(Bydlo.Platform.AppPathsFactory.Create().DataDirectory) : null;
+        // Do this before claiming the single-instance mutex or forwarding activation.
+        // Otherwise the elevated child forwards back to the parent and exits during UAC restart.
+        if (OperatingSystem.IsWindows() && !ElevationHandoff.WaitForParent(ref args))
+        {
+            Environment.ExitCode = 1;
+            return;
+        }
+
+        using var activation = OperatingSystem.IsWindows() ? new WindowsActivationBroker(
+            Bydlo.Platform.AppPathsFactory.Create().DataDirectory, Bydlo.App.App.PendingActivations.Enqueue) : null;
         if (activation is { IsPrimary: false })
         {
             try

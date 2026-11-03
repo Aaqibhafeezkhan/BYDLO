@@ -92,7 +92,8 @@ public sealed class PrivilegeService : IPrivilegeService
                 psi.ArgumentList.Add(a);
             }
 
-            Process.Start(psi)?.Dispose();
+            using var child = Process.Start(psi);
+            if (child is null) { return false; }
             return true;
         }
         catch (System.ComponentModel.Win32Exception)

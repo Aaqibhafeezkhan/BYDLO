@@ -498,10 +498,19 @@ public sealed partial class SettingsViewModel : PageViewModel
     [RelayCommand]
     private async Task RestartElevated()
     {
-        await Services.Connections.StopAllAsync();
-        if (Services.Privileges.TryRestartElevated(Services.Args))
+        try
         {
-            Environment.Exit(0);
+            if (await Bydlo.Core.Platform.ElevatedRestart.TryAsync(Services.Privileges, Services.Args,
+                Environment.ProcessId, Services.Connections.StopAllAsync))
+            {
+                Environment.Exit(0);
+            }
+
+            Shell.ShowToast(L["settings.admin.cancelled"]);
+        }
+        catch (Exception)
+        {
+            Shell.ShowToast(L["settings.admin.failed"], isError: true);
         }
     }
 
