@@ -113,6 +113,193 @@ public class ChainTests
         await Assert.ThrowsAsync<EngineException>(() => store.AddChainAsync("ghost", [Guid.NewGuid(), Guid.NewGuid()]));
     }
 
+    private static async Task<ProfileStore> StoreWithChainAsync(string folder, bool rich = false)
+    {
+        var store = new ProfileStore(Path.Combine(folder, "profiles.json"), new InMemorySecretStore());
+        await store.LoadAsync();
+        var added = await store.AddAsync([Import("trojan://pw@one.example.com:443"), Import("trojan://pw@two.example.com:443")]);
+        await store.AddChainAsync("Relay", [added[0].Id, added[1].Id]);
+        if (rich)
+        {
+            var chain = Assert.Single(store.Chains);
+            await store.UpdateChainAsync(new ProxyChain
+            {
+                Id = chain.Id, Name = chain.Name, ProfileIds = [.. chain.ProfileIds],
+                PreferredEngine = EngineKind.SingBox, AddedAt = chain.AddedAt, IsFavorite = true,
+            });
+        }
+        return store;
+    }
+
+    private static Blocker BreakWrites(string file)
+    {
+        Directory.CreateDirectory(file + ".tmp");
+        return new Blocker(file);
+    }
+
+    private sealed class Blocker(string file) : IDisposable
+    {
+        public void Dispose()
+        {
+            if (Directory.Exists(file + ".tmp")) { Directory.Delete(file + ".tmp"); }
+        }
+    }
+
+    private static async Task<Exception?> RecordWriteErrorAsync(Func<Task> action)
+    {
+        var error = await Record.ExceptionAsync(action);
+        Assert.True(error is IOException or UnauthorizedAccessException, $"Expected a storage failure, got {error?.GetType().Name ?? "none"}.");
+        return error;
+    }
+
+    private static async Task AssertMemoryEqualsDiskAsync(ProfileStore store, string file)
+    {
+        var reloaded = new ProfileStore(file, new InMemorySecretStore());
+        await reloaded.LoadAsync();
+        var expected = store.Chains.OrderBy(c => c.Id).ToList();
+        var actual = reloaded.Chains.OrderBy(c => c.Id).ToList();
+        Assert.Equal(expected.Count, actual.Count);
+        for (var i = 0; i < expected.Count; i++)
+        {
+            Assert.Equal(expected[i].Id, actual[i].Id);
+            Assert.Equal(expected[i].Name, actual[i].Name);
+            Assert.Equal(expected[i].ProfileIds, actual[i].ProfileIds);
+            Assert.Equal(expected[i].PreferredEngine, actual[i].PreferredEngine);
+            Assert.Equal(expected[i].IsFavorite, actual[i].IsFavorite);
+            Assert.Equal(expected[i].AddedAt, actual[i].AddedAt);
+        }
+    }
+
+    private static void AssertChainFields(ProxyChain chain, string name, IReadOnlyList<Guid> hops,
+        EngineKind? engine = null, bool favorite = false)
+    {
+        Assert.Equal(name, chain.Name);
+        Assert.Equal(hops, chain.ProfileIds);
+        Assert.Equal(engine, chain.PreferredEngine);
+        Assert.Equal(favorite, chain.IsFavorite);
+    }
+
+    [Fact]
+    public async Task Failed_update_keeps_memory_equal_to_disk()
+    {
+        var folder = TestDirs.New("chain-update-failure");
+        var store = await StoreWithChainAsync(folder, rich: true);
+        var file = Path.Combine(folder, "profiles.json");
+        var before = await File.ReadAllTextAsync(file);
+        var original = Assert.Single(store.Chains);
+        using var _ = BreakWrites(file);
+
+        // A different but valid hop order must not leak into memory when the write fails.
+        var reversed = new ProxyChain
+        {
+            Id = original.Id, Name = "Renamed", ProfileIds = [.. Enumerable.Reverse(original.ProfileIds)],
+            PreferredEngine = EngineKind.Xray, AddedAt = original.AddedAt, IsFavorite = false,
+        };
+        await RecordWriteErrorAsync(() => store.UpdateChainAsync(reversed));
+
+        Assert.Equal(before, await File.ReadAllTextAsync(file));
+        AssertChainFields(Assert.Single(store.Chains), "Relay", original.ProfileIds, EngineKind.SingBox, favorite: true);
+        await AssertMemoryEqualsDiskAsync(store, file);
+    }
+
+    [Fact]
+    public async Task Failed_rename_keeps_memory_equal_to_disk()
+    {
+        var folder = TestDirs.New("chain-rename-failure");
+        var store = await StoreWithChainAsync(folder, rich: true);
+        var file = Path.Combine(folder, "profiles.json");
+        var before = await File.ReadAllTextAsync(file);
+        var original = Assert.Single(store.Chains);
+        using var _ = BreakWrites(file);
+
+        await RecordWriteErrorAsync(() => store.RenameChainAsync(original.Id, "Renamed"));
+
+        Assert.Equal(before, await File.ReadAllTextAsync(file));
+        AssertChainFields(Assert.Single(store.Chains), "Relay", original.ProfileIds, EngineKind.SingBox, favorite: true);
+        await AssertMemoryEqualsDiskAsync(store, file);
+    }
+
+    [Fact]
+    public async Task Failed_remove_keeps_memory_equal_to_disk()
+    {
+        var folder = TestDirs.New("chain-remove-failure");
+        var store = await StoreWithChainAsync(folder, rich: true);
+        var file = Path.Combine(folder, "profiles.json");
+        var before = await File.ReadAllTextAsync(file);
+        var original = Assert.Single(store.Chains);
+        using var _ = BreakWrites(file);
+
+        await RecordWriteErrorAsync(() => store.RemoveChainAsync(original.Id));
+
+        Assert.Equal(before, await File.ReadAllTextAsync(file));
+        AssertChainFields(Assert.Single(store.Chains), "Relay", original.ProfileIds, EngineKind.SingBox, favorite: true);
+        await AssertMemoryEqualsDiskAsync(store, file);
+    }
+
+    [Fact]
+    public async Task Rejected_update_validation_keeps_memory_equal_to_disk()
+    {
+        // Validation throws before any write: memory and disk must be untouched (no write attempted).
+        var folder = TestDirs.New("chain-update-validation");
+        var store = await StoreWithChainAsync(folder, rich: true);
+        var file = Path.Combine(folder, "profiles.json");
+        var before = await File.ReadAllTextAsync(file);
+        var original = Assert.Single(store.Chains);
+
+        var duplicate = new ProxyChain { Id = original.Id, Name = "Bad", ProfileIds = [original.ProfileIds[0], original.ProfileIds[0]] };
+        var error = await Assert.ThrowsAsync<EngineException>(() => store.UpdateChainAsync(duplicate));
+        Assert.Equal("error.chain.duplicate", error.LocalizationKey);
+
+        Assert.Equal(before, await File.ReadAllTextAsync(file));
+        AssertChainFields(Assert.Single(store.Chains), "Relay", original.ProfileIds, EngineKind.SingBox, favorite: true);
+        await AssertMemoryEqualsDiskAsync(store, file);
+    }
+
+    [Fact]
+    public async Task Cancelled_chain_mutation_keeps_memory_equal_to_disk()
+    {
+        var folder = TestDirs.New("chain-cancel");
+        var store = await StoreWithChainAsync(folder);
+        var file = Path.Combine(folder, "profiles.json");
+        var before = await File.ReadAllTextAsync(file);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var id = store.Chains[0].Id;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.RenameChainAsync(id, "Renamed", cts.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            store.UpdateChainAsync(new ProxyChain { Id = id, Name = "Renamed", ProfileIds = [.. store.Chains[0].ProfileIds] }, cts.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.RemoveChainAsync(id, cts.Token));
+
+        Assert.Equal(before, await File.ReadAllTextAsync(file));
+        Assert.Equal("Relay", Assert.Single(store.Chains).Name);
+        await AssertMemoryEqualsDiskAsync(store, file);
+    }
+
+    [Fact]
+    public async Task Successful_retry_after_failed_chain_write_persists()
+    {
+        var folder = TestDirs.New("chain-retry");
+        var store = await StoreWithChainAsync(folder, rich: true);
+        var file = Path.Combine(folder, "profiles.json");
+        var before = await File.ReadAllTextAsync(file);
+        var original = Assert.Single(store.Chains);
+        var blocker = BreakWrites(file);
+        var id = original.Id;
+        await RecordWriteErrorAsync(() => store.RenameChainAsync(id, "Renamed"));
+
+        // The failed write changed nothing: memory and disk still hold the original chain.
+        Assert.Equal(before, await File.ReadAllTextAsync(file));
+        AssertChainFields(Assert.Single(store.Chains), "Relay", original.ProfileIds, EngineKind.SingBox, favorite: true);
+        blocker.Dispose();
+
+        await store.RenameChainAsync(id, "Renamed");
+        AssertChainFields(Assert.Single(store.Chains), "Renamed", original.ProfileIds, EngineKind.SingBox, favorite: true);
+        var reloaded = new ProfileStore(file, new InMemorySecretStore());
+        await reloaded.LoadAsync();
+        AssertChainFields(Assert.Single(reloaded.Chains), "Renamed", original.ProfileIds, EngineKind.SingBox, favorite: true);
+    }
+
     [Fact]
     public void Builders_reject_too_many_hops()
     {
