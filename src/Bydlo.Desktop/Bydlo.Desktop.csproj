@@ -27,6 +27,7 @@
       <_ManifestVersion>$([System.Version]::Parse('$(Version)').Major).$([System.Version]::Parse('$(Version)').Minor).$([System.Version]::Parse('$(Version)').Build).0</_ManifestVersion>
       <ApplicationManifest>$(IntermediateOutputPath)app.manifest</ApplicationManifest>
     </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" Condition="!Exists('$(IntermediateOutputPath)')" />
     <StampManifestVersion Template="app.manifest" Output="$(IntermediateOutputPath)app.manifest" ManifestVersion="$(_ManifestVersion)" />
   </Target>
   <ItemGroup>
