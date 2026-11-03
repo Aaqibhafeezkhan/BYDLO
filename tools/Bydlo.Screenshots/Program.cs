@@ -40,6 +40,12 @@ if (app.Services is null)
 var services = app.Services!;
 Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
 
+if (args.Contains("--export-brand-icon", StringComparer.Ordinal))
+{
+    BrandIconExport.Run(output);
+    return;
+}
+
 if (args.Contains("--verify-wizard", StringComparer.Ordinal))
 {
     WizardVerification.Run(services, output);
@@ -118,6 +124,16 @@ void Shoot(string name, double width, double height, Action<Window>? arrange = n
     frame.Save(Path.Combine(output, name + ".png"));
     window.Close();
     Console.WriteLine($"saved {name}.png");
+}
+
+if (args.Contains("--preview-brand", StringComparer.Ordinal))
+{
+    shell.FinishOnboardingCommand.Execute(null);
+    Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
+    services.Theme.Apply(ThemePreference.Purple);
+    Shoot("brand-desktop", 1180, 780);
+    Shoot("brand-compact", 380, 700);
+    return;
 }
 
 if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))

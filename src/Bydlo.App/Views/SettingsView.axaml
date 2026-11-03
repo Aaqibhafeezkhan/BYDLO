@@ -288,9 +288,7 @@
       <Expander Header="{l:T settings.about}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="12">
           <StackPanel Orientation="Horizontal" Spacing="10">
-            <Border Width="38" Height="38" CornerRadius="8" Background="{DynamicResource PrimaryBrush}">
-              <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource OnPrimaryBrush}" />
-            </Border>
+            <Image Source="{StaticResource BrandLogo}" Width="38" Height="38" />
             <StackPanel VerticalAlignment="Center">
               <TextBlock Text="{Binding Version, StringFormat='BYDLO {0}'}" FontWeight="Bold" />
               <TextBlock Classes="faint" Text="{l:T app.full}" />
