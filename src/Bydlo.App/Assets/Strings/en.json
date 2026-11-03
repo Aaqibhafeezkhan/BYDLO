@@ -600,6 +600,10 @@
   "toast.orphans": "Stopped {0} leftover process(es).",
   "toast.copied": "Copied.",
   "toast.saved": "Saved.",
+  "crash.text": "The app closed unexpectedly. A redacted crash report was saved.",
+  "crash.open": "Open logs",
+  "crash.copy": "Copy report",
+  "crash.dismiss": "Dismiss",
 
   "common.save": "Save",
   "common.cancel": "Cancel",
