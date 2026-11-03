@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Threading;
 using Bydlo.App.Services;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Engines;
@@ -20,6 +21,12 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     partial void OnIsWorkingChanged(bool value) => OnPropertyChanged(nameof(CanRegisterWarp));
 
     private bool _autoRefreshInProgress;
+    private readonly SubscriptionAutoRefresh _autoRefresh = new(shell.Services.Profiles, shell.Services.Subscriptions);
+
+    public Task RunAutoRefreshAsync(CancellationToken ct) => _autoRefresh.RunAsync(async token =>
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => AutoRefreshIfDueAsync(token));
+    }, ct);
 
     [ObservableProperty] private bool _isCheckingLatency;
 
@@ -69,7 +76,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     {
         Subscriptions.ReplaceWith(Services.Profiles.Subscriptions.Select(s => new SubscriptionRow(s)));
         OnPropertyChanged(nameof(IsEmpty));
-        _ = AutoRefreshIfDueAsync();
+        _ = AutoRefreshIfDueAsync(Services.ShutdownToken);
         OnPropertyChanged(nameof(CanMeasureSpeed));
         OnPropertyChanged(nameof(SpeedTestDisabledReason));
         OnPropertyChanged(nameof(CanCheckLatency));
@@ -159,58 +166,24 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         });
     }
 
-    /// <summary>Refreshes subscriptions whose data is older than the configured interval.</summary>
-    public async Task AutoRefreshIfDueAsync()
+    /// <summary>Refreshes due subscriptions on the UI thread, including while another page is visible.</summary>
+    public async Task AutoRefreshIfDueAsync(CancellationToken ct = default)
     {
-        if (_autoRefreshInProgress || IsWorking)
-        {
-            return;
-        }
-        if (!Services.Settings.SubscriptionAutoUpdate || Services.IsMock || NetworkSafetyGuard.IsLocked)
-        {
-            return;
-        }
-        var intervalHours = Math.Clamp(Services.Settings.SubscriptionUpdateIntervalHours, 1, 168);
-        var now = DateTimeOffset.UtcNow;
-        var due = Services.Profiles.Subscriptions
-            .Where(s => s.LastUpdated is null || now - s.LastUpdated > TimeSpan.FromHours(intervalHours))
-            .ToList();
-        if (due.Count == 0)
-        {
-            return;
-        }
+        if (_autoRefreshInProgress || IsWorking || ct.IsCancellationRequested) { return; }
         _autoRefreshInProgress = true;
         IsWorking = true;
         try
         {
-            var refreshed = 0;
-            foreach (var sub in due)
-            {
-                try
-                {
-                    var url = await Services.Profiles.GetSubscriptionUrlAsync(sub.Id, Services.ShutdownToken);
-                    if (url is null)
-                    {
-                        continue;
-                    }
-                    var preview = await Services.Subscriptions.FetchRefreshAsync(url, Services.ShutdownToken);
-                    if (preview.Import.IsEmpty)
-                    {
-                        continue;
-                    }
-                    await Services.Profiles.ReplaceSubscriptionProfilesAsync(sub.Id, preview.Import.Profiles, preview.Metadata, Services.ShutdownToken);
-                    refreshed++;
-                }
-                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or InvalidDataException or IOException or UnauthorizedAccessException or EngineException)
-                {
-                    Services.Log.Warn("subs", $"Auto-update failed: {ex.GetType().Name}");
-                }
-            }
+            var refreshed = await _autoRefresh.RefreshIfDueAsync(Services.Settings,
+                Services.IsMock || NetworkSafetyGuard.IsLocked,
+                ex => Services.Log.Warn("subs", $"Auto-update failed: {ex.GetType().Name}"), ct);
             if (refreshed > 0)
             {
                 Shell.ReloadProfiles();
+                OnPropertyChanged(nameof(IsEmpty));
             }
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         finally
         {
             IsWorking = false;

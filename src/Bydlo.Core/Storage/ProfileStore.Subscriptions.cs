@@ -79,7 +79,7 @@ public sealed partial class ProfileStore
 
             var updated = new Subscription
             {
-                Id = sub.Id, Name = sub.Name, LastUpdated = DateTimeOffset.UtcNow, SourceOptions = sourceOptions,
+                Id = sub.Id, Name = sub.Name, LastUpdated = (time ?? TimeProvider.System).GetUtcNow(), SourceOptions = sourceOptions,
                 Upload = metadata is null ? sub.Upload : metadata.Upload,
                 Download = metadata is null ? sub.Download : metadata.Download,
                 Total = metadata is null ? sub.Total : metadata.Total,

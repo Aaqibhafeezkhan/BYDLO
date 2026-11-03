@@ -101,6 +101,7 @@ public sealed partial class MainViewModel : ViewModelBase
         };
         _hasOrphans = services.Orphans.Count > 0;
         _ = Settings.CheckForUpdatesIfDueAsync();
+        services.StartSubscriptionAutoRefresh(Connections.RunAutoRefreshAsync);
     }
 
     public AppServices Services { get; }
