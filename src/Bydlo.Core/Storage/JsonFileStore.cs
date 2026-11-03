@@ -149,16 +149,40 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets)
         return added;
     }
 
-    public async Task UpdateAsync(Profile profile, CancellationToken ct = default)
+    public Task UpdateAsync(Profile profile, CancellationToken ct = default) =>
+        UpdateAsync(profile, null, ct);
+
+    public async Task UpdateAsync(Profile profile, ProfileSecrets? updatedSecrets, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var i = _doc.Profiles.FindIndex(p => p.Id == profile.Id);
-            if (i >= 0)
+            var index = _doc.Profiles.FindIndex(p => p.Id == profile.Id);
+            if (index < 0)
             {
-                _doc.Profiles[i] = profile;
-                await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+                return;
+            }
+
+            var next = new ProfileDocument { Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions] };
+            next.Profiles[index] = profile;
+            var id = profile.Id.ToString();
+            var previous = updatedSecrets is null ? null : await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+            try
+            {
+                if (updatedSecrets is not null)
+                {
+                    await secrets.SaveAsync(id, updatedSecrets, ct).ConfigureAwait(false);
+                }
+                await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+                _doc = next;
+            }
+            catch
+            {
+                if (previous is not null)
+                {
+                    await secrets.SaveAsync(id, previous, CancellationToken.None).ConfigureAwait(false);
+                }
+                throw;
             }
         }
         finally

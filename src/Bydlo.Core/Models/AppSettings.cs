@@ -152,6 +152,9 @@ public sealed class RoutingSettings
 
     /// <summary>Process names that bypass the tunnel (sing-box TUN; Xray on Windows/Linux).</summary>
     public List<string> DirectProcesses { get; set; } = [];
+
+    /// <summary>In sing-box TUN mode, only the listed processes can use the proxy.</summary>
+    public bool ProxyOnlyListedProcesses { get; set; }
 }
 
 public sealed class ZapretSettings

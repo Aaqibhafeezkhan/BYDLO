@@ -250,12 +250,13 @@ public sealed class SingBoxConfigBuilder
             rules.Add(new JsonObject { ["ip_cidr"] = ToArray(routing.DirectCidrs), ["outbound"] = "direct" });
         }
 
+        var onlyListedProcesses = mode == ConnectionMode.Tun && routing.ProxyOnlyListedProcesses;
         if (mode == ConnectionMode.Tun && routing.DirectProcesses.Count > 0)
         {
-            rules.Add(new JsonObject { ["process_name"] = ToArray(routing.DirectProcesses), ["outbound"] = "direct" });
+            rules.Add(new JsonObject { ["process_name"] = ToArray(routing.DirectProcesses), ["outbound"] = onlyListedProcesses ? ProxyTag : "direct" });
         }
 
-        if (routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0)
+        if (!onlyListedProcesses && routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0)
         {
             rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.ProxyDomains), ["outbound"] = ProxyTag });
         }
@@ -263,7 +264,7 @@ public sealed class SingBoxConfigBuilder
         return new JsonObject
         {
             ["rules"] = rules,
-            ["final"] = routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0 ? "direct" : ProxyTag,
+            ["final"] = onlyListedProcesses || (routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0) ? "direct" : ProxyTag,
             ["auto_detect_interface"] = true,
             ["default_domain_resolver"] = "local",
         };

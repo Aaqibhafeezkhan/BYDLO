@@ -266,6 +266,36 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     private Task ExportConfig(ProfileItem item) => ProfileShareDialog.ShowAsync(Services, item.Profile, "share.file");
 
     [RelayCommand]
+    private Task<bool> EditProfile(ProfileItem item) => Shell.Guard(async () =>
+    {
+        if (await ProfileEditorDialog.ShowAsync(Services, item.Profile) is { } edited)
+        {
+            await Services.Profiles.UpdateAsync(edited.Profile, edited.Secrets);
+            Shell.ReloadProfiles();
+            OnShown();
+        }
+    });
+
+    [RelayCommand]
+    private Task<bool> DuplicateProfile(ProfileItem item) => Shell.Guard(async () =>
+    {
+        var source = item.Profile;
+        var copy = new Profile
+        {
+            Name = Loc.T("profile.edit.copyName", source.Name),
+            Protocol = source.Protocol,
+            Host = source.Host,
+            Port = source.Port,
+            Options = new Dictionary<string, string>(source.Options, StringComparer.OrdinalIgnoreCase),
+            PreferredEngine = source.PreferredEngine,
+        };
+        var secrets = await Services.Secrets.LoadAsync(source.Id.ToString());
+        await Services.Profiles.AddAsync([new ImportedProfile(copy, secrets)]);
+        Shell.ReloadProfiles();
+        OnShown();
+    });
+
+    [RelayCommand]
     private async Task Delete(ProfileItem item)
     {
         if (Shell.Primary.Profile?.Id == item.Id)

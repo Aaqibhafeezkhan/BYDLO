@@ -79,6 +79,17 @@
               <TextBlock Classes="caps" Text="{l:T routing.process}" />
               <TextBox Classes="list" Text="{Binding DirectProcesses}" Watermark="game.exe" />
               <TextBlock Classes="faint" Text="{l:T routing.process.hint}" TextWrapping="Wrap" />
+              <StackPanel IsVisible="{Binding HasApplicationPicker}" IsEnabled="{Binding IsTunMode}" Spacing="8">
+                <Button Command="{Binding FindApplicationsCommand}" Content="{l:T routing.process.find}" />
+                <TextBox Text="{Binding ApplicationSearch}" Watermark="{l:T routing.process.search}" />
+                <ComboBox ItemsSource="{Binding MatchingApplications}" SelectedItem="{Binding SelectedApplication}"
+                          HorizontalAlignment="Stretch" />
+                <Button Command="{Binding AddApplicationCommand}" Content="{l:T routing.process.add}" />
+              </StackPanel>
+              <CheckBox IsChecked="{Binding ProxyOnlyListedProcesses}" IsEnabled="{Binding IsTunMode}"
+                        Content="{l:T routing.process.only}" />
+              <TextBlock IsVisible="{Binding !IsTunMode}" Classes="faint"
+                         Text="{l:T routing.process.tun}" TextWrapping="Wrap" />
             </StackPanel>
           </Expander>
         </StackPanel>

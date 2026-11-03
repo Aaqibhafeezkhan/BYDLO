@@ -192,6 +192,24 @@ public class ConfigBuilderTests
         Assert.True(forced.index < catchAll.index);
     }
 
+    [Theory]
+    [InlineData(ConnectionMode.Tun, false, "direct", "proxy")]
+    [InlineData(ConnectionMode.Tun, true, "proxy", "direct")]
+    [InlineData(ConnectionMode.LocalProxy, true, null, "proxy")]
+    public void SingBox_routes_listed_processes_only_in_tun(
+        ConnectionMode mode, bool onlyListed, string? processOutbound, string finalOutbound)
+    {
+        var settings = new AppSettings
+        {
+            Mode = mode,
+            Routing = { DirectProcesses = ["game.exe"], ProxyOnlyListedProcesses = onlyListed },
+        };
+        var route = SingBox(Import("trojan://pw@t.example.com:443"), settings)["route"]!;
+        Assert.Equal(finalOutbound, (string?)route["final"]);
+        var rule = route["rules"]!.AsArray().SingleOrDefault(r => r?["process_name"] is JsonArray);
+        Assert.Equal(processOutbound, (string?)rule?["outbound"]);
+    }
+
     [Fact]
     public void Xray_supports_direct_processes()
     {

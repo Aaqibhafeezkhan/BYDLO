@@ -1,3 +1,4 @@
+using Bydlo.Platform;
 using Bydlo.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -43,7 +44,52 @@ public sealed partial class RoutingViewModel : PageViewModel
     [ObservableProperty]
     private string _directProcesses = "";
 
-    public override void OnShown() => Load();
+    [ObservableProperty]
+    private bool _proxyOnlyListedProcesses;
+
+    private IReadOnlyList<string> _applicationNames = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MatchingApplications))]
+    private string _applicationSearch = "";
+
+    [ObservableProperty]
+    private string? _selectedApplication;
+
+    public bool HasApplicationPicker => OperatingSystem.IsWindows();
+    public IEnumerable<string> MatchingApplications =>
+        _applicationNames.Where(name => name.Contains(ApplicationSearch, StringComparison.CurrentCultureIgnoreCase));
+
+    [RelayCommand]
+    private async Task FindApplications()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            await Shell.Guard(async () =>
+            {
+                _applicationNames = await Task.Run(() => OperatingSystem.IsWindows()
+                    ? WindowsApplicationCatalog.ListExecutableNames() : Array.Empty<string>());
+                OnPropertyChanged(nameof(MatchingApplications));
+            });
+        }
+    }
+
+    [RelayCommand]
+    private void AddApplication()
+    {
+        if (SelectedApplication is { } application)
+        {
+            DirectProcesses = string.Join('\n', Split(DirectProcesses + "\n" + application));
+        }
+    }
+
+    public bool IsTunMode => Services.Settings.Mode == ConnectionMode.Tun;
+
+    public override void OnShown()
+    {
+        Load();
+        OnPropertyChanged(nameof(IsTunMode));
+    }
 
     [RelayCommand]
     private async Task Save()
@@ -59,6 +105,7 @@ public sealed partial class RoutingViewModel : PageViewModel
         r.BlockDomains = Split(BlockDomains);
         r.DirectCidrs = Split(DirectCidrs);
         r.DirectProcesses = Split(DirectProcesses);
+        r.ProxyOnlyListedProcesses = ProxyOnlyListedProcesses;
         await Services.SaveSettingsAsync();
         Shell.ShowToast(Shell.Home.IsConnected ? L["routing.saved.reconnect"] : L["toast.saved"]);
     }
@@ -76,6 +123,7 @@ public sealed partial class RoutingViewModel : PageViewModel
         BlockDomains = string.Join('\n', r.BlockDomains);
         DirectCidrs = string.Join('\n', r.DirectCidrs);
         DirectProcesses = string.Join('\n', r.DirectProcesses);
+        ProxyOnlyListedProcesses = r.ProxyOnlyListedProcesses;
     }
 
     private static List<string> Split(string text) =>

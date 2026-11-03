@@ -90,8 +90,24 @@ if ($Rid.StartsWith('win-')) {
         $capSource = Fetch 'libcap-ng-source'
         Copy-Item $capSource (Join-Path $sources 'libcap-ng-source.tar.gz') -Force
     }
-    & bash (Join-Path $repo 'scripts/build-openvpn.sh') $Rid $stage $ovpnDir $openvpnSource $opensslSource $capSource
-    CheckExit 'OpenVPN/OpenSSL build'
+    $cache = $env:BYDLO_OPENVPN_BUILD_CACHE
+    $files = @('openvpn', 'COPYING', 'openssl.cnf')
+    $useCache = $Rid -eq 'osx-arm64' -and $cache
+    $missing = if ($useCache) { $files | Where-Object { !(Test-Path -LiteralPath (Join-Path $cache $_) -PathType Leaf) } }
+    if ($useCache -and !$missing) {
+        foreach ($name in $files) {
+            Copy-Item -LiteralPath (Join-Path $cache $name) -Destination $ovpnDir -Force
+        }
+    } else {
+        & bash (Join-Path $repo 'scripts/build-openvpn.sh') $Rid $stage $ovpnDir $openvpnSource $opensslSource $capSource
+        CheckExit 'OpenVPN/OpenSSL build'
+        if ($useCache) {
+            New-Item -ItemType Directory -Force $cache | Out-Null
+            foreach ($name in $files) {
+                Copy-Item -LiteralPath (Join-Path $ovpnDir $name) -Destination $cache -Force
+            }
+        }
+    }
 }
 
 # Record packaged bytes without launching them. Retain build inputs for audit/update work.

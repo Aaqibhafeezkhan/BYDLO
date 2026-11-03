@@ -63,7 +63,7 @@ public sealed class XrayConfigBuilder
             rules.Add(new JsonObject { ["type"] = "field", ["ip"] = Arr(routing.DirectCidrs), ["outboundTag"] = "direct" });
         }
 
-        if (routing.DirectProcesses.Count > 0)
+        if (!routing.ProxyOnlyListedProcesses && routing.DirectProcesses.Count > 0)
         {
             rules.Add(new JsonObject { ["type"] = "field", ["process"] = Arr(routing.DirectProcesses), ["outboundTag"] = "direct" });
         }

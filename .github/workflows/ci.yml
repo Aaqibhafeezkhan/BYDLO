@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(github.server_url == 'https://github.com' && '["ubuntu-latest","windows-latest","macos-latest"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON(github.server_url == 'https://github.com' && '["ubuntu-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"windows-latest"},{"rid":"win-arm64","os":"windows-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-arm64","os":"macos-latest"}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"}]') }}
+        include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"windows-latest"},{"rid":"win-arm64","os":"windows-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-arm64","os":"ubuntu-24.04","managedOnly":true}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -89,12 +89,13 @@ jobs:
           dotnet run --project tools/Bydlo.BundleEngines -c Release --
           ${{ matrix.rid }} publish/BYDLO-${{ matrix.rid }} .
       - uses: actions/setup-go@v6
+        if: ${{ !matrix.managedOnly }}
         with:
           go-version: '1.27.3'
           cache: false
       # Gitea runner images ship without PowerShell and some build tools that GitHub images include.
       - name: Install build tools missing on the Gitea runner
-        if: github.server_url != 'https://github.com'
+        if: ${{ !matrix.managedOnly && github.server_url != 'https://github.com' }}
         shell: bash
         run: |
           missing=
@@ -119,25 +120,68 @@ jobs:
             ldconfig -p | grep -q libicu || echo "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1" >> "$GITHUB_ENV"
           fi
       - name: Build and bundle AmneziaWG and OpenVPN (never execute engines)
+        if: ${{ !matrix.managedOnly }}
         shell: pwsh
         run: ./scripts/build-bundled-engines.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
       - name: Verify offline bundle contents and architecture (never execute engines)
+        if: ${{ !matrix.managedOnly }}
         shell: pwsh
         run: ./scripts/verify-engine-bundle.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory 'publish/BYDLO-${{ matrix.rid }}'
       - name: Add notices
+        if: ${{ !matrix.managedOnly }}
         shell: bash
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-${{ matrix.rid }}/
       - uses: actions/upload-artifact@v4
         if: github.server_url == 'https://github.com'
         with:
-          name: BYDLO-${{ matrix.rid }}
+          name: ${{ matrix.managedOnly && 'managed-osx-arm64' || format('BYDLO-{0}', matrix.rid) }}
           path: publish/BYDLO-${{ matrix.rid }}
+
+  macos:
+    name: Verify and bundle macOS Apple Silicon
+    if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    needs: desktop
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Run isolated tests
+        run: dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release
+      - uses: actions/download-artifact@v4
+        with:
+          name: managed-osx-arm64
+          path: publish/BYDLO-osx-arm64
+      - name: Identify macOS SDK and toolchain
+        id: toolchain
+        run: |
+          fingerprint=$( (xcodebuild -version; xcrun --sdk macosx --show-sdk-build-version; clang --version) | shasum -a 256 | cut -d ' ' -f 1)
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: .tmp/macos-openvpn-cache
+          key: openvpn-osx-arm64-${{ steps.toolchain.outputs.fingerprint }}-${{ hashFiles('engines/*.lock.json', 'scripts/build-openvpn.sh', 'scripts/build-bundled-engines.ps1') }}
+      - name: Build native engines
+        shell: pwsh
+        env:
+          BYDLO_OPENVPN_BUILD_CACHE: .tmp/macos-openvpn-cache
+        run: ./scripts/build-bundled-engines.ps1 -Rid osx-arm64 -PublishDirectory publish/BYDLO-osx-arm64
+      - name: Verify offline bundle
+        shell: pwsh
+        run: ./scripts/verify-engine-bundle.ps1 -Rid osx-arm64 -PublishDirectory publish/BYDLO-osx-arm64
+      - name: Add notices
+        run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-osx-arm64/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BYDLO-osx-arm64
+          path: publish/BYDLO-osx-arm64
 
   release:
     name: Draft release
     # Releases are published on GitHub only; the Gitea mirror just builds.
     if: startsWith(github.ref, 'refs/tags/v') && github.server_url == 'https://github.com'
-    needs: [desktop]
+    needs: [desktop, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -150,6 +194,9 @@ jobs:
       - name: Package and checksum
         run: |
           cd dist
+          for rid in win-x64 win-arm64 linux-x64 linux-arm64 osx-arm64; do
+            test -d "BYDLO-$rid" || exit 1
+          done
           for d in BYDLO-*; do
             case "$d" in
               *linux-*|*osx-*) find "$d" -type f \( -name BYDLO -o -name nfqws -o -name tpws -o -name sing-box -o -name xray -o -name bydlo-amneziawg -o -name openvpn \) -exec chmod 755 {} + ;;
