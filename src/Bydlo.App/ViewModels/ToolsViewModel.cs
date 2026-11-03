@@ -381,11 +381,15 @@ public sealed partial class ToolsViewModel : PageViewModel
     [RelayCommand]
     private async Task OpenInTelegram()
     {
-        await RefreshTgAsync();
-        if (Services.TopLevel()?.Launcher is { } launcher && !await launcher.LaunchUriAsync(new Uri(TgLink)))
+        await Shell.Guard(async () =>
         {
-            Shell.ShowToast(L["tools.tg.notelegram"], isError: true);
-        }
+            if (!TgRunning && !SaveTgSettings()) { return; }
+            var connection = new TelegramProxyConnection(Services.Connections, Services.TgSecrets);
+            var opened = await connection.OpenAsync(Services.EffectiveSettings, async uri =>
+                Services.TopLevel()?.Launcher is { } launcher && await launcher.LaunchUriAsync(uri));
+            if (!opened) { Shell.ShowToast(L["tools.tg.notelegram"], isError: true); }
+            await RefreshTgAsync();
+        });
     }
 
     [RelayCommand]

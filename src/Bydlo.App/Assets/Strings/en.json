@@ -365,7 +365,7 @@
   "list.exclude": "Excluded domains (list-exclude-user)",
   "list.ipsetexclude": "Excluded IPs (ipset-exclude-user)",
 
-  "tools.tg.desc": "TG WS Proxy helps Telegram connect. Start it, then choose Connect in Telegram.",
+  "tools.tg.desc": "TG WS Proxy helps Telegram connect. Choose Open in Telegram and confirm the connection.",
   "tools.tg.copy": "Copy Telegram link",
   "tools.tg.open": "Open in Telegram",
   "tools.tg.regen": "New secret",
@@ -691,7 +691,7 @@
   "home.tools.hint": "These tools work independently. Enable only what you need.",
   "home.zapret.title": "Unblock websites · Zapret",
   "home.tg.title": "Telegram · TG WS Proxy",
-  "home.tg.hint": "A separate proxy for Telegram. Enable it, then connect it in Telegram.",
+  "home.tg.hint": "A separate proxy for Telegram. One button starts the proxy and opens Telegram.",
   "home.tg.open": "Connect in Telegram",
   "home.tools.shortcut": "Enable Zapret or Telegram proxy"
 }
