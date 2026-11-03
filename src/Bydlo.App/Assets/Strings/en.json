@@ -1,4 +1,5 @@
 {
+  "startup.activationFailed": "BYDLO could not activate the running window or open its data directory. The running instance may be busy or not responding. Wait a moment and try again. If the problem persists, close BYDLO and reopen it. Also check that you can access the data directory.",
   "tools.tg.toggle": "Telegram proxy",
   "nav.settings.back": "Back to settings",
   "settings.network.sections": "Network and diagnostics",

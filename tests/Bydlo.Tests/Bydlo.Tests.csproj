@@ -19,6 +19,7 @@
     <Using Include="Xunit" />
     <Compile Include="..\..\src\Bydlo.Desktop\ElevationHandoff.cs" Link="Desktop\ElevationHandoff.cs" />
     <Compile Include="..\..\src\Bydlo.Desktop\WindowsActivationBroker.cs" Link="Desktop\WindowsActivationBroker.cs" />
+    <Compile Include="..\..\src\Bydlo.Desktop\UnixActivationBroker.cs" Link="Desktop\UnixActivationBroker.cs" />
     <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
