@@ -86,6 +86,10 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     /// <summary>Delay before reconnect attempt N (1-based). Tests shorten it.</summary>
     public Func<int, TimeSpan> ReconnectDelay { get; set; } = attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt));
 
+    // Tests replace only this check and use a recording proxy service; the global lock stays on.
+    internal Action EnsureSystemProxyAllowed { get; init; } =
+        () => NetworkSafetyGuard.EnsureAllowed("set the system proxy");
+
     public SessionSnapshot Primary => Snapshot(PrimaryKey);
 
     public async Task<IReadOnlyList<ActiveConnection>?> ListActiveConnectionsAsync(CancellationToken ct = default)
@@ -184,7 +188,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
             {
-                NetworkSafetyGuard.EnsureAllowed("set the system proxy");
+                EnsureSystemProxyAllowed();
                 await _systemProxy.SetAsync("127.0.0.1",
                     session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
                 session.SystemProxySet = true;
@@ -235,7 +239,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
             {
-                NetworkSafetyGuard.EnsureAllowed("set the system proxy");
+                EnsureSystemProxyAllowed();
                 await _systemProxy.SetAsync("127.0.0.1",
                     session.Engine.Descriptor.Kind == EngineKind.Xray ? settings.LocalProxyPort + 1 : settings.LocalProxyPort, ct).ConfigureAwait(false);
                 session.SystemProxySet = true;
