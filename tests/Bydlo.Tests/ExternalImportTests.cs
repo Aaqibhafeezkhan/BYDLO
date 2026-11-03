@@ -12,6 +12,8 @@ public class ExternalImportTests
     [InlineData("ss://encoded@example.com:443", "SS")]
     [InlineData("hy2://password@example.com:443", "HY2")]
     [InlineData("tuic://id:password@example.com:443", "TUIC")]
+    [InlineData("socks5h://proxy.example:1080", "SOCKS5H")]
+    [InlineData("SOCKS5H://proxy.example:1080", "SOCKS5H")]
     [InlineData(" https://example.com/sub?token=secret ", "subscription")]
     [InlineData("https://example.com", null)]
     [InlineData("https://example.com/a\nvless://id@example.com:443", null)]
@@ -58,6 +60,8 @@ public class ExternalImportTests
     [InlineData("tuic://id:password@example.com:443")]
     [InlineData("wg://encoded")]
     [InlineData("socks5://user:password@example.com:1080")]
+    [InlineData("socks5h://proxy.example:1080")]
+    [InlineData("SOCKS5H://proxy.example:1080")]
     public void Clipboard_still_offers_explicit_protocol_links_once(string input)
     {
         var history = new ClipboardSuggestionHistory();
@@ -71,6 +75,22 @@ public class ExternalImportTests
     {
         var inputs = ExternalImportInput.LaunchInputs(["--mock", "--unknown", "a.exe", "a.CONF", "b.ovpn", "qr.PNG", "vless://id@example.com:443"]).ToArray();
         Assert.Equal(["a.CONF", "b.ovpn", "qr.PNG", "vless://id@example.com:443"], inputs);
+    }
+
+    [Theory]
+    [InlineData("socks5h://proxy.example:1080")]
+    [InlineData("SOCKS5H://proxy.example:1080")]
+    public void Launch_arguments_preserve_socks5h_links_for_import(string input)
+    {
+        var inputs = ExternalImportInput.LaunchInputs(["--mock", "unrelated", input]).ToArray();
+
+        Assert.Equal([input], inputs);
+        var result = new ProfileImporter().ImportText(Assert.Single(inputs));
+        Assert.Empty(result.Errors);
+        var profile = Assert.Single(result.Profiles).Profile;
+        Assert.Equal(Bydlo.Core.Models.ProtocolKind.Socks5, profile.Protocol);
+        Assert.Equal("proxy.example", profile.Host);
+        Assert.Equal(1080, profile.Port);
     }
 
     [Fact]
