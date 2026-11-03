@@ -17,7 +17,7 @@ var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
 if (args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
-    args.Contains("--verify-updates", StringComparer.Ordinal) || args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
+    args.Contains("--verify-updates", StringComparer.Ordinal) || args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-rules", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
@@ -306,6 +306,73 @@ if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
     Shoot("simple-home-connected", 1180, 780);
     Wait(services.Connections.StopAllAsync());
     Console.WriteLine("Simple UI verification passed: themes, compact layout, direct import destinations, independent mock tools and VPN.");
+    return;
+}
+
+if (args.Contains("--verify-routing-rules", StringComparer.Ordinal))
+{
+    shell.FinishOnboardingCommand.Execute(null);
+    services.Settings.Routing = new RoutingSettings();
+    shell.Navigate("routing");
+    var routing = shell.Routing;
+    routing.ShowRuleEditor = true;
+    routing.SourceTag = "custom-domains";
+    routing.SourceUrl = "https://example.test/pinned/domains.srs";
+    routing.SourceHash = new string('a', 64);
+    routing.SourceMaxBytes = "1024";
+    Wait(routing.SaveSourceCommand.ExecuteAsync(null));
+    if (routing.RuleSetSources.Count != 1) { throw new InvalidOperationException("Source was not added."); }
+    routing.SelectedSource = routing.RuleSetSources[0];
+    routing.SourceMaxBytes = "2048";
+    Wait(routing.SaveSourceCommand.ExecuteAsync(null));
+    if (routing.RuleSetSources.Count != 1 || routing.RuleSetSources[0].MaxBytes != 2048)
+    { throw new InvalidOperationException("Source edit did not preserve its position."); }
+    routing.SourceTag = "custom-domains";
+    routing.SourceUrl = "https://example.test/duplicate.srs";
+    routing.SourceHash = new string('b', 64);
+    Wait(routing.SaveSourceCommand.ExecuteAsync(null));
+    if (routing.RuleSetSources.Count != 1) { throw new InvalidOperationException("Duplicate source was accepted."); }
+    routing.RuleConditionIndex = (int)Bydlo.Core.Routing.RoutingCondition.GeoSite;
+    routing.RuleValue = "custom-domains";
+    routing.RuleActionIndex = (int)Bydlo.Core.Routing.RoutingAction.Direct;
+    routing.AddRuleCommand.Execute(null);
+    var first = routing.OrderedRules.Last();
+    routing.RuleValue = "custom-domains";
+    routing.AddRuleCommand.Execute(null);
+    var duplicate = routing.OrderedRules.Last();
+    routing.RuleConditionIndex = (int)Bydlo.Core.Routing.RoutingCondition.Port;
+    routing.RuleValue = "443";
+    routing.RuleActionIndex = (int)Bydlo.Core.Routing.RoutingAction.Block;
+    routing.AddRuleCommand.Execute(null);
+    var port = routing.OrderedRules.Last();
+    routing.MoveRuleTo(duplicate, port);
+    if (!ReferenceEquals(routing.OrderedRules[0], first) || !ReferenceEquals(routing.OrderedRules[2], duplicate))
+    { throw new InvalidOperationException("Dragging a duplicate rule moved the wrong row."); }
+    routing.SelectedRule = duplicate;
+    routing.RuleActionIndex = (int)Bydlo.Core.Routing.RoutingAction.Proxy;
+    routing.UpdateRuleCommand.Execute(null);
+    Wait(routing.SaveCommand.ExecuteAsync(null));
+    routing.OnShown();
+    if (services.Settings.Routing.RuleSetSources.Count != 1 || routing.OrderedRules[1].Condition != Bydlo.Core.Routing.RoutingCondition.Port ||
+        routing.OrderedRules[2].Action != Bydlo.Core.Routing.RoutingAction.Proxy || routing.CanDownloadPreset)
+    { throw new InvalidOperationException("Routing persistence, order or mock download lock failed."); }
+    routing.ShowRuleEditor = true;
+    foreach (var (width, height) in new[] { (1180, 900), (380, 700) })
+    {
+        Shoot($"routing-sources-{width}", width, height, window =>
+        {
+            var editor = window.GetVisualDescendants().OfType<Expander>().Single(control => control.Name == "SourceEditor");
+            editor.IsExpanded = true;
+            Pump(200);
+            window.GetVisualDescendants().OfType<TextBox>().Single(control => control.Name == "SourceTagInput").BringIntoView();
+        });
+        Shoot($"routing-rules-{width}", width, height, window =>
+            window.GetVisualDescendants().OfType<ListBox>().Single(control => control.Name == "RuleList").BringIntoView());
+    }
+    routing.SelectedSource = routing.RuleSetSources[0];
+    routing.RemoveSourceCommand.Execute(null);
+    if (routing.RuleSetSources.Count != 0) { throw new InvalidOperationException("Source was not removed."); }
+    Console.WriteLine("Routing rules verification passed: source add/edit/remove, duplicate rejection, rule edit/reorder, persistence, compact layout and mock download lock.");
     return;
 }
 

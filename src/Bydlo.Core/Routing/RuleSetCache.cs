@@ -12,10 +12,7 @@ public sealed class RuleSetCache(string directory, HttpClient http)
 
     public async Task<string> UpdateAsync(RuleSetSource source, CancellationToken ct = default)
     {
-        if (!source.Url.IsAbsoluteUri || source.Url.Scheme != Uri.UriSchemeHttps || source.MaxBytes <= 0)
-        {
-            throw new ArgumentException("Rule sets require an HTTPS source and a positive size limit.", nameof(source));
-        }
+        RoutingRuleBook.ValidateSource(source);
 
         var destination = GetPath(source);
         Directory.CreateDirectory(directory);

@@ -59,6 +59,17 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             return Task.FromResult(EngineAvailability.NotImplemented("sing-box on this platform is planned (VpnService integration).", "error.engine.singbox.platform"));
         }
 
+        if (settings.Mode != ConnectionMode.Tun && settings.Routing.OrderedRules.Any(rule => rule.Condition == RoutingCondition.Process))
+        {
+            return Task.FromResult(EngineAvailability.NotImplemented("Process rules require TUN mode in sing-box.", "routing.rules.unsupported"));
+        }
+
+        if (settings.Routing.OrderedRules.Any(rule => rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp &&
+            (RoutingPresets.Find(settings.Routing, RoutingPresets.SingBoxTag(rule.Condition, rule.Value.Trim())) is not { } source || RoutingPresets.IsXraySource(source))))
+        {
+            return Task.FromResult(EngineAvailability.NotImplemented("No sing-box source is registered for this geo condition.", "routing.rules.unsupported"));
+        }
+
         var exe = locator.Locate(EngineKind.SingBox, settings);
         if (exe is null)
         {
@@ -85,13 +96,14 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
         }
 
         var routing = request.Settings.Routing;
+        new RoutingRuleBook(routing.OrderedRules, routing.RuleSetSources).Validate();
         var ruleSets = new Dictionary<string, string>(StringComparer.Ordinal);
         var sources = RoutingPresets.Sources(routing.Preset, routing.PresetCountry).ToDictionary(source => source.Tag);
         var referencedSets = routing.OrderedRules.Where(rule => rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp)
-            .Select(rule => rule.Value).Concat(routing.DirectDnsRuleSets).Concat(routing.RemoteDnsRuleSets);
+            .Select(rule => RoutingPresets.SingBoxTag(rule.Condition, rule.Value.Trim())).Concat(routing.DirectDnsRuleSets).Concat(routing.RemoteDnsRuleSets);
         foreach (var tag in referencedSets)
         {
-            if (RoutingPresets.Find(tag.Trim()) is { } source)
+            if (RoutingPresets.Find(routing, tag.Trim()) is { } source && !RoutingPresets.IsXraySource(source))
             {
                 sources.TryAdd(source.Tag, source);
             }
@@ -105,6 +117,7 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             var path = RoutingPresets.CachedPath(directory, source);
             try
             {
+                if (new FileInfo(path).Length > source.MaxBytes) { throw new IOException("Rule set exceeds its size limit."); }
                 await IntegrityVerifier.VerifyFileAsync(path, source.Sha256, ct).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or IntegrityException)

@@ -34,6 +34,33 @@ public static class RoutingPresets
             .Concat(Sources(RoutingPreset.ExceptLocal, "cn"))
             .FirstOrDefault(source => source.Tag == tag);
 
+    public static IReadOnlyList<RuleSetSource> BuiltInSources =>
+        [.. Sources(RoutingPreset.BlockedOnly, "ru"), .. Sources(RoutingPreset.ExceptLocal, "ru"),
+            .. Sources(RoutingPreset.ExceptLocal, "cn"), XraySource(RoutingCondition.GeoSite)!, XraySource(RoutingCondition.GeoIp)!];
+
+    public static string SingBoxTag(RoutingCondition condition, string value) => (condition, value) switch
+    {
+        (RoutingCondition.GeoSite, "cn") => "geosite-cn",
+        (RoutingCondition.GeoSite, "category-ru") => "geosite-ru",
+        (RoutingCondition.GeoIp, "cn") => "geoip-cn",
+        (RoutingCondition.GeoIp, "ru") => "geoip-ru",
+        _ => value,
+    };
+
+    public static string XrayCode(RoutingCondition condition, string value) => (condition, value) switch
+    {
+        (RoutingCondition.GeoSite, "geosite-cn") => "cn",
+        (RoutingCondition.GeoSite, "geosite-ru") => "category-ru",
+        (RoutingCondition.GeoIp, "geoip-cn") => "cn",
+        (RoutingCondition.GeoIp, "geoip-ru") => "ru",
+        _ => value,
+    };
+
+    public static bool UnsupportedXrayRule(RoutingSettings settings, OrderedRoutingRule rule) =>
+        rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp &&
+        (rule.Value.Trim() == "blocked-ru" || settings.RuleSetSources.Any(source =>
+            !IsXraySource(source) && source.Tag == rule.Value.Trim()));
+
     public static RuleSetSource? XraySource(RoutingCondition condition) => condition switch
     {
         RoutingCondition.GeoSite => new("geosite.dat", new Uri("https://github.com/v2fly/domain-list-community/releases/download/20261102203016/dlc.dat"),
@@ -44,6 +71,40 @@ public static class RoutingPresets
     };
 
     public static string CacheDirectory(string dataDirectory) => Path.Combine(dataDirectory, "routing-rule-sets");
+
+    public static RuleSetSource? Find(RoutingSettings settings, string tag) =>
+        settings.RuleSetSources.FirstOrDefault(source => source.Tag == tag) ?? Find(tag);
+
+    public static RuleSetSource? XraySource(RoutingSettings settings, RoutingCondition condition)
+    {
+        var fallback = XraySource(condition);
+        return fallback is null ? null :
+            settings.RuleSetSources.FirstOrDefault(source => source.Tag == fallback.Tag) ?? fallback;
+    }
+
+    public static bool IsXraySource(RuleSetSource source) => source.Tag is "geosite.dat" or "geoip.dat";
+
+    public static IReadOnlyList<RuleSetSource> XraySources(RoutingSettings settings)
+    {
+        var sources = settings.OrderedRules.Select(rule => XraySource(settings, rule.Condition))
+            .OfType<RuleSetSource>().ToList();
+        // XRAY_LOCATION_ASSET replaces the whole asset directory. geoip:private still needs geoip.dat.
+        if (sources.Count > 0 && settings.BypassPrivateNetworks)
+        {
+            sources.Add(XraySource(settings, RoutingCondition.GeoIp)!);
+        }
+        return sources.DistinctBy(source => source.Tag).ToArray();
+    }
+
+    public static IReadOnlyList<RuleSetSource> DownloadSources(RoutingSettings settings) =>
+        Sources(settings.Preset, settings.PresetCountry)
+            .Concat(settings.RuleSetSources)
+            .Concat(settings.OrderedRules.Where(rule => rule.Condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp)
+                .Select(rule => Find(settings, SingBoxTag(rule.Condition, rule.Value.Trim()))).OfType<RuleSetSource>())
+            .Concat(XraySources(settings))
+            .Concat(settings.RemoteDnsRuleSets.Concat(settings.DirectDnsRuleSets)
+                .Select(tag => Find(settings, tag)).OfType<RuleSetSource>())
+            .DistinctBy(source => source.Tag).ToArray();
 
     public static string CachedPath(string directory, RuleSetSource source) =>
         Path.Combine(directory, IntegrityVerifier.NormalizeDigest(source.Sha256) + ".rules");

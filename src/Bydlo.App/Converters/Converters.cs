@@ -44,6 +44,18 @@ public sealed class LocConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
+public sealed class RoutingRuleLabelConverter : IValueConverter
+{
+    public static RoutingRuleLabelConverter Instance { get; } = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value switch
+    {
+        Bydlo.Core.Routing.RoutingCondition condition => Loc.Instance["routing.rules.condition." + condition],
+        Bydlo.Core.Routing.RoutingAction action => Loc.Instance["routing.rules.action." + action],
+        _ => value,
+    };
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 /// <summary>Enum / string value → localized label using a key prefix given as parameter, e.g. "game.".</summary>
 public sealed class PrefixLocConverter : IValueConverter
 {

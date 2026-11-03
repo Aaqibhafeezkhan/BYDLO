@@ -155,6 +155,7 @@ public sealed class RoutingSettings
 
     public bool BypassPrivateNetworks { get; set; } = true;
     public List<Routing.OrderedRoutingRule> OrderedRules { get; set; } = [];
+    public List<Routing.RuleSetSource> RuleSetSources { get; set; } = [];
     public RoutingPreset Preset { get; set; }
     public string PresetCountry { get; set; } = "ru";
 

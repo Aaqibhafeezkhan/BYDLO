@@ -454,9 +454,10 @@ public sealed partial class MainViewModel : ViewModelBase
             await action();
             return true;
         }
-        catch (Exception ex) when (ex is EngineException or InvalidOperationException or IOException or HttpRequestException or NotSupportedException or UnauthorizedAccessException or FormatException or TimeoutException or PlatformNotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
+        catch (Exception ex) when (ex is EngineException or InvalidDataException or System.Text.Json.JsonException or InvalidOperationException or IOException or HttpRequestException or NotSupportedException or UnauthorizedAccessException or FormatException or TimeoutException or PlatformNotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
         {
-            ShowToast(ex.Message, isError: true, localizationKey: (ex as EngineException)?.LocalizationKey);
+            ShowToast(ex.Message, isError: true, localizationKey: (ex as EngineException)?.LocalizationKey ??
+                (ex is InvalidDataException && ex.Message is "routing.rules.invalid" or "routing.sources.invalid" ? ex.Message : null));
             return false;
         }
     }

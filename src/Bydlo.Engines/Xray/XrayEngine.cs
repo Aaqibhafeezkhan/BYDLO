@@ -49,6 +49,16 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             return Task.FromResult(EngineAvailability.NotImplemented("TUN mode with Xray is not implemented. Use Local proxy mode or the sing-box engine.", "error.engine.xray.tun"));
         }
 
+        if (locator.Platform.Os == OsFamily.MacOS && settings.Routing.OrderedRules.Any(rule => rule.Condition == RoutingCondition.Process))
+        {
+            return Task.FromResult(EngineAvailability.NotImplemented("Xray process rules require Windows or Linux.", "routing.rules.unsupported"));
+        }
+
+        if (settings.Routing.OrderedRules.Any(rule => RoutingPresets.UnsupportedXrayRule(settings.Routing, rule)))
+        {
+            return Task.FromResult(EngineAvailability.NotImplemented("An SRS rule set cannot be used by Xray.", "routing.rules.unsupported"));
+        }
+
         var exe = locator.Locate(EngineKind.Xray, settings);
         return Task.FromResult(exe is null
             ? new EngineAvailability(AvailabilityStatus.NotInstalled, "Xray-core is not installed. Install it from Tools → Engines.") { LocalizationKey = "error.engine.xray.missing" }
@@ -67,8 +77,9 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
         {
             throw new EngineException("routing.preset.singbox", localizationKey: "routing.preset.singbox");
         }
-        var assets = request.Settings.Routing.OrderedRules.Select(rule => RoutingPresets.XraySource(rule.Condition))
-            .OfType<RuleSetSource>().DistinctBy(source => source.Tag).ToArray();
+        var routing = request.Settings.Routing;
+        new RoutingRuleBook(routing.OrderedRules, routing.RuleSetSources).Validate();
+        var assets = RoutingPresets.XraySources(routing);
         foreach (var source in assets)
         {
             if (request.RuleSetDirectory is not { } directory)
@@ -79,6 +90,7 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             try
             {
                 var destination = Path.Combine(request.WorkDirectory, source.Tag);
+                if (new FileInfo(path).Length > source.MaxBytes) { throw new IOException("Rule set exceeds its size limit."); }
                 File.Copy(path, destination, overwrite: true);
                 await IntegrityVerifier.VerifyFileAsync(destination, source.Sha256, ct).ConfigureAwait(false);
             }
@@ -97,7 +109,7 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             Arguments = ["run", "-c", configPath],
             WorkingDirectory = Path.GetDirectoryName(availability.ExecutablePath!),
             DisplayName = "xray",
-            Environment = assets.Length == 0 ? new Dictionary<string, string>() :
+            Environment = assets.Count == 0 ? new Dictionary<string, string>() :
                 new Dictionary<string, string> { ["XRAY_LOCATION_ASSET"] = request.WorkDirectory },
         };
     }

@@ -296,4 +296,35 @@ public class ConfigBuilderTests
         Assert.Equal("block", (string?)xray[xrayStart + 1]?["outboundTag"]);
         Assert.Equal("443", (string?)xray[xrayStart + 2]?["port"]);
     }
+
+    [Theory]
+    [InlineData(RoutingCondition.Domain, "example.test", "domain", "full:example.test")]
+    [InlineData(RoutingCondition.Suffix, "example.test", "domain_suffix", "domain:example.test")]
+    [InlineData(RoutingCondition.Keyword, "example", "domain_keyword", "plain:example")]
+    [InlineData(RoutingCondition.Cidr, "192.0.2.0/24", "ip_cidr", "192.0.2.0/24")]
+    [InlineData(RoutingCondition.Process, "browser", "process_name", "browser")]
+    [InlineData(RoutingCondition.GeoSite, "cn", "rule_set", "geosite:cn")]
+    [InlineData(RoutingCondition.GeoIp, "geoip-ru", "rule_set", "geoip:ru")]
+    public void Conditions_translate_for_both_engines_and_every_action(RoutingCondition condition, string value, string singKey, string xrayValue)
+    {
+        var profile = Import("trojan://pw@t.example.com:443");
+        foreach (var action in Enum.GetValues<RoutingAction>())
+        {
+            var settings = new AppSettings { Mode = ConnectionMode.Tun, Routing =
+            {
+                OrderedRules = [new(condition, value, action)],
+            } };
+            var paths = new Dictionary<string, string> { ["geosite-cn"] = "fake.srs", ["geoip-ru"] = "fake-ip.srs" };
+            var sing = new SingBoxConfigBuilder().Build(profile.Profile, profile.Secrets, new BuildContext(settings, RuleSets: paths))["route"]!["rules"]!
+                .AsArray().Single(rule => rule?[singKey] is not null &&
+                    (string?)rule[singKey]?[0] == (condition is RoutingCondition.GeoSite or RoutingCondition.GeoIp ? RoutingPresets.SingBoxTag(condition, value) : value));
+            Assert.Equal(action == RoutingAction.Block ? "reject" : null, (string?)sing?["action"]);
+            Assert.Equal(action == RoutingAction.Block ? null : action == RoutingAction.Direct ? "direct" : "proxy", (string?)sing?["outbound"]);
+            if (condition == RoutingCondition.GeoSite) { Assert.Equal("geosite-cn", (string?)sing?[singKey]?[0]); }
+            var xrayKey = condition is RoutingCondition.Cidr or RoutingCondition.GeoIp ? "ip" : condition == RoutingCondition.Process ? "process" : "domain";
+            var xray = new XrayConfigBuilder().Build(profile.Profile, profile.Secrets, new BuildContext(settings))["routing"]!["rules"]!
+                .AsArray().Single(rule => (string?)rule?[xrayKey]?[0] == xrayValue);
+            Assert.Equal(action == RoutingAction.Block ? "block" : action == RoutingAction.Direct ? "direct" : "proxy", (string?)xray?["outboundTag"]);
+        }
+    }
 }
