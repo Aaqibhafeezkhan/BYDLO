@@ -10,6 +10,8 @@ public sealed class EngineRegistry
     private readonly List<(EngineDescriptor Descriptor, Func<IEngine> Factory, int Priority)> _engines = [];
     private readonly Func<IEngine> _mockFactory;
 
+    public Func<IEngine, AppSettings, IEngine>? Decorate { get; set; }
+
     public EngineRegistry(Func<IEngine> mockFactory)
     {
         _mockFactory = mockFactory;
@@ -128,7 +130,9 @@ public sealed class EngineRegistry
         }
 
         var entry = _engines.FirstOrDefault(e => e.Descriptor.Kind == kind);
-        return entry.Factory is null ? throw new EngineException($"Engine {kind} is not registered.") : entry.Factory();
+        if (entry.Factory is null) { throw new EngineException($"Engine {kind} is not registered."); }
+        var engine = entry.Factory();
+        return Decorate?.Invoke(engine, settings) ?? engine;
     }
 
     /// <summary>Some option combinations only work with one engine (e.g. XHTTP transport needs Xray).</summary>

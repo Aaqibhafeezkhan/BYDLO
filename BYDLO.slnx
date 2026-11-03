@@ -5,6 +5,7 @@
     <Project Path="src/Bydlo.Platform/Bydlo.Platform.csproj" />
     <Project Path="src/Bydlo.App/Bydlo.App.csproj" />
     <Project Path="src/Bydlo.Desktop/Bydlo.Desktop.csproj" />
+    <Project Path="src/Bydlo.Helper/Bydlo.Helper.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Bydlo.BundleEngines/Bydlo.BundleEngines.csproj" />

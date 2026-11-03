@@ -15,6 +15,34 @@ public sealed record Credit(string Name, string Author, string License, string U
 
 public sealed partial class SettingsViewModel : PageViewModel
 {
+    public bool HelperSupported => Bydlo.Platform.HelperManagement.IsSupported;
+    public bool HelperInstalled => Bydlo.Platform.HelperManagement.IsInstalled;
+    public bool CanManageHelper => HelperSupported && !Services.IsMock && !NetworkSafetyGuard.IsLocked && !HelperBusy;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanManageHelper))]
+    private bool _helperBusy;
+    [ObservableProperty] private string _helperStatus = "";
+
+    [RelayCommand]
+    private Task InstallHelperAsync() => ChangeHelperAsync(true);
+    [RelayCommand]
+    private Task RemoveHelperAsync() => ChangeHelperAsync(false);
+
+    private async Task ChangeHelperAsync(bool install)
+    {
+        if (!CanManageHelper) { return; }
+        HelperBusy = true;
+        try
+        {
+            await Services.Connections.StopAllAsync();
+            var success = await Bydlo.Platform.HelperManagement.ChangeAsync(install, userConsent: true);
+            HelperStatus = Loc.Instance[success ? "helper.changed" : "helper.error"];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        { HelperStatus = Loc.Instance["helper.error"]; }
+        finally { HelperBusy = false; OnPropertyChanged(nameof(HelperInstalled)); }
+    }
+
     public SettingsViewModel(MainViewModel shell)
         : base(shell)
     {

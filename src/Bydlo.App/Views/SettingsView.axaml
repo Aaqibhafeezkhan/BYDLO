@@ -248,6 +248,14 @@
               <Button Classes="ghost" HorizontalAlignment="Left" Content="{l:T settings.admin.restart}" Command="{Binding RestartElevatedCommand}" IsVisible="{Binding CanRestartElevated}" />
               <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T settings.admin.manual}" TextWrapping="Wrap" IsVisible="{Binding ShowElevationManualHint}" />
+              <TextBlock Text="{l:T helper.title}" FontWeight="Medium" />
+              <TextBlock Classes="faint" Text="{l:T helper.hint}" TextWrapping="Wrap" />
+              <TextBlock Classes="faint" Text="{l:T helper.unsupported}" IsVisible="{Binding !HelperSupported}" TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HelperSupported}" IsEnabled="{Binding CanManageHelper}">
+                <Button Content="{l:T helper.install}" Command="{Binding InstallHelperCommand}" IsVisible="{Binding !HelperInstalled}" />
+                <Button Classes="ghost" Content="{l:T helper.remove}" Command="{Binding RemoveHelperCommand}" IsVisible="{Binding HelperInstalled}" />
+              </StackPanel>
+              <TextBlock Text="{Binding HelperStatus}" TextWrapping="Wrap" />
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock Classes="muted" Text="{l:T settings.secrets}" />
                 <TextBlock Text="{Binding SecretProtection}" TextWrapping="Wrap" />
