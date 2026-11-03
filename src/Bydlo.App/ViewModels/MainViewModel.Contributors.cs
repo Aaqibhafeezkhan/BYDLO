@@ -10,6 +10,7 @@ public sealed partial class MainViewModel
     {
         await Settings.CheckForUpdatesIfDueAsync();
         await RefreshContributorsAsync();
+        await RefreshNoticeAsync();
     }
 
     private async Task RefreshContributorsAsync()

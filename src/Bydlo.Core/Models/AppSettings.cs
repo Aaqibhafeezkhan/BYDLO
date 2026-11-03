@@ -139,6 +139,9 @@ public sealed class AppSettings
 
     public DateTimeOffset? LastContributorsCheck { get; set; }
 
+    /// <summary>Id of the project notice (<c>notice.json</c>) the user closed; a new id shows again.</summary>
+    public string? DismissedNoticeId { get; set; }
+
     public RoutingSettings Routing { get; set; } = new();
     public DpiSettings DpiDefaults { get; set; } = new();
 

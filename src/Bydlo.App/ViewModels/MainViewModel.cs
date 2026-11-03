@@ -104,6 +104,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _hasOrphans = services.Orphans.Count > 0;
         ContributorsNav = NavItems.Single(item => item.Key == "contributors");
         Contributors.Show(services.Settings.Contributors);
+        Loc.Instance.PropertyChanged += (_, _) => OnNoticeLanguageChanged();
         _ = RunStartupChecksAsync();
         services.StartSubscriptionAutoRefresh(Connections.RunAutoRefreshAsync);
     }
