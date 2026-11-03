@@ -14,10 +14,12 @@ internal sealed class WindowsActivationBroker : IDisposable
     private readonly Mutex _mutex;
     private readonly CancellationTokenSource _stop = new();
     private readonly string _name;
+    private readonly Action<string[]> _activate;
     private Task? _listener;
 
-    public WindowsActivationBroker(string dataDirectory)
+    public WindowsActivationBroker(string dataDirectory, Action<string[]> activate)
     {
+        _activate = activate;
         var data = Path.GetFullPath(dataDirectory).ToUpperInvariant();
         _name = "BYDLO.Import." + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(data)));
         _mutex = new Mutex(false, _name);
@@ -86,7 +88,7 @@ internal sealed class WindowsActivationBroker : IDisposable
                 await server.ReadExactlyAsync(bytes, timeout.Token).ConfigureAwait(false);
                 if (JsonSerializer.Deserialize<string[]>(bytes) is { } args)
                 {
-                    Bydlo.App.App.PendingActivations.Enqueue(ExternalImportInput.LaunchInputs(args.OfType<string>()).ToArray());
+                    _activate(ExternalImportInput.LaunchInputs(args.OfType<string>()).ToArray());
                     await server.WriteAsync(new byte[] { 1 }, timeout.Token).ConfigureAwait(false);
                     // Let the client consume the acknowledgement and close its end before
                     // disposing the server, so the acknowledgement itself cannot be lost.

@@ -28,12 +28,12 @@ internal static class ImportVerification
         if (OperatingSystem.IsWindows())
         {
             var scope = Path.Combine(output, "ipc-" + Guid.NewGuid().ToString("N"));
-            using var primary = new Bydlo.Desktop.WindowsActivationBroker(scope);
+            using var primary = new Bydlo.Desktop.WindowsActivationBroker(scope, Bydlo.App.App.PendingActivations.Enqueue);
             Require(primary.IsPrimary, "First activation owns the instance");
             primary.Listen();
             Wait(Task.Run(() =>
             {
-                using var secondary = new Bydlo.Desktop.WindowsActivationBroker(scope);
+                using var secondary = new Bydlo.Desktop.WindowsActivationBroker(scope, Bydlo.App.App.PendingActivations.Enqueue);
                 Require(!secondary.IsPrimary, "Second launch forwards instead of starting another app");
                 secondary.Forward(["--mock", link, "ignored.exe"]);
             }));
@@ -52,7 +52,7 @@ internal static class ImportVerification
             {
                 Wait(Task.Run(() =>
                 {
-                    using var secondary = new Bydlo.Desktop.WindowsActivationBroker(scope);
+                    using var secondary = new Bydlo.Desktop.WindowsActivationBroker(scope, Bydlo.App.App.PendingActivations.Enqueue);
                     Require(!secondary.IsPrimary, "Primary remains active across repeated launches");
                     secondary.Forward([link]);
                 }));

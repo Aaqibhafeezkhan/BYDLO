@@ -144,6 +144,8 @@
       <Border Classes="panel">
         <StackPanel Spacing="14">
           <TextBlock Classes="h2" Text="{l:T settings.connection}" />
+          <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
+          <Button Classes="ghost" HorizontalAlignment="Left" Content="{l:T settings.admin.restart}" Command="{Binding RestartElevatedCommand}" IsVisible="{Binding CanRestartElevated}" />
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Margin="0,0,18,0">
               <TextBlock Text="{l:T settings.autoreconnect}" FontWeight="Medium" TextWrapping="Wrap" />
@@ -256,7 +258,6 @@
                 <TextBlock Text="{l:T common.yes}" IsVisible="{Binding IsElevated}" />
                 <TextBlock Text="{l:T common.no}" IsVisible="{Binding !IsElevated}" />
               </StackPanel>
-              <Button Classes="ghost" HorizontalAlignment="Left" Content="{l:T settings.admin.restart}" Command="{Binding RestartElevatedCommand}" IsVisible="{Binding CanRestartElevated}" />
               <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{l:T settings.admin.manual}" TextWrapping="Wrap" IsVisible="{Binding ShowElevationManualHint}" />
               <TextBlock Text="{l:T helper.title}" FontWeight="Medium" />
