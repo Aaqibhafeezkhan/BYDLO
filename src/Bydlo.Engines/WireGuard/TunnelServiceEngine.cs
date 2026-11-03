@@ -103,6 +103,11 @@ public sealed class TunnelServiceEngine : IEngine
 
     public async Task StartAsync(EngineStartRequest request, CancellationToken ct = default)
     {
+        if (_exe is not null || _configPath is not null)
+        {
+            throw new EngineException("Stop the existing tunnel before starting another session.", localizationKey: "error.engine.cleanup");
+        }
+
         ChainGuards.ThrowIfChained(EngineKind.WireGuard, request);
         Set(EngineState.Starting);
         try
@@ -156,24 +161,32 @@ public sealed class TunnelServiceEngine : IEngine
         Set(EngineState.Stopping);
         try
         {
-            var (_, output) = await _runner.RunToCompletionAsync(new ProcessSpec
+            var (code, output) = await _runner.RunToCompletionAsync(new ProcessSpec
             {
                 FileName = _exe,
                 Arguments = IsWindows ? ["/uninstalltunnelservice", InterfaceName] : ["down", _configPath],
                 DisplayName = Descriptor.DisplayName,
             }, TimeSpan.FromSeconds(30), ct).ConfigureAwait(false);
             EmitOutput(output);
+            if (code != 0)
+            {
+                throw new EngineException($"{Descriptor.DisplayName} failed to bring the tunnel down (code {code}).",
+                    localizationKey: "error.engine.cleanup");
+            }
         }
-        finally
+        catch (Exception ex)
         {
-            Cleanup();
-            Set(EngineState.Stopped);
+            Set(EngineState.Failed, _redactor.Redact(ex.Message));
+            throw;
         }
+
+        Cleanup();
+        Set(EngineState.Stopped);
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (State == EngineState.Running)
+        if (_exe is not null && _configPath is not null)
         {
             await StopAsync().ConfigureAwait(false);
         }
