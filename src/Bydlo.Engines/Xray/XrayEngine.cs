@@ -8,7 +8,6 @@ using Bydlo.Core.Models;
 using Bydlo.Core.Processes;
 using Bydlo.Core.Security;
 using Bydlo.Engines.SingBox;
-using Bydlo.Engines.SingBox;
 
 namespace Bydlo.Engines.Xray;
 
@@ -108,16 +107,18 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
                 throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
             }
             var path = RoutingPresets.CachedPath(directory, source);
+            var destination = Path.Combine(request.WorkDirectory, source.Tag);
             try
             {
-                var destination = Path.Combine(request.WorkDirectory, source.Tag);
                 if (new FileInfo(path).Length > source.MaxBytes) { throw new IOException("Rule set exceeds its size limit."); }
                 File.Copy(path, destination, overwrite: true);
-                await IntegrityVerifier.VerifyFileAsync(destination, source.Sha256, ct).ConfigureAwait(false);
                 _copiedAssets.Add(destination);
+                await IntegrityVerifier.VerifyFileAsync(destination, source.Sha256, ct).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or IntegrityException)
             {
+                SecureFile.DeleteQuietly(destination);
+                _copiedAssets.Remove(destination);
                 throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
             }
         }
