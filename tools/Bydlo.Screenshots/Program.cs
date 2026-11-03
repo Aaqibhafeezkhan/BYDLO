@@ -17,7 +17,7 @@ var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
 if (args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
-    args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) ||
+    args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
@@ -113,6 +113,31 @@ void Shoot(string name, double width, double height)
     frame.Save(Path.Combine(output, name + ".png"));
     window.Close();
     Console.WriteLine($"saved {name}.png");
+}
+
+if (args.Contains("--verify-routing-picker", StringComparer.Ordinal))
+{
+    if (OperatingSystem.IsWindows())
+    {
+        shell.Home.IsTun = true;
+        shell.Navigate("routing");
+        var routing = shell.Routing;
+        routing.ShowRuleEditor = true;
+        Wait(routing.FindApplicationsCommand.ExecuteAsync(null));
+        var application = routing.MatchingApplications.First();
+        routing.ApplicationSearch = application.Name;
+        routing.SelectedApplication = routing.MatchingApplications.First();
+        routing.AddApplicationCommand.Execute(null);
+        routing.ProxyOnlyListedProcesses = true;
+        Wait(routing.SaveCommand.ExecuteAsync(null));
+        if (!services.Settings.Routing.DirectProcesses.Contains(application.Name) || !services.Settings.Routing.ProxyOnlyListedProcesses)
+        {
+            throw new InvalidOperationException("The selected Windows application or routing mode was not saved.");
+        }
+        Shoot("routing-application-picker", 1180, 900);
+        Console.WriteLine("Routing picker verification passed: Windows catalog, filtering, selection and saving.");
+    }
+    return;
 }
 
 if (args.Contains("--verify-active-connections", StringComparer.Ordinal))

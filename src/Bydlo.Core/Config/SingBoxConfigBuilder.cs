@@ -90,7 +90,7 @@ public sealed class SingBoxConfigBuilder
             }
             else
             {
-                var o = BuildOutbound(profile, secrets, tag);
+                var o = BuildOutbound(profile, secrets, settings.DpiDefaults, tag);
                 if (via is not null)
                 {
                     o["detour"] = via;
@@ -149,7 +149,7 @@ public sealed class SingBoxConfigBuilder
         }
         else
         {
-            outbounds.Add(BuildOutbound(profile, secrets));
+            outbounds.Add(BuildOutbound(profile, secrets, settings.DpiDefaults));
             if (profile.Protocol == ProtocolKind.ShadowTls)
             {
                 var shadow = new JsonObject { ["type"] = "shadowtls", ["tag"] = "shadowtls", ["server"] = profile.Host,
@@ -456,7 +456,7 @@ public sealed class SingBoxConfigBuilder
         return route;
     }
 
-    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, string tag = ProxyTag)
+    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, DpiSettings defaults, string tag = ProxyTag)
     {
         var o = new JsonObject { ["tag"] = tag, ["server"] = p.Host, ["server_port"] = p.Port };
         switch (p.Protocol)
@@ -586,6 +586,24 @@ public sealed class SingBoxConfigBuilder
                 throw new NotSupportedException(p.Protocol.ToString());
         }
 
+        var dpi = defaults.For(p);
+        var interval = dpi.Validate(p, EngineKind.SingBox);
+        if (dpi.Fragment != "off")
+        {
+            if (o["tls"] is not JsonObject tls || p.Protocol is ProtocolKind.Hysteria2 or ProtocolKind.Tuic or ProtocolKind.Naive)
+            {
+                throw new Bydlo.Core.Engines.EngineException("profile.dpi.unsupported", localizationKey: "profile.dpi.unsupported");
+            }
+            tls[dpi.Fragment == "record" ? "record_fragment" : "fragment"] = true;
+            if (dpi.Fragment == "tls")
+            {
+                tls["fragment_fallback_delay"] = interval.ToString(System.Globalization.CultureInfo.InvariantCulture) + "ms";
+            }
+        }
+        if (dpi.Mux != "off")
+        {
+            o["multiplex"] = new JsonObject { ["enabled"] = true, ["protocol"] = dpi.Mux, ["padding"] = dpi.Padding };
+        }
         return o;
     }
 

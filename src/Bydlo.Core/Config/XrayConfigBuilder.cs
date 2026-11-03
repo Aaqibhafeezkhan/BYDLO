@@ -50,7 +50,11 @@ public sealed class XrayConfigBuilder
             }
         }
 
-        return BuildCore(ctx, hops.Select((h, i) => BuildOutbound(h.Profile, h.Secrets, Tag(i), i > 0 ? Tag(i - 1) : null)).Reverse().ToList(), Tag(hops.Count - 1));
+        var auxiliary = new List<JsonObject>();
+        var proxies = hops.Select((h, i) => BuildOutbound(h.Profile, h.Secrets, ctx.Settings.DpiDefaults, auxiliary,
+            Tag(i), i > 0 ? Tag(i - 1) : null)).Reverse().ToList();
+        proxies.AddRange(auxiliary);
+        return BuildCore(ctx, proxies, Tag(hops.Count - 1));
     }
 
     internal static string Tag(int index) => $"proxy-{index}";
@@ -62,7 +66,9 @@ public sealed class XrayConfigBuilder
             throw new NotSupportedException($"Xray adapter does not handle {p.Protocol}.");
         }
 
-        return BuildCore(ctx, [BuildOutbound(p, s)], "proxy");
+        var auxiliary = new List<JsonObject>();
+        var proxy = BuildOutbound(p, s, ctx.Settings.DpiDefaults, auxiliary);
+        return BuildCore(ctx, [proxy, .. auxiliary], "proxy");
     }
 
     private static JsonObject BuildCore(BuildContext ctx, List<JsonObject> proxies, string proxyTag)
@@ -237,7 +243,8 @@ public sealed class XrayConfigBuilder
         }
     }
 
-    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, string tag = "proxy", string? via = null)
+    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, DpiSettings defaults, List<JsonObject> auxiliary,
+        string tag = "proxy", string? via = null)
     {
         var o = new JsonObject { ["tag"] = tag };
         var needsStream = true;
@@ -300,6 +307,41 @@ public sealed class XrayConfigBuilder
             o["proxySettings"] = new JsonObject { ["tag"] = via, ["transportLayer"] = true };
         }
 
+        var dpi = defaults.For(p);
+        dpi.Validate(p, EngineKind.Xray);
+        if (dpi.Fragment != "off")
+        {
+            if (via is not null || o["streamSettings"] is not JsonObject stream ||
+                (string?)stream["security"] is not ("tls" or "reality"))
+            {
+                throw new EngineException("profile.dpi.unsupported", localizationKey: "profile.dpi.unsupported");
+            }
+
+            var dialer = tag + "-fragment";
+            stream["sockopt"] = new JsonObject { ["dialerProxy"] = dialer };
+            auxiliary.Add(new JsonObject
+            {
+                ["tag"] = dialer,
+                ["protocol"] = "freedom",
+                ["settings"] = new JsonObject
+                {
+                    ["fragment"] = new JsonObject { ["packets"] = "tlshello", ["length"] = dpi.Size, ["interval"] = dpi.Interval },
+                },
+            });
+        }
+        if (dpi.Padding && o["streamSettings"]?["xhttpSettings"] is JsonObject xhttp)
+        {
+            xhttp["xPaddingBytes"] = dpi.Size;
+        }
+        if (dpi.Mux != "off")
+        {
+            o["mux"] = new JsonObject
+            {
+                ["enabled"] = true,
+                ["concurrency"] = dpi.Mux == "xudp" ? -1 : 8,
+                ["xudpConcurrency"] = dpi.Mux == "xudp" ? 16 : -1,
+            };
+        }
         return o;
     }
 

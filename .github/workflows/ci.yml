@@ -23,6 +23,7 @@ env:
   DOTNET_NOLOGO: "1"
   # CI never starts real network engines.
   BYDLO_SAFE_DEV: "1"
+  BYDLO_MOCK: "1"
 
 jobs:
   test:

@@ -115,6 +115,7 @@ public sealed class AppSettings
     public DateTimeOffset? LastUpdateCheck { get; set; }
 
     public RoutingSettings Routing { get; set; } = new();
+    public DpiSettings DpiDefaults { get; set; } = new();
 
     public ZapretSettings Zapret { get; set; } = new();
 

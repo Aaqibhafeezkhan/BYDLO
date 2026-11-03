@@ -48,6 +48,23 @@ public static class ProfileEditorDialog
             panel.Children.Add(show);
         }
 
+        var dpi = new DpiEditorPanel(services.Settings.DpiDefaults.For(source));
+        var overrideDpi = new CheckBox
+        {
+            Content = loc["profile.dpi.override"],
+            IsChecked = source.Option(DpiSettings.FragmentKey) is not null,
+        };
+        dpi.IsEnabled = overrideDpi.IsChecked == true;
+        overrideDpi.IsCheckedChanged += (_, _) => dpi.IsEnabled = overrideDpi.IsChecked == true;
+        if (!hasRawConfig)
+        {
+            panel.Children.Add(new Expander
+            {
+                Header = loc["profile.dpi.title"],
+                Content = new StackPanel { Spacing = 8, Children = { overrideDpi, dpi } },
+            });
+        }
+
         var engines = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
         panel.Children.Add(new TextBlock { Text = loc["profile.edit.engine"] });
         panel.Children.Add(engines);
@@ -84,6 +101,40 @@ public static class ProfileEditorDialog
 
             var updated = BuildProfile(targetPort);
             updated.PreferredEngine = (engines.SelectedItem as ComboBoxItem)?.Tag as EngineKind?;
+            if (!hasRawConfig)
+            {
+                var defaults = services.Settings.DpiDefaults;
+                var selected = overrideDpi.IsChecked == true ? dpi.Read() : defaults;
+                try
+                {
+                    var kind = updated.PreferredEngine ?? services.Registry.CandidatesFor(updated, PlatformInfo.Current.Os).FirstOrDefault(EngineKind.Mock);
+                    if (kind is EngineKind.SingBox or EngineKind.Xray)
+                    {
+                        selected.Validate(updated, kind);
+                    }
+                    else
+                    {
+                        selected.ValidateFormat();
+                    }
+                }
+                catch (EngineException ex)
+                {
+                    error.Text = loc[ex.LocalizationKey ?? "profile.dpi.invalid"];
+                    return;
+                }
+                foreach (var key in new[] { DpiSettings.FragmentKey, DpiSettings.SizeKey, DpiSettings.IntervalKey, DpiSettings.MuxKey, DpiSettings.PaddingKey })
+                {
+                    updated.Options.Remove(key);
+                }
+                if (overrideDpi.IsChecked == true)
+                {
+                    updated.Options[DpiSettings.FragmentKey] = selected.Fragment;
+                    updated.Options[DpiSettings.SizeKey] = selected.Size;
+                    updated.Options[DpiSettings.IntervalKey] = selected.Interval;
+                    updated.Options[DpiSettings.MuxKey] = selected.Mux;
+                    updated.Options[DpiSettings.PaddingKey] = selected.Padding.ToString();
+                }
+            }
             if (hasCredentials)
             {
                 secrets.Values[Keys.Username] = username!.Text!;

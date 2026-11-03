@@ -99,6 +99,7 @@
           <TextBox Classes="list" Text="{Binding BlockDomains}" Watermark="ads.example.com" />
           <Expander Header="{l:T common.advanced}" IsExpanded="{Binding ShowRuleEditor}" HorizontalAlignment="Stretch">
             <StackPanel Spacing="10">
+              <Button Content="{l:T profile.dpi.defaults}" Command="{Binding EditDpiDefaultsCommand}" />
               <TextBlock Classes="caps" Text="{l:T routing.rules.ordered}" />
               <ComboBox ItemsSource="{Binding RuleConditions}" SelectedIndex="{Binding RuleConditionIndex}" />
               <TextBox Text="{Binding RuleValue}" Watermark="{l:T routing.rules.value}" />
@@ -136,7 +137,16 @@
                 <Button Command="{Binding FindApplicationsCommand}" Content="{l:T routing.process.find}" />
                 <TextBox Text="{Binding ApplicationSearch}" Watermark="{l:T routing.process.search}" />
                 <ComboBox ItemsSource="{Binding MatchingApplications}" SelectedItem="{Binding SelectedApplication}"
-                          HorizontalAlignment="Stretch" />
+                          HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RoutingViewModel+ApplicationRow">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Image Width="16" Height="16" Source="{Binding Icon}" />
+                        <TextBlock Text="{Binding Name}" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
                 <Button Command="{Binding AddApplicationCommand}" Content="{l:T routing.process.add}" />
               </StackPanel>
               <CheckBox IsChecked="{Binding ProxyOnlyListedProcesses}" IsEnabled="{Binding IsTunMode}"

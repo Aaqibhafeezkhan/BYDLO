@@ -1,3 +1,9 @@
+using System.Runtime.InteropServices;
+using Avalonia;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Bydlo.App.Services;
+using Avalonia.Controls;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -67,18 +73,18 @@ public sealed partial class RoutingViewModel : PageViewModel
     [ObservableProperty]
     private bool _proxyOnlyListedProcesses;
 
-    private IReadOnlyList<string> _applicationNames = [];
+    private IReadOnlyList<ApplicationRow> _applicationRows = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MatchingApplications))]
     private string _applicationSearch = "";
 
     [ObservableProperty]
-    private string? _selectedApplication;
+    private ApplicationRow? _selectedApplication;
 
     public bool HasApplicationPicker => OperatingSystem.IsWindows();
-    public IEnumerable<string> MatchingApplications =>
-        _applicationNames.Where(name => name.Contains(ApplicationSearch, StringComparison.CurrentCultureIgnoreCase));
+    public IEnumerable<ApplicationRow> MatchingApplications =>
+        _applicationRows.Where(app => app.Name.Contains(ApplicationSearch, StringComparison.CurrentCultureIgnoreCase));
 
     [RelayCommand]
     private async Task FindApplications()
@@ -87,8 +93,12 @@ public sealed partial class RoutingViewModel : PageViewModel
         {
             await Shell.Guard(async () =>
             {
-                _applicationNames = await Task.Run(() => OperatingSystem.IsWindows()
-                    ? WindowsApplicationCatalog.ListExecutableNames() : Array.Empty<string>());
+                var applications = await Task.Run(() => OperatingSystem.IsWindows()
+                    ? WindowsApplicationCatalog.ListApplications() : Array.Empty<WindowsApplication>());
+                var oldRows = _applicationRows;
+                _applicationRows = applications.Select(app => new ApplicationRow(app.Name, CreateIcon(app.Icon))).ToArray();
+                SelectedApplication = null;
+                foreach (var old in oldRows) { old.Icon?.Dispose(); }
                 OnPropertyChanged(nameof(MatchingApplications));
             });
         }
@@ -99,7 +109,7 @@ public sealed partial class RoutingViewModel : PageViewModel
     {
         if (SelectedApplication is { } application)
         {
-            DirectProcesses = string.Join('\n', Split(DirectProcesses + "\n" + application));
+            DirectProcesses = string.Join('\n', Split(DirectProcesses + "\n" + application.Name));
         }
     }
 
@@ -307,6 +317,17 @@ public sealed partial class RoutingViewModel : PageViewModel
         }
     });
 
+    [RelayCommand]
+    private Task<bool> EditDpiDefaults() => Shell.Guard(async () =>
+    {
+        if (Services.TopLevel() is Window owner &&
+            await DpiEditorPanel.ShowDefaultsAsync(owner, Services.Settings.DpiDefaults) is { } updated)
+        {
+            Services.Settings.DpiDefaults = updated;
+            await Services.SaveSettingsAsync();
+        }
+    });
+
     public bool IsTunMode => Services.Settings.Mode == ConnectionMode.Tun;
 
     public override void OnShown()
@@ -382,4 +403,21 @@ public sealed partial class RoutingViewModel : PageViewModel
 
     private static List<string> Split(string text) =>
         [.. text.Split('\n', ',', ';').Select(s => s.Trim()).Where(s => s.Length > 0 && !s.StartsWith('#')).Distinct(StringComparer.OrdinalIgnoreCase)];
+    public sealed record ApplicationRow(string Name, WriteableBitmap? Icon);
+
+    private static WriteableBitmap? CreateIcon(byte[]? pixels)
+    {
+        if (pixels is null)
+        {
+            return null;
+        }
+        const int size = WindowsApplicationCatalog.IconSize;
+        var bitmap = new WriteableBitmap(new PixelSize(size, size), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+        using var buffer = bitmap.Lock();
+        for (var y = 0; y < size; y++)
+        {
+            Marshal.Copy(pixels, y * size * 4, buffer.Address + y * buffer.RowBytes, size * 4);
+        }
+        return bitmap;
+    }
 }
