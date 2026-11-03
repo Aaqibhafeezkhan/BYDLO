@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:c="using:Bydlo.App.Controls"
+             xmlns:l="using:Bydlo.App.Services"
+             x:Class="Bydlo.App.Views.ContributorsView"
+             x:DataType="vm:ContributorsViewModel">
+  <ScrollViewer>
+    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="h1" Text="{l:T nav.contributors}" />
+        <TextBlock Classes="muted" Text="{l:T contributors.subtitle}" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <Border Classes="tile" IsVisible="{Binding !HasContributors}">
+        <TextBlock Classes="muted" Text="{l:T contributors.empty}" TextWrapping="Wrap" />
+      </Border>
+
+      <ItemsControl x:Name="ContributorList" ItemsSource="{Binding Items}" IsVisible="{Binding HasContributors}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ContributorRow">
+            <Border Classes="tile" Margin="0,0,0,6">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Login}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="faint" Text="{Binding CommitsText}" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="icon" VerticalAlignment="Center"
+                        ToolTip.Tip="{l:T contributors.open}" AutomationProperties.Name="{Binding Login}"
+                        Command="{Binding $parent[UserControl].((vm:ContributorsViewModel)DataContext).OpenContributorCommand}"
+                        CommandParameter="{Binding}">
+                  <c:OutlineIcon Data="{StaticResource LineLink}" Width="15" Height="15" />
+                </Button>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Button Classes="ghost" HorizontalAlignment="Left" Content="{l:T contributors.all}" Command="{Binding OpenAllCommand}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -18,7 +18,7 @@ var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
 if (args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
     args.Contains("--verify-updates", StringComparer.Ordinal) || args.Contains("--verify-speed", StringComparer.Ordinal) || args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-rules", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) || args.Contains("--verify-connect-switch", StringComparer.Ordinal) ||
-    args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
+    args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) || args.Contains("--verify-contributors", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
     Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
@@ -168,6 +168,51 @@ if (args.Contains("--verify-updates", StringComparer.Ordinal))
     Shoot("update-dismissed", 1180, 780);
     Console.WriteLine("Release notification verification passed (Mock Mode, no network).");
     return;
+}
+
+if (args.Contains("--verify-contributors", StringComparer.Ordinal))
+{
+    Pump(300);
+    if (services.Settings.LastContributorsCheck is not null || shell.Contributors.HasContributors)
+        throw new InvalidOperationException("Mock startup must skip the contributors HTTP request.");
+    shell.FinishOnboardingCommand.Execute(null);
+    Shoot("contributors-sidebar", 1180, 780, window =>
+    {
+        var entry = window.GetVisualDescendants().OfType<RadioButton>().Single(b => b.Name == "ContributorsNavButton");
+        var sidebar = entry.GetVisualAncestors().OfType<Border>().First(b => b.Width == 192);
+        var bottom = entry.TranslatePoint(new Point(0, entry.Bounds.Height), sidebar) ?? default;
+        if (!entry.IsEffectivelyVisible || bottom.Y > sidebar.Bounds.Height || bottom.Y < sidebar.Bounds.Height / 2)
+            throw new InvalidOperationException("Contributors entry must sit in the lower sidebar corner.");
+        entry.Command!.Execute(entry.CommandParameter);
+    });
+    if (shell.CurrentNav != shell.ContributorsNav || !shell.ContributorsNav.IsSelected)
+        throw new InvalidOperationException("Sidebar entry must open the contributors page.");
+    Shoot("contributors-empty", 1180, 780, window => AssertRows(window, 0));
+    // Sample cache, as if loaded from GitHub; these names exist only in this verification.
+    shell.Contributors.Show(Enumerable.Range(1, 7).Select(i => new Bydlo.Core.Diagnostics.Contributor("contributor-" + i, 100 - i * 9)));
+    Shoot("contributors-page", 1180, 780, window => AssertRows(window, 7));
+    shell.NavigateCommand.Execute("settings");
+    Shoot("contributors-compact", 380, 700, window =>
+    {
+        window.GetVisualDescendants().OfType<Expander>()
+            .Single(e => Equals(e.Header, Bydlo.App.Services.Loc.Instance["settings.about"])).IsExpanded = true;
+        Pump(150);
+        var button = window.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ContributorsButton");
+        button.Command!.Execute(button.CommandParameter);
+    });
+    if (shell.CurrentNav != shell.ContributorsNav)
+        throw new InvalidOperationException("Settings must open the contributors page in the compact layout.");
+    Shoot("contributors-page-compact", 380, 700, window => AssertRows(window, 7));
+    Console.WriteLine("Contributors page verification passed (Mock Mode, no network).");
+    return;
+
+    static void AssertRows(Window window, int expected)
+    {
+        var list = window.GetVisualDescendants().OfType<ItemsControl>().Single(c => c.Name == "ContributorList");
+        var rows = list.GetVisualDescendants().OfType<Button>().Count(b => b.IsEffectivelyVisible && b.Bounds.Width > 0);
+        if (rows != expected)
+            throw new InvalidOperationException($"Expected {expected} contributor rows, got {rows}.");
+    }
 }
 
 if (args.Contains("--preview-brand", StringComparer.Ordinal))

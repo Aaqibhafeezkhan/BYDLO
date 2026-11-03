@@ -80,6 +80,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Statistics = new StatisticsViewModel(this);
         Settings = new SettingsViewModel(this);
         ActiveConnections = new ActiveConnectionsViewModel(this);
+        Contributors = new ContributorsViewModel(this);
         NavItems =
         [
             new("home", "nav.home", "LineHome", Home),
@@ -88,8 +89,9 @@ public sealed partial class MainViewModel : ViewModelBase
             new("routing", "nav.routing", "LineRouting", Routing),
             new("statistics", "nav.statistics", "LineStats", Statistics),
             new("settings", "nav.settings", "LineSettings", Settings),
+            new("contributors", "nav.contributors", "LineUsers", Contributors),
         ];
-        PrimaryNavItems = NavItems.Where(item => item.Key is not ("routing" or "statistics")).ToArray();
+        PrimaryNavItems = NavItems.Where(item => item.Key is not ("routing" or "statistics" or "contributors")).ToArray();
         _currentNav = NavItems[0];
         _currentNav.IsSelected = true;
 
@@ -100,7 +102,9 @@ public sealed partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(HasNoChains));
         };
         _hasOrphans = services.Orphans.Count > 0;
-        _ = Settings.CheckForUpdatesIfDueAsync();
+        ContributorsNav = NavItems.Single(item => item.Key == "contributors");
+        Contributors.Show(services.Settings.Contributors);
+        _ = RunStartupChecksAsync();
         services.StartSubscriptionAutoRefresh(Connections.RunAutoRefreshAsync);
     }
 
@@ -174,6 +178,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public RoutingViewModel Routing { get; }
 
     public StatisticsViewModel Statistics { get; }
+
+    public ContributorsViewModel Contributors { get; }
+
+    /// <summary>Contributors page entry in the sidebar corner, outside the primary navigation.</summary>
+    public NavItem ContributorsNav { get; }
 
     public SettingsViewModel Settings { get; }
 

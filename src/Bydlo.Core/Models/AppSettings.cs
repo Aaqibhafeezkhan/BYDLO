@@ -117,6 +117,11 @@ public sealed class AppSettings
     /// <summary>Unacknowledged stable release, retained across startup check intervals.</summary>
     public Diagnostics.GitHubRelease? PendingUpdate { get; set; }
 
+    /// <summary>Contributor list cached from GitHub for the sidebar; refreshed with automatic update checks.</summary>
+    public List<Diagnostics.Contributor> Contributors { get; set; } = [];
+
+    public DateTimeOffset? LastContributorsCheck { get; set; }
+
     public RoutingSettings Routing { get; set; } = new();
     public DpiSettings DpiDefaults { get; set; } = new();
 
