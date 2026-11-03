@@ -4,7 +4,7 @@ using Bydlo.Core.Models;
 namespace Bydlo.Core.Engines;
 
 /// <summary>Keeps the strict TUN alive across transport failures and reconnect attempts.</summary>
-public sealed class RetainedTunEngine : IEngine, IReconnectableEngine
+public sealed class RetainedTunEngine : IEngine, IReconnectableEngine, IActiveConnectionSource
 {
     public const string GuardProcessName = "BYDLO kill switch";
     private readonly IEngine _backend;
@@ -21,6 +21,12 @@ public sealed class RetainedTunEngine : IEngine, IReconnectableEngine
         backend.Traffic += (_, sample) => Traffic?.Invoke(this, sample);
         backend.StateChanged += (_, e) => Publish(e);
     }
+
+    public Task<IReadOnlyList<ActiveConnection>> ListConnectionsAsync(CancellationToken ct = default) =>
+        (_backend as IActiveConnectionSource)?.ListConnectionsAsync(ct) ?? Task.FromResult<IReadOnlyList<ActiveConnection>>([]);
+
+    public Task CloseConnectionAsync(string id, CancellationToken ct = default) =>
+        (_backend as IActiveConnectionSource)?.CloseConnectionAsync(id, ct) ?? Task.CompletedTask;
 
     public EngineDescriptor Descriptor => _backend.Descriptor;
     public EngineState State { get; private set; }

@@ -28,7 +28,7 @@ public sealed class AppServices
         ForcedMock = AppSettings.IsMockForced(args, Environment.GetEnvironmentVariable("BYDLO_MOCK"));
         Paths = AppPathsFactory.Create();
         Log = new LogHub(LogRedactor.Shared, Paths.LogsDirectory);
-        Secrets = SecretStoreFactory.Create(Paths);
+        Secrets = SecretStoreFactory.Create(Paths, ForcedMock);
         SettingsStore = new SettingsStore(Paths.SettingsFile);
         Profiles = new ProfileStore(Paths.ProfilesFile, Secrets);
         Privileges = new PrivilegeService();
@@ -40,11 +40,11 @@ public sealed class AppServices
         Installer = new EngineInstaller(Http, Lock, Paths.EnginesDirectory);
         Locator = new EngineLocator(Installer, PlatformInfo.Current);
         ZapretFirewall = new ZapretFirewall(Runner, Installer.UserDataDirectory);
-        AmneziaNetwork = new AmneziaNetwork(Runner, PlatformInfo.Current.Os, Paths.DataDirectory);
+        AmneziaNetwork = AmneziaNetworkFactory.Create(Runner, Paths);
         OpenVpnDriver = new OpenVpnDriver(Runner, Privileges, () => Locator.BundledExecutable("openvpn") is { } exe ? Path.GetDirectoryName(exe) : null);
         TgSecrets = new TgWsProxySecrets(Secrets);
         Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, () => new MockEngine(), ZapretFirewall, AmneziaNetwork, OpenVpnDriver);
-        SystemProxy = SystemProxyFactory.Create();
+        SystemProxy = SystemProxyFactory.Create(Runner, Paths);
         Connections = new ConnectionManager(Registry, Secrets, Paths, new ConflictDetector(new TcpPortChecker()), Log, SystemProxy);
         ConnectionCheck = new ConnectionCheckService();
         Importer = new ProfileImporter();
@@ -86,7 +86,7 @@ public sealed class AppServices
 
     public ZapretFirewall ZapretFirewall { get; }
 
-    public AmneziaNetwork AmneziaNetwork { get; }
+    public IAmneziaNetwork AmneziaNetwork { get; }
 
     public OpenVpnDriver OpenVpnDriver { get; }
 
@@ -152,6 +152,8 @@ public sealed class AppServices
 
         if (!s.IsMock && !NetworkSafetyGuard.IsLocked)
         {
+            try { await s.SystemProxy.ClearAsync().ConfigureAwait(false); }
+            catch (Exception ex) { s.Log.Error("system-proxy", "Proxy recovery failed: " + ex.Message); }
             // A retained TUN may outlive a crashed UI. Release only BYDLO's journaled guard.
             try { s.Journal.KillOrphans(RetainedTunEngine.GuardProcessName); }
             catch (Exception ex) { s.Log.Error("kill-switch", "Crash recovery failed: " + ex.Message); }

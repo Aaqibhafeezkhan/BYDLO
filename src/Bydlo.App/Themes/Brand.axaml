@@ -1,0 +1,29 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Shared vector master for the shell, executable, window and tray icons. -->
+  <LinearGradientBrush x:Key="BrandTileBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Color="#AA85FF" Offset="0" />
+    <GradientStop Color="#7544DD" Offset="0.48" />
+    <GradientStop Color="#39216F" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="BrandEdgeBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Color="#BFD8C7FF" Offset="0" />
+    <GradientStop Color="#107851B9" Offset="1" />
+  </LinearGradientBrush>
+  <SolidColorBrush x:Key="BrandInkBrush" Color="#FFFFFF" />
+  <DrawingImage x:Key="BrandLogo">
+    <DrawingImage.Drawing>
+      <DrawingGroup>
+        <GeometryDrawing Brush="{StaticResource BrandTileBrush}"
+                         Geometry="M15 1H49C57 1 63 7 63 15V49C63 57 57 63 49 63H15C7 63 1 57 1 49V15C1 7 7 1 15 1Z">
+          <GeometryDrawing.Pen>
+            <Pen Brush="{StaticResource BrandEdgeBrush}" Thickness="1" />
+          </GeometryDrawing.Pen>
+        </GeometryDrawing>
+        <!-- A fast diagonal opening separates the two bowls of the B. -->
+        <GeometryDrawing Brush="{StaticResource BrandInkBrush}"
+                         Geometry="F0 M18 13H34C43 13 48 17 48 24C48 29 45 32 40 35L18 46Z M27 21V32L35 28C38 26.5 39 25 38 23C37 21.5 35 21 32 21Z M18 50L42 38C47 39 50 42 50 46C50 52 45 56 35 56H18Z M29 49H35C39 49 41 47.5 41 45.5C41 44 40 43 38 43Z" />
+      </DrawingGroup>
+    </DrawingImage.Drawing>
+  </DrawingImage>
+</ResourceDictionary>

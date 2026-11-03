@@ -20,11 +20,14 @@ public sealed class FakeProcessRunner : IProcessRunner
 
     public Func<ProcessSpec, (int ExitCode, string Output)>? OnCompletion { get; set; }
 
+    public Action<ProcessSpec>? OnStart { get; set; }
+
     public FakeProcess? Last { get; private set; }
 
     public IManagedProcess Start(ProcessSpec spec)
     {
         Started.Add(spec);
+        OnStart?.Invoke(spec);
         Last = new FakeProcess();
         var p = Last;
         _ = Task.Run(async () =>
@@ -59,6 +62,8 @@ public sealed class FakeProcess : IManagedProcess
 
     public Exception? StopError { get; set; }
 
+    public int StopFailuresRemaining { get; set; }
+
     public event EventHandler<string>? OutputLine;
 
     public event EventHandler<int>? Exited;
@@ -74,6 +79,11 @@ public sealed class FakeProcess : IManagedProcess
 
     public Task StopAsync(TimeSpan timeout, CancellationToken ct = default)
     {
+        if (StopFailuresRemaining > 0)
+        {
+            StopFailuresRemaining--;
+            throw new IOException("Transient fake process stop failure.");
+        }
         if (StopError is { } error) { throw error; }
         Stopped = true;
         HasExited = true;

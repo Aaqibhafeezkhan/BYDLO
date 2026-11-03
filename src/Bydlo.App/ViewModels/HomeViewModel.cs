@@ -144,6 +144,26 @@ public sealed partial class HomeViewModel : PageViewModel
         }
     }
 
+    public IReadOnlyList<string> RoutingPresetOptions => Shell.Routing.PresetOptions;
+
+    public int RoutingPresetIndex
+    {
+        get => (int)Services.Settings.Routing.Preset;
+        set
+        {
+            if (value is < 0 or > 2 || value == RoutingPresetIndex)
+            {
+                return;
+            }
+
+            Services.Settings.Routing.Preset = (RoutingPreset)value;
+            OnPropertyChanged();
+            _ = Shell.Guard(async () => await Services.SaveSettingsAsync());
+        }
+    }
+
+    public override void OnShown() => OnPropertyChanged(nameof(RoutingPresetIndex));
+
     public string ModeHint => IsTun ? L["home.tun.hint"] : Loc.T("home.mode.proxy.hint", Services.Settings.LocalProxyPort);
 
     [ObservableProperty]
@@ -225,11 +245,11 @@ public sealed partial class HomeViewModel : PageViewModel
 
     public bool ZapretOn => Shell.Zapret.CleanupPending || Shell.Zapret.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
-    public string ZapretState => ToolState(Shell.Zapret, Services.Settings.Zapret.Strategy is { } s ? Path.GetFileNameWithoutExtension(s) : L["tools.zapret.nostrategy"]);
+    public string ZapretState => ToolState(Shell.Zapret, L["status.disconnected"]);
 
     public bool TgOn => Shell.Tg.CleanupPending || Shell.Tg.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting;
 
-    public string TgState => ToolState(Shell.Tg, $"{Services.Settings.TgWsProxy.Host}:{Services.Settings.TgWsProxy.Port}");
+    public string TgState => ToolState(Shell.Tg, L["status.disconnected"]);
 
     [RelayCommand]
     private async Task ToggleConnection()
@@ -374,6 +394,7 @@ public sealed partial class HomeViewModel : PageViewModel
     {
         ConnectionStatus.Connected => L["status.running"],
         ConnectionStatus.Connecting => L["status.starting"],
+        ConnectionStatus.Disconnecting => L["status.stopping"],
         ConnectionStatus.Error => L["status.error"],
         _ => idle,
     };

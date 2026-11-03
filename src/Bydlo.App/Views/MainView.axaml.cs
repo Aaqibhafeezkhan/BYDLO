@@ -25,6 +25,11 @@ public sealed partial class MainView : UserControl
 
     private void OnDragOver(object? sender, DragEventArgs e)
     {
+        if (e.DataTransfer.Formats.Contains(RoutingView.RuleDragFormat))
+        {
+            return;
+        }
+
         var supported = e.DataTransfer.TryGetFiles()?.Any(f => ExternalImportInput.IsFile(f.Name)) == true;
         e.DragEffects = supported ? DragDropEffects.Copy : DragDropEffects.None;
         if (DataContext is MainViewModel vm)
@@ -45,6 +50,11 @@ public sealed partial class MainView : UserControl
 
     private async void OnDrop(object? sender, DragEventArgs e)
     {
+        if (e.DataTransfer.Formats.Contains(RoutingView.RuleDragFormat))
+        {
+            return;
+        }
+
         if (DataContext is MainViewModel vm)
         {
             vm.IsDragOver = false;

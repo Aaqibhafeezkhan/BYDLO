@@ -44,6 +44,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     /// <summary>Re-read settings changed outside this page, e.g. by the first-run onboarding.</summary>
     public override void OnShown()
     {
+        OnPropertyChanged(nameof(SecretProtection));
         var s = Services.Settings;
         Theme = s.Theme;
         Language = s.Language;
@@ -58,7 +59,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         AllowLan = s.AllowLan;
         LocalProxyUsername = s.LocalProxyUsername;
         LocalProxyPassword = "";
-        _ = RefreshLanPasswordStatusAsync();
+        _ = Shell.Guard(RefreshLanPasswordStatusAsync);
         SuggestClipboardLinks = s.SuggestClipboardLinks;
         _updatingAutostart = true;
         StartWithSystem = s.StartWithSystem;
@@ -145,7 +146,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public string DataDirectory => Services.Paths.DataDirectory;
 
-    public string SecretProtection => Services.Secrets.ProtectionDescription;
+    public string SecretProtection => Bydlo.Platform.SecretStoreFactory.IsUsingSystemFallback(Services.Secrets)
+        ? L["settings.secrets.fallback"] : Services.Secrets.ProtectionDescription;
 
     public bool IsElevated => Services.Privileges.IsElevated;
 
@@ -428,8 +430,15 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     private async Task RefreshLanPasswordStatusAsync()
     {
-        var stored = await Services.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId);
-        HasLocalProxyPassword = stored["password"] is not null;
+        try
+        {
+            var stored = await Services.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId);
+            HasLocalProxyPassword = stored["password"] is not null;
+        }
+        finally
+        {
+            OnPropertyChanged(nameof(SecretProtection));
+        }
     }
 
     partial void OnIpCheckProviderChanged(IpCheckProvider value)

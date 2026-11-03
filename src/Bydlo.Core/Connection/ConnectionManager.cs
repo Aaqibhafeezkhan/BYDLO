@@ -92,6 +92,44 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
     public SessionSnapshot Primary => Snapshot(PrimaryKey);
 
+    public async Task<IReadOnlyList<ActiveConnection>?> ListActiveConnectionsAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return ActiveConnectionSource() is { } source ? await source.ListConnectionsAsync(ct).ConfigureAwait(false) : null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task CloseActiveConnectionAsync(string id, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (ActiveConnectionSource() is { } source)
+            {
+                await source.CloseConnectionAsync(id, ct).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private IActiveConnectionSource? ActiveConnectionSource()
+    {
+        lock (_sessions)
+        {
+            return _sessions.TryGetValue(PrimaryKey, out var session) && session.Status == ConnectionStatus.Connected
+                ? session.Engine as IActiveConnectionSource : null;
+        }
+    }
+
     public SessionSnapshot Zapret => Snapshot(ZapretKey);
 
     public SessionSnapshot TgWsProxy => Snapshot(TgWsProxyKey);
@@ -253,6 +291,24 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     public Task StartTgWsProxyAsync(AppSettings settings, CancellationToken ct = default) =>
         StartToolAsync(TgWsProxyKey, EngineKind.TgWsProxy, settings, _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey)), ct);
 
+    /// <summary>Start once and return the credentials of the actual running session.</summary>
+    public async Task<(TgWsProxySettings Settings, string Secret)> EnsureTgWsProxyAsync(AppSettings settings, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (TgWsProxy.Status != ConnectionStatus.Connected || TgWsProxy.CleanupPending)
+            {
+                await StartToolUnsafeAsync(TgWsProxyKey, EngineKind.TgWsProxy, CloneSettings(settings),
+                    _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey)), ct).ConfigureAwait(false);
+            }
+
+            var session = _sessions[TgWsProxyKey];
+            return (CloneSettings(session.Settings).TgWsProxy, session.Secrets["secret"]!);
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task StopToolAsync(string key, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -277,6 +333,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 try { await StopSessionUnsafeAsync(key).ConfigureAwait(false); }
                 catch (Exception ex) { errors.Add(ex); }
             }
+            await RetrySpeedProbeCleanupAsync(errors).ConfigureAwait(false);
             if (errors.Count > 0) { throw new AggregateException("Session cleanup failed.", errors); }
         }
         finally
@@ -294,6 +351,13 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     private async Task StartToolAsync(string key, EngineKind kind, AppSettings settings, IReadOnlyList<ConflictIssue> issues, CancellationToken ct)
     {
         settings = CloneSettings(settings);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try { await StartToolUnsafeAsync(key, kind, settings, issues, ct).ConfigureAwait(false); }
+        finally { _gate.Release(); }
+    }
+
+    private async Task StartToolUnsafeAsync(string key, EngineKind kind, AppSettings settings, IReadOnlyList<ConflictIssue> issues, CancellationToken ct)
+    {
         foreach (var w in issues.Where(i => i.Severity == ConflictSeverity.Warning))
         {
             _log.Warn(key, w.Message);
@@ -306,18 +370,10 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             throw new EngineException(blocking.Message);
         }
 
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            await StopSessionUnsafeAsync(key).ConfigureAwait(false);
-            var engine = _registry.Create(kind, settings);
-            var secrets = await _secrets.LoadAsync(key == TgWsProxyKey ? TgWsProxySecretId : key, ct).ConfigureAwait(false);
-            await StartSessionUnsafeAsync(new Session(key, engine, null, secrets, settings), ct).ConfigureAwait(false);
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        await StopSessionUnsafeAsync(key).ConfigureAwait(false);
+        var engine = _registry.Create(kind, settings);
+        var secrets = await _secrets.LoadAsync(key == TgWsProxyKey ? TgWsProxySecretId : key, ct).ConfigureAwait(false);
+        await StartSessionUnsafeAsync(new Session(key, engine, null, secrets, settings), ct).ConfigureAwait(false);
     }
 
     private bool IsActive(string key)
@@ -360,6 +416,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 Chain = session.Hops,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
+                RuleSetDirectory = Bydlo.Core.Routing.RoutingPresets.CacheDirectory(_paths.DataDirectory),
             }, ct).ConfigureAwait(false);
             session.Status = ConnectionStatus.Connected;
             session.ConnectedSince = DateTimeOffset.Now;
@@ -487,6 +544,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 Chain = session.Hops,
                 Settings = session.Settings,
                 WorkDirectory = Path.Combine(_paths.SessionsDirectory, session.Key),
+                RuleSetDirectory = Bydlo.Core.Routing.RoutingPresets.CacheDirectory(_paths.DataDirectory),
             };
             if (session.Engine is IReconnectableEngine retained)
             {

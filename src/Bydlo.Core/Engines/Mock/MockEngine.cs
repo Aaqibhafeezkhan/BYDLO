@@ -6,7 +6,7 @@ namespace Bydlo.Core.Engines.Mock;
 /// TEST TOOL. Simulates connect / disconnect / traffic / errors without starting any process or touching the network.
 /// Never presented to users as a working connection: the UI shows a "MOCK" badge whenever it is used.
 /// </summary>
-public sealed class MockEngine : IEngine
+public sealed class MockEngine : IEngine, IActiveConnectionSource
 {
     public static readonly EngineDescriptor MockDescriptor = new()
     {
@@ -29,6 +29,26 @@ public sealed class MockEngine : IEngine
         _time = time ?? TimeProvider.System;
         _random = seed is { } s ? new Random(s) : new Random();
         Descriptor = descriptor ?? MockDescriptor;
+    }
+
+    private int _connectionClosed;
+
+    public Task<IReadOnlyList<ActiveConnection>> ListConnectionsAsync(CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        IReadOnlyList<ActiveConnection> connections = Volatile.Read(ref _connectionClosed) == 0
+            ? [new("mock-1", "example.invalid", "browser", "mock", "proxy", _totalDown, _totalUp)] : [];
+        return Task.FromResult(connections);
+    }
+
+    public Task CloseConnectionAsync(string id, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (id == "mock-1")
+        {
+            Interlocked.Exchange(ref _connectionClosed, 1);
+        }
+        return Task.CompletedTask;
     }
 
     public EngineDescriptor Descriptor { get; }
@@ -73,6 +93,7 @@ public sealed class MockEngine : IEngine
             throw new EngineException(error);
         }
 
+        Interlocked.Exchange(ref _connectionClosed, 0);
         Set(EngineState.Running);
         Log?.Invoke(this, "[mock] simulated tunnel is up — no real traffic is carried");
         _loop = new CancellationTokenSource();

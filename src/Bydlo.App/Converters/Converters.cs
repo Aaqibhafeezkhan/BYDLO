@@ -6,6 +6,14 @@ using Avalonia.Media;
 
 namespace Bydlo.App.Services;
 
+public sealed class ByteCountConverter : IValueConverter
+{
+    public static ByteCountConverter Instance { get; } = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is long bytes ? Format.Bytes(bytes) : value;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 public sealed class ProtocolLabelConverter : IValueConverter
 {
     public static ProtocolLabelConverter Instance { get; } = new();

@@ -4,7 +4,7 @@
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
 <i>One app. Every protocol. Zero bullshit.</i></p>
 
-<p align="center"><img src="docs/images/home-connected-518abc8255e1.png" width="880" alt="Главный экран BYDLO: подключение и выбранный сервер"></p>
+<p align="center"><img src="docs/images/issue-92-home-after.png" width="880" alt="Главный экран BYDLO: импорт, Zapret и Telegram-прокси"></p>
 
 BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
@@ -44,25 +44,27 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 ## Интерфейс
 
 Фиолетовая, светлая и OLED-темы используют общую компоновку. На узком экране sidebar заменяется нижней навигацией.
+На главной сразу видны способы импорта, Zapret и Telegram-прокси — сервер для этих инструментов не нужен.
+Технические параметры открываются через «Расширенные настройки». [Как пользоваться интерфейсом](docs/INTERFACE.md).
 Скриншоты сняты на русском языке в Mock Mode; подключение и трафик на них имитируются.
 
 <p align="center">
-  <img src="docs/images/home-light-127fb11f3d4c.png" width="48%" alt="Главный экран: светлая тема">
-  <img src="docs/images/home-oled-b681a5d565b5.png" width="48%" alt="Главный экран: OLED-тема">
+  <img src="docs/images/issue-92-home-light.png" width="48%" alt="Главный экран: светлая тема">
+  <img src="docs/images/issue-92-home-oled.png" width="48%" alt="Главный экран: OLED-тема">
 </p>
 <p align="center">
   <img src="docs/images/connections-ac6d3998a92c.png" width="48%" alt="Подключения: импорт и список серверов">
-  <img src="docs/images/tools-c1a01ae46a7c.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
+  <img src="docs/images/issue-92-tools.png" width="48%" alt="Инструменты: Zapret и TgWsProxy">
 </p>
 <p align="center">
   <img src="docs/images/routing-83854b574e37.png" width="48%" alt="Маршрутизация: режимы, DNS и правила">
   <img src="docs/images/statistics-c46269290ae0.png" width="48%" alt="Статистика: скорость, трафик и журнал">
 </p>
 <p align="center">
-  <img src="docs/images/settings-49d33ee5075a.png" width="70%" alt="Настройки приложения">
+  <img src="docs/images/issue-92-settings.png" width="70%" alt="Настройки приложения">
 </p>
 <p align="center">
-  <img src="docs/images/mobile-home-031ef05e5429.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
+  <img src="docs/images/issue-92-home-380.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
   <img src="docs/images/mobile-connections-959746190e9b.png" width="260" alt="Узкое окно: список серверов">
 </p>
 
@@ -133,7 +135,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 
 - `--mock` и `BYDLO_MOCK=1` принудительно включают имитацию на текущий сеанс; отсутствие аргумента
   не отменяет переменную. Их значение не сохраняется как пользовательский выбор.
-- Сохранённый переключатель «Настройки → Дополнительно → Mock-режим» тоже включает имитацию.
+- Сохранённый переключатель «Настройки → Расширенные настройки → Mock-режим» тоже включает имитацию.
   Для реального подключения выключите его после удаления флагов; по умолчанию он выключен.
 - `BYDLO_SAFE_DEV=1` блокирует реальные движки и привилегированные операции, но сам по себе не включает mock.
 - `BYDLO_DATA_DIR` выбирает каталог данных; `scripts/env.*` задают `.tmp/appdata`.

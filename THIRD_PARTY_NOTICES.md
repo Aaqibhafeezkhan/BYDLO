@@ -107,6 +107,7 @@ SOFTWARE.
 | Avalonia UI (Avalonia, Avalonia.Desktop, Avalonia.Themes.Fluent, Avalonia.Fonts.Inter, Avalonia.Skia, Avalonia.Headless) | MIT | https://github.com/AvaloniaUI/Avalonia |
 | SkiaSharp / HarfBuzzSharp (через Avalonia) | MIT | https://github.com/mono/SkiaSharp |
 | CommunityToolkit.Mvvm | MIT | https://github.com/CommunityToolkit/dotnet |
+| YamlDotNet | MIT | https://github.com/aaubry/YamlDotNet |
 | ZXing.Net | Apache-2.0 | https://github.com/micjahn/ZXing.Net |
 | System.Security.Cryptography.ProtectedData | MIT | https://github.com/dotnet/runtime |
 | xUnit, Microsoft.NET.Test.Sdk (только тесты) | Apache-2.0 / MIT | https://github.com/xunit/xunit |

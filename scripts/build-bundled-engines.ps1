@@ -4,6 +4,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'env.ps1')
+. (Join-Path $PSScriptRoot 'native-build-cache.ps1')
+. (Join-Path $PSScriptRoot 'openvpn-cache.ps1')
 $repo = $env:BYDLO_ROOT
 $output = [IO.Path]::GetFullPath($PublishDirectory)
 $stage = Join-Path $repo ('.tmp/native-build-' + $Rid)
@@ -25,7 +27,7 @@ function Fetch([string]$Id) {
 }
 function CheckExit([string]$Action) { if ($LASTEXITCODE -ne 0) { throw "$Action failed: $LASTEXITCODE" } }
 
-foreach ($sourceId in @('sing-box-source','xray-source','openssl-source')) {
+foreach ($sourceId in @('openssl-source')) {
     Copy-Item (Fetch $sourceId) (Join-Path $sources ($sourceId + '.tar.gz')) -Force
 }
 
@@ -36,28 +38,26 @@ $env:GOTOOLCHAIN = 'local'
 $env:CGO_ENABLED = '0'
 $env:GOOS = if ($Rid.StartsWith('win-')) { 'windows' } elseif ($Rid.StartsWith('linux-')) { 'linux' } else { 'darwin' }
 $env:GOARCH = if ($Rid.EndsWith('arm64')) { 'arm64' } else { 'amd64' }
-if (!$Rid.StartsWith('osx-')) {
-    $awg = $engines | Where-Object id -eq 'amneziawg'
-    $awgDir = Join-Path $output "engines/amneziawg/$($awg.version)"
-    New-Item -ItemType Directory -Force $awgDir | Out-Null
-    $binary = if ($env:GOOS -eq 'windows') { 'bydlo-amneziawg.exe' } else { 'bydlo-amneziawg' }
-    & go -C (Join-Path $repo 'tools/amneziawg') mod verify
-    CheckExit 'Go module verification'
-    & go -C (Join-Path $repo 'tools/amneziawg') build -mod=readonly -trimpath -buildvcs=false -ldflags=-s -o (Join-Path $awgDir $binary) .
-    CheckExit 'AmneziaWG build'
-    $sourceDir = Join-Path $stage 'amneziawg-source'
-    New-Item -ItemType Directory -Force $sourceDir | Out-Null
-    Copy-Item (Join-Path $repo 'tools/amneziawg/*') $sourceDir -Exclude 'vendor' -Recurse -Force
-    Copy-Item (Join-Path $repo 'LICENSE') (Join-Path $sourceDir 'LICENSE-BYDLO') -Force
-    & go -C (Join-Path $repo 'tools/amneziawg') mod vendor -o (Join-Path $sourceDir 'vendor')
-    CheckExit 'AmneziaWG corresponding source'
-    & tar -czf (Join-Path $sources 'amneziawg-with-dependencies.tar.gz') -C $sourceDir .
-    CheckExit 'AmneziaWG source archive'
-    if ($env:GOOS -eq 'windows') {
-        $wintun = Fetch 'wintun'
-        Expand-Archive -LiteralPath $wintun -DestinationPath (Join-Path $stage 'wintun') -Force
-        Copy-Item (Join-Path $stage "wintun/wintun/bin/$($env:GOARCH)/wintun.dll") $awgDir -Force
-    }
+$awg = $engines | Where-Object id -eq 'amneziawg'
+$awgDir = Join-Path $output "engines/amneziawg/$($awg.version)"
+New-Item -ItemType Directory -Force $awgDir | Out-Null
+$binary = if ($env:GOOS -eq 'windows') { 'bydlo-amneziawg.exe' } else { 'bydlo-amneziawg' }
+& go -C (Join-Path $repo 'tools/amneziawg') mod verify
+CheckExit 'Go module verification'
+& go -C (Join-Path $repo 'tools/amneziawg') build -mod=readonly -trimpath -buildvcs=false -ldflags=-s -o (Join-Path $awgDir $binary) .
+CheckExit 'AmneziaWG build'
+$sourceDir = Join-Path $stage 'amneziawg-source'
+New-Item -ItemType Directory -Force $sourceDir | Out-Null
+Copy-Item (Join-Path $repo 'tools/amneziawg/*') $sourceDir -Exclude 'vendor' -Recurse -Force
+Copy-Item (Join-Path $repo 'LICENSE') (Join-Path $sourceDir 'LICENSE-BYDLO') -Force
+& go -C (Join-Path $repo 'tools/amneziawg') mod vendor -o (Join-Path $sourceDir 'vendor')
+CheckExit 'AmneziaWG corresponding source'
+& tar -czf (Join-Path $sources 'amneziawg-with-dependencies.tar.gz') -C $sourceDir .
+CheckExit 'AmneziaWG source archive'
+if ($env:GOOS -eq 'windows') {
+    $wintun = Fetch 'wintun'
+    Expand-Archive -LiteralPath $wintun -DestinationPath (Join-Path $stage 'wintun') -Force
+    Copy-Item (Join-Path $stage "wintun/wintun/bin/$($env:GOARCH)/wintun.dll") $awgDir -Force
 }
 
 $ovpn = $engines | Where-Object id -eq 'openvpn'
@@ -90,8 +90,31 @@ if ($Rid.StartsWith('win-')) {
         $capSource = Fetch 'libcap-ng-source'
         Copy-Item $capSource (Join-Path $sources 'libcap-ng-source.tar.gz') -Force
     }
-    & bash (Join-Path $repo 'scripts/build-openvpn.sh') $Rid $stage $ovpnDir $openvpnSource $opensslSource $capSource
-    CheckExit 'OpenVPN/OpenSSL build'
+    $cache = $env:BYDLO_OPENVPN_BUILD_CACHE
+    $files = @('openvpn', 'COPYING', 'openssl.cnf')
+    $cacheIdentity = $env:BYDLO_OPENVPN_CACHE_ID
+    $useCache = $Rid -eq 'osx-arm64' -and $cache -and $cacheIdentity
+    if ($useCache -and (Test-OpenVpnCache $cache) -and (Test-NativeBuildCache $cache $cacheIdentity $files)) {
+        Write-Host 'Using SHA-256 and input-identity verified OpenVPN/OpenSSL cache.'
+        foreach ($name in $files) {
+            Copy-Item -LiteralPath (Join-Path $cache $name) -Destination $ovpnDir -Force
+        }
+    } else {
+        & bash (Join-Path $repo 'scripts/build-openvpn.sh') $Rid $stage $ovpnDir $openvpnSource $opensslSource $capSource
+        CheckExit 'OpenVPN/OpenSSL build'
+        if ($useCache) {
+            Save-NativeBuildCache $cache $ovpnDir $cacheIdentity $files
+            Write-OpenVpnCacheManifest $cache
+        }
+    }
+    if ($Rid -eq 'osx-arm64') {
+        # Repeat on cache hits: do not trust a cached host-specific library reference.
+        $dependencies = & otool -L (Join-Path $ovpnDir 'openvpn')
+        CheckExit 'OpenVPN dependency inspection'
+        if ($dependencies | Select-Object -Skip 1 | Where-Object { $_ -notmatch '^\s*(/usr/lib/|/System/Library/)' }) {
+            throw 'Unexpected external OpenVPN dependency'
+        }
+    }
 }
 
 # Record packaged bytes without launching them. Retain build inputs for audit/update work.
@@ -99,6 +122,8 @@ Copy-Item (Join-Path $repo 'engines/bundle-inputs.lock.json') (Join-Path $output
 Copy-Item (Join-Path $repo 'engines/engines.lock.json') (Join-Path $output 'engines') -Force
 Copy-Item (Join-Path $repo 'scripts/build-openvpn.sh') $sources -Force
 Copy-Item (Join-Path $repo 'scripts/build-bundled-engines.ps1') $sources -Force
+Copy-Item (Join-Path $repo 'scripts/native-build-cache.ps1') $sources -Force
+Copy-Item (Join-Path $repo 'scripts/openvpn-cache.ps1') $sources -Force
 Get-ChildItem (Join-Path $output 'engines') -Recurse -File | Sort-Object FullName | ForEach-Object {
     '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), ([IO.Path]::GetRelativePath($output, $_.FullName).Replace('\','/'))
 } | Set-Content (Join-Path $output 'ENGINES-SHA256SUMS.txt') -Encoding utf8NoBOM

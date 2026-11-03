@@ -62,9 +62,14 @@ public sealed class ProfileImporter
             return Single(_openVpn, trimmed, sourceName);
         }
 
+        if (ClashYamlParser.CanParse(trimmed))
+        {
+            return ClashYamlParser.Parse(trimmed);
+        }
+
         if (trimmed.StartsWith('{'))
         {
-            return new ImportResult(profiles, ["Importing full sing-box / Xray JSON configs is not supported yet. Use share links or subscription URLs."]);
+            return CustomJsonConfig.Parse(trimmed, sourceName);
         }
 
         // Base64 subscription body.

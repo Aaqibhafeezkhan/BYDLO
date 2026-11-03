@@ -16,8 +16,8 @@ Environment.SetEnvironmentVariable("BYDLO_SAFE_DEV", "1");
 var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "screenshots"));
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
-if (args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
-    args.Contains("--verify-themes", StringComparer.Ordinal) ||
+if (args.Contains("--verify-simple-ui", StringComparer.Ordinal) || args.Contains("--verify-wizard", StringComparer.Ordinal) || args.Contains("--verify-backup", StringComparer.Ordinal) || args.Contains("--verify-import", StringComparer.Ordinal) || args.Contains("--verify-share", StringComparer.Ordinal) ||
+    args.Contains("--verify-themes", StringComparer.Ordinal) || args.Contains("--verify-active-connections", StringComparer.Ordinal) || args.Contains("--verify-routing-picker", StringComparer.Ordinal) ||
     args.Contains("--verify-zapret-selection", StringComparer.Ordinal) || args.Contains("--verify-desktop", StringComparer.Ordinal) || args.Contains("--verify-bundled-engines", StringComparer.Ordinal) ||
     Environment.GetEnvironmentVariable("BYDLO_DATA_DIR") is null)
 {
@@ -39,6 +39,12 @@ if (app.Services is null)
 }
 var services = app.Services!;
 Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
+
+if (args.Contains("--export-brand-icon", StringComparer.Ordinal))
+{
+    BrandIconExport.Run(output);
+    return;
+}
 
 if (args.Contains("--verify-wizard", StringComparer.Ordinal))
 {
@@ -104,15 +110,232 @@ void Pump(int ms)
     }
 }
 
-void Shoot(string name, double width, double height)
+void Shoot(string name, double width, double height, Action<Window>? arrange = null)
 {
     var window = new Window { Width = width, Height = height, Content = new MainView { DataContext = shell } };
     window.Show();
     Pump(400);
+    if (arrange is not null)
+    {
+        arrange(window);
+        Pump(150);
+    }
     using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException("No rendered frame: " + name);
     frame.Save(Path.Combine(output, name + ".png"));
     window.Close();
     Console.WriteLine($"saved {name}.png");
+}
+
+if (args.Contains("--preview-brand", StringComparer.Ordinal))
+{
+    shell.FinishOnboardingCommand.Execute(null);
+    Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
+    services.Theme.Apply(ThemePreference.Purple);
+    Shoot("brand-desktop", 1180, 780);
+    Shoot("brand-compact", 380, 700);
+    return;
+}
+
+if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
+{
+    shell.FinishOnboardingCommand.Execute(null);
+    if (shell.Profiles.Count != 0) throw new InvalidOperationException("Use a fresh output directory for empty-state verification.");
+    Bydlo.App.Services.Loc.Instance.SetLanguage(lang);
+    foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled, ThemePreference.System })
+    {
+        services.Theme.Apply(theme);
+        foreach (var (width, height) in new[] { (1180, 780), (900, 780), (760, 780), (380, 700) })
+        {
+            shell.Navigate("home");
+            Shoot($"simple-home-{theme.ToString().ToLowerInvariant()}-{width}", width, height);
+        }
+    }
+    services.Theme.Apply(ThemePreference.Purple);
+    foreach (var source in new[] { "link", "subscription", "clipboard", "file", "qr" })
+    {
+        // No native pickers or clipboard in headless mode: their unavailable-service errors
+        // must leave the wizard open on the correct source page, never start an engine.
+        services.TopLevel = () => null;
+        Wait(shell.OpenImportCommand.ExecuteAsync(source));
+        var expected = source == "file" ? AddServerStep.File : source == "qr" ? AddServerStep.Qr : AddServerStep.Link;
+        if (!shell.IsAddServerOpen || shell.AddServerWizard.Step != expected)
+            throw new InvalidOperationException("Wrong direct import destination: " + source);
+        shell.AddServerWizard.CloseCommand.Execute(null);
+    }
+    Wait(shell.OpenImportCommand.ExecuteAsync("link"));
+    shell.AddServerWizard.Input = "draft";
+    Wait(shell.OpenImportCommand.ExecuteAsync("subscription"));
+    if (shell.AddServerWizard.Input != "draft") throw new InvalidOperationException("Direct import reset an open wizard.");
+    shell.AddServerWizard.CloseCommand.Execute(null);
+    var settingsWindow = new Window { Width = 380, Height = 700, Content = new SettingsView { DataContext = shell.Settings } };
+    settingsWindow.Show();
+    Pump(100);
+    var advanced = settingsWindow.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "AdvancedSettings");
+    if (advanced.IsExpanded) throw new InvalidOperationException("Advanced settings must start collapsed.");
+    advanced.IsExpanded = true;
+    Pump(50);
+    if (!shell.Settings.ShowAdvanced || !services.Settings.ShowAdvanced)
+        throw new InvalidOperationException("Advanced disclosure did not update the saved preference.");
+    advanced.IsExpanded = false;
+    Pump(50);
+    if (shell.Settings.ShowAdvanced) throw new InvalidOperationException("Advanced disclosure did not close.");
+    settingsWindow.Close();
+    foreach (var page in new[] { "tools", "settings" })
+    {
+        shell.Navigate(page);
+        Shoot($"simple-{page}", 1180, 900);
+        Shoot($"simple-{page}-380", 380, 700);
+    }
+    shell.Navigate("home");
+    var homeWindow = new Window { Width = 1180, Height = 780, Content = new MainView { DataContext = shell } };
+    homeWindow.Show();
+    Pump(100);
+    var toggles = homeWindow.GetVisualDescendants().OfType<ToggleSwitch>()
+        .Where(c => c.IsEffectivelyVisible && (Avalonia.Automation.AutomationProperties.GetName(c) is "Zapret" or "TgWsProxy")).ToArray();
+    if (toggles.Length != 1 || Avalonia.Automation.AutomationProperties.GetName(toggles[0]) != "Zapret")
+        throw new InvalidOperationException("Only Zapret should use a toggle.");
+    var telegramButton = homeWindow.GetVisualDescendants().OfType<Button>()
+        .Single(b => ReferenceEquals(b.Command, shell.Tools.OpenInTelegramCommand));
+    if (!telegramButton.IsEffectivelyVisible || !telegramButton.IsEnabled)
+        throw new InvalidOperationException("Telegram connection must be available before the proxy starts.");
+    homeWindow.Width = 380;
+    Pump(100);
+    var shortcut = homeWindow.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ToolShortcut");
+    if (!shortcut.IsEffectivelyVisible || !ReferenceEquals(shortcut.Command, shell.NavigateCommand))
+        throw new InvalidOperationException("Compact home must expose the tool shortcut.");
+    homeWindow.Close();
+    Wait(shell.Home.ToggleZapretCommand.ExecuteAsync(null));
+    Pump(50); // Session notifications are posted to the UI dispatcher.
+    if (!shell.Home.ZapretOn) throw new InvalidOperationException("Mock Zapret tool did not start.");
+    Wait(shell.Home.ToggleZapretCommand.ExecuteAsync(null));
+    Pump(50); // Session notifications are posted to the UI dispatcher.
+    if (shell.Home.ZapretOn) throw new InvalidOperationException("Mock Zapret tool did not stop.");
+    // No OS launcher in headless mode: exercise startup and the missing-Telegram fallback safely.
+    services.TopLevel = () => null;
+    Wait(shell.Tools.OpenInTelegramCommand.ExecuteAsync(null));
+    Pump(50);
+    if (!shell.Home.TgOn) throw new InvalidOperationException("Mock Telegram tool did not start.");
+    var telegramStarted = services.Connections.TgWsProxy.ConnectedSince;
+    Wait(shell.Tools.OpenInTelegramCommand.ExecuteAsync(null));
+    if (services.Connections.TgWsProxy.ConnectedSince != telegramStarted)
+        throw new InvalidOperationException("Opening Telegram twice restarted the proxy.");
+    Shoot("simple-home-telegram-enabled", 1180, 780);
+    Wait(services.Connections.StopAllAsync());
+    Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
+    Shoot("simple-home-with-server", 1180, 780);
+    Shoot("simple-home-with-server-380", 380, 700);
+    Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+    Shoot("simple-home-connected", 1180, 780);
+    Wait(services.Connections.StopAllAsync());
+    Console.WriteLine("Simple UI verification passed: themes, compact layout, direct import destinations, independent mock tools and VPN.");
+    return;
+}
+
+if (args.Contains("--verify-routing-picker", StringComparer.Ordinal))
+{
+    shell.FinishOnboardingCommand.Execute(null);
+    if (OperatingSystem.IsWindows())
+    {
+        shell.Home.IsTun = true;
+        shell.Navigate("routing");
+        var routing = shell.Routing;
+        routing.ShowRuleEditor = true;
+        Wait(routing.FindApplicationsCommand.ExecuteAsync(null));
+        var application = routing.MatchingApplications.First();
+        routing.ApplicationSearch = application.Name;
+        routing.SelectedApplication = routing.MatchingApplications.First();
+        routing.AddApplicationCommand.Execute(null);
+        routing.ProxyOnlyListedProcesses = true;
+        Wait(routing.SaveCommand.ExecuteAsync(null));
+        if (!services.Settings.Routing.DirectProcesses.Contains(application.Name) || !services.Settings.Routing.ProxyOnlyListedProcesses)
+        {
+            throw new InvalidOperationException("The selected Windows application or routing mode was not saved.");
+        }
+        foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled })
+        {
+            services.Theme.Apply(theme);
+            foreach (var (width, height) in new[] { (1180, 900), (380, 700) })
+            {
+                Shoot($"routing-application-picker-{theme.ToString().ToLowerInvariant()}-{width}", width, height,
+                    window => window.GetVisualDescendants().OfType<ComboBox>()
+                        .Single(control => control.Name == "ApplicationPicker").BringIntoView());
+            }
+        }
+        Console.WriteLine("Routing picker verification passed: Windows catalog, filtering, selection and saving.");
+    }
+    return;
+}
+
+if (args.Contains("--verify-active-connections", StringComparer.Ordinal))
+{
+    shell.FinishOnboardingCommand.Execute(null);
+    Wait(shell.Connections.AddDemoProfilesCommand.ExecuteAsync(null));
+    Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+    shell.Navigate("settings");
+    shell.Settings.ShowAdvanced = true;
+    var stats = shell.ActiveConnections;
+    stats.ActiveConnectionsExpanded = true;
+    Pump(200);
+    var primarySnapshot = shell.Primary;
+    foreach (var engine in new[] { EngineKind.Xray, EngineKind.WireGuard, EngineKind.OpenVpn })
+    {
+        shell.Primary = primarySnapshot with { Engine = engine, IsMock = false };
+        if (stats.SupportsActiveConnections || stats.FilteredConnections.Any())
+        {
+            throw new InvalidOperationException("Unsupported engine offered active connections.");
+        }
+    }
+    shell.Primary = primarySnapshot;
+    Pump(200);
+    var connection = stats.FilteredConnections.Single();
+    foreach (var filter in new[] { " EXAMPLE.INVALID ", "BROWSER", "mock", "proxy" })
+    {
+        stats.ConnectionFilter = filter;
+        if (stats.FilteredConnections.Single() != connection) { throw new InvalidOperationException("Connection field filter failed."); }
+    }
+    stats.ConnectionFilter = "missing";
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Filter did not hide the mock connection."); }
+    stats.ConnectionFilter = "browser";
+    if (stats.FilteredConnections.Single() != connection) { throw new InvalidOperationException("Filter lost the matching connection."); }
+    foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled })
+    {
+        services.Theme.Apply(theme);
+        Shoot($"active-connections-{theme.ToString().ToLowerInvariant()}", 1180, 900,
+            window => window.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "ActiveConnectionsList").BringIntoView());
+        Shoot($"active-connections-{theme.ToString().ToLowerInvariant()}-minimum", 380, 700,
+            window => window.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "ActiveConnectionsList").BringIntoView());
+    }
+    shell.Settings.ShowAdvanced = false;
+    Pump(2200);
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Collapsed advanced section kept polling."); }
+    shell.Settings.ShowAdvanced = true;
+    Pump(200);
+    if (!stats.FilteredConnections.Any()) { throw new InvalidOperationException("Reopening advanced did not refresh."); }
+    shell.Navigate("home");
+    Pump(2200);
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Hidden page kept polling."); }
+    shell.Navigate("settings");
+    Pump(200);
+    stats.ActiveConnectionsExpanded = false;
+    Pump(2200);
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Collapsed list kept polling."); }
+    stats.ActiveConnectionsExpanded = true;
+    Pump(200);
+    if (!stats.FilteredConnections.Any()) { throw new InvalidOperationException("Reopening list did not refresh."); }
+    Wait(stats.CloseConnectionCommand.ExecuteAsync(connection));
+    if (stats.FilteredConnections.Any()) { throw new InvalidOperationException("Mock connection remained after closing it."); }
+    if (stats.AddConnectionRuleCommand.CanExecute(connection with { Host = "192.0.2.1" }))
+    {
+        throw new InvalidOperationException("A domain rule must not be offered for an IP address.");
+    }
+    stats.AddConnectionRuleCommand.Execute(connection);
+    if (shell.Routing.RuleValue != "example.invalid" || !shell.Routing.ShowRuleEditor)
+    {
+        throw new InvalidOperationException("Connection rule was not prefilled.");
+    }
+    Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+    Console.WriteLine("Active connections verification passed: mock list, filter, close, prefilled routing rule.");
+    return;
 }
 
 if (shell.IsOnboardingVisible)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"syscall"
 
@@ -38,7 +39,11 @@ func run() error {
 		return fmt.Errorf("cannot read configuration")
 	}
 	var c config
-	if json.Unmarshal(b, &c) != nil || c.Name != "bydlo-awg" || c.MTU < 576 || c.MTU > 9000 {
+	expectedName := "bydlo-awg"
+	if runtime.GOOS == "darwin" {
+		expectedName = "utun"
+	}
+	if json.Unmarshal(b, &c) != nil || c.Name != expectedName || c.MTU < 576 || c.MTU > 9000 {
 		return fmt.Errorf("invalid configuration")
 	}
 	t, err := tun.CreateTUN(c.Name, c.MTU)

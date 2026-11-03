@@ -115,6 +115,7 @@ public sealed class AppSettings
     public DateTimeOffset? LastUpdateCheck { get; set; }
 
     public RoutingSettings Routing { get; set; } = new();
+    public DpiSettings DpiDefaults { get; set; } = new();
 
     public ZapretSettings Zapret { get; set; } = new();
 
@@ -122,6 +123,23 @@ public sealed class AppSettings
 
     /// <summary>Explicit paths to engine executables, keyed by <see cref="EngineKind"/> name.</summary>
     public Dictionary<string, string> EnginePaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+public enum RoutingPreset
+{
+    All,
+    BlockedOnly,
+    ExceptLocal,
+}
+
+public enum DnsTransport
+{
+    System,
+    Udp,
+    Tcp,
+    Https,
+    Tls,
+    Quic,
 }
 
 public sealed class RoutingSettings
@@ -133,11 +151,24 @@ public sealed class RoutingSettings
     public bool PreserveMeshVpnRanges { get; set; } = true;
 
     public bool BypassPrivateNetworks { get; set; } = true;
+    public List<Routing.OrderedRoutingRule> OrderedRules { get; set; } = [];
+    public RoutingPreset Preset { get; set; }
+    public string PresetCountry { get; set; } = "ru";
 
     /// <summary>DNS-over-HTTPS server used through the tunnel.</summary>
     public string RemoteDns { get; set; } = "1.1.1.1";
 
     public string DirectDns { get; set; } = "local";
+    public DnsTransport RemoteDnsTransport { get; set; } = DnsTransport.Https;
+    public DnsTransport DirectDnsTransport { get; set; } = DnsTransport.Udp;
+    public bool RemoteDnsThroughProxy { get; set; } = true;
+    public bool DirectDnsThroughProxy { get; set; }
+    public bool FakeIp { get; set; }
+    public List<string> FakeIpExceptions { get; set; } = [];
+    public List<string> RemoteDnsDomains { get; set; } = [];
+    public List<string> DirectDnsDomains { get; set; } = [];
+    public List<string> RemoteDnsRuleSets { get; set; } = [];
+    public List<string> DirectDnsRuleSets { get; set; } = [];
 
     public List<string> DirectDomains { get; set; } = [];
 
@@ -152,6 +183,9 @@ public sealed class RoutingSettings
 
     /// <summary>Process names that bypass the tunnel (sing-box TUN; Xray on Windows/Linux).</summary>
     public List<string> DirectProcesses { get; set; } = [];
+
+    /// <summary>In sing-box TUN mode, only the listed processes can use the proxy.</summary>
+    public bool ProxyOnlyListedProcesses { get; set; }
 }
 
 public sealed class ZapretSettings

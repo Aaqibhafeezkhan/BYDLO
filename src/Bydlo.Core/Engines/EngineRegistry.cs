@@ -52,6 +52,15 @@ public sealed class EngineRegistry
             throw new EngineException("error.killswitch.engine");
         }
 
+        if (settings.Routing.Preset != RoutingPreset.All && kind != EngineKind.SingBox)
+        {
+            throw new EngineException("routing.preset.singbox", localizationKey: "routing.preset.singbox");
+        }
+        if (settings.Routing.Preset != RoutingPreset.All && settings.KillSwitch && settings.Mode == ConnectionMode.Tun)
+        {
+            throw new EngineException("routing.preset.killswitch", localizationKey: "routing.preset.killswitch");
+        }
+
         return Create(kind, settings);
     }
 
@@ -61,7 +70,7 @@ public sealed class EngineRegistry
         var required = hops.Select(ProtocolNeeds).Where(r => r is not null).Distinct().ToList();
         return [.. _engines
             .Where(e => !e.Descriptor.IsTool && (e.Descriptor.Kind is EngineKind.SingBox or EngineKind.Xray))
-            .Where(e => hops.All(h => e.Descriptor.Protocols.Contains(h.Protocol)))
+            .Where(e => hops.All(h => h.Protocol is not (ProtocolKind.SingBoxConfig or ProtocolKind.XrayConfig) && e.Descriptor.Protocols.Contains(h.Protocol)))
             .Where(e => e.Descriptor.SupportOn(os) != SupportLevel.Unsupported)
             .Where(e => required.Count == 0 || required.Count == 1 && required[0] == e.Descriptor.Kind)
             .OrderBy(e => e.Descriptor.SupportOn(os) == SupportLevel.Implemented ? 0 : 1)
@@ -82,6 +91,7 @@ public sealed class EngineRegistry
             throw new EngineException("No chain-capable engine supports every hop on this OS.", localizationKey: "error.chain.engine");
         }
 
+        var kind = candidates[0];
         if (preferred is { } wanted)
         {
             // An explicit engine that cannot carry the chain is an honest NotImplemented, not a silent fallback.
@@ -90,13 +100,21 @@ public sealed class EngineRegistry
                 throw new EngineException($"Engine {wanted} cannot carry this chain.", localizationKey: "error.chain.engine");
             }
 
-            return Create(wanted, settings);
+            kind = wanted;
         }
 
-        var kind = candidates[0];
         if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
         {
             throw new EngineException("error.killswitch.engine");
+        }
+
+        if (settings.Routing.Preset != RoutingPreset.All && kind != EngineKind.SingBox)
+        {
+            throw new EngineException("routing.preset.singbox", localizationKey: "routing.preset.singbox");
+        }
+        if (settings.Routing.Preset != RoutingPreset.All && settings.KillSwitch && settings.Mode == ConnectionMode.Tun)
+        {
+            throw new EngineException("routing.preset.killswitch", localizationKey: "routing.preset.killswitch");
         }
 
         return Create(kind, settings);

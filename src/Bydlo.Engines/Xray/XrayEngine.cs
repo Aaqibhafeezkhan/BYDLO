@@ -1,3 +1,4 @@
+using Bydlo.Core.Routing;
 using Bydlo.Core.Config;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
@@ -62,6 +63,30 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             Redactor.RegisterSecret(lan.Password);
         }
 
+        if (request.Settings.Routing.Preset != RoutingPreset.All)
+        {
+            throw new EngineException("routing.preset.singbox", localizationKey: "routing.preset.singbox");
+        }
+        var assets = request.Settings.Routing.OrderedRules.Select(rule => RoutingPresets.XraySource(rule.Condition))
+            .OfType<RuleSetSource>().DistinctBy(source => source.Tag).ToArray();
+        foreach (var source in assets)
+        {
+            if (request.RuleSetDirectory is not { } directory)
+            {
+                throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
+            }
+            var path = RoutingPresets.CachedPath(directory, source);
+            try
+            {
+                var destination = Path.Combine(request.WorkDirectory, source.Tag);
+                File.Copy(path, destination, overwrite: true);
+                await IntegrityVerifier.VerifyFileAsync(destination, source.Sha256, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is IOException or IntegrityException)
+            {
+                throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
+            }
+        }
         var ctx = new BuildContext(request.Settings, LocalProxyAuth: request.LocalProxyAuth);
         var json = request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
         var configPath = Path.Combine(request.WorkDirectory, "xray.json");
@@ -72,6 +97,8 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             Arguments = ["run", "-c", configPath],
             WorkingDirectory = Path.GetDirectoryName(availability.ExecutablePath!),
             DisplayName = "xray",
+            Environment = assets.Length == 0 ? new Dictionary<string, string>() :
+                new Dictionary<string, string> { ["XRAY_LOCATION_ASSET"] = request.WorkDirectory },
         };
     }
 

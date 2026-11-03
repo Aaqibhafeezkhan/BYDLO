@@ -119,7 +119,8 @@
         "linux-x64": "bydlo-amneziawg",
         "windows-x64": "bydlo-amneziawg.exe",
         "windows-arm64": "bydlo-amneziawg.exe",
-        "linux-arm64": "bydlo-amneziawg"
+        "linux-arm64": "bydlo-amneziawg",
+        "macos-arm64": "bydlo-amneziawg"
       },
       "upstream": "https://github.com/amnezia-vpn/amneziawg-go",
       "version": "3.1.20260828-bydlo1",

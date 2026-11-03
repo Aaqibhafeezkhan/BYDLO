@@ -81,7 +81,7 @@ public sealed class DpapiSecretStore(string directory) : FileSecretStoreBase(dir
 
 /// <summary>
 /// AES-256-GCM with a random key stored in an owner-only (0600) key file. Protects against casual disclosure and
-/// copied profile folders, not against malware running as the same user. Keychain / libsecret / Android Keystore are on the roadmap.
+/// copied profile folders, not against malware running as the same user. Fallback when the system vault is unavailable.
 /// </summary>
 public sealed class AesFileSecretStore(string directory) : FileSecretStoreBase(directory)
 {

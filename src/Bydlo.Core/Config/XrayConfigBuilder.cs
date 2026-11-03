@@ -1,3 +1,5 @@
+using Bydlo.Core.Import.Parsers;
+using Bydlo.Core.Routing;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bydlo.Core.Diagnostics;
@@ -14,7 +16,7 @@ public sealed class XrayConfigBuilder
 {
     public static readonly IReadOnlySet<ProtocolKind> Supported = new HashSet<ProtocolKind>
     {
-        ProtocolKind.Vless, ProtocolKind.Vmess, ProtocolKind.Trojan, ProtocolKind.Shadowsocks, ProtocolKind.Socks5, ProtocolKind.Http,
+        ProtocolKind.Vless, ProtocolKind.Vmess, ProtocolKind.Trojan, ProtocolKind.Shadowsocks, ProtocolKind.Socks5, ProtocolKind.Http, ProtocolKind.XrayConfig,
     };
 
     public string BuildJson(Profile profile, ProfileSecrets secrets, BuildContext ctx) =>
@@ -49,19 +51,71 @@ public sealed class XrayConfigBuilder
             }
         }
 
-        return BuildCore(ctx, hops.Select((h, i) => BuildOutbound(h.Profile, h.Secrets, Tag(i), i > 0 ? Tag(i - 1) : null)).Reverse().ToList(), Tag(hops.Count - 1));
+        var auxiliary = new List<JsonObject>();
+        var proxies = hops.Select((h, i) => BuildOutbound(h.Profile, h.Secrets, ctx.Settings.DpiDefaults, auxiliary,
+            Tag(i), i > 0 ? Tag(i - 1) : null)).Reverse().ToList();
+        proxies.AddRange(auxiliary);
+        return BuildCore(ctx, proxies, Tag(hops.Count - 1));
     }
 
     internal static string Tag(int index) => $"proxy-{index}";
 
     public JsonObject Build(Profile p, ProfileSecrets s, BuildContext ctx)
     {
+        if (p.Protocol == ProtocolKind.XrayConfig)
+        {
+            return BuildCustom(s, ctx);
+        }
+
         if (!Supported.Contains(p.Protocol))
         {
             throw new NotSupportedException($"Xray adapter does not handle {p.Protocol}.");
         }
 
-        return BuildCore(ctx, [BuildOutbound(p, s)], "proxy");
+        var auxiliary = new List<JsonObject>();
+        var proxy = BuildOutbound(p, s, ctx.Settings.DpiDefaults, auxiliary);
+        return BuildCore(ctx, [proxy, .. auxiliary], "proxy");
+    }
+
+    private static JsonObject BuildCustom(ProfileSecrets secrets, BuildContext ctx)
+    {
+        JsonObject custom;
+        try
+        {
+            custom = CustomJsonConfig.Read(secrets[Keys.RawConfig] ?? "", ProtocolKind.XrayConfig);
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or FormatException or InvalidOperationException)
+        {
+            throw new EngineException("import.json.unsafe", localizationKey: "import.json.unsafe");
+        }
+
+        var template = BuildCore(ctx, [], "proxy");
+        custom["inbounds"] = template["inbounds"]!.DeepClone();
+        custom["log"] = template["log"]!.DeepClone();
+        var outbounds = custom["outbounds"]!.AsArray();
+        var direct = outbounds.OfType<JsonObject>().FirstOrDefault(node => (string?)node["protocol"] == "freedom");
+        var directTag = (string?)direct?["tag"] ?? "bydlo-direct";
+        if (direct is null)
+        {
+            if (outbounds.OfType<JsonObject>().Any(node => (string?)node["tag"] == directTag))
+            {
+                throw new EngineException("import.json.unsafe", localizationKey: "import.json.unsafe");
+            }
+            outbounds.Add(new JsonObject { ["protocol"] = "freedom", ["tag"] = directTag });
+        }
+        var routing = custom["routing"] as JsonObject ?? new JsonObject();
+        var rules = routing["rules"] as JsonArray ?? new JsonArray();
+        if (ctx.Settings.Routing.PreserveMeshVpnRanges)
+        {
+            rules.Insert(0, new JsonObject { ["type"] = "field", ["ip"] = Arr(SingBoxConfigBuilder.MeshVpnRanges), ["outboundTag"] = directTag });
+        }
+        if (ctx.Settings.Routing.BypassPrivateNetworks)
+        {
+            rules.Insert(0, new JsonObject { ["type"] = "field", ["ip"] = new JsonArray("geoip:private"), ["outboundTag"] = directTag });
+        }
+        if (rules.Parent is null) { routing["rules"] = rules; }
+        if (routing.Parent is null) { custom["routing"] = routing; }
+        return custom;
     }
 
     private static JsonObject BuildCore(BuildContext ctx, List<JsonObject> proxies, string proxyTag)
@@ -87,6 +141,11 @@ public sealed class XrayConfigBuilder
             rules.Add(new JsonObject { ["type"] = "field", ["ip"] = Arr(SingBoxConfigBuilder.MeshVpnRanges), ["outboundTag"] = "direct" });
         }
 
+        foreach (var rule in routing.OrderedRules)
+        {
+            rules.Add(OrderedRoutingRules.Compile(rule, false, settings.Mode, proxyTag, null));
+        }
+
         if (routing.BlockDomains.Count > 0)
         {
             rules.Add(new JsonObject { ["type"] = "field", ["domain"] = Arr(routing.BlockDomains.Select(d => "domain:" + d)), ["outboundTag"] = "block" });
@@ -102,7 +161,7 @@ public sealed class XrayConfigBuilder
             rules.Add(new JsonObject { ["type"] = "field", ["ip"] = Arr(routing.DirectCidrs), ["outboundTag"] = "direct" });
         }
 
-        if (routing.DirectProcesses.Count > 0)
+        if (!routing.ProxyOnlyListedProcesses && routing.DirectProcesses.Count > 0)
         {
             rules.Add(new JsonObject { ["type"] = "field", ["process"] = Arr(routing.DirectProcesses), ["outboundTag"] = "direct" });
         }
@@ -157,6 +216,15 @@ public sealed class XrayConfigBuilder
                 new JsonObject { ["tag"] = "block", ["protocol"] = "blackhole" }]),
             ["routing"] = new JsonObject { ["domainStrategy"] = "IPIfNonMatch", ["rules"] = rules },
         };
+        if (routing.RemoteDnsTransport != DnsTransport.Https || routing.RemoteDns != "1.1.1.1"
+            || routing.DirectDnsTransport != DnsTransport.Udp || routing.DirectDns != "local"
+            || !routing.RemoteDnsThroughProxy || routing.DirectDnsThroughProxy
+            || routing.RemoteDnsDomains.Count + routing.DirectDnsDomains.Count +
+                routing.RemoteDnsRuleSets.Count + routing.DirectDnsRuleSets.Count > 0)
+        {
+            root["dns"] = BuildDns(routing, rules, proxyTag);
+        }
+
         if (ctx.ClashApiPort is { } statsPort)
         {
             root["stats"] = new JsonObject();
@@ -170,7 +238,60 @@ public sealed class XrayConfigBuilder
         return root;
     }
 
-    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, string tag = "proxy", string? via = null)
+    private static JsonObject BuildDns(RoutingSettings routing, JsonArray routeRules, string proxyTag)
+    {
+        if (routing.RemoteDnsRuleSets.Count + routing.DirectDnsRuleSets.Count > 0)
+        {
+            throw new EngineException("routing.dns.xray", localizationKey: "routing.dns.xray");
+        }
+
+        var localDomains = routing.DirectDomains.Concat(routing.DirectDnsDomains).Distinct().ToArray();
+        var servers = new JsonArray();
+        if (localDomains.Length > 0)
+        {
+            servers.Add(Server("dns-local", routing.DirectDns, routing.DirectDnsTransport, routing.DirectDnsThroughProxy, localDomains));
+        }
+        servers.Add(Server("dns-remote", routing.RemoteDns, routing.RemoteDnsTransport, routing.RemoteDnsThroughProxy,
+            routing.RemoteDnsDomains));
+        return new JsonObject { ["servers"] = servers, ["disableFallbackIfMatch"] = true };
+
+        JsonObject Server(string tag, string host, DnsTransport transport, bool throughProxy, IEnumerable<string> domains)
+        {
+            var target = host;
+            if (transport == DnsTransport.System || host is "local" or "")
+            {
+                target = "localhost";
+            }
+            else
+            {
+                var address = System.Net.IPAddress.TryParse(host, out var ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6
+                    ? "[" + host + "]" : host;
+                target = transport switch
+                {
+                    DnsTransport.Udp when System.Net.IPAddress.TryParse(host, out _) => host,
+                    DnsTransport.Tcp => "tcp://" + address,
+                    DnsTransport.Https => "https://" + address + "/dns-query",
+                    DnsTransport.Quic when !throughProxy => "quic+local://" + address,
+                    _ => throw new EngineException("routing.dns.xray", localizationKey: "routing.dns.xray"),
+                };
+                routeRules.Insert(0, new JsonObject
+                {
+                    ["type"] = "field", ["inboundTag"] = new JsonArray(tag), ["outboundTag"] = throughProxy ? proxyTag : "direct",
+                });
+            }
+            var server = new JsonObject { ["address"] = target, ["tag"] = tag };
+            var matches = Arr(domains.Select(domain => "domain:" + domain));
+            if (matches.Count > 0)
+            {
+                server["domains"] = matches;
+                server["skipFallback"] = tag == "dns-local";
+            }
+            return server;
+        }
+    }
+
+    private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, DpiSettings defaults, List<JsonObject> auxiliary,
+        string tag = "proxy", string? via = null)
     {
         var o = new JsonObject { ["tag"] = tag };
         var needsStream = true;
@@ -233,6 +354,41 @@ public sealed class XrayConfigBuilder
             o["proxySettings"] = new JsonObject { ["tag"] = via, ["transportLayer"] = true };
         }
 
+        var dpi = defaults.For(p);
+        dpi.Validate(p, EngineKind.Xray);
+        if (dpi.Fragment != "off")
+        {
+            if (via is not null || o["streamSettings"] is not JsonObject stream ||
+                (string?)stream["security"] is not ("tls" or "reality"))
+            {
+                throw new EngineException("profile.dpi.unsupported", localizationKey: "profile.dpi.unsupported");
+            }
+
+            var dialer = tag + "-fragment";
+            stream["sockopt"] = new JsonObject { ["dialerProxy"] = dialer };
+            auxiliary.Add(new JsonObject
+            {
+                ["tag"] = dialer,
+                ["protocol"] = "freedom",
+                ["settings"] = new JsonObject
+                {
+                    ["fragment"] = new JsonObject { ["packets"] = "tlshello", ["length"] = dpi.Size, ["interval"] = dpi.Interval },
+                },
+            });
+        }
+        if (dpi.Padding && o["streamSettings"]?["xhttpSettings"] is JsonObject xhttp)
+        {
+            xhttp["xPaddingBytes"] = dpi.Size;
+        }
+        if (dpi.Mux != "off")
+        {
+            o["mux"] = new JsonObject
+            {
+                ["enabled"] = true,
+                ["concurrency"] = dpi.Mux == "xudp" ? -1 : 8,
+                ["xudpConcurrency"] = dpi.Mux == "xudp" ? 16 : -1,
+            };
+        }
         return o;
     }
 
