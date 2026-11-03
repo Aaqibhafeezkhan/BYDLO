@@ -31,6 +31,16 @@
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom" Spacing="8">
+          <!-- Contributors page entry (issue #168); the list itself comes from GitHub, never hardcoded. -->
+          <RadioButton x:Name="ContributorsNavButton" Classes="nav" GroupName="nav"
+                       IsChecked="{Binding ContributorsNav.IsSelected, Mode=OneWay}"
+                       Command="{Binding NavigateCommand}" CommandParameter="contributors"
+                       AutomationProperties.Name="{Binding ContributorsNav.Title}">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <c:OutlineIcon Data="{StaticResource LineUsers}" />
+              <TextBlock Text="{Binding ContributorsNav.Title}" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
           <Border Classes="pill warn" IsVisible="{Binding IsMock}" HorizontalAlignment="Left">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <c:OutlineIcon Data="{StaticResource LineFlask}" Width="12" Height="12" Foreground="{DynamicResource WarningBrush}" />

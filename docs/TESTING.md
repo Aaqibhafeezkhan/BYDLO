@@ -165,6 +165,13 @@ dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/bundle-verificat
 dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/update-notification ru --verify-updates
 ```
 
+Вкладка участников (#168) проверяется так же, без сети: пункт в углу боковой панели, пустой список,
+пример из семи участников и открытие из настроек в узком окне:
+
+```powershell
+dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/contributors-verification ru --mock --verify-contributors
+```
+
 Для полного обновления галереи README в PowerShell запустите:
 
 ```text

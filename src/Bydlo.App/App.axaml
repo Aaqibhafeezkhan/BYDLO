@@ -22,6 +22,7 @@
     <DataTemplate DataType="vm:ToolsViewModel"><v:ToolsView /></DataTemplate>
     <DataTemplate DataType="vm:RoutingViewModel"><v:RoutingView /></DataTemplate>
     <DataTemplate DataType="vm:StatisticsViewModel"><v:StatisticsView /></DataTemplate>
+    <DataTemplate DataType="vm:ContributorsViewModel"><v:ContributorsView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><v:SettingsView /></DataTemplate>
   </Application.DataTemplates>
 
