@@ -55,37 +55,25 @@ public sealed class SecureFileTests
     [Fact]
     public async Task Windows_acl_failure_leaves_no_new_secrets_on_disk()
     {
-        if (!OperatingSystem.IsWindows()) return;
-
-        using var identity = WindowsIdentity.GetCurrent();
         var directory = TestDirs.New("secure-file-denied");
         var path = Path.Combine(directory, "credentials.txt");
         await File.WriteAllTextAsync(path, "old content");
-        var file = new FileInfo(path);
-        var original = file.GetAccessControl();
-        // Retain a handle with WRITE_DAC so cleanup does not need elevation after the deny.
-        using var restore = file.Create(FileMode.Open,
-            FileSystemRights.ChangePermissions, FileShare.ReadWrite | FileShare.Delete,
-            4096, FileOptions.None, null);
-        var denied = file.GetAccessControl();
-        // OWNER RIGHTS overrides the owner's implicit WRITE_DAC permission.
-        denied.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier("S-1-3-4"),
-            FileSystemRights.ChangePermissions, AccessControlType.Deny));
-        // Also deny the user directly: an elevated runner can otherwise obtain
-        // WRITE_DAC through Administrators even after removing implicit owner rights.
-        denied.AddAccessRule(new FileSystemAccessRule(identity.User!,
-            FileSystemRights.ChangePermissions, AccessControlType.Deny));
-        file.SetAccessControl(denied);
+        var failure = new UnauthorizedAccessException("Simulated ACL denial");
         try
         {
-            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-                SecureFile.WriteAsync(path, "must never be written", CancellationToken.None));
+            var thrown = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                SecureFile.WriteWindowsFileAsync(path, "must never be written",
+                    restrictedPath =>
+                    {
+                        Assert.Equal(path, restrictedPath);
+                        Assert.Empty(File.ReadAllText(restrictedPath));
+                        throw failure;
+                    }, CancellationToken.None));
+            Assert.Same(failure, thrown);
             Assert.Empty(await File.ReadAllTextAsync(path));
         }
         finally
         {
-            restore.SetAccessControl(original);
-            restore.Dispose();
             Directory.Delete(directory, recursive: true);
         }
     }

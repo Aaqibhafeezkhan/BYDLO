@@ -12,12 +12,7 @@ public static class SecureFile
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         if (OperatingSystem.IsWindows())
         {
-            // Create empty first, restrict ACL, then write secrets so they never sit in a world-readable file.
-            await using (var empty = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-            }
-            RestrictWindowsFile(path);
-            await File.WriteAllTextAsync(path, content, ct).ConfigureAwait(false);
+            await WriteWindowsFileAsync(path, content, RestrictWindowsFile, ct).ConfigureAwait(false);
             return;
         }
 
@@ -30,6 +25,17 @@ public static class SecureFile
         await using var fs = new FileStream(path, options);
         await using var writer = new StreamWriter(fs);
         await writer.WriteAsync(content.AsMemory(), ct).ConfigureAwait(false);
+    }
+
+    internal static async Task WriteWindowsFileAsync(string path, string content,
+        Action<string> restrictAccess, CancellationToken ct)
+    {
+        // Create empty first, restrict ACL, then write secrets so they never sit in a world-readable file.
+        await using (var empty = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+        }
+        restrictAccess(path);
+        await File.WriteAllTextAsync(path, content, ct).ConfigureAwait(false);
     }
 
     public static void DeleteQuietly(string path)
