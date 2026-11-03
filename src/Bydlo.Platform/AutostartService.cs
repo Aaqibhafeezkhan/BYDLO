@@ -11,7 +11,8 @@ public sealed class AutostartService(PlatformInfo? platform = null, string? exec
     private readonly PlatformInfo _platform = platform ?? PlatformInfo.Current;
 
     public bool IsSupported => (_platform.Os is OsFamily.Windows or OsFamily.Linux or OsFamily.MacOS) &&
-        _executable is not null && !Path.GetFileNameWithoutExtension(_executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
+        _executable is not null && !Path.GetFileNameWithoutExtension(new Bydlo.Core.Platform.TargetPathRules(_platform.Os).FileName(_executable))
+            .Equals("dotnet", StringComparison.OrdinalIgnoreCase);
 
     public void SetEnabled(bool enabled)
     {

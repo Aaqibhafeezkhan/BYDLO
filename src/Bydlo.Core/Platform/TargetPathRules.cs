@@ -8,6 +8,9 @@ public sealed class TargetPathRules(OsFamily os)
     public char Separator => os == OsFamily.Windows ? '\\' : '/';
     public StringComparer Comparer => os == OsFamily.Windows ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
+    public string FileName(string path) => os == OsFamily.Windows
+        ? path.Replace('\\', '/').Split('/')[^1] : path.Split('/')[^1];
+
     public bool IsAbsolute(string path) => os == OsFamily.Windows
         ? path.Length >= 3 && char.IsAsciiLetter(path[0]) && path[1] == ':' && path[2] is '\\' or '/'
             || path.StartsWith(@"\\", StringComparison.Ordinal) && path[2..].Split('\\').Length >= 3

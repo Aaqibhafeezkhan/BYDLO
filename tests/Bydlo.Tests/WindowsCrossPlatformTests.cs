@@ -67,6 +67,7 @@ public sealed class WindowsCrossPlatformTests
     {
         const string exe = @"C:\Program Files\BYDLO\BYDLO.exe";
         var store = new Registrations();
+        Assert.False(new AutostartService(Windows, @"C:\Program Files\dotnet\dotnet.exe", store).IsSupported);
         var service = new AutostartService(Windows, exe, store);
         Assert.True(service.IsSupported);
         Assert.Empty(store.Values);
