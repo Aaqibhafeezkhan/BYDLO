@@ -16,7 +16,8 @@
     </Style>
   </UserControl.Styles>
   <ScrollViewer>
-    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
+    <StackPanel Classes="page">
+      <Border Classes="page-heading">
       <Grid x:Name="PageHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
         <StackPanel Spacing="4">
           <TextBlock Classes="h1" Text="{l:T nav.routing}" />
@@ -24,11 +25,12 @@
         </StackPanel>
         <Button x:Name="SaveButton" Grid.Column="1" Classes="primary" VerticalAlignment="Center" Content="{l:T common.save}" Command="{Binding SaveCommand}" />
       </Grid>
+      </Border>
 
       <Border Classes="panel">
         <StackPanel Spacing="14">
-          <TextBlock Classes="caps" Text="{l:T routing.preset.label}" />
-          <ComboBox ItemsSource="{Binding PresetOptions}" SelectedIndex="{Binding PresetIndex}" HorizontalAlignment="Stretch" />
+          <TextBlock Classes="h2" Text="{l:T routing.preset.label}" />
+          <ComboBox ItemsSource="{Binding PresetOptions}" SelectedIndex="{Binding PresetIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{l:T routing.preset.label}" />
           <ComboBox ItemsSource="{Binding Countries}" SelectedIndex="{Binding CountryIndex}"
                     IsVisible="{Binding IsLocalPreset}" HorizontalAlignment="Stretch" />
           <Button IsEnabled="{Binding CanDownloadPreset}" Command="{Binding DownloadPresetCommand}">
@@ -61,7 +63,7 @@
 
       <Border Classes="section">
         <StackPanel Spacing="10">
-          <TextBlock Classes="h3" Text="DNS" />
+          <TextBlock Classes="h2" Text="DNS" />
           <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
             <TextBlock Classes="caps" Text="{l:T routing.dns.remote}" Margin="0,0,0,6" />
             <TextBox Grid.Row="1" Text="{Binding RemoteDns}" Watermark="1.1.1.1" />
@@ -91,7 +93,7 @@
 
       <Border Classes="section">
         <StackPanel Spacing="12">
-          <TextBlock Classes="h3" Text="{l:T routing.rules}" />
+          <TextBlock Classes="h2" Text="{l:T routing.rules}" />
           <TextBlock Classes="caps" Text="{l:T routing.direct}" />
           <TextBox Classes="list" Text="{Binding DirectDomains}" Watermark="example.ru&#x0a;gosuslugi.ru" />
           <TextBlock Classes="caps" Text="{l:T routing.proxy}" />
@@ -200,6 +202,7 @@
           </Expander>
         </StackPanel>
       </Border>
+      <Button Classes="primary" Content="{l:T common.save}" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

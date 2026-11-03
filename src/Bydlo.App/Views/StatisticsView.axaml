@@ -6,39 +6,41 @@
              x:Class="Bydlo.App.Views.StatisticsView"
              x:DataType="vm:StatisticsViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
-      <StackPanel Spacing="8">
-        <TextBlock Classes="h1" Text="{l:T nav.statistics}" />
-        <TextBlock Classes="muted" Text="{l:T stats.subtitle}" TextWrapping="Wrap" />
-      </StackPanel>
+    <StackPanel Classes="page">
+      <Border Classes="page-heading">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="h1" Text="{l:T nav.statistics}" />
+          <TextBlock Classes="muted" Text="{l:T stats.subtitle}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
 
-      <WrapPanel>
-        <Border Width="220" Margin="0,0,12,12" Padding="0,12,0,4">
+      <UniformGrid Columns="3">
+        <Border Classes="readout" Margin="0,0,8,0">
           <StackPanel Spacing="4">
-            <TextBlock Classes="caps" Text="{l:T stats.down}" />
-            <TextBlock Text="{Binding Down}" FontSize="28" FontWeight="Medium" Foreground="{DynamicResource SuccessBrush}" />
+            <TextBlock Classes="caps" TextTrimming="CharacterEllipsis" Text="{l:T stats.down}" />
+            <TextBlock Text="{Binding Down}" Classes="metric" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SuccessBrush}" />
             <TextBlock Classes="faint" Text="{Binding TotalDown}" />
           </StackPanel>
         </Border>
-        <Border Width="220" Margin="0,0,12,12" Padding="0,12,0,4">
+        <Border Classes="readout" Margin="0,0,8,0">
           <StackPanel Spacing="4">
-            <TextBlock Classes="caps" Text="{l:T stats.up}" />
-            <TextBlock Text="{Binding Up}" FontSize="28" FontWeight="Medium" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock Classes="caps" TextTrimming="CharacterEllipsis" Text="{l:T stats.up}" />
+            <TextBlock Text="{Binding Up}" Classes="metric" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource AccentBrush}" />
             <TextBlock Classes="faint" Text="{Binding TotalUp}" />
           </StackPanel>
         </Border>
-        <Border Width="220" Margin="0,0,12,12" Padding="0,12,0,4">
+        <Border Classes="readout" Margin="0,0,8,0">
           <StackPanel Spacing="4">
-            <TextBlock Classes="caps" Text="{l:T stats.engine}" />
-            <TextBlock Text="{Binding Engine}" FontSize="28" FontWeight="Medium" />
+            <TextBlock Classes="caps" TextTrimming="CharacterEllipsis" Text="{l:T stats.engine}" />
+            <TextBlock Text="{Binding Engine}" Classes="metric" TextTrimming="CharacterEllipsis" />
             <TextBlock Classes="faint" Text="{Binding Server}" TextTrimming="CharacterEllipsis" />
           </StackPanel>
         </Border>
-      </WrapPanel>
+      </UniformGrid>
 
       <Border Classes="panel">
         <StackPanel Spacing="10">
-          <TextBlock Classes="h3" Text="{l:T stats.chart}" />
+          <TextBlock Classes="h2" Text="{l:T stats.chart}" />
           <TextBlock Classes="faint" Text="{l:T stats.nostats}" IsVisible="{Binding NoStatsEngine}" TextWrapping="Wrap" />
           <TextBlock Classes="caps" Text="{l:T stats.down}" />
           <c:Sparkline Height="90" Values="{Binding Shell.DownHistory}" Stroke="{DynamicResource SuccessBrush}" />

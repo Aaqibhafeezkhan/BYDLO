@@ -7,12 +7,12 @@
              x:Class="Bydlo.App.Views.AddServerWizardView"
              x:DataType="vm:AddServerWizardViewModel">
   <ScrollViewer x:Name="WizardScroll" HorizontalScrollBarVisibility="Disabled" VerticalContentAlignment="Center">
-    <Border Classes="panel" MaxWidth="680" Margin="24" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+    <Border Classes="dialog" MaxWidth="620" Margin="16" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <StackPanel Spacing="20">
         <Border Classes="pill warn" IsVisible="{Binding Shell.IsMock}" HorizontalAlignment="Left"><TextBlock Text="{l:T mock.badge}" /></Border>
         <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Classes="h1" Text="{l:T wizard.title}" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CloseCommand}" IsEnabled="{Binding !IsSaving}" />
+          <TextBlock Classes="display" Text="{l:T wizard.title}" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="quiet" Content="{l:T common.cancel}" Command="{Binding CloseCommand}" IsEnabled="{Binding !IsSaving}" />
         </Grid>
         <ProgressBar IsIndeterminate="True" IsVisible="{Binding ShowProgress}" Height="3" />
         <StackPanel Spacing="18" IsEnabled="{Binding !Busy}">

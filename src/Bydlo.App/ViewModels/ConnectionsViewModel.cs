@@ -73,6 +73,30 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     public bool IsEmpty => Shell.Profiles.Count == 0;
 
+    [ObservableProperty] private string? _profileSearch;
+
+    public IEnumerable<ProfileItem> VisibleProfiles
+    {
+        get
+        {
+            var query = ProfileSearch?.Trim();
+            return string.IsNullOrEmpty(query) ? Shell.Profiles : Shell.Profiles.Where(profile =>
+                profile.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                profile.Endpoint.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                profile.ProtocolLabel.Contains(query, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    public bool HasNoMatchingProfiles => !IsEmpty && !VisibleProfiles.Any();
+
+    partial void OnProfileSearchChanged(string? value) => RefreshProfileSearch();
+
+    internal void RefreshProfileSearch()
+    {
+        OnPropertyChanged(nameof(VisibleProfiles));
+        OnPropertyChanged(nameof(HasNoMatchingProfiles));
+    }
+
     public override void OnShown()
     {
         Subscriptions.ReplaceWith(Services.Profiles.Subscriptions.Select(s => new SubscriptionRow(s)));

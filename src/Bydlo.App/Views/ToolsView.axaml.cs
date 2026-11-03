@@ -10,7 +10,11 @@ public sealed partial class ToolsView : UserControl
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
-        var compact = e.NewSize.Width < 640;
+        var split = e.NewSize.Width >= 940;
+        ToolWorkspace.ColumnDefinitions = new ColumnDefinitions(split ? "*,16,*" : "*");
+        Grid.SetRow(TelegramWorkspace, split ? 0 : 1);
+        Grid.SetColumn(TelegramWorkspace, split ? 2 : 0);
+        var compact = split || e.NewSize.Width < 640;
         foreach (var actions in new[] { ZapretActions, TgActions })
         {
             Grid.SetColumn(actions, compact ? 1 : 2);

@@ -6,13 +6,12 @@
              x:Class="Bydlo.App.Views.ChainEditorView"
              x:DataType="vm:ChainEditorViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalContentAlignment="Center">
-    <Border Classes="panel" MaxWidth="680" Margin="24" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+    <Border Classes="dialog" MaxWidth="620" Margin="16" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <StackPanel Spacing="20">
-        <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Classes="h1" Text="{l:T chain.new}" IsVisible="{Binding IsNew}" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center" />
-          <TextBlock Classes="h1" Text="{l:T chain.edit}" IsVisible="{Binding !IsNew}" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CloseCommand}" IsEnabled="{Binding !IsSaving}" />
-        </Grid>
+        <Panel>
+          <TextBlock Classes="display" Text="{l:T chain.new}" IsVisible="{Binding IsNew}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <TextBlock Classes="display" Text="{l:T chain.edit}" IsVisible="{Binding !IsNew}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </Panel>
         <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsSaving}" Height="3" />
         <StackPanel Spacing="18" IsEnabled="{Binding !IsSaving}">
           <TextBlock Classes="muted" Text="{l:T chain.hint}" TextWrapping="Wrap" />

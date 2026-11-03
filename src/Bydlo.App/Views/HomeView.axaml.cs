@@ -17,6 +17,6 @@ public sealed partial class HomeView : UserControl
         Grid.SetColumn(QuickTools, stacked ? 0 : 2);
         Grid.SetRow(QuickTools, stacked ? 1 : 0);
         QuickTools.Margin = new Thickness(0, stacked ? 24 : 0, 0, 0);
-        StatusTitle.FontSize = compact ? 30 : 38;
+        StatusTitle.FontSize = compact ? 23 : 30;
     }
 }

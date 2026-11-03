@@ -116,7 +116,11 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public AddServerWizardViewModel AddServerWizard { get; }
 
-    [ObservableProperty] private bool _isAddServerOpen;
+    public bool CanUseWorkspace => !IsAddServerOpen && !IsChainEditorOpen && !IsOnboardingVisible && !HasImportPreview;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUseWorkspace))]
+    private bool _isAddServerOpen;
 
     [RelayCommand]
     private void OpenAddServer()
@@ -155,7 +159,9 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public ChainEditorViewModel ChainEditor { get; }
 
-    [ObservableProperty] private bool _isChainEditorOpen;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUseWorkspace))]
+    private bool _isChainEditorOpen;
 
     [RelayCommand]
     private void NewChain()
@@ -245,6 +251,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private bool _isMock;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUseWorkspace))]
     private bool _isOnboardingVisible;
 
     [ObservableProperty]
@@ -377,6 +384,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         var selectedId = SelectedProfile?.Id ?? Services.Settings.LastProfileId;
         Profiles.ReplaceWith(items);
+        Connections?.RefreshProfileSearch();
         SelectedProfile = Profiles.FirstOrDefault(p => p.Id == selectedId) ?? Profiles.FirstOrDefault();
         IsMock = Services.IsMock;
         ReloadChains();

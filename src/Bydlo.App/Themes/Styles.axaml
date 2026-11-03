@@ -2,6 +2,34 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:Bydlo.App.Controls">
 
+  <Style Selector="StackPanel.page">
+    <Setter Property="MaxWidth" Value="1040" />
+    <Setter Property="Margin" Value="20,24,20,28" />
+    <Setter Property="Spacing" Value="20" />
+  </Style>
+  <Style Selector="Border.page-heading">
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="0,0,0,14" />
+  </Style>
+  <Style Selector="Border.dialog">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="20" />
+  </Style>
+  <Style Selector="TextBlock.display">
+    <Setter Property="FontSize" Value="32" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="LetterSpacing" Value="-0.6" />
+  </Style>
+  <Style Selector="Button.quiet">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+
   <Style Selector="Border.connection-workspace">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AccentSoftBrush}" />
@@ -10,12 +38,42 @@
     <Setter Property="Padding" Value="22" />
   </Style>
 
+  <Style Selector="Border.session-strip">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="3,0,0,0" />
+    <Setter Property="Padding" Value="14,12" />
+  </Style>
+  <Style Selector="Border.session-strip.connected">
+    <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+  <Style Selector="Border.session-strip.busy">
+    <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+  </Style>
+  <Style Selector="Border.session-strip.error">
+    <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+  </Style>
+  <Style Selector="StackPanel.profile-actions">
+    <Setter Property="Grid.Column" Value="2" />
+  </Style>
+  <Style Selector="Grid.reflow > StackPanel.profile-actions">
+    <Setter Property="Grid.Row" Value="1" />
+    <Setter Property="Grid.Column" Value="1" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+    <Setter Property="Margin" Value="8,8,0,0" />
+  </Style>
+  <Style Selector="Border.readout">
+    <Setter Property="Padding" Value="0,12,0,8" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+
   <!-- Typography -->
   <Style Selector="TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="TextBlock.h1">
-    <Setter Property="FontSize" Value="26" />
+    <Setter Property="FontSize" Value="28" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="LetterSpacing" Value="-0.4" />
   </Style>
@@ -334,7 +392,7 @@
     <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource EdgeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="CornerRadius" Value="8" />
   </Style>
   <Style Selector="Border.connection-mark c|OutlineIcon"><Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" /></Style>
   <Style Selector="Border.connection-mark.connected c|OutlineIcon"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" /></Style>
@@ -359,9 +417,9 @@
     <Setter Property="BorderBrush" Value="{DynamicResource EdgeBrush}" />
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="16,10" />
-    <Setter Property="MinHeight" Value="64" />
+    <Setter Property="MinHeight" Value="52" />
   </Style>
-  <Style Selector="Button.connect-action"><Setter Property="CornerRadius" Value="12" /></Style>
+  <Style Selector="Button.connect-action"><Setter Property="CornerRadius" Value="7" /></Style>
   <Style Selector="Button.text-action">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />

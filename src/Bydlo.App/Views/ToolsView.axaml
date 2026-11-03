@@ -7,14 +7,17 @@
              x:Class="Bydlo.App.Views.ToolsView"
              x:DataType="vm:ToolsViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
-      <StackPanel Spacing="8">
-        <TextBlock Classes="h1" Text="{l:T nav.tools}" />
-        <TextBlock Classes="muted" Text="{l:T tools.subtitle}" TextWrapping="Wrap" />
-      </StackPanel>
+    <StackPanel Classes="page">
+      <Border Classes="page-heading">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="h1" Text="{l:T nav.tools}" />
+          <TextBlock Classes="muted" Text="{l:T tools.subtitle}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
 
+      <Grid x:Name="ToolWorkspace" RowDefinitions="Auto,Auto" RowSpacing="14">
       <!-- Zapret -->
-      <Border Classes="panel">
+      <Border Classes="panel" VerticalAlignment="Top">
         <StackPanel Spacing="14">
           <Grid x:Name="ZapretHeader" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
             <Border Width="42" Height="42" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
@@ -187,7 +190,7 @@
       </Border>
 
       <!-- TgWsProxy -->
-      <Border Classes="panel">
+      <Border x:Name="TelegramWorkspace" Classes="panel" Grid.Row="1" VerticalAlignment="Top">
         <StackPanel Spacing="14">
           <Grid x:Name="TgHeader" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
             <Border Width="42" Height="42" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
@@ -282,6 +285,8 @@
           </Expander>
         </StackPanel>
       </Border>
+
+      </Grid>
 
       <!-- Engines -->
       <Expander Header="{l:T tools.engines}" HorizontalAlignment="Stretch">

@@ -9,6 +9,9 @@
 | `skills/safe-check/SKILL.md` | skill | How to build and test safely. |
 | `skills/add-engine/SKILL.md` | skill | Checklist for adding a protocol / engine adapter. |
 | `skills/dependency-audit/SKILL.md` | skill | Read-only audit of dependencies and upstream engines; manual invocation only (`/dependency-audit`). |
+| `skills/frontend-design/SKILL.md` | skill | Anthropic frontend-design 1.1.1. Design direction, typography, accessibility and visual critique for Avalonia views. Apache-2.0 terms are included beside the skill. |
+
+Claude Code discovers project skills in `.claude/skills/`; they need no entry in the hook settings.
 
 Hooks are Bash scripts. On Windows they need Git Bash (or another bash) on `PATH`.
 If a client does not execute registered hooks, run `bash scripts/check.sh` manually.

@@ -21,7 +21,9 @@ public sealed partial class MainViewModel
     public bool CanReceiveActivation => !_preparingImport && !IsImportBusy && !HasImportPreview && !IsAddServerOpen;
 
     [ObservableProperty] private bool _isDragOver;
-    [ObservableProperty] private bool _hasImportPreview;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUseWorkspace))]
+    private bool _hasImportPreview;
     [ObservableProperty] private bool _canConfirmImport;
     [ObservableProperty] private bool _isImportBusy;
     [ObservableProperty] private string? _clipboardOffer;

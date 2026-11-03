@@ -1,0 +1,107 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Bydlo.App.Controls"
+             xmlns:vm="using:Bydlo.App.ViewModels"
+             xmlns:m="using:Bydlo.Core.Models"
+             xmlns:l="using:Bydlo.App.Services"
+             x:Class="Bydlo.App.Views.AppearanceSettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <Border Classes="panel">
+    <StackPanel Spacing="14">
+      <TextBlock Classes="h2" Text="{l:T settings.appearance}" />
+      <TextBlock Classes="caps" Text="{l:T settings.theme}" />
+      <Border Background="{DynamicResource Surface2Brush}" CornerRadius="8" Padding="4" HorizontalAlignment="Left">
+        <WrapPanel>
+          <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeLight}"><TextBlock Text="{l:T theme.light}" /></RadioButton>
+          <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeOled}"><TextBlock Text="{l:T theme.oled}" /></RadioButton>
+          <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeSystem}"><TextBlock Text="{l:T theme.system}" /></RadioButton>
+        </WrapPanel>
+      </Border>
+      <TextBlock Classes="caps" Text="{l:T settings.language}" />
+      <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding Language}" MinWidth="180" AutomationProperties.Name="{l:T settings.language}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=lang.}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <CheckBox Content="{l:T settings.reduceMotion}" IsChecked="{Binding ReduceMotion}"
+                AutomationProperties.HelpText="{l:T settings.reduceMotion.hint}" />
+      <Button Classes="ghost" Content="{l:T theme.custom.gallery}" Command="{Binding FetchGalleryCommand}"
+              IsEnabled="{Binding !CustomThemesBusy}" HorizontalAlignment="Left" />
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding CustomThemesBusy}" />
+      <ItemsControl ItemsSource="{Binding GalleryThemes}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GalleryThemeRow">
+            <Border Classes="tile" Margin="0,0,0,6">
+              <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                  <Border Width="76" Height="48" CornerRadius="5" ClipToBounds="True" Background="{Binding Background}" VerticalAlignment="Top">
+                    <Grid ColumnDefinitions="18,*">
+                      <Border Background="{Binding Sidebar}">
+                        <Border Width="8" Height="2" Background="{Binding Text}" VerticalAlignment="Top" Margin="0,10,0,0" />
+                      </Border>
+                      <Border Grid.Column="1" Background="{Binding Surface}" Margin="5" CornerRadius="3" Padding="5">
+                        <StackPanel Spacing="5">
+                          <Border Width="24" Height="2" Background="{Binding Text}" HorizontalAlignment="Left" />
+                          <Border Width="19" Height="2" Background="{Binding Text}" HorizontalAlignment="Left" />
+                          <Border Width="21" Height="7" Background="{Binding Primary}" HorizontalAlignment="Left" CornerRadius="2" />
+                        </StackPanel>
+                      </Border>
+                    </Grid>
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="3">
+                    <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" Text="{Binding Description}" IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
+                    <TextBlock Classes="faint" Text="{Binding Author}" IsVisible="{Binding HasAuthor}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
+                <Button Classes="primary" HorizontalAlignment="Left" IsVisible="{Binding !IsInstalled}"
+                        Content="{l:T theme.custom.install}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallGalleryThemeCommand}" CommandParameter="{Binding Id}" />
+                <Button Classes="ghost" HorizontalAlignment="Left" IsVisible="{Binding IsInstalled}"
+                        Content="{l:T theme.custom.reinstall}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallGalleryThemeCommand}" CommandParameter="{Binding Id}" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <Expander x:Name="CustomThemesExpander" Header="{l:T theme.custom.title}" HorizontalAlignment="Stretch"
+                IsExpanded="{Binding ThemeCustom, Mode=OneWay}">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="muted" Text="{l:T theme.custom.hint}" TextWrapping="Wrap" />
+          <Border Classes="banner" IsVisible="{Binding HasCustomThemeWarning}">
+            <TextBlock Text="{Binding CustomThemeWarning}" TextWrapping="Wrap" />
+          </Border>
+          <ItemsControl ItemsSource="{Binding InstalledThemes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:CustomThemeRow">
+                <Border Classes="tile" Margin="0,0,0,6">
+                  <StackPanel Spacing="6">
+                    <StackPanel VerticalAlignment="Center">
+                      <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                        <Border Classes="pill" IsVisible="{Binding IsActive}" HorizontalAlignment="Left">
+                          <TextBlock Text="{l:T theme.custom.active}" />
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Classes="muted" Text="{Binding Description}" IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
+                      <TextBlock Classes="faint" Text="{Binding Author}" IsVisible="{Binding HasAuthor}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <WrapPanel>
+                      <Button Classes="ghost" Content="{l:T theme.custom.apply}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyCustomThemeCommand}" CommandParameter="{Binding Id}" Margin="0,0,6,4" />
+                      <Button Classes="ghost" Content="{l:T theme.custom.delete}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}" CommandParameter="{Binding Id}" Margin="0,0,6,4" />
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <WrapPanel>
+            <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T theme.custom.import}" Command="{Binding ImportCustomThemeCommand}" />
+            <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T theme.custom.export}" Command="{Binding ExportCustomThemeCommand}" />
+          </WrapPanel>
+        </StackPanel>
+      </Expander>
+    </StackPanel>
+  </Border>
+</UserControl>

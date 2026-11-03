@@ -6,13 +6,11 @@
              x:Class="Bydlo.App.Views.HomeView"
              x:DataType="vm:HomeViewModel">
   <ScrollViewer>
-    <StackPanel x:Name="Page" MaxWidth="980" Margin="24,32,24,28" Spacing="24">
+    <StackPanel Classes="page">
       <StackPanel Spacing="6">
         <TextBlock Classes="h1" Text="{l:T nav.home}" TextWrapping="Wrap" />
         <TextBlock Classes="muted" Text="{l:T home.welcome.hint}" TextWrapping="Wrap" />
-        <Button x:Name="ToolShortcut" Classes="ghost" Command="{Binding Shell.NavigateCommand}" CommandParameter="tools" HorizontalAlignment="Stretch" Margin="0,8,0,0">
-          <TextBlock Text="{l:T home.tools.shortcut}" TextWrapping="Wrap" />
-        </Button>
+
       </StackPanel>
       <Grid x:Name="Landing" ColumnDefinitions="*,20,300" RowDefinitions="Auto,Auto">
         <StackPanel>
@@ -21,7 +19,7 @@
               <Border Classes="connection-mark" Width="48" Height="48" HorizontalAlignment="Left">
                 <c:OutlineIcon Data="{StaticResource LineShield}" Foreground="{DynamicResource AccentBrush}" />
               </Border>
-              <TextBlock Classes="h1" Text="{l:T home.empty.title}" TextWrapping="Wrap" />
+              <TextBlock Classes="display" Text="{l:T home.empty.title}" TextWrapping="Wrap" />
               <TextBlock Classes="muted" Text="{l:T home.empty.text}" TextWrapping="Wrap" />
               <Button Classes="primary" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
                 <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />
@@ -54,14 +52,19 @@
           </Border>
           <Border Classes="connection-workspace" IsVisible="{Binding !IsEmpty}">
             <StackPanel HorizontalAlignment="Stretch">
-              <Border Classes="connection-mark" Classes.connected="{Binding IsConnected}" Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}"
-                      Width="48" Height="48" HorizontalAlignment="Left" Margin="0,0,0,16">
-                <c:OutlineIcon Data="{StaticResource LineShield}" Width="26" Height="26" />
+              <Border Classes="session-strip" Classes.connected="{Binding IsConnected}" Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <StackPanel Spacing="3" AutomationProperties.LiveSetting="Polite">
+                    <TextBlock x:Name="StatusTitle" Classes="display" Text="{Binding StatusText}" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" Text="{Binding Hint}" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Classes="connection-mark" Classes.connected="{Binding IsConnected}"
+                          Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}" Width="36" Height="36" VerticalAlignment="Top">
+                    <c:OutlineIcon Data="{StaticResource LineShield}" Width="20" Height="20" />
+                  </Border>
+                </Grid>
               </Border>
-              <TextBlock x:Name="StatusTitle" Text="{Binding StatusText}" FontSize="38" FontWeight="Medium" LetterSpacing="-1"
-                         HorizontalAlignment="Left" TextWrapping="Wrap" />
-              <TextBlock Classes="muted" Text="{Binding Hint}" HorizontalAlignment="Left"
-                         TextWrapping="Wrap" MaxWidth="460" Margin="0,8,0,20" FontSize="13" />
+              <TextBlock Classes="caps" Text="{l:T home.server}" Margin="0,16,0,6" />
               <ComboBox Classes="server-picker" ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}"
                         HorizontalAlignment="Stretch" PlaceholderText="{l:T home.noprofiles}"
                         IsEnabled="{Binding !IsBusy}" AutomationProperties.Name="{l:T home.server}">
@@ -83,17 +86,8 @@
                 <TextBlock Text="{Binding ActiveChainName}" FontSize="12" TextTrimming="CharacterEllipsis" />
               </Border>
               <Button Classes="text-action" Content="{l:T home.best}" Command="{Binding BestServerCommand}"
-                      HorizontalAlignment="Center" Margin="0,10,0,0" IsVisible="{Binding HasProfiles}" />
-              <Border Height="54" HorizontalAlignment="Stretch" Margin="0,16,0,14" CornerRadius="12" BoxShadow="{DynamicResource ActionShadow}">
-                <Button Classes="primary connect-action" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        Command="{Binding ToggleConnectionCommand}" AutomationProperties.Name="{Binding ButtonText}">
-                  <StackPanel Orientation="Horizontal" Spacing="10">
-                    <c:OutlineIcon Data="{StaticResource LinePower}" Width="20" Height="20" Foreground="{DynamicResource OnPrimaryBrush}" />
-                    <TextBlock Text="{Binding ButtonText}" Foreground="{DynamicResource OnPrimaryBrush}" FontWeight="Medium" FontSize="15" />
-                  </StackPanel>
-                </Button>
-              </Border>
-              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                      HorizontalAlignment="Left" Margin="0,4,0,0" IsVisible="{Binding HasProfiles}" />
+              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" Margin="0,4,0,0">
                 <Border Classes="mode-switch">
                   <StackPanel Orientation="Horizontal">
                     <RadioButton Classes="segment mode" GroupName="connectionMode" IsChecked="{Binding IsProxy}" IsEnabled="{Binding !IsBusy}">
@@ -108,6 +102,18 @@
                   <c:OutlineIcon Data="{StaticResource LineInfo}" Width="16" Height="16" />
                 </Button>
               </StackPanel>
+              <Border MinHeight="48" HorizontalAlignment="Stretch" Margin="0,10,0,12">
+                <Button Classes="primary connect-action" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding ToggleConnectionCommand}" AutomationProperties.Name="{Binding ButtonText}">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <c:OutlineIcon Data="{StaticResource LinePower}" Width="20" Height="20" Foreground="{DynamicResource OnPrimaryBrush}" />
+                    <TextBlock Text="{Binding ButtonText}" Foreground="{DynamicResource OnPrimaryBrush}" FontWeight="Medium" FontSize="15" />
+                  </StackPanel>
+                </Button>
+              </Border>
+              <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,0,0,12" AutomationProperties.LiveSetting="Assertive">
+                <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+              </Border>
               <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch" Margin="0,12,0,0">
                 <StackPanel Spacing="8">
                   <TextBlock Classes="faint" Text="{l:T routing.preset.label}" TextWrapping="Wrap" />
@@ -122,10 +128,8 @@
                 <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
                 <Button Classes="ghost" Content="{l:T settings.admin.restart}" Command="{Binding Shell.Settings.RestartElevatedCommand}" IsVisible="{Binding Shell.Settings.CanRestartElevated}" HorizontalAlignment="Center" />
               </StackPanel>
-              <Border Classes="banner bad" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,20,0,0">
-                <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
-              </Border>
-            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,24,0,0" Padding="0,20,0,0">
+
+            <Border Classes="readout" Margin="0,16,0,0">
               <Grid ColumnDefinitions="*,*,*">
                 <StackPanel Spacing="7" HorizontalAlignment="Center">
                   <StackPanel Orientation="Horizontal" Spacing="6">
@@ -170,6 +174,9 @@
         </StackPanel>
         <StackPanel x:Name="QuickTools" Grid.Column="2" Spacing="14">
           <TextBlock Classes="h2" Text="{l:T home.tools.title}" TextWrapping="Wrap" />
+        <Button x:Name="ToolShortcut" Classes="quiet" Command="{Binding Shell.NavigateCommand}" CommandParameter="tools" HorizontalAlignment="Left" Margin="0,2,0,0">
+          <TextBlock Text="{l:T home.tools.shortcut}" TextWrapping="Wrap" />
+        </Button>
           <TextBlock Classes="faint" Text="{l:T home.tools.hint}" TextWrapping="Wrap" />
           <Border Classes="panel" Padding="16,0">
             <StackPanel>

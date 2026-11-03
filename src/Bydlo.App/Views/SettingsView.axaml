@@ -8,116 +8,21 @@
              x:Class="Bydlo.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <ScrollViewer>
-    <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
-      <TextBlock Classes="h1" Text="{l:T nav.settings}" />
-
-      <Border Classes="panel">
-        <StackPanel Spacing="12">
-          <TextBlock Classes="h2" Text="{l:T settings.network.sections}" />
+    <StackPanel Classes="page">
+      <Border Classes="page-heading">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="h1" Text="{l:T nav.settings}" />
           <WrapPanel>
-            <Button Classes="ghost" Content="{l:T nav.routing}" Command="{Binding Shell.NavigateCommand}" CommandParameter="routing" Margin="0,0,8,8" />
-            <Button Classes="ghost" Content="{l:T nav.statistics}" Command="{Binding Shell.NavigateCommand}" CommandParameter="statistics" Margin="0,0,0,8" />
+            <Button Classes="ghost" Content="{l:T settings.appearance}" Tag="AppearanceSection" Click="ScrollToSection" Margin="0,0,6,4" />
+            <Button Classes="ghost" Content="{l:T settings.connection}" Tag="ConnectionSection" Click="ScrollToSection" Margin="0,0,6,4" />
+            <Button Classes="ghost" Content="{l:T backup.title}" Tag="BackupSettings" Click="ScrollToSection" Margin="0,0,6,4" />
+            <Button Classes="quiet" Content="{l:T nav.routing}" Command="{Binding Shell.NavigateCommand}" CommandParameter="routing" Margin="0,0,6,4" />
+            <Button Classes="quiet" Content="{l:T nav.statistics}" Command="{Binding Shell.NavigateCommand}" CommandParameter="statistics" Margin="0,0,6,4" />
           </WrapPanel>
         </StackPanel>
       </Border>
 
-      <!-- Appearance -->
-      <Border Classes="panel">
-        <StackPanel Spacing="14">
-          <TextBlock Classes="h2" Text="{l:T settings.appearance}" />
-          <TextBlock Classes="caps" Text="{l:T settings.theme}" />
-          <Border Background="{DynamicResource Surface2Brush}" CornerRadius="8" Padding="4" HorizontalAlignment="Left">
-            <WrapPanel>
-              <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeLight}"><TextBlock Text="{l:T theme.light}" /></RadioButton>
-              <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeOled}"><TextBlock Text="{l:T theme.oled}" /></RadioButton>
-              <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding ThemeSystem}"><TextBlock Text="{l:T theme.system}" /></RadioButton>
-            </WrapPanel>
-          </Border>
-          <TextBlock Classes="caps" Text="{l:T settings.language}" />
-          <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding Language}" MinWidth="220">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="x:String">
-                <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=lang.}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <Button Classes="ghost" Content="{l:T theme.custom.gallery}" Command="{Binding FetchGalleryCommand}"
-                  IsEnabled="{Binding !CustomThemesBusy}" HorizontalAlignment="Left" />
-          <ProgressBar IsIndeterminate="True" IsVisible="{Binding CustomThemesBusy}" />
-          <ItemsControl ItemsSource="{Binding GalleryThemes}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:GalleryThemeRow">
-                <Border Classes="tile" Margin="0,0,0,6">
-                  <StackPanel Spacing="8">
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                      <Border Width="76" Height="48" CornerRadius="5" ClipToBounds="True" Background="{Binding Background}" VerticalAlignment="Top">
-                        <Grid ColumnDefinitions="18,*">
-                          <Border Background="{Binding Sidebar}">
-                            <Border Width="8" Height="2" Background="{Binding Text}" VerticalAlignment="Top" Margin="0,10,0,0" />
-                          </Border>
-                          <Border Grid.Column="1" Background="{Binding Surface}" Margin="5" CornerRadius="3" Padding="5">
-                            <StackPanel Spacing="5">
-                              <Border Width="24" Height="2" Background="{Binding Text}" HorizontalAlignment="Left" />
-                              <Border Width="19" Height="2" Background="{Binding Text}" HorizontalAlignment="Left" />
-                              <Border Width="21" Height="7" Background="{Binding Primary}" HorizontalAlignment="Left" CornerRadius="2" />
-                            </StackPanel>
-                          </Border>
-                        </Grid>
-                      </Border>
-                      <StackPanel Grid.Column="1" Spacing="3">
-                        <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
-                        <TextBlock Classes="muted" Text="{Binding Description}" IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
-                        <TextBlock Classes="faint" Text="{Binding Author}" IsVisible="{Binding HasAuthor}" TextWrapping="Wrap" />
-                      </StackPanel>
-                    </Grid>
-                    <Button Classes="primary" HorizontalAlignment="Left" IsVisible="{Binding !IsInstalled}"
-                            Content="{l:T theme.custom.install}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallGalleryThemeCommand}" CommandParameter="{Binding Id}" />
-                    <Button Classes="ghost" HorizontalAlignment="Left" IsVisible="{Binding IsInstalled}"
-                            Content="{l:T theme.custom.reinstall}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallGalleryThemeCommand}" CommandParameter="{Binding Id}" />
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <Expander x:Name="CustomThemesExpander" Header="{l:T theme.custom.title}" HorizontalAlignment="Stretch"
-                    IsExpanded="{Binding ThemeCustom, Mode=OneWay}">
-            <StackPanel Spacing="10">
-              <TextBlock Classes="muted" Text="{l:T theme.custom.hint}" TextWrapping="Wrap" />
-              <Border Classes="banner" IsVisible="{Binding HasCustomThemeWarning}">
-                <TextBlock Text="{Binding CustomThemeWarning}" TextWrapping="Wrap" />
-              </Border>
-              <ItemsControl ItemsSource="{Binding InstalledThemes}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:CustomThemeRow">
-                    <Border Classes="tile" Margin="0,0,0,6">
-                      <StackPanel Spacing="6">
-                        <StackPanel VerticalAlignment="Center">
-                          <StackPanel Spacing="4">
-                            <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
-                            <Border Classes="pill" IsVisible="{Binding IsActive}" HorizontalAlignment="Left">
-                              <TextBlock Text="{l:T theme.custom.active}" />
-                            </Border>
-                          </StackPanel>
-                          <TextBlock Classes="muted" Text="{Binding Description}" IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
-                          <TextBlock Classes="faint" Text="{Binding Author}" IsVisible="{Binding HasAuthor}" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <WrapPanel>
-                          <Button Classes="ghost" Content="{l:T theme.custom.apply}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyCustomThemeCommand}" CommandParameter="{Binding Id}" Margin="0,0,6,4" />
-                          <Button Classes="ghost" Content="{l:T theme.custom.delete}" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}" CommandParameter="{Binding Id}" Margin="0,0,6,4" />
-                        </WrapPanel>
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <WrapPanel>
-                <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T theme.custom.import}" Command="{Binding ImportCustomThemeCommand}" />
-                <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T theme.custom.export}" Command="{Binding ExportCustomThemeCommand}" />
-              </WrapPanel>
-            </StackPanel>
-          </Expander>
-        </StackPanel>
-      </Border>
+      <v:AppearanceSettingsView x:Name="AppearanceSection" />
 
       <Border Classes="panel">
         <StackPanel Spacing="12">
@@ -161,7 +66,7 @@
       </Border>
 
       <!-- Connection -->
-      <Border Classes="panel">
+      <Border x:Name="ConnectionSection" Classes="panel">
         <StackPanel Spacing="14">
           <TextBlock Classes="h2" Text="{l:T settings.connection}" />
           <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
@@ -177,127 +82,7 @@
         </StackPanel>
       </Border>
 
-      <!-- Advanced -->
-      <Expander x:Name="AdvancedSettings" Header="{l:T common.advanced}" IsExpanded="{Binding ShowAdvanced, Mode=TwoWay}" HorizontalAlignment="Stretch">
-        <StackPanel Spacing="14">
-          <v:ActiveConnectionsView DataContext="{Binding Shell.ActiveConnections}" />
-          <TextBlock Classes="faint" Text="{l:T settings.associations.hint}" TextWrapping="Wrap" />
-          <WrapPanel IsEnabled="{Binding CanRegisterAssociations}">
-            <Button Classes="ghost" Content="{l:T settings.associations.register}" Command="{Binding RegisterAssociationsCommand}" Margin="0,0,8,8" />
-            <Button Classes="ghost" Content="{l:T settings.associations.remove}" Command="{Binding RemoveAssociationsCommand}" Margin="0,0,0,8" />
-          </WrapPanel>
-          <StackPanel Spacing="8">
-            <StackPanel>
-              <TextBlock Text="{l:T settings.check.service}" FontWeight="Medium" />
-              <TextBlock Classes="faint" Text="{l:T settings.check.service.hint}" TextWrapping="Wrap" />
-            </StackPanel>
-            <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.CheckProviders}" SelectedItem="{Binding IpCheckProvider}" MinWidth="180" HorizontalAlignment="Left">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="m:IpCheckProvider">
-                  <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=check.provider.}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </StackPanel>
-          <Border Classes="tile">
-            <StackPanel Spacing="10">
-              <TextBlock Text="{l:T settings.killswitch}" FontWeight="SemiBold" />
-              <TextBlock Text="{l:T settings.killswitch.warning}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
-              <TextBlock Text="{l:T settings.killswitch.active}" IsVisible="{Binding KillSwitch}" TextWrapping="Wrap" />
-              <StackPanel IsVisible="{Binding !KillSwitch}" Spacing="8">
-                <CheckBox IsChecked="{Binding KillSwitchAcknowledged}" Content="{l:T settings.killswitch.ack}" />
-                <Button Classes="ghost" Content="{l:T settings.killswitch.enable}" Command="{Binding EnableKillSwitchCommand}" HorizontalAlignment="Left" />
-              </StackPanel>
-            </StackPanel>
-          </Border>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Margin="0,0,18,0">
-              <TextBlock Text="{l:T settings.port}" FontWeight="Medium" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Text="{l:T settings.port.hint}" TextWrapping="Wrap" />
-            </StackPanel>
-            <NumericUpDown Grid.Column="1" Value="{Binding LocalPort}" Minimum="1024" Maximum="65535" FormatString="0" Width="140" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Margin="0,0,18,0">
-              <TextBlock Text="{l:T settings.sysproxy}" FontWeight="Medium" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Text="{l:T settings.sysproxy.hint}" TextWrapping="Wrap" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding SetSystemProxy}" IsEnabled="{Binding SystemProxySupported}" />
-          </Grid>
-
-          <Border Classes="tile">
-            <StackPanel Spacing="10">
-              <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Margin="0,0,18,0">
-                  <TextBlock Text="{l:T settings.lan}" FontWeight="Medium" TextWrapping="Wrap" />
-                  <TextBlock Classes="faint" Text="{l:T settings.lan.hint}" TextWrapping="Wrap" />
-                </StackPanel>
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AllowLan}" />
-              </Grid>
-              <StackPanel Spacing="8" IsVisible="{Binding AllowLan}">
-                <TextBlock Text="{l:T settings.lan.warning}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
-                <TextBlock Classes="caps" Text="{l:T settings.lan.login}" />
-                <TextBox Text="{Binding LocalProxyUsername}" Watermark="{l:T settings.lan.login}" MaxLength="64" />
-                <TextBlock Classes="caps" Text="{l:T settings.lan.password}" />
-                <TextBox Text="{Binding LocalProxyPassword}" PasswordChar="●" Watermark="{l:T settings.lan.password}" MaxLength="128" />
-                <TextBlock Classes="faint" Text="{l:T settings.lan.saved}" IsVisible="{Binding HasLocalProxyPassword}" TextWrapping="Wrap" />
-                <TextBlock Classes="faint" Text="{l:T settings.lan.nopassword}" IsVisible="{Binding !HasLocalProxyPassword}" TextWrapping="Wrap" />
-                <TextBlock Classes="faint" Text="{l:T settings.lan.firewall}" TextWrapping="Wrap" />
-                <TextBlock Text="{l:T settings.lan.sysproxy}" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding LanSysProxyConflict}" />
-              </StackPanel>
-            </StackPanel>
-          </Border>
-
-          <Border Classes="tile">
-            <StackPanel Spacing="10">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <c:OutlineIcon Data="{StaticResource LineFlask}" Foreground="{DynamicResource WarningBrush}" />
-                <TextBlock Text="{l:T settings.mock}" FontWeight="Medium" TextWrapping="Wrap" />
-              </StackPanel>
-              <TextBlock Classes="faint" Text="{l:T settings.mock.hint}" TextWrapping="Wrap" />
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="{l:T settings.mock.enable}" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding MockMode}" IsEnabled="{Binding !MockForcedByFlag}" />
-              </Grid>
-              <TextBlock Classes="faint" Text="{l:T settings.mock.forced}" IsVisible="{Binding MockForcedByFlag}" />
-              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Scenarios}" SelectedItem="{Binding MockScenario}" MinWidth="220">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="m:MockScenario">
-                    <TextBlock Text="{Binding Converter={x:Static l:PrefixLocConverter.Instance}, ConverterParameter=mock.}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </StackPanel>
-          </Border>
-
-          <Border Classes="tile">
-            <StackPanel Spacing="6">
-              <TextBlock Text="{l:T settings.system}" FontWeight="Medium" TextWrapping="Wrap" />
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <TextBlock Classes="muted" Text="{l:T settings.admin}" />
-                <TextBlock Text="{l:T common.yes}" IsVisible="{Binding IsElevated}" />
-                <TextBlock Text="{l:T common.no}" IsVisible="{Binding !IsElevated}" />
-              </StackPanel>
-              <TextBlock Classes="faint" Text="{l:T settings.admin.hint}" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Text="{l:T settings.admin.manual}" TextWrapping="Wrap" IsVisible="{Binding ShowElevationManualHint}" />
-              <TextBlock Text="{l:T helper.title}" FontWeight="Medium" />
-              <TextBlock Classes="faint" Text="{l:T helper.hint}" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Text="{l:T helper.unsupported}" IsVisible="{Binding !HelperSupported}" TextWrapping="Wrap" />
-              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HelperSupported}" IsEnabled="{Binding CanManageHelper}">
-                <Button Content="{l:T helper.install}" Command="{Binding InstallHelperCommand}" IsVisible="{Binding !HelperInstalled}" />
-                <Button Classes="ghost" Content="{l:T helper.remove}" Command="{Binding RemoveHelperCommand}" IsVisible="{Binding HelperInstalled}" />
-              </StackPanel>
-              <TextBlock Text="{Binding HelperStatus}" TextWrapping="Wrap" />
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <TextBlock Classes="muted" Text="{l:T settings.secrets}" />
-                <TextBlock Text="{Binding SecretProtection}" TextWrapping="Wrap" />
-              </StackPanel>
-              <SelectableTextBlock Classes="mono" Text="{Binding DataDirectory}" TextWrapping="Wrap" />
-              <TextBlock Classes="faint" Foreground="{DynamicResource WarningBrush}" Text="{l:T settings.safelock}" IsVisible="{Binding SafetyLock}" TextWrapping="Wrap" />
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </Expander>
+      <v:AdvancedSettingsView />
 
       <!-- Backup -->
       <Expander x:Name="BackupSettings" Header="{l:T backup.title}" HorizontalAlignment="Stretch">
