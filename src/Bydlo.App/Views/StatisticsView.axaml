@@ -1,7 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Bydlo.App.ViewModels"
-             xmlns:e="using:Bydlo.Core.Engines"
              xmlns:c="using:Bydlo.App.Controls"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.StatisticsView"
@@ -47,43 +46,6 @@
           <c:Sparkline Height="60" Values="{Binding Shell.UpHistory}" Stroke="{DynamicResource AccentBrush}" />
         </StackPanel>
       </Border>
-
-      <Expander Header="{l:T stats.connections.title}" IsExpanded="{Binding ActiveConnectionsExpanded}" HorizontalAlignment="Stretch">
-        <StackPanel Spacing="8">
-          <TextBlock IsVisible="{Binding !SupportsActiveConnections}" Text="{l:T stats.connections.unavailable}" TextWrapping="Wrap" />
-          <TextBlock IsVisible="{Binding ConnectionListError}" Text="{l:T stats.connections.error}" TextWrapping="Wrap" />
-          <TextBox IsVisible="{Binding SupportsActiveConnections}" Text="{Binding ConnectionFilter}"
-                   Watermark="{l:T stats.connections.filter}" />
-          <ItemsControl ItemsSource="{Binding FilteredConnections}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="e:ActiveConnection">
-                <Border Classes="tile" Padding="8" Margin="0,2">
-                  <StackPanel Spacing="4">
-                    <TextBlock Text="{Binding Host}" FontWeight="Medium" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding Process}" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding Rule}" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding Outbound}" TextWrapping="Wrap" />
-                    <WrapPanel>
-                      <TextBlock Text="{l:T stats.down}" Margin="0,0,6,0" />
-                      <TextBlock Text="{Binding DownloadBytes}" Margin="0,0,12,0" />
-                      <TextBlock Text="{l:T stats.up}" Margin="0,0,6,0" />
-                      <TextBlock Text="{Binding UploadBytes}" />
-                    </WrapPanel>
-                    <WrapPanel>
-                      <Button Content="{l:T stats.connections.close}" Margin="0,0,8,0"
-                              Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).CloseConnectionCommand}"
-                              CommandParameter="{Binding}" />
-                      <Button Content="{l:T routing.rules.add}"
-                              Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).AddConnectionRuleCommand}"
-                              CommandParameter="{Binding}" />
-                    </WrapPanel>
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-      </Expander>
 
       <Border Classes="section">
         <StackPanel Spacing="10">

@@ -29,6 +29,18 @@ public sealed class SingBoxConfigBuilder
     /// <summary>CGNAT / mesh-VPN ranges kept outside the tunnel when <see cref="RoutingSettings.PreserveMeshVpnRanges"/> is on.</summary>
     public static readonly string[] MeshVpnRanges = ["100.64.0.0/10", "fd7a:115c:a1e3::/48"];
 
+    private static JsonObject BuildClashApi(int port, string? secret)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(port, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
+        ArgumentException.ThrowIfNullOrWhiteSpace(secret);
+        return new JsonObject
+        {
+            ["external_controller"] = $"127.0.0.1:{port}",
+            ["secret"] = secret,
+        };
+    }
+
     public string BuildJson(Profile profile, ProfileSecrets secrets, BuildContext ctx) =>
         Build(profile, secrets, ctx).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
 
@@ -113,11 +125,7 @@ public sealed class SingBoxConfigBuilder
         {
             root["experimental"] = new JsonObject
             {
-                ["clash_api"] = new JsonObject
-                {
-                    ["external_controller"] = $"127.0.0.1:{apiPort}",
-                    ["secret"] = ctx.ClashApiSecret ?? "",
-                },
+                ["clash_api"] = BuildClashApi(apiPort, ctx.ClashApiSecret),
             };
         }
 
@@ -173,11 +181,7 @@ public sealed class SingBoxConfigBuilder
         {
             root["experimental"] = new JsonObject
             {
-                ["clash_api"] = new JsonObject
-                {
-                    ["external_controller"] = $"127.0.0.1:{apiPort}",
-                    ["secret"] = ctx.ClashApiSecret ?? "",
-                },
+                ["clash_api"] = BuildClashApi(apiPort, ctx.ClashApiSecret),
             };
         }
 
@@ -235,11 +239,7 @@ public sealed class SingBoxConfigBuilder
         {
             custom["experimental"] = new JsonObject
             {
-                ["clash_api"] = new JsonObject
-                {
-                    ["external_controller"] = $"127.0.0.1:{port}",
-                    ["secret"] = ctx.ClashApiSecret ?? "",
-                },
+                ["clash_api"] = BuildClashApi(port, ctx.ClashApiSecret),
             };
         }
         return custom;

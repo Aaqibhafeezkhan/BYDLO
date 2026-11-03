@@ -78,6 +78,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Routing = new RoutingViewModel(this);
         Statistics = new StatisticsViewModel(this);
         Settings = new SettingsViewModel(this);
+        ActiveConnections = new ActiveConnectionsViewModel(this);
         NavItems =
         [
             new("home", "nav.home", "LineHome", Home),
@@ -169,6 +170,8 @@ public sealed partial class MainViewModel : ViewModelBase
     public StatisticsViewModel Statistics { get; }
 
     public SettingsViewModel Settings { get; }
+
+    public ActiveConnectionsViewModel ActiveConnections { get; }
 
     public IReadOnlyList<NavItem> NavItems { get; }
 
