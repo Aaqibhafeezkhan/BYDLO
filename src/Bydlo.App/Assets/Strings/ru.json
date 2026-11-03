@@ -189,9 +189,10 @@
   "app.full": "Bypass Your Digital Limitations Online",
 
   "onboarding.title": "Добро пожаловать в BYDLO",
-  "onboarding.text": "BYDLO объединяет VPN, прокси и инструменты свободного доступа к интернету в одном приложении. Выберите язык и тему, затем добавьте первый сервер. Всё это можно изменить позже в настройках.",
-  "onboarding.skip": "Пропустить",
-  "onboarding.start": "Начать",
+  "onboarding.text": "Добавьте ссылку на сервер, подписку или файл конфигурации. BYDLO может автоматически выбрать совместимый движок подключения.",
+  "onboarding.skip": "Перейти на главную",
+  "onboarding.start": "Добавить конфигурацию",
+  "onboarding.appearance": "Язык и оформление",
 
   "nav.home.short": "Главная",
   "nav.home": "Главная",

@@ -302,6 +302,13 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void StartOnboardingImport()
+    {
+        FinishOnboarding();
+        OpenAddServer();
+    }
+
+    [RelayCommand]
     private void FinishOnboarding()
     {
         Services.Settings.OnboardingCompleted = true;

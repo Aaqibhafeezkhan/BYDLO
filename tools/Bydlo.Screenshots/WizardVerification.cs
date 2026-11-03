@@ -19,13 +19,29 @@ internal static class WizardVerification
     {
         var handler = new SubscriptionHandler();
         using var http = new HttpClient(handler);
-        var shell = new MainViewModel(services, new SubscriptionClient(http, services.Importer)) { IsOnboardingVisible = false };
+        var shell = new MainViewModel(services, new SubscriptionClient(http, services.Importer));
         services.Settings.Language = Loc.Instance.Language;
         services.Settings.Theme = ThemePreference.Purple;
         services.Theme.Apply(ThemePreference.Purple);
         var wizard = shell.AddServerWizard;
         var window = new Window { Width = 1180, Height = 780, Content = new MainView { DataContext = shell } };
         window.Show();
+        Require(shell.IsOnboardingVisible, "First launch shows the welcome screen");
+        foreach (var theme in new[] { ThemePreference.Purple, ThemePreference.Light, ThemePreference.Oled, ThemePreference.System })
+        {
+            services.Theme.Apply(theme);
+            Capture($"first-import-{theme}-wide", 1180, 780);
+            Capture($"first-import-{theme}-narrow", 380, 560);
+        }
+        services.Theme.Apply(ThemePreference.Purple);
+        var start = window.GetVisualDescendants().OfType<Button>()
+            .Single(button => ReferenceEquals(button.Command, shell.StartOnboardingImportCommand));
+        Require(start.IsEffectivelyVisible && start.Focusable, "The first import action is visible and focusable");
+        start.Command!.Execute(start.CommandParameter);
+        Require(!shell.IsOnboardingVisible && services.Settings.OnboardingCompleted &&
+            shell.IsAddServerOpen && wizard.IsSource && services.Profiles.Profiles.Count == 0,
+            "The first-run action opens an empty wizard and saves the onboarding state");
+        wizard.CloseCommand.Execute(null);
         shell.Navigate("connections");
         Capture("wizard-connections", 1180, 780);
         shell.OpenAddServerCommand.Execute(null);
