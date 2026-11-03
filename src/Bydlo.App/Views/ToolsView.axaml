@@ -29,7 +29,7 @@
       <Border Classes="tool-section" VerticalAlignment="Top">
         <StackPanel Spacing="14">
           <Grid x:Name="ZapretHeader" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-            <Border Width="42" Height="42" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
+            <Border Width="42" Height="42" CornerRadius="{DynamicResource RadiusMedium}" Background="{DynamicResource Surface2Brush}">
               <c:OutlineIcon Data="{StaticResource LineBolt}" Foreground="{DynamicResource TextMutedBrush}" />
             </Border>
             <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
@@ -197,7 +197,7 @@
       <Border Classes="tool-section" VerticalAlignment="Top">
         <StackPanel Spacing="14">
           <Grid x:Name="TgHeader" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-            <Border Width="42" Height="42" CornerRadius="8" Background="{DynamicResource Surface2Brush}">
+            <Border Width="42" Height="42" CornerRadius="{DynamicResource RadiusMedium}" Background="{DynamicResource Surface2Brush}">
               <c:OutlineIcon Data="{StaticResource LineSend}" Foreground="{DynamicResource TextMutedBrush}" />
             </Border>
             <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">

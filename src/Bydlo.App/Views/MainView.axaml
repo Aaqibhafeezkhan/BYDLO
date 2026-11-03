@@ -181,7 +181,7 @@
     <!-- Toast -->
     <Border Grid.Row="1" Grid.Column="1" IsVisible="{Binding HasVisibleToast}"
             VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16,0,16,22" MaxWidth="560"
-            CornerRadius="8" Padding="16,11"
+            CornerRadius="{DynamicResource RadiusMedium}" Padding="16,11"
             Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" AutomationProperties.LiveSetting="Polite">
         <c:OutlineIcon Data="{StaticResource LineAlert}" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding ToastIsError}" Width="16" Height="16" />
@@ -199,7 +199,7 @@
         </WrapPanel>
       </StackPanel>
     </Border>
-    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" Margin="8" CornerRadius="12" Padding="24"
+    <Border Grid.RowSpan="3" Grid.ColumnSpan="2" Margin="8" CornerRadius="{DynamicResource RadiusLarge}" Padding="24"
             IsVisible="{Binding IsDragOver}" IsHitTestVisible="False" BorderThickness="3"
             BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource Surface2Brush}" Opacity="0.94">
       <TextBlock Text="{l:T import.drop}" FontSize="24" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -258,7 +258,7 @@
                   </ComboBox.ItemTemplate>
                 </ComboBox>
                 <TextBlock Classes="caps" Text="{l:T settings.theme}" />
-                <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="4" HorizontalAlignment="Left">
+                <Border Background="{DynamicResource Surface2Brush}" CornerRadius="{DynamicResource RadiusLarge}" Padding="4" HorizontalAlignment="Left">
                   <WrapPanel>
                     <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemeLight}"><TextBlock Text="{l:T theme.light}" /></RadioButton>
                     <RadioButton Classes="segment" GroupName="onboarding-theme" IsChecked="{Binding OnboardingThemeOled}"><TextBlock Text="{l:T theme.oled}" /></RadioButton>
