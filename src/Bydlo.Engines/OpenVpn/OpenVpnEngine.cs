@@ -83,9 +83,10 @@ public sealed class OpenVpnEngine(IProcessRunner runner, LogRedactor redactor, E
         {
             var user = request.Secrets[Keys.Username];
             var pass = request.Secrets[Keys.Password];
-            if (user is null || pass is null)
+            try { OpenVpnCredentials.Validate(user, pass); }
+            catch (FormatException)
             {
-                throw new EngineException("This OpenVPN profile needs a username and password. Edit the profile to add them.");
+                throw new EngineException("This OpenVPN profile needs a valid username and password. Edit the profile to add them.", localizationKey: "error.engine.openvpn.credentials");
             }
 
             _authFile = Path.Combine(request.WorkDirectory, "auth.txt");

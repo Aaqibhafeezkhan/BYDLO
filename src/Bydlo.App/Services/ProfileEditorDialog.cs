@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Bydlo.Core.Engines;
+using Bydlo.Core.Import;
 using Bydlo.Core.Models;
 
 namespace Bydlo.App.Services;
@@ -25,25 +26,53 @@ public static class ProfileEditorDialog
         var fields = new Dictionary<string, TextBox>();
         if (!hasRawConfig)
         {
-            foreach (var key in new[] { Keys.Sni, Keys.Transport, Keys.Path, Keys.Fingerprint })
+            var optionsPanel = new StackPanel { Spacing = 8 };
+            foreach (var key in new[] { Keys.Security, Keys.Sni, Keys.Transport, Keys.Path, Keys.Fingerprint,
+                Keys.HostHeader, Keys.ServiceName, Keys.Alpn, Keys.Flow, Keys.RealityPublicKey, Keys.RealityShortId, Keys.Method })
             {
-                fields[key] = Field("profile.edit." + key, source.Option(key));
+                optionsPanel.Children.Add(new TextBlock { Text = loc[key == Keys.HostHeader ? "profile.edit.hostHeader" : "profile.edit." + key] });
+                var field = new TextBox { Text = source.Option(key) ?? "" };
+                optionsPanel.Children.Add(field);
+                fields[key] = field;
             }
+            panel.Children.Add(new Expander { Header = loc["profile.edit.options"], Content = optionsPanel });
         }
 
-        var hasCredentials = source.Protocol == ProtocolKind.OpenVpn && source.Option("authUserPass") == "true";
+        TextBox? configuration = null;
+        if (hasRawConfig)
+        {
+            panel.Children.Add(new TextBlock { Text = loc["profile.edit.configuration.hint"], TextWrapping = Avalonia.Media.TextWrapping.Wrap });
+            configuration = Field("wizard.configuration", secrets[Keys.RawConfig]);
+            configuration.AcceptsReturn = true;
+            configuration.MinHeight = 140;
+            configuration.MaxHeight = 240;
+            configuration.PasswordChar = '●';
+        }
+        var hasCredentials = source.Protocol == ProtocolKind.OpenVpn;
         var username = hasCredentials ? Field("profile.edit.username", secrets[Keys.Username]) : null;
         var password = hasCredentials ? Field("profile.edit.password", secrets[Keys.Password]) : null;
-        if (password is not null)
+        var secretFields = new Dictionary<string, TextBox>();
+        if (!hasRawConfig)
         {
-            password.PasswordChar = '●';
-            username!.PasswordChar = '●';
+            foreach (var key in new[] { Keys.Uuid, Keys.Password, Keys.ObfsPassword })
+            {
+                if (secrets[key] is { } value)
+                {
+                    secretFields[key] = Field("profile.edit." + key, value);
+                    secretFields[key].PasswordChar = '●';
+                }
+            }
+        }
+        if (password is not null || configuration is not null || secretFields.Count > 0)
+        {
+            if (password is not null) { password.PasswordChar = '●'; username!.PasswordChar = '●'; }
             var show = new CheckBox { Content = loc["profile.edit.show"] };
             show.IsCheckedChanged += (_, _) =>
             {
                 var mask = show.IsChecked == true ? '\0' : '●';
-                password.PasswordChar = mask;
-                username.PasswordChar = mask;
+                if (password is not null) { password.PasswordChar = mask; username!.PasswordChar = mask; }
+                if (configuration is not null) { configuration.PasswordChar = mask; }
+                foreach (var field in secretFields.Values) { field.PasswordChar = mask; }
             };
             panel.Children.Add(show);
         }
@@ -91,16 +120,42 @@ public static class ProfileEditorDialog
         {
             var targetPort = source.Port;
             if (string.IsNullOrWhiteSpace(name.Text) ||
-                (host is not null && (Uri.CheckHostName(host.Text?.Trim()) == UriHostNameType.Unknown ||
-                    !int.TryParse(port?.Text, out targetPort) || targetPort is < 1 or > 65535)) ||
-                (hasCredentials && (!ValidCredential(username?.Text) || !ValidCredential(password?.Text))))
+                (host is not null && (Uri.CheckHostName(host.Text?.Trim().Trim('[', ']')) == UriHostNameType.Unknown ||
+                    !int.TryParse(port?.Text, out targetPort) || targetPort is < 1 or > 65535)))
             {
                 error.Text = loc["profile.edit.invalid"];
                 return;
             }
 
-            var updated = BuildProfile(targetPort);
-            updated.PreferredEngine = (engines.SelectedItem as ComboBoxItem)?.Tag as EngineKind?;
+            var editedSecrets = new ProfileSecrets { Values = new(secrets.Values, StringComparer.OrdinalIgnoreCase) };
+            foreach (var (key, field) in secretFields) { editedSecrets.Values[key] = field.Text ?? ""; }
+            if (hasCredentials)
+            {
+                editedSecrets.Values[Keys.Username] = username!.Text ?? "";
+                editedSecrets.Values[Keys.Password] = password!.Text ?? "";
+            }
+            ImportedProfile edited;
+            try
+            {
+                edited = new ProfileEditDraft(BuildProfile(targetPort), editedSecrets)
+                {
+                    Configuration = configuration?.Text,
+                    PreferredEngine = (engines.SelectedItem as ComboBoxItem)?.Tag as EngineKind?,
+                }.Build();
+            }
+            catch (FormatException)
+            {
+                error.Text = loc["profile.edit.invalid"];
+                return;
+            }
+            var updated = edited.Profile;
+            if (updated.PreferredEngine is { } preferred &&
+                !services.Registry.CandidatesFor(updated, PlatformInfo.Current.Os).Contains(preferred))
+            {
+                RefreshEngines(updated);
+                error.Text = loc["profile.edit.engine.invalid"];
+                return;
+            }
             if (!hasRawConfig)
             {
                 var defaults = services.Settings.DpiDefaults;
@@ -135,12 +190,7 @@ public static class ProfileEditorDialog
                     updated.Options[DpiSettings.PaddingKey] = selected.Padding.ToString();
                 }
             }
-            if (hasCredentials)
-            {
-                secrets.Values[Keys.Username] = username!.Text!;
-                secrets.Values[Keys.Password] = password!.Text!;
-            }
-            dialog.Close(new ImportedProfile(updated, secrets));
+            dialog.Close(edited);
         };
         return await dialog.ShowDialog<ImportedProfile?>(owner);
 
@@ -198,7 +248,4 @@ public static class ProfileEditorDialog
                 ?? engines.Items[0];
         }
     }
-
-    private static bool ValidCredential(string? value) =>
-        !string.IsNullOrWhiteSpace(value) && value.IndexOfAny(['\r', '\n', '\0']) < 0;
 }

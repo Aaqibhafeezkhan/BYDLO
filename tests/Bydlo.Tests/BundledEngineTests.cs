@@ -275,6 +275,50 @@ public class BundledEngineTests
         await engine.DisposeAsync();
     }
 
+    [Fact]
+    public async Task Openvpn_writes_two_line_auth_file_for_fake_runner_and_removes_it_on_stop()
+    {
+        var runner = new FakeProcessRunner { StartupOutput = { "Initialization Sequence Completed" } };
+        await using var engine = new OpenVpnEngine(runner, new LogRedactor(),
+            new FakeLocator(new(OsFamily.Linux, CpuArch.X64)), new FakePrivileges(true));
+        var source = new Bydlo.Core.Import.ManualProfileDraft { Protocol = ProtocolKind.OpenVpn,
+            Configuration = "client\ndev tun\nremote server.example 1194\nauth-user-pass",
+            Identifier = "private-user", Password = "private-password" }.Build();
+        var directory = TestDirs.New("openvpn-credentials");
+        await engine.StartAsync(new() { Profile = source.Profile, Secrets = source.Secrets, Settings = new(), WorkDirectory = directory });
+        var spec = Assert.Single(runner.Started);
+        var index = spec.Arguments.ToList().IndexOf("--auth-user-pass");
+        Assert.True(index >= 0);
+        var authPath = spec.Arguments[index + 1];
+        Assert.Equal("private-user\nprivate-password\n", await File.ReadAllTextAsync(authPath));
+        Assert.DoesNotContain("private-user", spec.Arguments);
+        Assert.DoesNotContain("private-password", spec.Arguments);
+        await engine.StopAsync();
+        Assert.False(File.Exists(authPath));
+        Assert.False(File.Exists(Path.Combine(directory, "profile.ovpn")));
+    }
+
+    [Theory]
+    [InlineData("", "password")]
+    [InlineData("user", "password\ninjected")]
+    public async Task Openvpn_rejects_invalid_credentials_before_starting_fake_process(string user, string password)
+    {
+        var runner = new FakeProcessRunner();
+        await using var engine = new OpenVpnEngine(runner, new LogRedactor(),
+            new FakeLocator(new(OsFamily.Linux, CpuArch.X64)), new FakePrivileges(true));
+        var directory = TestDirs.New("openvpn-invalid-credentials");
+        var error = await Assert.ThrowsAsync<EngineException>(() => engine.StartAsync(new()
+        {
+            Profile = new Profile { Protocol = ProtocolKind.OpenVpn, Options = { ["authUserPass"] = "true" } },
+            Secrets = new ProfileSecrets { Values = { [Keys.RawConfig] = "client", [Keys.Username] = user, [Keys.Password] = password } },
+            Settings = new(), WorkDirectory = directory,
+        }));
+        Assert.Equal("error.engine.openvpn.credentials", error.LocalizationKey);
+        Assert.Empty(runner.Started);
+        Assert.False(File.Exists(Path.Combine(directory, "auth.txt")));
+        Assert.False(File.Exists(Path.Combine(directory, "profile.ovpn")));
+    }
+
     private sealed class FakeDriver : IOpenVpnDriver
     {
         public bool IsInstalled { get; set; }

@@ -89,12 +89,16 @@
               <TextBox Text="{Binding Host}" Watermark="{l:T wizard.host}" AutomationProperties.Name="{l:T wizard.host}" />
               <TextBlock Text="{l:T wizard.port}" />
               <NumericUpDown Value="{Binding Port}" Minimum="1" Maximum="65535" FormatString="0" />
-              <TextBox IsVisible="{Binding UsesIdentifier}" Text="{Binding Identifier}" Watermark="{l:T wizard.identifier}" AutomationProperties.Name="{l:T wizard.identifier}" />
-              <TextBox IsVisible="{Binding UsesPassword}" Text="{Binding Password}" PasswordChar="●" Watermark="{l:T wizard.password}" AutomationProperties.Name="{l:T wizard.password}" />
               <TextBox IsVisible="{Binding UsesMethod}" Text="{Binding Method}" Watermark="{l:T wizard.method}" AutomationProperties.Name="{l:T wizard.method}" />
               <TextBox IsVisible="{Binding UsesTls}" Text="{Binding Sni}" Watermark="{l:T wizard.sni}" AutomationProperties.Name="{l:T wizard.sni}" />
             </StackPanel>
-            <TextBox IsVisible="{Binding UsesConfiguration}" Text="{Binding Configuration}" AcceptsReturn="True" MinHeight="140" MaxHeight="240" TextWrapping="Wrap" Watermark="{l:T wizard.configuration}" AutomationProperties.Name="{l:T wizard.configuration}" />
+            <TextBlock IsVisible="{Binding UsesConfiguration}" Text="{l:T wizard.configuration}" TextWrapping="Wrap" />
+            <TextBox IsVisible="{Binding UsesConfiguration}" Text="{Binding Configuration}" PasswordChar="{Binding SecretMask}" AcceptsReturn="True" MinHeight="140" MaxHeight="240" TextWrapping="Wrap" Watermark="{l:T wizard.configuration}" AutomationProperties.Name="{l:T wizard.configuration}" />
+            <TextBlock IsVisible="{Binding UsesIdentifier}" Text="{l:T wizard.identifier}" />
+            <TextBox IsVisible="{Binding UsesIdentifier}" Text="{Binding Identifier}" PasswordChar="{Binding SecretMask}" Watermark="{l:T wizard.identifier}" AutomationProperties.Name="{l:T wizard.identifier}" />
+            <TextBlock IsVisible="{Binding UsesPassword}" Text="{l:T wizard.password}" />
+            <TextBox IsVisible="{Binding UsesPassword}" Text="{Binding Password}" PasswordChar="{Binding SecretMask}" Watermark="{l:T wizard.password}" AutomationProperties.Name="{l:T wizard.password}" />
+            <CheckBox Content="{l:T profile.edit.show}" IsChecked="{Binding ShowSecrets}" />
           </StackPanel>
 
           <StackPanel IsVisible="{Binding IsPreview}" Spacing="14">
