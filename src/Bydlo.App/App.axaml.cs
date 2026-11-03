@@ -75,8 +75,8 @@ public sealed partial class App : Application
         if (Bydlo.Core.Platform.StartupElevation.ShouldElevateOnStartup(
                 Services.Settings, Services.Privileges, Services.IsMock, Bydlo.Core.Security.NetworkSafetyGuard.IsLocked))
         {
-            var launchArgs = Args.Where(a => !a.StartsWith(Bydlo.Core.Platform.ElevatedRestart.ParentArgument, StringComparison.Ordinal)).ToList();
-            launchArgs.Add(Bydlo.Core.Platform.ElevatedRestart.ParentArgument + Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var launchArgs = Bydlo.Core.Platform.ElevatedRestart.BuildArguments(
+                Args, Environment.ProcessId, Services.ForcedMock, Services.Paths.DataDirectory);
             if (Services.Privileges.TryRestartElevated(launchArgs))
             {
                 Environment.Exit(0);

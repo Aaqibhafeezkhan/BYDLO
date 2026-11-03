@@ -27,7 +27,7 @@ public sealed class AppServices
     {
         Args = args;
         ForcedMock = AppSettings.IsMockForced(args, Environment.GetEnvironmentVariable("BYDLO_MOCK"));
-        Paths = AppPathsFactory.Create();
+        Paths = AppPathsFactory.Create(args);
         Log = new LogHub(LogRedactor.Shared, Paths.LogsDirectory);
         Secrets = SecretStoreFactory.Create(Paths, ForcedMock);
         SettingsStore = new SettingsStore(Paths.SettingsFile);

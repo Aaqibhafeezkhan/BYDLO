@@ -10,7 +10,7 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        var earlyPaths = Bydlo.Platform.AppPathsFactory.Create();
+        var earlyPaths = Bydlo.Platform.AppPathsFactory.Create(args);
         CrashReporter.Install(earlyPaths.LogsDirectory, LogRedactor.Shared);
         // Do this before claiming the single-instance mutex or forwarding activation.
         // Otherwise the elevated child forwards back to the parent and exits during UAC restart.
@@ -20,7 +20,7 @@ internal static class Program
             return;
         }
 
-        var dataDirectory = Bydlo.Platform.AppPathsFactory.Create().DataDirectory;
+        var dataDirectory = earlyPaths.DataDirectory;
         using var activation = OperatingSystem.IsWindows() ? new WindowsActivationBroker(
             dataDirectory, Bydlo.App.App.PendingActivations.Enqueue) : null;
         if (activation is { IsPrimary: false })

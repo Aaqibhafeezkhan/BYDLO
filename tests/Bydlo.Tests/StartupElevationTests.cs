@@ -75,8 +75,9 @@ public class StartupElevationTests
     {
         var root = RepositoryRoot();
         var app = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "App.axaml.cs"));
-        // Startup elevation filters the handoff marker so it does not accumulate across restarts.
-        Assert.Contains("ParentArgument", app, StringComparison.Ordinal);
+        // Startup elevation shares argument preservation with manual restart.
+        Assert.Contains("ElevatedRestart.BuildArguments", app, StringComparison.Ordinal);
+        Assert.Contains("Services.ForcedMock, Services.Paths.DataDirectory", app, StringComparison.Ordinal);
         Assert.Contains("ShouldElevateOnStartup", app, StringComparison.Ordinal);
         // On decline/failure there is no Exit: the app continues with limited features.
         Assert.Contains("TryRestartElevated", app, StringComparison.Ordinal);
