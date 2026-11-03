@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Bydlo.Core.Config;
 using Bydlo.Core.Models;
 
 namespace Bydlo.Core.Engines;
@@ -51,6 +52,8 @@ public sealed class RetainedTunEngine : IEngine, IReconnectableEngine, IActiveCo
             return;
         }
 
+        SingBoxConfigBuilder.ValidateKillSwitchDns(settings.Routing);
+
         // Snapshot settings: edits in the UI must not change the active protection or backend port.
         var backendSettings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
         backendSettings.Mode = ConnectionMode.LocalProxy;
@@ -62,6 +65,10 @@ public sealed class RetainedTunEngine : IEngine, IReconnectableEngine, IActiveCo
             PreserveMeshVpnRanges = false,
             RemoteDns = settings.Routing.RemoteDns,
             DirectDns = settings.Routing.DirectDns,
+            RemoteDnsTransport = settings.Routing.RemoteDnsTransport,
+            DirectDnsTransport = settings.Routing.DirectDnsTransport,
+            RemoteDnsThroughProxy = settings.Routing.RemoteDnsThroughProxy,
+            DirectDnsThroughProxy = settings.Routing.DirectDnsThroughProxy,
         };
         _backendRequest = request with { Settings = backendSettings, WorkDirectory = Path.Combine(request.WorkDirectory, "transport") };
         _guard = _guardFactory();

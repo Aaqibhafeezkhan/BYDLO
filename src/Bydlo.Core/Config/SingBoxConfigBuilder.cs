@@ -253,12 +253,16 @@ public sealed class SingBoxConfigBuilder
             throw new InvalidOperationException("Kill switch requires TUN mode and explicit opt-in.");
         }
 
+        ValidateKillSwitchDns(settings.Routing);
+
         // Only LAN and mesh exceptions survive. Split routing cannot silently weaken protection.
         var routing = new RoutingSettings
         {
             BypassPrivateNetworks = settings.Routing.BypassPrivateNetworks,
             PreserveMeshVpnRanges = settings.Routing.PreserveMeshVpnRanges,
             RemoteDns = settings.Routing.RemoteDns,
+            RemoteDnsTransport = settings.Routing.RemoteDnsTransport,
+            RemoteDnsThroughProxy = settings.Routing.RemoteDnsThroughProxy,
             BlockDomains = [.. settings.Routing.BlockDomains],
         };
         var tunSettings = new AppSettings { Mode = ConnectionMode.Tun, Routing = routing };
@@ -272,20 +276,39 @@ public sealed class SingBoxConfigBuilder
 
         // ip_is_private includes ULA/CGNAT: use exact ranges so LAN and mesh remain independent.
         var route = BuildRoute(routing, ConnectionMode.Tun);
+        route["default_domain_resolver"] = "remote";
         foreach (var rule in route["rules"]!.AsArray().OfType<JsonObject>())
         {
             if (rule.Remove("ip_is_private")) { rule["ip_cidr"] = ToArray(PrivateNetworkRanges); }
         }
+        // Strict DNS has no local resolver or bootstrap fallback. The IP literal needs no bootstrap.
+        var dns = BuildDns(routing, ConnectionMode.Tun);
+        var remote = dns["servers"]![0]!.DeepClone();
+        remote.AsObject().Remove("domain_resolver");
+        dns["servers"] = new JsonArray(remote);
         return new JsonObject
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
-            ["dns"] = BuildDns(routing, ConnectionMode.Tun),
+            ["dns"] = dns,
             ["inbounds"] = new JsonArray(inbound),
             ["outbounds"] = new JsonArray(
                 new JsonObject { ["type"] = "socks", ["tag"] = ProxyTag, ["server"] = "127.0.0.1", ["server_port"] = backendPort, ["version"] = "5" },
                 new JsonObject { ["type"] = "direct", ["tag"] = "direct" }),
             ["route"] = route,
         };
+    }
+
+    internal static void ValidateKillSwitchDns(RoutingSettings routing)
+    {
+        // Direct/system DNS would bypass the retained transport, even while it is down.
+        // Hostnames would require a separate bootstrap resolver outside that transport.
+        if (!routing.RemoteDnsThroughProxy || routing.RemoteDnsTransport == DnsTransport.System
+            || !Enum.IsDefined(routing.RemoteDnsTransport)
+            || !System.Net.IPAddress.TryParse(routing.RemoteDns, out _))
+        {
+            throw new EngineException("Kill switch requires remote DNS through the proxy with an IP address and an explicit DNS transport.",
+                localizationKey: "error.killswitch.dns");
+        }
     }
 
     // Deliberately exclude Tailscale ULA from the LAN exception.

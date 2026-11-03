@@ -592,6 +592,7 @@
   "settings.killswitch.active": "Включён для следующего подключения TUN. На режим локального прокси не влияет.",
   "settings.killswitch.next": "Kill switch применится при следующем подключении TUN.",
   "settings.killswitch.recovery": "Не удалось завершить старый TUN. Перезапустите BYDLO с прежними правами администратора/root и повторите.",
+  "error.killswitch.dns": "Kill switch требует удалённый DNS через прокси. Укажите IP-адрес и UDP, TCP, HTTPS, TLS или QUIC; прямой DNS, системный DNS и доменные имена DNS-серверов в этом режиме недоступны.",
   "error.killswitch.active": "TUN с kill switch уже запущен. Сначала отключитесь.",
   "error.killswitch.tun": "TUN с kill switch остановился. Защита может быть недоступна. Отключитесь перед повторным подключением.",
   "error.killswitch.engine": "Kill switch требует sing-box в режиме TUN. Выключите его в настройках для использования этого движка.",
