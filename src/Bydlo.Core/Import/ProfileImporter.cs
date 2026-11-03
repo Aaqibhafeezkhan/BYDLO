@@ -193,7 +193,16 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
 
             if (!result.Import.IsEmpty)
             {
-                return (result, url);
+                var unique = result.Import.Profiles.DistinctBy(item => System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    item.Profile.Protocol,
+                    Host = item.Profile.Host.ToUpperInvariant(),
+                    item.Profile.Port,
+                    item.Profile.PreferredEngine,
+                    Options = item.Profile.Options.OrderBy(pair => pair.Key, StringComparer.Ordinal),
+                    Secrets = item.Secrets.Values.OrderBy(pair => pair.Key, StringComparer.Ordinal),
+                }), StringComparer.Ordinal).ToArray();
+                return (result with { Import = result.Import with { Profiles = unique } }, url);
             }
 
             last = result;
