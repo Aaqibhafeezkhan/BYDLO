@@ -59,7 +59,11 @@ public sealed partial class ProfileStore
             var retained = _doc.Chains.SelectMany(chain => chain.ProfileIds).Concat(matched.Keys).ToHashSet();
             var removed = previous.Where(profile => !retained.Contains(profile.Id) && !profile.IsFavorite).ToArray();
             var removedIds = removed.Select(profile => profile.Id).ToHashSet();
-            var added = incoming.Values.SelectMany(group => group).ToArray();
+            // Selected-only subscriptions keep the user's preview choice: refresh updates
+            // already saved nodes but never re-adds deselected or brand-new provider nodes.
+            var added = sub.Mode == SubscriptionMode.SelectedOnly
+                ? Array.Empty<ImportedProfile>()
+                : incoming.Values.SelectMany(group => group).ToArray();
             var sourceOptions = new Dictionary<Guid, Dictionary<string, string>>();
             foreach (var profile in previous.Where(profile => !removedIds.Contains(profile.Id)))
             {
@@ -80,6 +84,7 @@ public sealed partial class ProfileStore
             var updated = new Subscription
             {
                 Id = sub.Id, Name = sub.Name, LastUpdated = (time ?? TimeProvider.System).GetUtcNow(), SourceOptions = sourceOptions,
+                Mode = sub.Mode,
                 Upload = metadata is null ? sub.Upload : metadata.Upload,
                 Download = metadata is null ? sub.Download : metadata.Download,
                 Total = metadata is null ? sub.Total : metadata.Total,

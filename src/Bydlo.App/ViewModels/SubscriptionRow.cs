@@ -39,6 +39,12 @@ public sealed partial class SubscriptionRow : ObservableObject
     [ObservableProperty]
     private bool _isWarning;
 
+    /// <summary>Refresh policy for nodes that were not saved locally (issue #185).</summary>
+    public SubscriptionMode Mode => _subscription.Mode;
+
+    [ObservableProperty]
+    private string _modeLabel = "";
+
     public Subscription Snapshot => _subscription;
 
     private void Update()
@@ -71,6 +77,8 @@ public sealed partial class SubscriptionRow : ObservableObject
         Details = string.Join(" · ", parts);
         HasDetails = Details.Length > 0;
         IsWarning = IsTrafficWarning(used, _subscription.Total) || IsExpiryWarning(_subscription.Expires);
+        ModeLabel = Loc.Instance[_subscription.Mode == SubscriptionMode.SelectedOnly ? "subs.mode.selected" : "subs.mode.follow"];
+        OnPropertyChanged(nameof(Mode));
     }
 
     private static bool IsTrafficWarning(long used, long? total) =>

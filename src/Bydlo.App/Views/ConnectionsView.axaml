@@ -212,6 +212,11 @@
                     </Grid>
                     <TextBlock Classes="faint" Text="{Binding Details}" TextWrapping="Wrap" IsVisible="{Binding HasDetails}" />
                     <ProgressBar Minimum="0" Maximum="1" Value="{Binding TrafficFraction}" IsVisible="{Binding HasTraffic}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      <TextBlock Classes="faint" Text="{Binding ModeLabel}" VerticalAlignment="Center" />
+                      <Button Classes="ghost" Content="{l:T subs.mode.toggle}" ToolTip.Tip="{l:T subs.mode.toggle}"
+                              Command="{Binding $parent[UserControl].((vm:ConnectionsViewModel)DataContext).ToggleSubscriptionModeCommand}" CommandParameter="{Binding}" />
+                    </StackPanel>
                     <TextBlock Classes="faint" Text="{Binding LastUpdated, StringFormat='{}{0:g}'}" />
                   </StackPanel>
                 </Border>
