@@ -43,5 +43,20 @@
       "Primary": "#A4DD78",
       "Text": "#F8F5E6"
     }
+  },
+  {
+    "id": "dirty",
+    "name": "Dirty",
+    "author": "BYDLO",
+    "description": "Тема релиза v0.4. Земля въелась, ржавчина осталась. Баги закрыты, а усталость от фиксов никуда не делась.",
+    "base": "dark",
+    "url": "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/dirty.json",
+    "preview": {
+      "Bg": "#241B15",
+      "Sidebar": "#1A130F",
+      "Surface": "#34261D",
+      "Primary": "#C38155",
+      "Text": "#EDE0CA"
+    }
   }
 ]
