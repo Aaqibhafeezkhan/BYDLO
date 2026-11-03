@@ -1,4 +1,7 @@
 {
+  "nav.settings.back": "Back to settings",
+  "settings.network.sections": "Network and diagnostics",
+  "home.import.options": "More import options",
   "helper.title": "Privileged helper",
   "helper.hint": "Install a small system service so TUN, Zapret, AmneziaWG and OpenVPN can run while the interface stays unprivileged. Installation and removal stop BYDLO connections and require administrator approval. Only bundled engines are accepted; custom configs, plugins, relay chains and external rule sets require the existing elevated mode. OpenVPN requires its driver to be installed separately on Windows.",
   "helper.install": "Install helper (administrator approval)",

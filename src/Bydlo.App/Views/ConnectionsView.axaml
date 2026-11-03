@@ -12,16 +12,15 @@
         <TextBlock Classes="muted" Text="{l:T connections.subtitle}" TextWrapping="Wrap" />
       </StackPanel>
 
-      <Button Classes="primary" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="20,18">
+      <Button Classes="primary" Command="{Binding Shell.OpenAddServerCommand}" HorizontalAlignment="Left" Padding="16,12">
         <StackPanel Orientation="Horizontal" Spacing="10">
           <c:OutlineIcon Data="{StaticResource LinePlus}" Foreground="{DynamicResource OnPrimaryBrush}" />
           <TextBlock Text="{l:T wizard.title}" Foreground="{DynamicResource OnPrimaryBrush}" FontSize="16" />
         </StackPanel>
       </Button>
       <Button Classes="ghost" Content="{l:T import.demo}" Command="{Binding AddDemoProfilesCommand}" IsVisible="{Binding Shell.IsMock}" HorizontalAlignment="Left" />
-      <Border Classes="card">
+      <Expander Header="{l:T warp.title}" HorizontalAlignment="Stretch">
         <StackPanel Spacing="8">
-          <TextBlock Classes="h2" Text="{l:T warp.title}" />
           <TextBlock Classes="muted" Text="{l:T warp.hint}" TextWrapping="Wrap" />
           <TextBlock Classes="faint" Text="{l:T warp.consent}" TextWrapping="Wrap" />
           <Button Classes="ghost" Content="{l:T warp.register}" Command="{Binding RegisterWarpCommand}" IsEnabled="{Binding CanRegisterWarp}" HorizontalAlignment="Left"
@@ -29,7 +28,7 @@
           <Button Classes="ghost" Content="{l:T warp.registering}" HorizontalAlignment="Left" IsEnabled="False" IsVisible="{Binding IsWarpBusy}" />
           <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsWarpBusy}" Height="3" />
         </StackPanel>
-      </Border>
+      </Expander>
       <Button Classes="ghost" Content="{l:T connections.latency.check}" Command="{Binding CheckLatencyCommand}" IsEnabled="{Binding CanCheckLatency}" HorizontalAlignment="Left" />
       <TextBlock Classes="faint" Text="{Binding CheckLatencyDisabledReason}" IsVisible="{Binding CheckLatencyDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
       <CheckBox Content="{l:T connections.latency.sort}" IsChecked="{Binding Shell.SortByLatency}" IsVisible="{Binding !IsEmpty}" />

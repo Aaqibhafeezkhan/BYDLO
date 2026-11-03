@@ -89,6 +89,7 @@ public sealed partial class MainViewModel : ViewModelBase
             new("statistics", "nav.statistics", "LineStats", Statistics),
             new("settings", "nav.settings", "LineSettings", Settings),
         ];
+        PrimaryNavItems = NavItems.Where(item => item.Key is not ("routing" or "statistics")).ToArray();
         _currentNav = NavItems[0];
         _currentNav.IsSelected = true;
 
@@ -175,6 +176,8 @@ public sealed partial class MainViewModel : ViewModelBase
     public ActiveConnectionsViewModel ActiveConnections { get; }
 
     public IReadOnlyList<NavItem> NavItems { get; }
+    public IReadOnlyList<NavItem> PrimaryNavItems { get; }
+    public bool IsSettingsDetail => CurrentNav.Key is "routing" or "statistics";
 
     public static IReadOnlyList<string> OnboardingLanguages { get; } = ["auto", "en", "ru"];
 
@@ -268,10 +271,11 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         foreach (var n in NavItems)
         {
-            n.IsSelected = n == value;
+            n.IsSelected = n == value || (n.Key == "settings" && IsSettingsDetail);
         }
 
         OnPropertyChanged(nameof(CurrentPage));
+        OnPropertyChanged(nameof(IsSettingsDetail));
         value.Page.OnShown();
     }
 

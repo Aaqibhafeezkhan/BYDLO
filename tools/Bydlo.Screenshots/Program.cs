@@ -248,6 +248,20 @@ if (args.Contains("--verify-simple-ui", StringComparer.Ordinal))
     var settingsWindow = new Window { Width = 380, Height = 700, Content = new SettingsView { DataContext = shell.Settings } };
     settingsWindow.Show();
     Pump(100);
+    foreach (var page in new[] { "routing", "statistics" })
+    {
+        var section = settingsWindow.GetVisualDescendants().OfType<Button>()
+            .Single(button => Equals(button.CommandParameter, page));
+        if (!section.IsEffectivelyVisible || !section.Focusable)
+            throw new InvalidOperationException("Settings section must be visible and focusable: " + page);
+        section.Command!.Execute(section.CommandParameter);
+        if (!shell.IsSettingsDetail || !shell.PrimaryNavItems.Single(item => item.Key == "settings").IsSelected)
+            throw new InvalidOperationException("Settings subsection lost its parent navigation: " + page);
+        Shoot($"simple-{page}-380", 380, 700);
+    }
+    if (shell.PrimaryNavItems.Count != 4)
+        throw new InvalidOperationException("The desktop shell must expose four primary destinations.");
+    shell.Navigate("settings");
     var advanced = settingsWindow.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == "AdvancedSettings");
     if (advanced.IsExpanded) throw new InvalidOperationException("Advanced settings must start collapsed.");
     advanced.IsExpanded = true;

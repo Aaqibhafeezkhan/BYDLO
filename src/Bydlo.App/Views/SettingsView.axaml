@@ -11,6 +11,16 @@
     <StackPanel MaxWidth="880" Margin="24,32,24,32" Spacing="24">
       <TextBlock Classes="h1" Text="{l:T nav.settings}" />
 
+      <Border Classes="panel">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h2" Text="{l:T settings.network.sections}" />
+          <WrapPanel>
+            <Button Classes="ghost" Content="{l:T nav.routing}" Command="{Binding Shell.NavigateCommand}" CommandParameter="routing" Margin="0,0,8,8" />
+            <Button Classes="ghost" Content="{l:T nav.statistics}" Command="{Binding Shell.NavigateCommand}" CommandParameter="statistics" Margin="0,0,0,8" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
       <!-- Appearance -->
       <Border Classes="panel">
         <StackPanel Spacing="14">

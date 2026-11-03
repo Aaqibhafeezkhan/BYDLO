@@ -1,12 +1,12 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Color x:Key="AccentColor">#B9A1ED</Color>
   <Color x:Key="PrimaryColor">#7250BC</Color>
-  <SolidColorBrush x:Key="BgBrush" Color="#141418" />
-  <SolidColorBrush x:Key="SidebarBrush" Color="#111114" />
-  <SolidColorBrush x:Key="SurfaceBrush" Color="#1C1C22" />
-  <SolidColorBrush x:Key="Surface2Brush" Color="#24242C" />
-  <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#2B2B35" />
-  <SolidColorBrush x:Key="LineBrush" Color="#303039" />
+  <SolidColorBrush x:Key="BgBrush" Color="#15121D" />
+  <SolidColorBrush x:Key="SidebarBrush" Color="#100E17" />
+  <SolidColorBrush x:Key="SurfaceBrush" Color="#211B2E" />
+  <SolidColorBrush x:Key="Surface2Brush" Color="#2A223A" />
+  <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#342A45" />
+  <SolidColorBrush x:Key="LineBrush" Color="#3A304D" />
   <SolidColorBrush x:Key="AccentBrush" Color="#B9A1ED" />
   <SolidColorBrush x:Key="PrimaryBrush" Color="#7250BC" />
   <SolidColorBrush x:Key="AccentSoftBrush" Color="#262031" />
@@ -20,10 +20,10 @@
   <SolidColorBrush x:Key="DangerBrush" Color="#DA9298" />
   <SolidColorBrush x:Key="DangerSoftBrush" Color="#3B282C" />
   <SolidColorBrush x:Key="OnPrimaryBrush" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="BackdropBrush" Color="#141418" />
+  <SolidColorBrush x:Key="BackdropBrush" Color="#15121D" />
   <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent" />
-  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#2B2B35" />
-  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#24242C" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#342A45" />
+  <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#2A223A" />
   <SolidColorBrush x:Key="ExpanderContentBackground" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="Transparent" />
   <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent" />
