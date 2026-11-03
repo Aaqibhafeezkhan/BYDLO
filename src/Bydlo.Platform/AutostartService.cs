@@ -57,13 +57,13 @@ public sealed class AutostartService(PlatformInfo? platform = null, string? exec
     private static WindowsRegistrationStore CreateNativeRegistrations() => OperatingSystem.IsWindows()
         ? new WindowsRegistrationStore() : throw new PlatformNotSupportedException();
 
-    internal static string LinuxRegistration(string executable)
+    internal static string LinuxRegistration(string executable, string arguments = "--autostart")
     {
         // Exec quoting and desktop-entry string escaping are separate layers.
         var quoted = executable.Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("\"", "\\\"", StringComparison.Ordinal).Replace("`", "\\`", StringComparison.Ordinal)
             .Replace("$", "\\$", StringComparison.Ordinal).Replace("%", "%%", StringComparison.Ordinal);
-        var exec = ("\"" + quoted + "\" --autostart").Replace("\\", "\\\\", StringComparison.Ordinal)
+        var exec = ("\"" + quoted + "\" " + arguments).Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("\n", "\\n", StringComparison.Ordinal).Replace("\r", "\\r", StringComparison.Ordinal);
         return $"[Desktop Entry]\nType=Application\nName=BYDLO\nExec={exec}\nTerminal=false\n";
     }

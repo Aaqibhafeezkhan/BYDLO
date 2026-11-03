@@ -51,6 +51,7 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
     private CancellationTokenSource? _trafficCts;
     private int _apiPort;
     private string _apiSecret = "";
+    private string? _configPath;
 
     public override EngineDescriptor Descriptor => Info;
 
@@ -130,16 +131,16 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             }
             ruleSets.Add(source.Tag, path);
         }
-        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth, ruleSets);
+        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth, ruleSets, locator.Platform.Os);
         var json = request.Group is { } group ? _builder.BuildGroup(group, request.GroupMembers ?? [], ctx).ToJsonString()
             : request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
-        var configPath = Path.Combine(request.WorkDirectory, "sing-box.json");
-        await SecureFile.WriteAsync(configPath, json, ct).ConfigureAwait(false);
+        _configPath = Path.Combine(request.WorkDirectory, "sing-box.json");
+        await SecureFile.WriteAsync(_configPath, json, ct).ConfigureAwait(false);
 
         return new ProcessSpec
         {
             FileName = availability.ExecutablePath!,
-            Arguments = ["run", "-c", configPath, "-D", request.WorkDirectory, "--disable-color"],
+            Arguments = ["run", "-c", _configPath, "-D", request.WorkDirectory, "--disable-color"],
             WorkingDirectory = request.WorkDirectory,
             DisplayName = "sing-box",
         };
@@ -167,6 +168,11 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
         if (_groupMonitor is { } monitor) { await monitor.DisposeAsync().ConfigureAwait(false); _groupMonitor = null; }
         _trafficCts?.Cancel();
         _trafficCts = null;
+        if (_configPath is not null)
+        {
+            SecureFile.DeleteQuietly(_configPath);
+            _configPath = null;
+        }
     }
 
     /// <summary>Reads the Clash API <c>/traffic</c> stream (one JSON line per second) from the local controller.</summary>

@@ -8,6 +8,8 @@ namespace Bydlo.Core.Import;
 public sealed class SubscriptionAutoRefresh(ProfileStore profiles, SubscriptionClient client, TimeProvider? time = null)
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
+    private readonly Dictionary<Guid, DateTimeOffset> _nextRetry = new();
+    private readonly Dictionary<Guid, int> _failures = new();
 
     /// <summary>The caller dispatches refresh work to its owning UI context. Passes never overlap.</summary>
     public async Task RunAsync(Func<CancellationToken, Task> refresh, CancellationToken ct)
@@ -31,7 +33,10 @@ public sealed class SubscriptionAutoRefresh(ProfileStore profiles, SubscriptionC
         if (!settings.SubscriptionAutoUpdate || blocked || ct.IsCancellationRequested) { return 0; }
         var interval = TimeSpan.FromHours(Math.Clamp(settings.SubscriptionUpdateIntervalHours, 1, 168));
         var now = _time.GetUtcNow();
-        var due = profiles.Subscriptions.Where(s => s.LastUpdated is null || now - s.LastUpdated >= interval).ToList();
+        var due = profiles.Subscriptions
+            .Where(s => s.LastUpdated is null || now - s.LastUpdated >= interval)
+            .Where(s => !_nextRetry.TryGetValue(s.Id, out var next) || now >= next)
+            .ToList();
         var refreshed = 0;
         foreach (var sub in due)
         {
@@ -41,17 +46,37 @@ public sealed class SubscriptionAutoRefresh(ProfileStore profiles, SubscriptionC
                 var url = await profiles.GetSubscriptionUrlAsync(sub.Id, ct);
                 if (url is null) { continue; }
                 var preview = await client.FetchRefreshAsync(url, ct);
-                if (preview.Import.IsEmpty) { continue; }
+                if (preview.Import.IsEmpty)
+                {
+                    RecordFailure(sub.Id, now, interval);
+                    continue;
+                }
                 await profiles.ReplaceSubscriptionProfilesAsync(sub.Id, preview.Import.Profiles, preview.Metadata, ct);
+                _nextRetry.Remove(sub.Id);
+                _failures.Remove(sub.Id);
                 refreshed++;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException
                 or InvalidDataException or IOException or UnauthorizedAccessException or EngineException)
             {
+                RecordFailure(sub.Id, now, interval);
                 onError(ex);
             }
         }
         return refreshed;
+    }
+
+    internal TimeSpan BackoffDelay(int failures, TimeSpan interval)
+    {
+        var minutes = Math.Pow(2, Math.Min(Math.Max(failures, 1), 10));
+        return TimeSpan.FromMinutes(Math.Min(interval.TotalMinutes, minutes));
+    }
+
+    private void RecordFailure(Guid id, DateTimeOffset now, TimeSpan interval)
+    {
+        var failures = _failures.TryGetValue(id, out var count) ? count + 1 : 1;
+        _failures[id] = failures;
+        _nextRetry[id] = now + BackoffDelay(failures, interval);
     }
 }

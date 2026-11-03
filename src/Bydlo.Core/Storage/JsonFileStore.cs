@@ -14,17 +14,20 @@ internal static class JsonDefaults
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    /// <summary>Writes atomically (temp file + move) so a crash never leaves a half-written file.</summary>
+    /// <summary>Writes atomically (temp file + fsync + move) so a crash never leaves a half-written file.</summary>
     public static async Task WriteAtomicAsync<T>(string path, T value, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var tmp = path + ".tmp";
-        await using (var fs = File.Create(tmp))
+        await using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
         {
             await JsonSerializer.SerializeAsync(fs, value, Options, ct).ConfigureAwait(false);
+            await fs.FlushAsync(ct).ConfigureAwait(false);
+            fs.Flush(flushToDisk: true);
         }
 
         File.Move(tmp, path, overwrite: true);
+        BackupLastGood(path);
     }
 
     public static async Task<T?> ReadAsync<T>(string path, CancellationToken ct)
@@ -37,15 +40,143 @@ internal static class JsonDefaults
         try
         {
             await using var fs = File.OpenRead(path);
-            return await JsonSerializer.DeserializeAsync<T>(fs, Options, ct).ConfigureAwait(false);
+            var value = await JsonSerializer.DeserializeAsync<T>(fs, Options, ct).ConfigureAwait(false);
+            BackupLastGood(path);
+            return value;
         }
         catch (JsonException)
         {
-            // Keep the broken file for inspection and start fresh.
-            File.Copy(path, path + ".corrupt", overwrite: true);
+            // Keep the broken file under a unique name so repeated failures never overwrite evidence.
+            SaveCorruptCopy(path);
+            if (TryRestoreBackup<T>(path, ct, out var restored))
+            {
+                return restored;
+            }
+
             return default;
         }
     }
+
+    internal static void BackupLastGood(string path)
+    {
+        try
+        {
+            File.Copy(path, path + ".bak", overwrite: true);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    internal static void SaveCorruptCopy(string path)
+    {
+        try
+        {
+            var stamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            var candidate = $"{path}.corrupt-{stamp}-{Guid.NewGuid().ToString("N")[..8]}.json";
+            File.Copy(path, candidate, overwrite: false);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    internal static bool TryRestoreBackup<T>(string path, CancellationToken ct, out T? restored)
+    {
+        restored = default;
+        var backup = path + ".bak";
+        if (!File.Exists(backup))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var fs = File.OpenRead(backup);
+            restored = JsonSerializer.Deserialize<T>(fs, Options);
+            return restored is not null;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    internal static async Task<(T? Value, StoreLoadStatus Status)> ReadWithStatusAsync<T>(
+        string path, Func<T, int>? versionSelector, int currentVersion, CancellationToken ct)
+    {
+        if (!File.Exists(path))
+        {
+            return (default, StoreLoadStatus.Missing);
+        }
+
+        T? value;
+        try
+        {
+            await using (var fs = File.OpenRead(path))
+            {
+                value = await JsonSerializer.DeserializeAsync<T>(fs, Options, ct).ConfigureAwait(false);
+            }
+        }
+        catch (JsonException)
+        {
+            SaveCorruptCopy(path);
+            if (TryRestoreBackup<T>(path, ct, out var restored) && restored is not null)
+            {
+                if (versionSelector is not null && versionSelector(restored) > currentVersion)
+                {
+                    return (restored, StoreLoadStatus.NewerVersion);
+                }
+
+                return (restored, StoreLoadStatus.RecoveredFromBackup);
+            }
+
+            return (default, StoreLoadStatus.ResetEmpty);
+        }
+
+        if (value is null)
+        {
+            SaveCorruptCopy(path);
+            if (TryRestoreBackup<T>(path, ct, out var restored) && restored is not null)
+            {
+                return (restored, StoreLoadStatus.RecoveredFromBackup);
+            }
+
+            return (default, StoreLoadStatus.ResetEmpty);
+        }
+
+        BackupLastGood(path);
+        if (versionSelector is not null && versionSelector(value) > currentVersion)
+        {
+            return (value, StoreLoadStatus.NewerVersion);
+        }
+
+        return (value, StoreLoadStatus.Ok);
+    }
+}
+
+/// <summary>How a JSON store file was loaded (issue #204).</summary>
+public enum StoreLoadStatus
+{
+    Ok,
+    Missing,
+    RecoveredFromBackup,
+    ResetEmpty,
+    NewerVersion,
 }
 
 #pragma warning disable CA1001 // lives for the whole app lifetime, like ProfileStore below
@@ -53,11 +184,17 @@ public sealed class SettingsStore(string path)
 #pragma warning restore CA1001
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
+
+    /// <summary>How the settings file was loaded (issue #204). Used for the startup toast.</summary>
+    public StoreLoadStatus LoadStatus { get; private set; } = StoreLoadStatus.Ok;
+
     public async Task<AppSettings> LoadAsync(CancellationToken ct = default)
     {
-        var settings = await JsonDefaults.ReadAsync<AppSettings>(path, ct).ConfigureAwait(false) ?? new AppSettings();
-        settings.MigrateLegacyTheme();
-        return settings;
+        var (settings, status) = await JsonDefaults.ReadWithStatusAsync<AppSettings>(path, null, 0, ct).ConfigureAwait(false);
+        LoadStatus = status;
+        var result = settings ?? new AppSettings();
+        result.MigrateLegacyTheme();
+        return result;
     }
 
     public async Task SaveAsync(AppSettings settings, CancellationToken ct = default)
@@ -123,8 +260,23 @@ internal sealed class ProfileDocument
 public sealed partial class ProfileStore(string path, ISecretStore secrets, TimeProvider? time = null)
 #pragma warning restore CA1001
 {
+    internal const int CurrentVersion = 1;
+
     private readonly SemaphoreSlim _gate = new(1, 1);
     private ProfileDocument _doc = new();
+
+    /// <summary>How profiles.json was loaded (issue #204). Newer versions are never overwritten.</summary>
+    public StoreLoadStatus LoadStatus { get; private set; } = StoreLoadStatus.Ok;
+
+    public bool IsNewerVersion => LoadStatus == StoreLoadStatus.NewerVersion || _doc.Version > CurrentVersion;
+
+    private void ThrowIfNewerVersion()
+    {
+        if (IsNewerVersion)
+        {
+            throw new InvalidOperationException("Profiles file was created by a newer BYDLO version. Update BYDLO instead of overwriting it.");
+        }
+    }
 
     public IReadOnlyList<Profile> Profiles => _doc.Profiles;
 
@@ -134,7 +286,9 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
-        _doc = await JsonDefaults.ReadAsync<ProfileDocument>(path, ct).ConfigureAwait(false) ?? new ProfileDocument();
+        var (doc, status) = await JsonDefaults.ReadWithStatusAsync<ProfileDocument>(path, d => d.Version, CurrentVersion, ct).ConfigureAwait(false);
+        LoadStatus = status;
+        _doc = doc ?? new ProfileDocument();
         _doc.Profiles ??= [];
         _doc.Subscriptions ??= [];
         _doc.Chains ??= [];
@@ -147,6 +301,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var items = imported.ToList();
             if (items.Select(p => p.Profile.Id).Distinct().Count() != items.Count || items.Any(p => _doc.Profiles.Any(existing => existing.Id == p.Profile.Id)))
             { throw new InvalidDataException("New profiles must have unique IDs."); }
@@ -186,6 +341,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var index = _doc.Profiles.FindIndex(p => p.Id == profile.Id);
             if (index < 0)
             {
@@ -225,6 +381,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             await RemoveProfilesAsync([id], null, ct).ConfigureAwait(false);
         }
         finally
@@ -239,6 +396,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             _doc.Subscriptions.Add(sub);
             await secrets.SaveAsync(SubscriptionSecretId(sub.Id), new ProfileSecrets { Values = { ["url"] = url } }, ct).ConfigureAwait(false);
             await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
@@ -268,6 +426,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             if (profiles.Count == 0 || profiles.Select(p => p.Profile.Id).Distinct().Count() != profiles.Count ||
                 profiles.Any(p => _doc.Profiles.Any(existing => existing.Id == p.Profile.Id)))
             { throw new InvalidDataException("A new subscription requires new profiles."); }
@@ -307,6 +466,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
                 ?? throw new InvalidDataException("Subscription not found.");
             sub.Name = name.Trim();
@@ -325,6 +485,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
                 ?? throw new InvalidDataException("Subscription not found.");
             if (sub.Mode == mode)
@@ -361,6 +522,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfNewerVersion();
             var ids = _doc.Profiles.Where(p => p.SubscriptionId == subscriptionId).Select(p => p.Id).ToHashSet();
             await RemoveProfilesAsync(ids, subscriptionId, ct).ConfigureAwait(false);
         }

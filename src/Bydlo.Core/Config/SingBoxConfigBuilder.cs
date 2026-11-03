@@ -9,7 +9,7 @@ using Bydlo.Core.Models;
 namespace Bydlo.Core.Config;
 
 /// <summary>Options that are not part of the profile itself.</summary>
-public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null, LocalProxyAuth? LocalProxyAuth = null, IReadOnlyDictionary<string, string>? RuleSets = null);
+public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null, LocalProxyAuth? LocalProxyAuth = null, IReadOnlyDictionary<string, string>? RuleSets = null, OsFamily Os = OsFamily.Windows);
 
 /// <summary>
 /// Generates sing-box configuration (schema of sing-box 1.12+, verified against the 1.14 migration guide):
@@ -87,7 +87,7 @@ public sealed partial class SingBoxConfigBuilder
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
             ["dns"] = BuildDns(routing, settings.Mode, exitTag, ctx.RuleSets),
-            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth)),
+            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth, ctx.Os)),
         };
 
         var outbounds = new JsonArray();
@@ -160,7 +160,7 @@ public sealed partial class SingBoxConfigBuilder
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
             ["dns"] = BuildDns(routing, settings.Mode, ruleSets: ctx.RuleSets),
-            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth)),
+            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth, ctx.Os)),
         };
 
         var outbounds = new JsonArray();
@@ -223,7 +223,7 @@ public sealed partial class SingBoxConfigBuilder
         }
 
         custom["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true };
-        custom["inbounds"] = new JsonArray(BuildInbound(ctx.Settings, ctx.LocalProxyAuth));
+        custom["inbounds"] = new JsonArray(BuildInbound(ctx.Settings, ctx.LocalProxyAuth, ctx.Os));
         var generateDns = custom["dns"] is null;
         custom["dns"] ??= BuildDns(ctx.Settings.Routing, ctx.Settings.Mode, first, ctx.RuleSets);
         var route = custom["route"] as JsonObject ?? new JsonObject();
@@ -266,7 +266,7 @@ public sealed partial class SingBoxConfigBuilder
     }
 
     /// <summary>A retained TUN with no Internet-direct fallback. Transport lives in another process.</summary>
-    public JsonObject BuildKillSwitch(AppSettings settings, int backendPort)
+    public JsonObject BuildKillSwitch(AppSettings settings, int backendPort, OsFamily os = OsFamily.Windows)
     {
         if (settings.Mode != ConnectionMode.Tun || !settings.KillSwitch)
         {
@@ -286,7 +286,7 @@ public sealed partial class SingBoxConfigBuilder
             BlockDomains = [.. settings.Routing.BlockDomains],
         };
         var tunSettings = new AppSettings { Mode = ConnectionMode.Tun, Routing = routing };
-        var inbound = BuildInbound(tunSettings);
+        var inbound = BuildInbound(tunSettings, null, os);
         var exclusions = inbound["route_exclude_address"]?.AsArray() ?? new JsonArray();
         if (routing.BypassPrivateNetworks)
         {
@@ -417,7 +417,7 @@ public sealed partial class SingBoxConfigBuilder
         }
     }
 
-    private static JsonObject BuildInbound(AppSettings settings, LocalProxyAuth? lanAuth = null)
+    private static JsonObject BuildInbound(AppSettings settings, LocalProxyAuth? lanAuth, OsFamily os)
     {
         if (settings.Mode == ConnectionMode.Tun)
         {
@@ -425,11 +425,15 @@ public sealed partial class SingBoxConfigBuilder
             {
                 ["type"] = "tun",
                 ["tag"] = "tun-in",
-                ["interface_name"] = "bydlo-tun",
                 ["address"] = new JsonArray("172.19.0.1/30", "fdfe:dcba:9876::1/126"),
                 ["auto_route"] = true,
                 ["strict_route"] = true,
             };
+            // Darwin sing-tun only accepts utun names; omit the name on macOS so sing-box auto-selects utun.
+            if (os == OsFamily.Windows || os == OsFamily.Linux || os == OsFamily.Android)
+            {
+                tun["interface_name"] = "bydlo-tun";
+            }
             var exclude = new JsonArray();
             if (settings.Routing.PreserveMeshVpnRanges)
             {

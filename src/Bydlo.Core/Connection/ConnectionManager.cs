@@ -185,8 +185,11 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         }
     }
 
-    public IReadOnlyList<ConflictIssue> PreviewConflicts(Profile profile, AppSettings settings) =>
-        _conflicts.CheckPrimary(profile, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey));
+    public IReadOnlyList<ConflictIssue> PreviewConflicts(Profile profile, AppSettings settings)
+    {
+        var issues = _conflicts.CheckPrimary(profile, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey));
+        return FilterOwnPrimaryPort(issues, settings);
+    }
 
     /// <summary>Aggregates per-hop checks for a relay chain (deduped by issue code).</summary>
     public IReadOnlyList<ConflictIssue> PreviewChainConflicts(IReadOnlyList<Profile> hops, AppSettings settings)
@@ -204,7 +207,24 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             }
         }
 
-        return issues;
+        return FilterOwnPrimaryPort(issues, settings);
+    }
+
+    /// <summary>An active primary owns its local proxy port; reconnecting on the same port is not a conflict (issue #202).</summary>
+    private List<ConflictIssue> FilterOwnPrimaryPort(IReadOnlyList<ConflictIssue> issues, AppSettings settings)
+    {
+        if (issues.Count == 0 || !IsActive(PrimaryKey))
+        {
+            return [.. issues];
+        }
+
+        var ownPort = Snapshot(PrimaryKey).LocalProxyPort;
+        if (ownPort == 0 || ownPort != settings.LocalProxyPort)
+        {
+            return [.. issues];
+        }
+
+        return issues.Where(i => !string.Equals(i.Code, "port.local-proxy", StringComparison.Ordinal)).ToList();
     }
 
     /// <summary>Connects the primary tunnel. Disconnects a previous primary first.</summary>
@@ -231,10 +251,25 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
             {
-                EnsureSystemProxyAllowed();
-                await _systemProxy.SetAsync("127.0.0.1",
-                    ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
-                session.SystemProxySet = true;
+                try
+                {
+                    EnsureSystemProxyAllowed();
+                    await _systemProxy.SetAsync("127.0.0.1",
+                        ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
+                    session.SystemProxySet = true;
+                }
+                catch (Exception ex)
+                {
+                    var message = _log.Redactor.Redact(ex.Message);
+                    _log.Error(PrimaryKey, message);
+                    try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
+                    catch (Exception stopError)
+                    {
+                        throw new AggregateException(message, stopError);
+                    }
+                    Fail(PrimaryKey, profile, settings, message, (ex as EngineException)?.LocalizationKey ?? "error.systemproxy.failed");
+                    throw ex as EngineException ?? new EngineException(message, ex, "error.systemproxy.failed");
+                }
             }
         }
         finally
@@ -282,10 +317,25 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
             if (settings.SetSystemProxy && settings.Mode == ConnectionMode.LocalProxy && !session.IsMock && _systemProxy.IsSupported)
             {
-                EnsureSystemProxyAllowed();
-                await _systemProxy.SetAsync("127.0.0.1",
-                    ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
-                session.SystemProxySet = true;
+                try
+                {
+                    EnsureSystemProxyAllowed();
+                    await _systemProxy.SetAsync("127.0.0.1",
+                        ProxyPorts.HttpPort(settings, session.Engine.Descriptor.Kind), ct).ConfigureAwait(false);
+                    session.SystemProxySet = true;
+                }
+                catch (Exception ex)
+                {
+                    var message = _log.Redactor.Redact(ex.Message);
+                    _log.Error(PrimaryKey, message);
+                    try { await StopSessionUnsafeAsync(PrimaryKey).ConfigureAwait(false); }
+                    catch (Exception stopError)
+                    {
+                        throw new AggregateException(message, stopError);
+                    }
+                    Fail(PrimaryKey, exit, settings, message, (ex as EngineException)?.LocalizationKey ?? "error.systemproxy.failed");
+                    throw ex as EngineException ?? new EngineException(message, ex, "error.systemproxy.failed");
+                }
             }
         }
         finally
@@ -571,6 +621,30 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         {
             session.Status = ConnectionStatus.Error;
             Publish(session);
+            _ = ClearSystemProxyOnErrorAsync(session);
+        }
+    }
+
+    private async Task ClearSystemProxyOnErrorAsync(Session session)
+    {
+        if (!session.SystemProxySet)
+        {
+            return;
+        }
+
+        try
+        {
+            await _systemProxy.ClearAsync().ConfigureAwait(false);
+            session.SystemProxySet = false;
+            _log.Info(session.Key, "System proxy cleared after engine failure.");
+        }
+        catch (Exception ex)
+        {
+            session.CleanupPending = true;
+            session.Error = _log.Redactor.Redact(new AggregateException("System proxy cleanup failed.", ex).Message);
+            session.ErrorLocalizationKey = "error.engine.cleanup";
+            _log.Error(session.Key, session.Error);
+            Publish(session);
         }
     }
 
@@ -633,6 +707,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             {
                 session.Status = ConnectionStatus.Error;
                 Publish(session);
+                await ClearSystemProxyOnErrorAsync(session).ConfigureAwait(false);
             }
         }
         finally

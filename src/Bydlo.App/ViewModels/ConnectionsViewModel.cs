@@ -19,6 +19,8 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     [ObservableProperty] private bool _isWorking;
 
+    [ObservableProperty] private bool _isAutoRefreshing;
+
     partial void OnIsWorkingChanged(bool value) => OnPropertyChanged(nameof(CanRegisterWarp));
 
     private bool _autoRefreshInProgress;
@@ -184,14 +186,14 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     /// <summary>Refreshes due subscriptions on the UI thread, including while another page is visible.</summary>
     public async Task AutoRefreshIfDueAsync(CancellationToken ct = default)
     {
-        if (_autoRefreshInProgress || IsWorking || ct.IsCancellationRequested) { return; }
+        if (_autoRefreshInProgress || IsWorking || IsAutoRefreshing || ct.IsCancellationRequested) { return; }
         _autoRefreshInProgress = true;
-        IsWorking = true;
+        IsAutoRefreshing = true;
         try
         {
             var refreshed = await _autoRefresh.RefreshIfDueAsync(Services.Settings,
                 Services.IsMock || NetworkSafetyGuard.IsLocked,
-                ex => Services.Log.Warn("subs", $"Auto-update failed: {ex.GetType().Name}"), ct);
+                ex => Services.Log.Warn("subs", $"Auto-update failed: {Services.Log.Redactor.Redact(ex.Message)} ({ex.GetType().Name})"), ct);
             if (refreshed > 0)
             {
                 Shell.ReloadProfiles();
@@ -201,7 +203,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         finally
         {
-            IsWorking = false;
+            IsAutoRefreshing = false;
             _autoRefreshInProgress = false;
             Subscriptions.ReplaceWith(Services.Profiles.Subscriptions.Select(s => new SubscriptionRow(s)));
         }

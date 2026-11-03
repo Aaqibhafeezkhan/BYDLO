@@ -275,7 +275,8 @@ public sealed partial class SettingsViewModel : PageViewModel
     [ObservableProperty]
     private int _subscriptionUpdateIntervalHours;
 
-    public bool CanRegisterAssociations => OperatingSystem.IsWindows() &&
+    public bool CanRegisterAssociations => !NetworkSafetyGuard.IsLocked &&
+        (OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) &&
         Environment.ProcessPath is { } path && !Path.GetFileNameWithoutExtension(path).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
 
     partial void OnSuggestClipboardLinksChanged(bool value)
@@ -304,38 +305,49 @@ public sealed partial class SettingsViewModel : PageViewModel
     [RelayCommand]
     private async Task RegisterAssociations()
     {
-        await Shell.Guard(() =>
+        await Shell.Guard(async () =>
         {
-            if (OperatingSystem.IsWindows() && CanRegisterAssociations)
+            if (CanRegisterAssociations)
             {
                 try
                 {
-                    Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!);
+                    if (OperatingSystem.IsWindows()) { Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!); }
+                    else { await new Bydlo.Platform.UnixImportAssociations(Environment.ProcessPath!).RegisterAsync(); }
                 }
                 catch (InvalidOperationException ex)
                 {
                     throw new InvalidOperationException(L["settings.associations.conflict"], ex);
                 }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or TimeoutException)
+                {
+                    throw new IOException(L["settings.associations.error"], ex);
+                }
 
                 Shell.ShowToast(L["settings.associations.registered"]);
             }
 
-            return Task.CompletedTask;
         });
     }
 
     [RelayCommand]
     private async Task RemoveAssociations()
     {
-        await Shell.Guard(() =>
+        await Shell.Guard(async () =>
         {
-            if (OperatingSystem.IsWindows() && CanRegisterAssociations)
+            if (CanRegisterAssociations)
             {
-                Bydlo.Platform.WindowsImportAssociations.Unregister(Environment.ProcessPath!);
+                try
+                {
+                    if (OperatingSystem.IsWindows()) { Bydlo.Platform.WindowsImportAssociations.Unregister(Environment.ProcessPath!); }
+                    else { await new Bydlo.Platform.UnixImportAssociations(Environment.ProcessPath!).UnregisterAsync(); }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or TimeoutException)
+                {
+                    throw new IOException(L["settings.associations.error"], ex);
+                }
                 Shell.ShowToast(L["settings.associations.removed"]);
             }
 
-            return Task.CompletedTask;
         });
     }
 
