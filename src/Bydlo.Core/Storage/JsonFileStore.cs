@@ -69,6 +69,16 @@ public sealed class SettingsStore(string path)
     }
 }
 
+/// <summary>How a subscription refresh treats provider nodes that were not saved locally (issue #185).</summary>
+public enum SubscriptionMode
+{
+    /// <summary>Refresh adds every new provider node (legacy behavior, default for old subscriptions).</summary>
+    FollowAll = 0,
+
+    /// <summary>Refresh only updates already saved nodes; deselected and brand-new nodes are ignored.</summary>
+    SelectedOnly = 1,
+}
+
 public sealed class Subscription
 {
     public Guid Id { get; init; } = Guid.NewGuid();
@@ -86,6 +96,9 @@ public sealed class Subscription
     public long? Total { get; set; }
 
     public DateTimeOffset? Expires { get; set; }
+
+    /// <summary>Refresh policy for nodes that are not saved locally. Missing in old files means <see cref="SubscriptionMode.FollowAll"/>.</summary>
+    public SubscriptionMode Mode { get; set; } = SubscriptionMode.FollowAll;
 
     /// <summary>Last provider options, used to identify local overrides during refresh.</summary>
     public Dictionary<Guid, Dictionary<string, string>>? SourceOptions { get; init; }
@@ -239,7 +252,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
     }
 
     /// <summary>Saves a previewed subscription and its credentials together, without downloading it again.</summary>
-    public async Task<Subscription> AddSubscriptionWithProfilesAsync(string name, string url, IReadOnlyList<ImportedProfile> profiles, Bydlo.Core.Import.SubscriptionMetadata? metadata = null, CancellationToken ct = default)
+    public async Task<Subscription> AddSubscriptionWithProfilesAsync(string name, string url, IReadOnlyList<ImportedProfile> profiles, Bydlo.Core.Import.SubscriptionMetadata? metadata = null, SubscriptionMode mode = SubscriptionMode.FollowAll, CancellationToken ct = default)
     {
         var sub = new Subscription
         {
@@ -249,6 +262,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             Download = metadata?.Download,
             Total = metadata?.Total,
             Expires = metadata?.Expires,
+            Mode = mode,
             SourceOptions = [],
         };
         await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -297,6 +311,43 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
                 ?? throw new InvalidDataException("Subscription not found.");
             sub.Name = name.Trim();
             await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task SetSubscriptionModeAsync(Guid subscriptionId, SubscriptionMode mode, CancellationToken ct = default)
+    {
+        if (!Enum.IsDefined(mode))
+        { throw new ArgumentOutOfRangeException(nameof(mode)); }
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
+                ?? throw new InvalidDataException("Subscription not found.");
+            if (sub.Mode == mode)
+            {
+                return;
+            }
+            var next = new ProfileDocument
+            {
+                Version = _doc.Version,
+                PendingSecretDeletes = [.. _doc.PendingSecretDeletes],
+                Profiles = [.. _doc.Profiles],
+                Subscriptions = _doc.Subscriptions.Select(item => item.Id == subscriptionId
+                    ? new Subscription
+                    {
+                        Id = item.Id, Name = item.Name, LastUpdated = item.LastUpdated,
+                        Upload = item.Upload, Download = item.Download, Total = item.Total, Expires = item.Expires,
+                        Mode = mode, SourceOptions = item.SourceOptions,
+                    }
+                    : item).ToList(),
+                Chains = [.. _doc.Chains],
+            };
+            await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+            _doc = next;
         }
         finally
         {
