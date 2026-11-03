@@ -21,6 +21,7 @@ internal sealed class MigratingSecretStore(ISystemSecretBackend system, ISecretS
     private const string DeletedKey = "\0bydlo-deleted";
     private const string RemoteKey = "\0bydlo-system";
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly HashSet<string> _fallbackIds = new(StringComparer.Ordinal);
     private volatile bool _usingFallback;
 
     public bool UsingFallback => _usingFallback;
@@ -39,18 +40,22 @@ internal sealed class MigratingSecretStore(ISystemSecretBackend system, ISecretS
                 {
                     await system.DeleteAsync(id, ct).ConfigureAwait(false);
                     await fallback.DeleteAsync(id, ct).ConfigureAwait(false);
-                    _usingFallback = false;
+                    SetFallback(id, false);
                     return ProfileSecrets.Empty;
                 }
                 if (file.Values.Count != 0 && !file.Values.ContainsKey(RemoteKey))
                 {
-                    await system.WriteAsync(id, JsonSerializer.Serialize(file.Values), ct).ConfigureAwait(false);
+                    await WriteVerifiedAsync(id, file, ct).ConfigureAwait(false);
                     await MarkRemoteAsync(id, ct).ConfigureAwait(false);
-                    _usingFallback = false;
+                    SetFallback(id, false);
                     return file;
                 }
                 var value = await system.ReadAsync(id, ct).ConfigureAwait(false);
-                _usingFallback = false;
+                SetFallback(id, false);
+                if (value is null && file.Values.ContainsKey(RemoteKey))
+                {
+                    throw new Bydlo.Core.Engines.EngineException("settings.secrets.missing", localizationKey: "settings.secrets.missing");
+                }
                 return value is null ? ProfileSecrets.Empty : new ProfileSecrets
                 {
                     Values = new(JsonSerializer.Deserialize<Dictionary<string, string>>(value) ?? [], StringComparer.OrdinalIgnoreCase),
@@ -58,7 +63,7 @@ internal sealed class MigratingSecretStore(ISystemSecretBackend system, ISecretS
             }
             catch (SystemSecretUnavailableException)
             {
-                _usingFallback = true;
+                SetFallback(id, true);
                 if (file.Values.ContainsKey(RemoteKey))
                 {
                     throw new Bydlo.Core.Engines.EngineException("settings.secrets.locked", localizationKey: "settings.secrets.locked");
@@ -79,13 +84,13 @@ internal sealed class MigratingSecretStore(ISystemSecretBackend system, ISecretS
         {
             try
             {
-                await system.WriteAsync(id, JsonSerializer.Serialize(secrets.Values), ct).ConfigureAwait(false);
+                await WriteVerifiedAsync(id, secrets, ct).ConfigureAwait(false);
                 await MarkRemoteAsync(id, ct).ConfigureAwait(false);
-                _usingFallback = false;
+                SetFallback(id, false);
             }
             catch (SystemSecretUnavailableException)
             {
-                _usingFallback = true;
+                SetFallback(id, true);
                 var previous = await fallback.LoadAsync(id, ct).ConfigureAwait(false);
                 if (previous.Values.ContainsKey(RemoteKey))
                 {
@@ -109,11 +114,11 @@ internal sealed class MigratingSecretStore(ISystemSecretBackend system, ISecretS
             {
                 await system.DeleteAsync(id, ct).ConfigureAwait(false);
                 await fallback.DeleteAsync(id, ct).ConfigureAwait(false);
-                _usingFallback = false;
+                SetFallback(id, false);
             }
             catch (SystemSecretUnavailableException)
             {
-                _usingFallback = true;
+                SetFallback(id, true);
                 await fallback.SaveAsync(id, new ProfileSecrets { Values = { [DeletedKey] = "true" } }, ct).ConfigureAwait(false);
             }
         }
@@ -122,6 +127,23 @@ internal sealed class MigratingSecretStore(ISystemSecretBackend system, ISecretS
             _gate.Release();
         }
     }
+    private async Task WriteVerifiedAsync(string id, ProfileSecrets secrets, CancellationToken ct)
+    {
+        var value = JsonSerializer.Serialize(secrets.Values);
+        await system.WriteAsync(id, value, ct).ConfigureAwait(false);
+        if (!string.Equals(value, await system.ReadAsync(id, ct).ConfigureAwait(false), StringComparison.Ordinal))
+        {
+            throw new SystemSecretUnavailableException();
+        }
+    }
+
+    private void SetFallback(string id, bool value)
+    {
+        if (value) { _fallbackIds.Add(id); }
+        else { _fallbackIds.Remove(id); }
+        _usingFallback = _fallbackIds.Count != 0;
+    }
+
     private Task MarkRemoteAsync(string id, CancellationToken ct) =>
         fallback.SaveAsync(id, new ProfileSecrets { Values = { [RemoteKey] = "true" } }, ct);
 }

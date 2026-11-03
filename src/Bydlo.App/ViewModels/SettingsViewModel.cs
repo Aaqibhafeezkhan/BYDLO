@@ -59,7 +59,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         AllowLan = s.AllowLan;
         LocalProxyUsername = s.LocalProxyUsername;
         LocalProxyPassword = "";
-        _ = RefreshLanPasswordStatusAsync();
+        _ = Shell.Guard(RefreshLanPasswordStatusAsync);
         SuggestClipboardLinks = s.SuggestClipboardLinks;
         _updatingAutostart = true;
         StartWithSystem = s.StartWithSystem;
@@ -430,8 +430,15 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     private async Task RefreshLanPasswordStatusAsync()
     {
-        var stored = await Services.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId);
-        HasLocalProxyPassword = stored["password"] is not null;
+        try
+        {
+            var stored = await Services.Secrets.LoadAsync(ConnectionManager.LocalProxySecretId);
+            HasLocalProxyPassword = stored["password"] is not null;
+        }
+        finally
+        {
+            OnPropertyChanged(nameof(SecretProtection));
+        }
     }
 
     partial void OnIpCheckProviderChanged(IpCheckProvider value)
