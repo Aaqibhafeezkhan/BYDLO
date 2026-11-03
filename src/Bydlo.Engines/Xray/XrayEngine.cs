@@ -1,4 +1,7 @@
+using Bydlo.Platform;
 using Bydlo.Core.Routing;
+using Bydlo.Engines.Groups;
+using Grpc.Net.Client;
 using Bydlo.Core.Config;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
@@ -13,7 +16,7 @@ namespace Bydlo.Engines.Xray;
 /// Live traffic statistics are not wired up yet (Xray exposes them over gRPC only).
 /// </summary>
 public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator)
-    : ProcessEngineBase(runner, redactor)
+    : ProcessEngineBase(runner, redactor), IServerGroupSource
 {
     public static readonly EngineDescriptor Info = new()
     {
@@ -32,6 +35,12 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
     };
 
     private readonly XrayConfigBuilder _builder = new();
+    private GroupMonitor? _groupMonitor;
+    private GrpcChannel? _groupChannel;
+    private int _groupPort;
+    public Guid? SelectedGroupProfileId => _groupMonitor?.Selected;
+    private string? _configPath;
+    private readonly List<string> _copiedAssets = [];
 
     public override EngineDescriptor Descriptor => Info;
 
@@ -59,6 +68,15 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             return Task.FromResult(EngineAvailability.NotImplemented("An SRS rule set cannot be used by Xray.", "routing.rules.unsupported"));
         }
 
+        try
+        {
+            XrayConfigBuilder.ValidateDnsSettings(settings.Routing);
+        }
+        catch (EngineException ex)
+        {
+            return Task.FromResult(EngineAvailability.NotImplemented(ex.Message, ex.LocalizationKey));
+        }
+
         var exe = locator.Locate(EngineKind.Xray, settings);
         return Task.FromResult(exe is null
             ? new EngineAvailability(AvailabilityStatus.NotInstalled, "Xray-core is not installed. Install it from Tools → Engines.") { LocalizationKey = "error.engine.xray.missing" }
@@ -80,6 +98,8 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
         var routing = request.Settings.Routing;
         new RoutingRuleBook(routing.OrderedRules, routing.RuleSetSources).Validate();
         var assets = RoutingPresets.XraySources(routing);
+        _copiedAssets.Clear();
+        _configPath = null;
         foreach (var source in assets)
         {
             if (request.RuleSetDirectory is not { } directory)
@@ -87,26 +107,31 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
                 throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
             }
             var path = RoutingPresets.CachedPath(directory, source);
+            var destination = Path.Combine(request.WorkDirectory, source.Tag);
             try
             {
-                var destination = Path.Combine(request.WorkDirectory, source.Tag);
                 if (new FileInfo(path).Length > source.MaxBytes) { throw new IOException("Rule set exceeds its size limit."); }
                 File.Copy(path, destination, overwrite: true);
+                _copiedAssets.Add(destination);
                 await IntegrityVerifier.VerifyFileAsync(destination, source.Sha256, ct).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or IntegrityException)
             {
+                SecureFile.DeleteQuietly(destination);
+                _copiedAssets.Remove(destination);
                 throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
             }
         }
-        var ctx = new BuildContext(request.Settings, LocalProxyAuth: request.LocalProxyAuth);
-        var json = request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
-        var configPath = Path.Combine(request.WorkDirectory, "xray.json");
-        await SecureFile.WriteAsync(configPath, json, ct).ConfigureAwait(false);
+        _groupPort = request.Group is null ? 0 : SingBoxEngine.FindFreeLoopbackPort();
+        var ctx = new BuildContext(request.Settings, ClashApiPort: _groupPort == 0 ? null : _groupPort, LocalProxyAuth: request.LocalProxyAuth);
+        var json = request.Group is { } group ? _builder.BuildGroup(group, request.GroupMembers ?? [], ctx).ToJsonString()
+            : request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
+        _configPath = Path.Combine(request.WorkDirectory, "xray.json");
+        await SecureFile.WriteAsync(_configPath, json, ct).ConfigureAwait(false);
         return new ProcessSpec
         {
             FileName = availability.ExecutablePath!,
-            Arguments = ["run", "-c", configPath],
+            Arguments = ["run", "-c", _configPath],
             WorkingDirectory = Path.GetDirectoryName(availability.ExecutablePath!),
             DisplayName = "xray",
             Environment = assets.Count == 0 ? new Dictionary<string, string>() :
@@ -114,7 +139,39 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
         };
     }
 
+    protected override async Task OnStoppingAsync()
+    {
+        if (_groupMonitor is { } monitor) { await monitor.DisposeAsync().ConfigureAwait(false); _groupMonitor = null; }
+        _groupChannel?.Dispose();
+        _groupChannel = null;
+        if (_configPath is not null)
+        {
+            SecureFile.DeleteQuietly(_configPath);
+            _configPath = null;
+        }
+        foreach (var asset in _copiedAssets)
+        {
+            SecureFile.DeleteQuietly(asset);
+        }
+        _copiedAssets.Clear();
+    }
+
     protected override bool IsReadyLine(string line) => line.Contains("started", StringComparison.OrdinalIgnoreCase) && line.Contains("Xray", StringComparison.OrdinalIgnoreCase);
+
+    protected override Task OnStartedAsync(EngineStartRequest request, CancellationToken ct)
+    {
+        if (request.Group is { } group && request.GroupMembers is { } members)
+        {
+            _groupChannel = GrpcChannel.ForAddress($"http://127.0.0.1:{_groupPort}", new GrpcChannelOptions
+            {
+                HttpHandler = new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false },
+                MaxReceiveMessageSize = 1024 * 1024,
+            });
+            _groupMonitor = new GroupMonitor(group, members, new XrayGroupController(_groupChannel, members), false);
+            _groupMonitor.Start();
+        }
+        return Task.CompletedTask;
+    }
 
     protected override string? TryParseFatal(string line) =>
         line.Contains("Failed to start", StringComparison.OrdinalIgnoreCase) || line.Contains("failed to load config", StringComparison.OrdinalIgnoreCase) ? line : null;

@@ -56,6 +56,7 @@
                       <StackPanel Grid.Column="1" Spacing="3" AutomationProperties.LiveSetting="Polite">
                         <TextBlock x:Name="StatusTitle" Classes="display" Text="{Binding StatusText}" TextWrapping="Wrap" />
                         <TextBlock Classes="muted" Text="{Binding Hint}" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding ActiveGroupServer}" IsVisible="{Binding IsGroupActive}" TextWrapping="Wrap" />
                       </StackPanel>
                       <Border Classes="connection-mark status-icon" Classes.connected="{Binding IsConnected}"
                         Classes.busy="{Binding IsBusy}" Classes.error="{Binding IsError}" Width="36" Height="36" VerticalAlignment="Top">
@@ -76,7 +77,7 @@
                 <Grid x:Name="ConnectionFields" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="24" Margin="0,14,0,0">
                   <StackPanel>
                     <TextBlock FontWeight="SemiBold" Text="{l:T home.server}" Margin="0,0,0,6" />
-                    <ComboBox Classes="server-picker" ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}"
+                    <ComboBox Classes="server-picker" ItemsSource="{Binding Shell.Profiles}" SelectedItem="{Binding Shell.SelectedProfile}" IsVisible="{Binding !UseGroup}"
                       HorizontalAlignment="Stretch" PlaceholderText="{l:T home.noprofiles}"
                       IsEnabled="{Binding !IsBusy}" AutomationProperties.Name="{l:T home.server}">
                       <ComboBox.ItemTemplate>
@@ -123,6 +124,14 @@
                 </Border>
                 <Expander Header="{l:T common.advanced}" HorizontalAlignment="Stretch" Margin="0,12,0,0">
                   <StackPanel Spacing="8">
+                    <CheckBox Content="{l:T group.use}" IsChecked="{Binding UseGroup}" />
+                    <ComboBox ItemsSource="{Binding ServerGroups}" SelectedItem="{Binding SelectedGroup}"
+                              HorizontalAlignment="Stretch" AutomationProperties.Name="{l:T group.title}" />
+                    <WrapPanel>
+                      <Button Classes="text-action" Content="{l:T group.new}" Command="{Binding NewGroupCommand}" />
+                      <Button Classes="text-action" Content="{l:T group.edit}" Command="{Binding EditGroupCommand}" />
+                      <Button Classes="text-action" Content="{l:T connections.delete}" Command="{Binding DeleteGroupCommand}" />
+                    </WrapPanel>
                     <TextBlock Classes="faint" Text="{l:T routing.preset.label}" TextWrapping="Wrap" />
                     <ComboBox ItemsSource="{Binding RoutingPresetOptions}" SelectedIndex="{Binding RoutingPresetIndex}"
                       HorizontalAlignment="Center" IsEnabled="{Binding !IsBusy}"

@@ -1,5 +1,6 @@
 using Bydlo.Core.Connection;
 using Bydlo.Core.Engines;
+using Bydlo.Core.Engines.Mock;
 using Bydlo.Core.Logging;
 using Bydlo.Core.Models;
 using Bydlo.Core.Platform;
@@ -10,6 +11,28 @@ namespace Bydlo.Tests;
 
 public sealed class SystemProxyPortTests
 {
+    [Theory]
+    [InlineData(OsFamily.Linux)]
+    [InlineData(OsFamily.MacOS)]
+    public async Task Mock_mode_never_sets_or_clears_the_desktop_proxy(OsFamily os)
+    {
+        var registry = new EngineRegistry(() => new MockEngine(seed: 1) { TimeScale = 0.01 });
+        var proxy = new RecordingProxy();
+        await using var manager = new ConnectionManager(registry, new InMemorySecretStore(),
+            new RootedAppPaths(TestDirs.New("mock-system-proxy")), new ConflictDetector(new FakePorts()),
+            new LogHub(new LogRedactor()), proxy, os)
+        {
+            EnsureSystemProxyAllowed = () => throw new InvalidOperationException("Mock Mode must skip native proxy setup."),
+        };
+        await manager.ConnectAsync(new Profile { Protocol = ProtocolKind.Trojan, Host = "mock.invalid", Port = 443 },
+            new AppSettings { MockMode = true, SetSystemProxy = true, AutoReconnect = false });
+        Assert.True(manager.Primary.IsMock);
+        Assert.Equal(ConnectionStatus.Connected, manager.Primary.Status);
+        await manager.DisconnectAsync();
+        Assert.Empty(proxy.Applied);
+        Assert.Equal(0, proxy.Clears);
+    }
+
     [Theory]
     [InlineData(EngineKind.Xray, false, 2346)]
     [InlineData(EngineKind.Xray, true, 2346)]

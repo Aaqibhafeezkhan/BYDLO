@@ -36,6 +36,8 @@ public enum MockScenario
 
 public sealed class AppSettings
 {
+    public List<ServerGroup> ServerGroups { get; set; } = [];
+
     public bool StartWithSystem { get; set; }
 
     public bool ConnectOnStartup { get; set; }
@@ -140,6 +142,9 @@ public sealed class AppSettings
     public List<Diagnostics.Contributor> Contributors { get; set; } = [];
 
     public DateTimeOffset? LastContributorsCheck { get; set; }
+
+    /// <summary>Id of the project notice (<c>notice.json</c>) the user closed; a new id shows again.</summary>
+    public string? DismissedNoticeId { get; set; }
 
     public RoutingSettings Routing { get; set; } = new();
     public DpiSettings DpiDefaults { get; set; } = new();

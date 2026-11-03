@@ -2,9 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Bydlo.App.Services;
 using Bydlo.App.ViewModels;
 using Bydlo.App.Views;
+using Bydlo.Core.Diagnostics;
+using Bydlo.Core.Security;
 
 namespace Bydlo.App;
 
@@ -15,14 +18,58 @@ public sealed partial class App : Application
     /// <summary>Command-line arguments, set by the platform head before start.</summary>
     public static string[] Args { get; set; } = [];
 
+    /// <summary>Displays a startup failure without opening settings, engines or recovery.</summary>
+    public static string? StartupErrorKey { get; set; }
+
     public AppServices? Services { get; private set; }
 
     public DesktopIntegration? Desktop { get; private set; }
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            try
+            {
+                var dir = Services?.Paths.LogsDirectory;
+                if (dir is not null)
+                {
+                    CrashReporter.WriteReport(dir, LogRedactor.Shared, e.Exception);
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        };
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
+        if (StartupErrorKey is { } errorKey && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime errorDesktop)
+        {
+            Loc.Instance.SetLanguage("auto");
+            Console.Error.WriteLine(Loc.T(errorKey));
+            errorDesktop.MainWindow = new Window
+            {
+                Title = "BYDLO",
+                Width = 520,
+                SizeToContent = SizeToContent.Height,
+                CanResize = false,
+                Content = new TextBlock
+                {
+                    Text = Loc.T(errorKey),
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    Margin = new Thickness(24),
+                },
+            };
+            base.OnFrameworkInitializationCompleted();
+            return;
+        }
+
         // Loading settings and profiles is fast local file I/O; doing it synchronously keeps startup simple.
         Services = Task.Run(() => AppServices.CreateAsync(Args)).GetAwaiter().GetResult();
         Loc.Instance.SetLanguage(Services.Settings.Language);

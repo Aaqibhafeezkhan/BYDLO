@@ -107,8 +107,34 @@ public sealed partial class MainViewModel : ViewModelBase
         _hasOrphans = services.Orphans.Count > 0;
         ContributorsNav = NavItems.Single(item => item.Key == "contributors");
         Contributors.Show(services.Settings.Contributors);
+        Loc.Instance.PropertyChanged += (_, _) => OnNoticeLanguageChanged();
+        RefreshCrashReports();
+        ShowStoreRecoveryToasts();
         _ = RunStartupChecksAsync();
         services.StartSubscriptionAutoRefresh(Connections.RunAutoRefreshAsync);
+    }
+
+    private void ShowStoreRecoveryToasts()
+    {
+        var profiles = Services.Profiles.LoadStatus;
+        var settings = Services.SettingsStore.LoadStatus;
+        if (profiles == Bydlo.Core.Storage.StoreLoadStatus.NewerVersion ||
+            settings == Bydlo.Core.Storage.StoreLoadStatus.NewerVersion)
+        {
+            ShowToast(L["store.newer"], isError: true, localizationKey: "store.newer");
+            return;
+        }
+        if (profiles == Bydlo.Core.Storage.StoreLoadStatus.RecoveredFromBackup ||
+            settings == Bydlo.Core.Storage.StoreLoadStatus.RecoveredFromBackup)
+        {
+            ShowToast(L["store.recovered"], isError: true, localizationKey: "store.recovered");
+            return;
+        }
+        if (profiles == Bydlo.Core.Storage.StoreLoadStatus.ResetEmpty ||
+            settings == Bydlo.Core.Storage.StoreLoadStatus.ResetEmpty)
+        {
+            ShowToast(L["store.reset"], isError: true, localizationKey: "store.reset");
+        }
     }
 
     public AppServices Services { get; }
@@ -277,6 +303,12 @@ public sealed partial class MainViewModel : ViewModelBase
     private bool _hasOrphans;
 
     [ObservableProperty]
+    private bool _hasCrashReports;
+
+    [ObservableProperty]
+    private int _crashReportCount;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasVisibleToast))]
     private string? _toast;
 
@@ -365,6 +397,57 @@ public sealed partial class MainViewModel : ViewModelBase
         HasOrphans = false;
         ShowToast(Loc.T("toast.orphans", n));
     }
+
+    private void RefreshCrashReports()
+    {
+        var reports = Bydlo.Core.Diagnostics.CrashReporter.ListReports(Services.Paths.LogsDirectory);
+        CrashReportCount = reports.Count;
+        HasCrashReports = reports.Count > 0;
+    }
+
+    [RelayCommand]
+    private async Task CopyCrashReport()
+    {
+        var reports = Bydlo.Core.Diagnostics.CrashReporter.ListReports(Services.Paths.LogsDirectory);
+        if (reports.Count == 0)
+        {
+            HasCrashReports = false;
+            return;
+        }
+
+        try
+        {
+            var text = await File.ReadAllTextAsync(reports[0]);
+            if (Services.TopLevel()?.Clipboard is { } clipboard)
+            {
+                await clipboard.SetTextAsync(text);
+                ShowToast(L["toast.copied"]);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowToast(ex.Message, isError: true);
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenCrashFolder()
+    {
+        try
+        {
+            if (Services.TopLevel()?.Launcher is { } launcher)
+            {
+                await launcher.LaunchUriAsync(new Uri(Services.Paths.LogsDirectory));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowToast(ex.Message, isError: true);
+        }
+    }
+
+    [RelayCommand]
+    private void DismissCrashReports() => HasCrashReports = false;
 
     public void RefreshMock() => IsMock = Services.IsMock;
 

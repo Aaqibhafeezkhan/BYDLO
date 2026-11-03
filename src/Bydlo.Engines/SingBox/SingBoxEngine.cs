@@ -1,4 +1,6 @@
+using Bydlo.Platform;
 using Bydlo.Core.Routing;
+using Bydlo.Engines.Groups;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -14,7 +16,7 @@ namespace Bydlo.Engines.SingBox;
 
 /// <summary>sing-box adapter: VLESS/REALITY, VMess, Trojan, Shadowsocks, Hysteria 2, TUIC, SOCKS/HTTP, WireGuard.</summary>
 public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator, IPrivilegeService privileges)
-    : ProcessEngineBase(runner, redactor), IActiveConnectionSource
+    : ProcessEngineBase(runner, redactor), IActiveConnectionSource, IServerGroupSource
 {
     public static readonly EngineDescriptor Info = new()
     {
@@ -44,9 +46,12 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
         new ClashConnectionsClient(ClashHttp, _apiPort, _apiSecret).CloseConnectionAsync(id, ct);
 
     private readonly SingBoxConfigBuilder _builder = new();
+    private GroupMonitor? _groupMonitor;
+    public Guid? SelectedGroupProfileId => _groupMonitor?.Selected;
     private CancellationTokenSource? _trafficCts;
     private int _apiPort;
     private string _apiSecret = "";
+    private string? _configPath;
 
     public override EngineDescriptor Descriptor => Info;
 
@@ -126,15 +131,16 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
             }
             ruleSets.Add(source.Tag, path);
         }
-        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth, ruleSets);
-        var json = request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
-        var configPath = Path.Combine(request.WorkDirectory, "sing-box.json");
-        await SecureFile.WriteAsync(configPath, json, ct).ConfigureAwait(false);
+        var ctx = new BuildContext(request.Settings, _apiPort, _apiSecret, request.LocalProxyAuth, ruleSets, locator.Platform.Os);
+        var json = request.Group is { } group ? _builder.BuildGroup(group, request.GroupMembers ?? [], ctx).ToJsonString()
+            : request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
+        _configPath = Path.Combine(request.WorkDirectory, "sing-box.json");
+        await SecureFile.WriteAsync(_configPath, json, ct).ConfigureAwait(false);
 
         return new ProcessSpec
         {
             FileName = availability.ExecutablePath!,
-            Arguments = ["run", "-c", configPath, "-D", request.WorkDirectory, "--disable-color"],
+            Arguments = ["run", "-c", _configPath, "-D", request.WorkDirectory, "--disable-color"],
             WorkingDirectory = request.WorkDirectory,
             DisplayName = "sing-box",
         };
@@ -147,16 +153,26 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
 
     protected override Task OnStartedAsync(EngineStartRequest request, CancellationToken ct)
     {
+        if (request.Group is { } group && request.GroupMembers is { } members)
+        {
+            _groupMonitor = new GroupMonitor(group, members, new ClashGroupController(ClashHttp, _apiPort, _apiSecret, members), true);
+            _groupMonitor.Start();
+        }
         _trafficCts = new CancellationTokenSource();
         _ = ReadTrafficAsync(_trafficCts.Token);
         return Task.CompletedTask;
     }
 
-    protected override Task OnStoppingAsync()
+    protected override async Task OnStoppingAsync()
     {
+        if (_groupMonitor is { } monitor) { await monitor.DisposeAsync().ConfigureAwait(false); _groupMonitor = null; }
         _trafficCts?.Cancel();
         _trafficCts = null;
-        return Task.CompletedTask;
+        if (_configPath is not null)
+        {
+            SecureFile.DeleteQuietly(_configPath);
+            _configPath = null;
+        }
     }
 
     /// <summary>Reads the Clash API <c>/traffic</c> stream (one JSON line per second) from the local controller.</summary>
@@ -201,46 +217,5 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
         var port = ((IPEndPoint)l.LocalEndpoint).Port;
         l.Stop();
         return port;
-    }
-}
-
-/// <summary>Writes files that contain credentials with owner-only permissions where the OS supports it.</summary>
-internal static class SecureFile
-{
-    public static async Task WriteAsync(string path, string content, CancellationToken ct)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        if (OperatingSystem.IsWindows())
-        {
-            await File.WriteAllTextAsync(path, content, ct).ConfigureAwait(false);
-            return;
-        }
-
-        var options = new FileStreamOptions
-        {
-            Mode = FileMode.Create,
-            Access = FileAccess.Write,
-            UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite,
-        };
-        await using var fs = new FileStream(path, options);
-        await using var writer = new StreamWriter(fs);
-        await writer.WriteAsync(content.AsMemory(), ct).ConfigureAwait(false);
-    }
-
-    public static void DeleteQuietly(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
     }
 }

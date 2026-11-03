@@ -183,3 +183,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## API групп Xray
+
+`src/Bydlo.Engines/Groups/Protos/` содержит сокращённые wire-совместимые схемы Xray-core v26.10.21,
+адаптированные для клиента BYDLO: RoutingService и ObservatoryService. Исходники Project X (XTLS), MPL-2.0:
+[router/command/command.proto](https://github.com/XTLS/Xray-core/blob/v26.10.21/app/router/command/command.proto),
+[observatory/command/command.proto](https://github.com/XTLS/Xray-core/blob/v26.10.21/app/observatory/command/command.proto),
+[observatory/config.proto](https://github.com/XTLS/Xray-core/blob/v26.10.21/app/observatory/config.proto).
+Схемы остаются под MPL-2.0; текст лицензии: [Xray-core LICENSE](https://github.com/XTLS/Xray-core/blob/v26.10.21/LICENSE).
+Для клиента используются [gRPC for .NET](https://github.com/grpc/grpc-dotnet) (The gRPC Authors, Apache-2.0),
+[Protocol Buffers](https://github.com/protocolbuffers/protobuf) (Google LLC, BSD-3-Clause);
+Grpc.Tools (The gRPC Authors, Apache-2.0) используется только при сборке.

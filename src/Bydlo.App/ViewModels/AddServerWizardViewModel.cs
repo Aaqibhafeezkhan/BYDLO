@@ -7,6 +7,7 @@ using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Import;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
+using Bydlo.Core.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -576,7 +577,12 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         try
         {
             if (_pendingUrl is { } url)
-            { await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? new Uri(url).Host, url, selected, _pendingMetadata); }
+            {
+                var mode = selected.Count < pending.Profiles.Count
+                    ? SubscriptionMode.SelectedOnly
+                    : SubscriptionMode.FollowAll;
+                await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? new Uri(url).Host, url, selected, _pendingMetadata, mode);
+            }
             else { await Services.Profiles.AddAsync(selected); }
             Shell.ReloadProfiles();
             Shell.SelectedProfile = Shell.Profiles.FirstOrDefault(p => p.Id == selected[0].Profile.Id) ?? Shell.SelectedProfile;

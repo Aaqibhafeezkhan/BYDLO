@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Bydlo.Core.Security;
 
-namespace Bydlo.Core.Processes;
+namespace Bydlo.Platform.Processes;
 
 public sealed record JournalEntry(string DisplayName, int Pid, string ImageName, DateTimeOffset StartedAt,
     int OwnerPid = 0, DateTimeOffset? OwnerStartedAt = null, bool GracefulTermination = false, string? WindowsExitEventName = null);

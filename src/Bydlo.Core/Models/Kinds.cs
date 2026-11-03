@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace Bydlo.Core.Models;
 
 /// <summary>Network technology described by a profile.</summary>
@@ -67,15 +69,15 @@ public sealed record PlatformInfo(OsFamily Os, CpuArch Arch)
 
     private static PlatformInfo Detect()
     {
-        var os = OperatingSystem.IsAndroid() ? OsFamily.Android
-            : OperatingSystem.IsWindows() ? OsFamily.Windows
-            : OperatingSystem.IsMacOS() ? OsFamily.MacOS
-            : OperatingSystem.IsLinux() ? OsFamily.Linux
+        var os = RuntimeInformation.IsOSPlatform(OSPlatform.Create("ANDROID")) ? OsFamily.Android
+            : RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? OsFamily.Windows
+            : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? OsFamily.MacOS
+            : RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? OsFamily.Linux
             : OsFamily.Unknown;
-        var arch = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture switch
+        var arch = RuntimeInformation.OSArchitecture switch
         {
-            System.Runtime.InteropServices.Architecture.X64 => CpuArch.X64,
-            System.Runtime.InteropServices.Architecture.Arm64 => CpuArch.Arm64,
+            Architecture.X64 => CpuArch.X64,
+            Architecture.Arm64 => CpuArch.Arm64,
             _ => CpuArch.Other,
         };
         return new PlatformInfo(os, arch);

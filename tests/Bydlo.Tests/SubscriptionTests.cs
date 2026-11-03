@@ -200,6 +200,123 @@ public sealed class SubscriptionTests
         Assert.Equal("local.example", kept.Option(Keys.Sni));
     }
 
+    [Fact]
+    public async Task Selected_only_refresh_keeps_partial_selection()
+    {
+        var file = Path.Combine(TestDirs.New("sub-selected-only"), "profiles.json");
+        var secrets = new InMemorySecretStore();
+        var store = new ProfileStore(file, secrets);
+        var kept = Import("trojan://password-a@a.example:443#Kept");
+        var sub = await store.AddSubscriptionWithProfilesAsync("Partial", "https://sub.example/token", [kept], mode: SubscriptionMode.SelectedOnly);
+        Assert.Equal(SubscriptionMode.SelectedOnly, sub.Mode);
+
+        var keptFresh = Import("trojan://password-a@a.example:443#Kept renamed");
+        var deselectedFresh = Import("trojan://password-b@b.example:443#Deselected");
+        await store.ReplaceSubscriptionProfilesAsync(sub.Id, [keptFresh, deselectedFresh]);
+
+        Assert.Equal(kept.Profile.Id, Assert.Single(store.Profiles).Id);
+        Assert.Equal(SubscriptionMode.SelectedOnly, Assert.Single(store.Subscriptions).Mode);
+        Assert.Equal("password-a", (await secrets.LoadAsync(kept.Profile.Id.ToString()))[Keys.Password]);
+        Assert.Empty((await secrets.LoadAsync(deselectedFresh.Profile.Id.ToString())).Values);
+    }
+
+    [Fact]
+    public async Task Follow_all_refresh_adds_new_nodes()
+    {
+        var file = Path.Combine(TestDirs.New("sub-follow-all"), "profiles.json");
+        var secrets = new InMemorySecretStore();
+        var store = new ProfileStore(file, secrets);
+        var first = Import("trojan://password-a@a.example:443#First");
+        var sub = await store.AddSubscriptionWithProfilesAsync("Full", "https://sub.example/token", [first], mode: SubscriptionMode.FollowAll);
+
+        var addedFresh = Import("trojan://password-b@b.example:443#New");
+        await store.ReplaceSubscriptionProfilesAsync(sub.Id,
+        [
+            Import("trojan://password-a@a.example:443#First"),
+            addedFresh,
+        ]);
+
+        Assert.Equal(2, store.Profiles.Count);
+        Assert.Contains(store.Profiles, p => p.Id == first.Profile.Id);
+        Assert.Contains(store.Profiles, p => p.Id == addedFresh.Profile.Id);
+        Assert.Equal("password-b", (await secrets.LoadAsync(addedFresh.Profile.Id.ToString()))[Keys.Password]);
+        Assert.Equal(SubscriptionMode.FollowAll, Assert.Single(store.Subscriptions).Mode);
+    }
+
+    [Fact]
+    public async Task Subscription_mode_survives_restart_and_toggle()
+    {
+        var file = Path.Combine(TestDirs.New("sub-mode-restart"), "profiles.json");
+        var store = new ProfileStore(file, new InMemorySecretStore());
+        var first = Import("trojan://password-a@a.example:443#First");
+        var sub = await store.AddSubscriptionWithProfilesAsync("Sub", "https://sub.example/token", [first], mode: SubscriptionMode.SelectedOnly);
+
+        await store.LoadAsync();
+        Assert.Equal(SubscriptionMode.SelectedOnly, Assert.Single(store.Subscriptions).Mode);
+
+        await store.SetSubscriptionModeAsync(sub.Id, SubscriptionMode.FollowAll);
+        Assert.Equal(SubscriptionMode.FollowAll, Assert.Single(store.Subscriptions).Mode);
+
+        var reloaded = new ProfileStore(file, new InMemorySecretStore());
+        await reloaded.LoadAsync();
+        Assert.Equal(SubscriptionMode.FollowAll, Assert.Single(reloaded.Subscriptions).Mode);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.SetSubscriptionModeAsync(Guid.NewGuid(), SubscriptionMode.FollowAll));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => store.SetSubscriptionModeAsync(sub.Id, (SubscriptionMode)99));
+    }
+
+    [Fact]
+    public async Task Selected_only_refresh_drops_vanished_node()
+    {
+        var file = Path.Combine(TestDirs.New("sub-selected-vanished"), "profiles.json");
+        var secrets = new InMemorySecretStore();
+        var store = new ProfileStore(file, secrets);
+        var first = Import("trojan://password-a@a.example:443#First");
+        var gone = Import("trojan://password-gone@gone.example:443#Gone");
+        var sub = await store.AddSubscriptionWithProfilesAsync("Sub", "https://sub.example/token", [first, gone], mode: SubscriptionMode.SelectedOnly);
+
+        await store.ReplaceSubscriptionProfilesAsync(sub.Id, [Import("trojan://password-a@a.example:443#First")]);
+
+        Assert.Equal(first.Profile.Id, Assert.Single(store.Profiles).Id);
+        Assert.Empty((await secrets.LoadAsync(gone.Profile.Id.ToString())).Values);
+    }
+
+    [Fact]
+    public async Task Legacy_subscription_without_mode_follows_all()
+    {
+        var file = Path.Combine(TestDirs.New("sub-legacy-mode"), "profiles.json");
+        var store = new ProfileStore(file, new InMemorySecretStore());
+        var sub = await store.AddSubscriptionAsync("Legacy", "https://sub.example/token");
+        var old = Import("trojan://old-password@old.example:443#Old");
+        await store.AddAsync([old], sub.Id);
+        await store.LoadAsync();
+
+        Assert.Equal(SubscriptionMode.FollowAll, Assert.Single(store.Subscriptions).Mode);
+
+        await store.ReplaceSubscriptionProfilesAsync(sub.Id,
+        [
+            Import("trojan://old-password@old.example:443#Old"),
+            Import("trojan://new-password@new.example:443#New"),
+        ]);
+
+        Assert.Equal(2, store.Profiles.Count);
+    }
+
+    [Fact]
+    public async Task Missing_mode_field_in_json_defaults_to_follow_all()
+    {
+        var folder = TestDirs.New("sub-mode-missing-field");
+        var file = Path.Combine(folder, "profiles.json");
+        var subId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        await File.WriteAllTextAsync(file,
+            $$"""{"Version":1,"Profiles":[{"Id":"{{profileId}}","Name":"Old","Protocol":2,"Host":"old.example","Port":443,"Options":{},"SubscriptionId":"{{subId}}"}],"Subscriptions":[{"Id":"{{subId}}","Name":"Legacy"}],"Chains":[],"PendingSecretDeletes":[]}""");
+        var store = new ProfileStore(file, new InMemorySecretStore());
+        await store.LoadAsync();
+
+        Assert.Equal(SubscriptionMode.FollowAll, Assert.Single(store.Subscriptions).Mode);
+    }
+
     private sealed class RefreshSecretStore : ISecretStore
     {
         private readonly InMemorySecretStore _inner = new();

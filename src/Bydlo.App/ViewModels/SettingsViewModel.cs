@@ -178,6 +178,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("Avalonia UI", "AvaloniaUI OÜ", "MIT", "https://github.com/AvaloniaUI/Avalonia", "Cross-platform UI framework"),
         new("CommunityToolkit.Mvvm", ".NET Foundation", "MIT", "https://github.com/CommunityToolkit/dotnet", "MVVM helpers"),
         new("ZXing.Net", "Michael Jahn", "Apache-2.0", "https://github.com/micjahn/ZXing.Net", "QR code decoding"),
+        new("gRPC for .NET", "The gRPC Authors", "Apache-2.0", "https://github.com/grpc/grpc-dotnet", "Xray group control API"),
+        new("Protocol Buffers", "Google LLC", "BSD-3-Clause", "https://github.com/protocolbuffers/protobuf", "Xray group API messages"),
         new("Inter", "Rasmus Andersson", "OFL-1.1", "https://github.com/rsms/inter", "Typeface"),
         new("Material Design Icons", "Pictogrammers", "Apache-2.0", "https://github.com/Templarian/MaterialDesign", "Icons"),
     ];
@@ -283,7 +285,8 @@ public sealed partial class SettingsViewModel : PageViewModel
     [ObservableProperty]
     private int _subscriptionUpdateIntervalHours;
 
-    public bool CanRegisterAssociations => OperatingSystem.IsWindows() &&
+    public bool CanRegisterAssociations => !NetworkSafetyGuard.IsLocked &&
+        (OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) &&
         Environment.ProcessPath is { } path && !Path.GetFileNameWithoutExtension(path).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
 
     partial void OnSuggestClipboardLinksChanged(bool value)
@@ -312,38 +315,49 @@ public sealed partial class SettingsViewModel : PageViewModel
     [RelayCommand]
     private async Task RegisterAssociations()
     {
-        await Shell.Guard(() =>
+        await Shell.Guard(async () =>
         {
-            if (OperatingSystem.IsWindows() && CanRegisterAssociations)
+            if (CanRegisterAssociations)
             {
                 try
                 {
-                    Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!);
+                    if (OperatingSystem.IsWindows()) { Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!); }
+                    else { await new Bydlo.Platform.UnixImportAssociations(Environment.ProcessPath!).RegisterAsync(); }
                 }
                 catch (InvalidOperationException ex)
                 {
                     throw new InvalidOperationException(L["settings.associations.conflict"], ex);
                 }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or TimeoutException)
+                {
+                    throw new IOException(L["settings.associations.error"], ex);
+                }
 
                 Shell.ShowToast(L["settings.associations.registered"]);
             }
 
-            return Task.CompletedTask;
         });
     }
 
     [RelayCommand]
     private async Task RemoveAssociations()
     {
-        await Shell.Guard(() =>
+        await Shell.Guard(async () =>
         {
-            if (OperatingSystem.IsWindows() && CanRegisterAssociations)
+            if (CanRegisterAssociations)
             {
-                Bydlo.Platform.WindowsImportAssociations.Unregister(Environment.ProcessPath!);
+                try
+                {
+                    if (OperatingSystem.IsWindows()) { Bydlo.Platform.WindowsImportAssociations.Unregister(Environment.ProcessPath!); }
+                    else { await new Bydlo.Platform.UnixImportAssociations(Environment.ProcessPath!).UnregisterAsync(); }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or TimeoutException)
+                {
+                    throw new IOException(L["settings.associations.error"], ex);
+                }
                 Shell.ShowToast(L["settings.associations.removed"]);
             }
 
-            return Task.CompletedTask;
         });
     }
 
@@ -398,7 +412,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     partial void OnLocalPortChanged(int value)
     {
-        if (value is > 0 and < 65536)
+        if (value is > 0 and <= Bydlo.Core.Connection.ProxyPorts.MaxLocalProxyPort)
         {
             Services.Settings.LocalProxyPort = value;
             Persist();

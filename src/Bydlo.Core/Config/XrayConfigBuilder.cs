@@ -2,6 +2,7 @@ using Bydlo.Core.Import.Parsers;
 using Bydlo.Core.Routing;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bydlo.Core.Connection;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
@@ -12,12 +13,20 @@ namespace Bydlo.Core.Config;
 /// Generates Xray-core configuration. Used for transports sing-box lacks (XHTTP) and as an alternative engine
 /// for VLESS / VMess / Trojan / Shadowsocks / SOCKS / HTTP. Local proxy mode only.
 /// </summary>
-public sealed class XrayConfigBuilder
+public sealed partial class XrayConfigBuilder
 {
     public static readonly IReadOnlySet<ProtocolKind> Supported = new HashSet<ProtocolKind>
     {
         ProtocolKind.Vless, ProtocolKind.Vmess, ProtocolKind.Trojan, ProtocolKind.Shadowsocks, ProtocolKind.Socks5, ProtocolKind.Http, ProtocolKind.XrayConfig,
     };
+
+    /// <summary>
+    /// Relay chains are generated hop by hop: every hop needs a dedicated outbound branch.
+    /// Imported raw JSON configs (<see cref="ProtocolKind.XrayConfig"/>) have no such branch
+    /// and can never be chained (issue #187).
+    /// </summary>
+    public static readonly IReadOnlySet<ProtocolKind> ChainSupported = new HashSet<ProtocolKind>(
+        Supported.Where(p => p != ProtocolKind.XrayConfig));
 
     public string BuildJson(Profile profile, ProfileSecrets secrets, BuildContext ctx) =>
         Build(profile, secrets, ctx).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
@@ -45,7 +54,7 @@ public sealed class XrayConfigBuilder
 
         foreach (var hop in hops)
         {
-            if (!Supported.Contains(hop.Profile.Protocol))
+            if (!ChainSupported.Contains(hop.Profile.Protocol))
             {
                 throw new Engines.EngineException($"The {hop.Profile.Protocol} hop cannot be chained by Xray.", localizationKey: "error.chain.engine");
             }
@@ -83,6 +92,7 @@ public sealed class XrayConfigBuilder
         try
         {
             custom = CustomJsonConfig.Read(secrets[Keys.RawConfig] ?? "", ProtocolKind.XrayConfig);
+            CustomInboundRouting.Map(custom, false, ["socks-in", "http-in"]);
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or FormatException or InvalidOperationException)
         {
@@ -121,6 +131,10 @@ public sealed class XrayConfigBuilder
     private static JsonObject BuildCore(BuildContext ctx, List<JsonObject> proxies, string proxyTag)
     {
         var settings = ctx.Settings;
+        if (settings.LocalProxyPort is < 1 or > ProxyPorts.MaxLocalProxyPort)
+        {
+            throw new EngineException($"Local proxy port {settings.LocalProxyPort} is invalid for Xray (HTTP port out of range). Use a port ≤ {ProxyPorts.MaxLocalProxyPort}.");
+        }
         var routing = settings.Routing;
         var rules = new JsonArray
         {
@@ -210,7 +224,7 @@ public sealed class XrayConfigBuilder
                 {
                     ["tag"] = "http-in",
                     ["listen"] = listen,
-                    ["port"] = settings.LocalProxyPort + 1,
+                    ["port"] = ProxyPorts.HttpPort(settings, EngineKind.Xray),
                     ["protocol"] = "http",
                     ["settings"] = httpSettings,
                 }),
@@ -220,14 +234,7 @@ public sealed class XrayConfigBuilder
                 new JsonObject { ["tag"] = "block", ["protocol"] = "blackhole" }]),
             ["routing"] = new JsonObject { ["domainStrategy"] = "IPIfNonMatch", ["rules"] = rules },
         };
-        if (routing.RemoteDnsTransport != DnsTransport.Https || routing.RemoteDns != "1.1.1.1"
-            || routing.DirectDnsTransport != DnsTransport.Udp || routing.DirectDns != "local"
-            || !routing.RemoteDnsThroughProxy || routing.DirectDnsThroughProxy
-            || routing.RemoteDnsDomains.Count + routing.DirectDnsDomains.Count +
-                routing.RemoteDnsRuleSets.Count + routing.DirectDnsRuleSets.Count > 0)
-        {
-            root["dns"] = BuildDns(routing, rules, proxyTag);
-        }
+        root["dns"] = BuildDns(routing, rules, proxyTag);
 
         if (ctx.ClashApiPort is { } statsPort)
         {
@@ -242,13 +249,35 @@ public sealed class XrayConfigBuilder
         return root;
     }
 
-    private static JsonObject BuildDns(RoutingSettings routing, JsonArray routeRules, string proxyTag)
+    /// <summary>Checks active DNS options before an engine process is prepared.</summary>
+    public static void ValidateDnsSettings(RoutingSettings routing)
     {
         if (routing.RemoteDnsRuleSets.Count + routing.DirectDnsRuleSets.Count > 0)
         {
             throw new EngineException("routing.dns.xray", localizationKey: "routing.dns.xray");
         }
 
+        Validate(routing.RemoteDns, routing.RemoteDnsTransport, routing.RemoteDnsThroughProxy);
+        if (routing.DirectDomains.Count + routing.DirectDnsDomains.Count > 0)
+        {
+            Validate(routing.DirectDns, routing.DirectDnsTransport, routing.DirectDnsThroughProxy);
+        }
+
+        static void Validate(string host, DnsTransport transport, bool throughProxy)
+        {
+            if (transport == DnsTransport.System || host is "local" or "") { return; }
+            if (transport == DnsTransport.Tls || transport == DnsTransport.Quic && throughProxy
+                || transport == DnsTransport.Udp && !System.Net.IPAddress.TryParse(host, out _)
+                || !Enum.IsDefined(transport))
+            {
+                throw new EngineException("routing.dns.xray", localizationKey: "routing.dns.xray");
+            }
+        }
+    }
+
+    private static JsonObject BuildDns(RoutingSettings routing, JsonArray routeRules, string proxyTag)
+    {
+        ValidateDnsSettings(routing);
         var localDomains = routing.DirectDomains.Concat(routing.DirectDnsDomains).Distinct().ToArray();
         var servers = new JsonArray();
         if (localDomains.Length > 0)

@@ -9,13 +9,13 @@ using Bydlo.Core.Models;
 namespace Bydlo.Core.Config;
 
 /// <summary>Options that are not part of the profile itself.</summary>
-public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null, LocalProxyAuth? LocalProxyAuth = null, IReadOnlyDictionary<string, string>? RuleSets = null);
+public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null, LocalProxyAuth? LocalProxyAuth = null, IReadOnlyDictionary<string, string>? RuleSets = null, OsFamily Os = OsFamily.Windows);
 
 /// <summary>
 /// Generates sing-box configuration (schema of sing-box 1.12+, verified against the 1.14 migration guide):
 /// new DNS server format, rule actions instead of special outbounds, WireGuard as an endpoint.
 /// </summary>
-public sealed class SingBoxConfigBuilder
+public sealed partial class SingBoxConfigBuilder
 {
     public const string ProxyTag = "proxy";
 
@@ -25,6 +25,14 @@ public sealed class SingBoxConfigBuilder
         ProtocolKind.Hysteria2, ProtocolKind.Tuic, ProtocolKind.Socks5, ProtocolKind.Http, ProtocolKind.WireGuard,
         ProtocolKind.AnyTls, ProtocolKind.ShadowTls, ProtocolKind.Naive, ProtocolKind.Ssh, ProtocolKind.SingBoxConfig,
     };
+
+    /// <summary>
+    /// Relay chains are generated hop by hop: every hop needs a dedicated outbound branch.
+    /// Imported raw JSON configs (<see cref="ProtocolKind.SingBoxConfig"/>) have no such branch
+    /// and can never be chained (issue #187).
+    /// </summary>
+    public static readonly IReadOnlySet<ProtocolKind> ChainSupported = new HashSet<ProtocolKind>(
+        Supported.Where(p => p != ProtocolKind.SingBoxConfig));
 
     /// <summary>CGNAT / mesh-VPN ranges kept outside the tunnel when <see cref="RoutingSettings.PreserveMeshVpnRanges"/> is on.</summary>
     public static readonly string[] MeshVpnRanges = ["100.64.0.0/10", "fd7a:115c:a1e3::/48"];
@@ -66,7 +74,7 @@ public sealed class SingBoxConfigBuilder
 
         foreach (var hop in hops)
         {
-            if (!Supported.Contains(hop.Profile.Protocol))
+            if (!ChainSupported.Contains(hop.Profile.Protocol))
             {
                 throw new Engines.EngineException($"The {hop.Profile.Protocol} hop cannot be chained by sing-box.", localizationKey: "error.chain.engine");
             }
@@ -79,7 +87,7 @@ public sealed class SingBoxConfigBuilder
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
             ["dns"] = BuildDns(routing, settings.Mode, exitTag, ctx.RuleSets),
-            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth)),
+            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth, ctx.Os)),
         };
 
         var outbounds = new JsonArray();
@@ -152,7 +160,7 @@ public sealed class SingBoxConfigBuilder
         {
             ["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true },
             ["dns"] = BuildDns(routing, settings.Mode, ruleSets: ctx.RuleSets),
-            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth)),
+            ["inbounds"] = new JsonArray(BuildInbound(settings, ctx.LocalProxyAuth, ctx.Os)),
         };
 
         var outbounds = new JsonArray();
@@ -194,6 +202,7 @@ public sealed class SingBoxConfigBuilder
         try
         {
             custom = CustomJsonConfig.Read(secrets[Keys.RawConfig] ?? "", ProtocolKind.SingBoxConfig);
+            CustomInboundRouting.Map(custom, true, [ctx.Settings.Mode == ConnectionMode.Tun ? "tun-in" : "mixed-in"]);
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or FormatException or InvalidOperationException)
         {
@@ -214,9 +223,20 @@ public sealed class SingBoxConfigBuilder
         }
 
         custom["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true };
-        custom["inbounds"] = new JsonArray(BuildInbound(ctx.Settings, ctx.LocalProxyAuth));
+        custom["inbounds"] = new JsonArray(BuildInbound(ctx.Settings, ctx.LocalProxyAuth, ctx.Os));
+        var generateDns = custom["dns"] is null;
         custom["dns"] ??= BuildDns(ctx.Settings.Routing, ctx.Settings.Mode, first, ctx.RuleSets);
         var route = custom["route"] as JsonObject ?? new JsonObject();
+        if (generateDns)
+        {
+            // Custom routing is retained; only declare sets referenced by the generated DNS.
+            // BuildDns has already checked that every referenced set is available.
+            var dnsSets = ctx.Settings.Routing.RemoteDnsRuleSets
+                .Concat(ctx.Settings.Routing.DirectDnsRuleSets).Distinct(StringComparer.Ordinal);
+            var localSets = BuildLocalRuleSets(dnsSets.Select(tag =>
+                new KeyValuePair<string, string>(tag, ctx.RuleSets![tag])));
+            if (localSets.Count > 0) { route["rule_set"] = localSets; }
+        }
         var rules = route["rules"] as JsonArray ?? new JsonArray();
         if (ctx.Settings.Routing.PreserveMeshVpnRanges)
         {
@@ -246,7 +266,7 @@ public sealed class SingBoxConfigBuilder
     }
 
     /// <summary>A retained TUN with no Internet-direct fallback. Transport lives in another process.</summary>
-    public JsonObject BuildKillSwitch(AppSettings settings, int backendPort)
+    public JsonObject BuildKillSwitch(AppSettings settings, int backendPort, OsFamily os = OsFamily.Windows)
     {
         if (settings.Mode != ConnectionMode.Tun || !settings.KillSwitch)
         {
@@ -266,7 +286,7 @@ public sealed class SingBoxConfigBuilder
             BlockDomains = [.. settings.Routing.BlockDomains],
         };
         var tunSettings = new AppSettings { Mode = ConnectionMode.Tun, Routing = routing };
-        var inbound = BuildInbound(tunSettings);
+        var inbound = BuildInbound(tunSettings, null, os);
         var exclusions = inbound["route_exclude_address"]?.AsArray() ?? new JsonArray();
         if (routing.BypassPrivateNetworks)
         {
@@ -397,7 +417,7 @@ public sealed class SingBoxConfigBuilder
         }
     }
 
-    private static JsonObject BuildInbound(AppSettings settings, LocalProxyAuth? lanAuth = null)
+    private static JsonObject BuildInbound(AppSettings settings, LocalProxyAuth? lanAuth, OsFamily os)
     {
         if (settings.Mode == ConnectionMode.Tun)
         {
@@ -405,11 +425,15 @@ public sealed class SingBoxConfigBuilder
             {
                 ["type"] = "tun",
                 ["tag"] = "tun-in",
-                ["interface_name"] = "bydlo-tun",
                 ["address"] = new JsonArray("172.19.0.1/30", "fdfe:dcba:9876::1/126"),
                 ["auto_route"] = true,
                 ["strict_route"] = true,
             };
+            // Darwin sing-tun only accepts utun names; omit the name on macOS so sing-box auto-selects utun.
+            if (os == OsFamily.Windows || os == OsFamily.Linux || os == OsFamily.Android)
+            {
+                tun["interface_name"] = "bydlo-tun";
+            }
             var exclude = new JsonArray();
             if (settings.Routing.PreserveMeshVpnRanges)
             {
@@ -504,7 +528,6 @@ public sealed class SingBoxConfigBuilder
 
         var preset = routing.Preset;
         var sources = RoutingPresets.Sources(preset, routing.PresetCountry);
-        var localSets = new JsonArray();
         if (sources.Count > 0)
         {
             if (ruleSets is null || sources.Any(source => !ruleSets.ContainsKey(source.Tag)))
@@ -519,16 +542,7 @@ public sealed class SingBoxConfigBuilder
             });
         }
 
-        if (ruleSets is not null)
-        {
-            foreach (var (tag, path) in ruleSets)
-            {
-                localSets.Add(new JsonObject
-                {
-                    ["type"] = "local", ["format"] = "binary", ["tag"] = tag, ["path"] = path,
-                });
-            }
-        }
+        var localSets = BuildLocalRuleSets(ruleSets ?? new Dictionary<string, string>());
 
         var route = new JsonObject
         {
@@ -544,6 +558,12 @@ public sealed class SingBoxConfigBuilder
         }
         return route;
     }
+
+    private static JsonArray BuildLocalRuleSets(IEnumerable<KeyValuePair<string, string>> ruleSets) =>
+        new([.. ruleSets.Select(set => (JsonNode)new JsonObject
+        {
+            ["type"] = "local", ["format"] = "binary", ["tag"] = set.Key, ["path"] = set.Value,
+        })]);
 
     private static JsonObject BuildOutbound(Profile p, ProfileSecrets s, DpiSettings defaults, string tag = ProxyTag)
     {

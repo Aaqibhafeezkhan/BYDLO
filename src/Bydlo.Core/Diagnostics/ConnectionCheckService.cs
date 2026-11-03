@@ -65,7 +65,7 @@ public sealed class ConnectionCheckService
         return engine switch
         {
             EngineKind.SingBox => localProxyPort,
-            EngineKind.Xray => localProxyPort + 1,
+            EngineKind.Xray => Connection.ProxyPorts.HttpPort(localProxyPort, EngineKind.Xray),
             _ => null,
         };
     }

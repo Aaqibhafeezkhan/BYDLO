@@ -21,6 +21,14 @@ public static class HelperRequestPolicy
         ValidateSettings(start.Settings);
         if (start.RuleSetDirectory is not null || start.Chain is not null)
         { throw new InvalidDataException("External rule sets and relay chains are unavailable in helper mode."); }
+        if (start.Group is { } group)
+        {
+            var members = start.GroupMembers ?? throw new InvalidDataException("Missing group members.");
+            Config.ServerGroupSupport.Validate(group, members, request.Engine);
+            if (members.Any(m => m.Profile.Option(Keys.Plugin) is not null))
+            { throw new InvalidDataException("Executable plugins are unavailable in helper mode."); }
+        }
+        else if (start.GroupMembers is not null) { throw new InvalidDataException("Missing group."); }
         if (request.Engine != EngineKind.Zapret)
         {
             var profile = start.Profile ?? throw new InvalidDataException("Missing profile.");

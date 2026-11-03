@@ -6,6 +6,16 @@ using Bydlo.Engines.Installation;
 
 namespace Bydlo.Tests;
 
+public sealed class FakeExitEvents : IExitEventFactory, IExitEvent
+{
+    public string? Name { get; private set; }
+    public bool Signaled { get; private set; }
+    public bool Disposed { get; private set; }
+    public IExitEvent Create(string name) { Name = name; return this; }
+    public void Signal() => Signaled = true;
+    public void Dispose() => Disposed = true;
+}
+
 /// <summary>Records process specs and lets tests script output. Never starts anything.</summary>
 public sealed class FakeProcessRunner : IProcessRunner
 {
