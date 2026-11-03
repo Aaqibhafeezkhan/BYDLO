@@ -51,8 +51,11 @@ public sealed partial class ProfileStore
 
             ChainValidator.ThrowIfInvalid(chain, FindStored);
             ThrowIfUnchainable(chain);
-            _doc.Chains[i] = chain;
-            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+            // Detached snapshot: publish only after the atomic write succeeds (issue #188).
+            var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
+            next.Chains[i] = CopyChain(chain);
+            await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+            _doc = next;
         }
         finally
         {
@@ -65,10 +68,15 @@ public sealed partial class ProfileStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (_doc.Chains.RemoveAll(c => c.Id == id) > 0)
+            var remaining = _doc.Chains.Where(c => c.Id != id).ToList();
+            if (remaining.Count == _doc.Chains.Count)
             {
-                await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+                return;
             }
+
+            var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = remaining };
+            await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+            _doc = next;
         }
         finally
         {
@@ -87,14 +95,25 @@ public sealed partial class ProfileStore
         try
         {
             var chain = _doc.Chains.FirstOrDefault(c => c.Id == id) ?? throw new InvalidDataException("Chain not found.");
-            chain.Name = name.Trim();
-            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+            var renamed = CopyChain(chain);
+            renamed.Name = name.Trim();
+            var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
+            next.Chains[next.Chains.FindIndex(c => c.Id == id)] = renamed;
+            await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+            _doc = next;
         }
         finally
         {
             _gate.Release();
         }
     }
+
+    /// <summary>Detaches a chain from the live document so a failed write leaves memory == disk.</summary>
+    private static ProxyChain CopyChain(ProxyChain chain) => new()
+    {
+        Id = chain.Id, Name = chain.Name, ProfileIds = [.. chain.ProfileIds],
+        PreferredEngine = chain.PreferredEngine, AddedAt = chain.AddedAt, IsFavorite = chain.IsFavorite,
+    };
 
     /// <summary>Every hop must be chainable by at least one common engine (sing-box or Xray). Raw JSON configs have no chain branch (issue #187).</summary>
     private void ThrowIfUnchainable(ProxyChain chain)
