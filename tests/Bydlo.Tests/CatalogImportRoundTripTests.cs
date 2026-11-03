@@ -117,14 +117,38 @@ public class CatalogImportRoundTripTests
         var wizard = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "ViewModels", "AddServerWizardViewModel.cs"));
         Assert.Contains("CheckPreviewLatency()", wizard, StringComparison.Ordinal);
         Assert.Contains("SortPreviewByLatency = true", wizard, StringComparison.Ordinal);
+        // Auto ping stays silent in mock and under the safety lock.
+        Assert.Contains("Services.IsMock", wizard, StringComparison.Ordinal);
+        Assert.Contains("NetworkSafetyGuard.IsLocked", wizard, StringComparison.Ordinal);
         var connections = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "ViewModels", "ConnectionsViewModel.cs"));
         Assert.Contains("OnlyWorking", connections, StringComparison.Ordinal);
+        Assert.Contains("Latencies.TryGetValue", connections, StringComparison.Ordinal);
+        Assert.Contains("Reachable", connections, StringComparison.Ordinal);
         var view = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "Views", "ConnectionsView.axaml"));
         Assert.Contains("connections.filter.working", view, StringComparison.Ordinal);
         var en = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "Assets", "Strings", "en.json"));
         var ru = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "Assets", "Strings", "ru.json"));
         Assert.Contains("connections.filter.working", en, StringComparison.Ordinal);
         Assert.Contains("connections.filter.working", ru, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Working_only_filter_keeps_reachable_and_hides_unmeasured()
+    {
+        var ok = Guid.NewGuid();
+        var down = Guid.NewGuid();
+        var unmeasured = Guid.NewGuid();
+        var latencies = new Dictionary<Guid, Bydlo.Core.Diagnostics.ServerLatencyResult>
+        {
+            [ok] = new(true, TimeSpan.FromMilliseconds(50), false),
+            [down] = new(false, TimeSpan.Zero, false),
+        };
+        static bool Working(Guid id, IReadOnlyDictionary<Guid, Bydlo.Core.Diagnostics.ServerLatencyResult> map) =>
+            map.TryGetValue(id, out var probe) && probe.Reachable;
+        Assert.True(Working(ok, latencies));
+        Assert.False(Working(down, latencies));
+        Assert.False(Working(unmeasured, latencies));
+        Assert.False(Working(Guid.NewGuid(), new Dictionary<Guid, Bydlo.Core.Diagnostics.ServerLatencyResult>()));
     }
 
     private static string RepositoryRoot()
