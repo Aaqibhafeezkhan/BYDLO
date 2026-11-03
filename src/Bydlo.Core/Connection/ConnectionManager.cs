@@ -309,6 +309,19 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         finally { _gate.Release(); }
     }
 
+    public async Task<(TgWsProxySettings Settings, string Secret)?> GetRunningTgWsProxyAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (TgWsProxy.Status != ConnectionStatus.Connected || TgWsProxy.CleanupPending ||
+                !_sessions.TryGetValue(TgWsProxyKey, out var session)) { return null; }
+
+            return (CloneSettings(session.Settings).TgWsProxy, session.Secrets["secret"]!);
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task StopToolAsync(string key, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);

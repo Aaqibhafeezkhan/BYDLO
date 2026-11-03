@@ -15,6 +15,8 @@ internal static class ThemeVerification
     {
         var services = shell.Services;
         var themesDir = CustomThemeStore.ThemesDirectory(services.Paths.DataDirectory);
+        services.Theme.Apply(ThemePreference.Purple);
+        var purpleBackground = BackgroundColor();
 
         var same = CustomTheme.Parse("""
             {"id": "same", "name": "Same", "author": "", "version": 1, "base": "dark",
@@ -27,9 +29,12 @@ internal static class ThemeVerification
         Require(!services.Theme.ApplySaved(services.Settings, services.Paths.DataDirectory), "Missing custom file reports no warning");
         shell.Settings.RefreshCustomThemes();
         Require(!shell.Settings.HasCustomThemeWarning, "Fallback to Purple clears the warning");
+        Require(BackgroundColor() == purpleBackground, "Missing custom theme restores the Purple palette");
 
         // A theme that cannot be applied must never block startup:
         // ApplyCustom throws, ApplySaved falls back to the Purple base palette.
+        services.Theme.Apply(ThemePreference.Light);
+        Require(BackgroundColor() != purpleBackground, "Light has a different background from Purple");
         var bad = new CustomThemeDocument("bad", "Bad", "", 1, true,
             new Dictionary<string, string> { ["Text"] = "#112233\n" }, []);
         try
@@ -40,9 +45,7 @@ internal static class ThemeVerification
         catch (FormatException) { }
         Require(!services.Theme.ApplySaved(new AppSettings { Theme = ThemePreference.Custom, CustomThemeId = "missing" }, services.Paths.DataDirectory),
             "Unappliable custom theme falls back without throwing");
-        Require(Avalonia.Application.Current!.Resources.TryGetResource("BgBrush", null, out var bg) &&
-            bg is SolidColorBrush brush && brush.Color == Avalonia.Media.Color.Parse("#141418"),
-            "Fallback applies the Purple base palette");
+        Require(BackgroundColor() == purpleBackground, "Fallback applies the Purple base palette");
 
         var ocean = CustomTheme.Parse("""
             {"id": "ocean", "name": "Ocean", "author": "BYDLO", "version": 1, "base": "dark",
@@ -68,6 +71,12 @@ internal static class ThemeVerification
         services.Theme.Apply(ThemePreference.Purple);
         Console.WriteLine("Theme verification passed: real-service contrast warning, fallback, install, Settings render.");
     }
+
+    private static Color BackgroundColor() =>
+        Avalonia.Application.Current!.Resources.TryGetResource("BgBrush", null, out var resource) &&
+        resource is ISolidColorBrush brush
+            ? brush.Color
+            : throw new InvalidOperationException("The active theme must provide a solid background brush.");
 
     private static void Pump()
     {

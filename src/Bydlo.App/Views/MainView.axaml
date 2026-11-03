@@ -20,10 +20,10 @@
     </Border>
     <Grid Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="2" RowDefinitions="Auto,*,Auto" ColumnDefinitions="Auto,*">
     <!-- Desktop sidebar -->
-    <Border Grid.RowSpan="3" Width="220" IsVisible="{Binding !IsCompact}"
+    <Border Grid.RowSpan="3" Width="192" IsVisible="{Binding !IsCompact}"
             Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
-      <DockPanel Margin="16,32,16,20">
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="10,0,6,38">
+      <DockPanel Margin="12,26,12,20">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="10,0,6,28">
           <Image Source="{StaticResource BrandLogo}" Width="34" Height="34" VerticalAlignment="Center" />
           <StackPanel VerticalAlignment="Center">
             <TextBlock Text="BYDLO" FontWeight="SemiBold" FontSize="18" LetterSpacing="0.3" />
@@ -40,13 +40,13 @@
           <TextBlock Classes="faint" Text="v0.1.0 · GPL-3.0" Margin="4,0" />
         </StackPanel>
 
-        <ItemsControl ItemsSource="{Binding NavItems}">
+        <ItemsControl ItemsSource="{Binding PrimaryNavItems}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:NavItem">
               <RadioButton Classes="nav" GroupName="nav" Margin="0,0,0,4"
                            IsChecked="{Binding IsSelected, Mode=OneWay}"
                            Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NavigateCommand}"
-                           CommandParameter="{Binding Key}">
+                           CommandParameter="{Binding Key}" AutomationProperties.Name="{Binding Title}">
                 <StackPanel Orientation="Horizontal" Spacing="12">
                   <c:OutlineIcon Data="{Binding IconKey, Converter={x:Static l:IconConverter.Instance}}" />
                   <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
@@ -70,13 +70,18 @@
     </Grid>
 
     <!-- Content -->
-    <ContentControl Grid.Row="1" Grid.Column="1" Content="{Binding CurrentPage}" />
+    <DockPanel Grid.Row="1" Grid.Column="1">
+      <Border DockPanel.Dock="Top" IsVisible="{Binding IsSettingsDetail}" Padding="24,12,24,0">
+        <Button Classes="ghost" Content="{l:T nav.settings.back}" Command="{Binding NavigateCommand}" CommandParameter="settings" />
+      </Border>
+      <ContentControl Content="{Binding CurrentPage}" />
+    </DockPanel>
 
     <!-- Compact bottom navigation -->
     <Border Grid.Row="2" Grid.Column="1" IsVisible="{Binding IsCompact}"
             Margin="0"
             Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="4,6">
-      <ItemsControl ItemsSource="{Binding NavItems}">
+      <ItemsControl ItemsSource="{Binding PrimaryNavItems}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
@@ -85,7 +90,7 @@
             <RadioButton Classes="nav navbottom" GroupName="bottomnav" HorizontalContentAlignment="Center"
                          IsChecked="{Binding IsSelected, Mode=OneWay}"
                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NavigateCommand}"
-                         CommandParameter="{Binding Key}">
+                         CommandParameter="{Binding Key}" AutomationProperties.Name="{Binding Title}">
               <StackPanel Spacing="3" HorizontalAlignment="Center">
                 <c:OutlineIcon Data="{Binding IconKey, Converter={x:Static l:IconConverter.Instance}}" HorizontalAlignment="Center" />
                 <TextBlock Text="{Binding ShortTitle}" FontSize="10" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />

@@ -4,7 +4,7 @@
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
 <i>One app. Every protocol. Zero bullshit.</i></p>
 
-<p align="center"><img src="docs/images/issue-92-home-after.png" width="880" alt="Главный экран BYDLO: импорт, Zapret и Telegram-прокси"></p>
+<p align="center"><img src="docs/images/issue-110-home-purple-1180.png" width="880" alt="Главный экран BYDLO: импорт, Zapret и Telegram-прокси"></p>
 
 BYDLO — бесплатный open-source лаунчер с графическим интерфейсом для VPN, прокси и инструментов свободного доступа к интернету.
 Импортируйте ссылку, файл конфигурации, QR-код или подписку — и подключайтесь одной кнопкой.
@@ -44,13 +44,13 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 ## Интерфейс
 
 Фиолетовая, светлая и OLED-темы используют общую компоновку. На узком экране sidebar заменяется нижней навигацией.
-На главной сразу видны способы импорта, Zapret и Telegram-прокси — сервер для этих инструментов не нужен.
+На главной доступны импорт, публичные серверы igareck, Zapret и Telegram-прокси. Включите прокси Telegram переключателем, затем нажмите кнопку с бумажным самолётом. Галерея тем GitHub доступна в «Настройки → Внешний вид».
 Технические параметры открываются через «Расширенные настройки». [Как пользоваться интерфейсом](docs/INTERFACE.md).
 Скриншоты сняты на русском языке в Mock Mode; подключение и трафик на них имитируются.
 
 <p align="center">
-  <img src="docs/images/issue-92-home-light.png" width="48%" alt="Главный экран: светлая тема">
-  <img src="docs/images/issue-92-home-oled.png" width="48%" alt="Главный экран: OLED-тема">
+  <img src="docs/images/issue-110-home-light-1180.png" width="48%" alt="Главный экран: светлая тема">
+  <img src="docs/images/issue-110-home-oled-1180.png" width="48%" alt="Главный экран: OLED-тема">
 </p>
 <p align="center">
   <img src="docs/images/connections-ac6d3998a92c.png" width="48%" alt="Подключения: импорт и список серверов">
@@ -64,7 +64,7 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
   <img src="docs/images/issue-92-settings.png" width="70%" alt="Настройки приложения">
 </p>
 <p align="center">
-  <img src="docs/images/issue-92-home-380.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
+  <img src="docs/images/issue-110-home-purple-380.png" width="260" alt="Узкое окно: главный экран и нижняя навигация">
   <img src="docs/images/mobile-connections-959746190e9b.png" width="260" alt="Узкое окно: список серверов">
 </p>
 
