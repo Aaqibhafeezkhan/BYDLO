@@ -145,6 +145,50 @@ public class BundledEngineTests
         Assert.True(runner.Last!.Stopped);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Mac_amnezia_uses_host_reported_utun_and_cleans_up_if_name_is_missing(bool reportName)
+    {
+        var work = TestDirs.New("mac-amnezia-engine");
+        var nameFile = Path.Combine(work, "utun-name");
+        await File.WriteAllTextAsync(nameFile, "utun99");
+        var runner = new FakeProcessRunner
+        {
+            StartupOutput = { "BYDLO_AMNEZIA_READY" },
+            OnStart = spec =>
+            {
+                Assert.Equal(nameFile, spec.Environment["WG_TUN_NAME_FILE"]);
+                Assert.False(File.Exists(nameFile));
+                using var config = JsonDocument.Parse(File.ReadAllText(spec.Arguments[0]));
+                Assert.Equal("utun", config.RootElement.GetProperty("Name").GetString());
+                if (reportName) { File.WriteAllText(nameFile, "utun7\n"); }
+            },
+        };
+        var network = new FakeAmneziaNetwork { TunnelName = "utun" };
+        await using var engine = new AmneziaEngine(runner, new LogRedactor(), new FakeLocator(new(OsFamily.MacOS, CpuArch.Arm64)),
+            new FakePrivileges(true), network, (_, _) => Task.FromResult(new[] { IPAddress.Parse("203.0.113.20") }));
+        var request = new EngineStartRequest { Settings = new(), WorkDirectory = work, Secrets = new() { Values = { [Keys.RawConfig] = Config } } };
+        if (reportName)
+        {
+            await engine.StartAsync(request);
+            Assert.Equal("utun7", network.AppliedInterface);
+            Assert.Equal(EngineState.Running, engine.State);
+            await engine.StopAsync();
+        }
+        else
+        {
+            var error = await Assert.ThrowsAsync<EngineException>(() => engine.StartAsync(request));
+            Assert.Equal("error.engine.amnezia.macos.network", error.LocalizationKey);
+            Assert.False(network.Applied);
+        }
+        Assert.False(network.HasPendingRecovery);
+        Assert.True(runner.Last!.Stopped);
+        Assert.False(File.Exists(nameFile));
+        Assert.False(File.Exists(Path.Combine(work, "amnezia.json")));
+        Assert.Empty(runner.Completed);
+    }
+
     [Fact]
     public async Task Network_cleanup_retains_journal_on_failure_and_recovers_from_new_instance()
     {
@@ -239,12 +283,19 @@ public class BundledEngineTests
 
     private sealed class FakeAmneziaNetwork : IAmneziaNetwork
     {
+        public string TunnelName { get; init; } = "bydlo-awg";
+        public string? AppliedInterface { get; private set; }
         public bool Prepared { get; private set; }
         public bool Applied { get; private set; }
         public bool FailCleanup { get; set; }
         public bool HasPendingRecovery => Prepared;
         public Task PrepareAsync(IReadOnlyList<string> endpoints, CancellationToken ct) { Prepared = true; return Task.CompletedTask; }
         public Task ApplyAsync(IReadOnlyList<string> addresses, IReadOnlyList<string> dns, IReadOnlyList<string> routes, int mtu, CancellationToken ct) { Applied = true; return Task.CompletedTask; }
+        public Task ApplyToInterfaceAsync(string? name, IReadOnlyList<string> addresses, IReadOnlyList<string> dns, IReadOnlyList<string> routes, int mtu, CancellationToken ct)
+        {
+            AppliedInterface = name;
+            return ApplyAsync(addresses, dns, routes, mtu, ct);
+        }
         public Task RemoveAsync(CancellationToken ct = default) { if (FailCleanup) { throw new IOException("fixture cleanup failure"); } Prepared = false; return Task.CompletedTask; }
     }
 }

@@ -411,6 +411,7 @@
   "error.engine.wireguard.reserved": "Опция WireGuard 'reserved' — это три байта, например '1,2,3'.",
   "error.engine.amnezia.legacy": "Пользовательский путь AmneziaWG указывает на старый клиент. Сбросьте этот путь или выберите встроенный хост bydlo-amneziawg.",
   "error.engine.amnezia.network": "Не удалось настроить сеть AmneziaWG. Проверьте права администратора, системные утилиты и журнал восстановления; существующий адаптер bydlo-awg или зарезервированный маршрут также могут мешать запуску.",
+  "error.engine.amnezia.macos.network": "Не удалось настроить сеть AmneziaWG в macOS. Проверьте права root, ifconfig, route, networksetup и журнал восстановления amnezia-macos-network.json. Повторите отключение, чтобы восстановить сохранённые DNS и маршруты к серверу.",
   "tools.engines.downloading": "Загрузка",
   "tools.engines.installed": "{0} установлен.",
   "engine.ready": "Готов",

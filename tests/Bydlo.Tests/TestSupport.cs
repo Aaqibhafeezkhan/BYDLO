@@ -20,11 +20,14 @@ public sealed class FakeProcessRunner : IProcessRunner
 
     public Func<ProcessSpec, (int ExitCode, string Output)>? OnCompletion { get; set; }
 
+    public Action<ProcessSpec>? OnStart { get; set; }
+
     public FakeProcess? Last { get; private set; }
 
     public IManagedProcess Start(ProcessSpec spec)
     {
         Started.Add(spec);
+        OnStart?.Invoke(spec);
         Last = new FakeProcess();
         var p = Last;
         _ = Task.Run(async () =>
