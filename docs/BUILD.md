@@ -212,4 +212,4 @@ OpenVPN/OpenSSL кешируется отдельно. Точный ключ в�
 - Сборки для macOS не подписаны и не нотаризованы — Gatekeeper покажет предупреждение.
 - Сборки для Windows не подписаны.
 - Встроенный OpenVPN для Linux собирается на Ubuntu 24.04; совместимость со старыми версиями glibc не заявляется.
-- Android не входит в v0.1 (см. [ROADMAP.md](ROADMAP.md)).
+- Android не входит в v0.2 (см. [ROADMAP.md](ROADMAP.md)).

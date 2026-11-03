@@ -37,7 +37,7 @@
               <TextBlock Text="{l:T mock.badge}" />
             </StackPanel>
           </Border>
-          <TextBlock Classes="faint" Text="v0.1.0 · GPL-3.0" Margin="4,0" />
+          <TextBlock Classes="faint" Text="{Binding Settings.Version, StringFormat='v{0} · GPL-3.0'}" Margin="4,0" />
         </StackPanel>
 
         <ItemsControl ItemsSource="{Binding PrimaryNavItems}">

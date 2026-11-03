@@ -35,7 +35,7 @@ public sealed class AppServices
         Journal = new ProcessJournal(Paths.JournalFile);
         Runner = new SystemProcessRunner(Journal);
         Http = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("BYDLO/0.1");
+        Http.DefaultRequestHeaders.UserAgent.ParseAdd(Bydlo.Core.AppVersion.UserAgent);
         Lock = EngineLock.LoadEmbedded();
         Installer = new EngineInstaller(Http, Lock, Paths.EnginesDirectory);
         Locator = new EngineLocator(Installer, PlatformInfo.Current);

@@ -170,7 +170,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("Material Design Icons", "Pictogrammers", "Apache-2.0", "https://github.com/Templarian/MaterialDesign", "Icons"),
     ];
 
-    public string Version => typeof(SettingsViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.1.0";
+    public string Version => Bydlo.Core.AppVersion.Current;
 
     public string DataDirectory => Services.Paths.DataDirectory;
 

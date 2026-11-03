@@ -31,7 +31,7 @@ public sealed class ConnectionCheckService
 {
     public const string ProxyHost = "127.0.0.1";
 
-    private const string UserAgent = "BYDLO/0.1";
+    private static readonly string UserAgent = Bydlo.Core.AppVersion.UserAgent;
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
 
     private readonly Func<int?, HttpMessageHandler>? _handlerFactory;

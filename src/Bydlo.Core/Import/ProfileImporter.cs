@@ -223,7 +223,7 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
     private async Task<SubscriptionPreview> FetchOneAsync(Uri uri, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.UserAgent.ParseAdd("BYDLO/0.1");
+        request.Headers.UserAgent.ParseAdd(AppVersion.UserAgent);
         using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {

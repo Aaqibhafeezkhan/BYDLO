@@ -125,7 +125,7 @@ public sealed class GitHubUpdateClient(Func<HttpMessageHandler>? handlerFactory 
     {
         var handler = handlerFactory?.Invoke() ?? new SocketsHttpHandler();
         var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("BYDLO/0.1");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd(Bydlo.Core.AppVersion.UserAgent);
         http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         return http;
     }
