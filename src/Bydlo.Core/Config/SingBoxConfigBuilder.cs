@@ -649,7 +649,8 @@ public sealed partial class SingBoxConfigBuilder
 
                 if (p.Option("ports") is { } hop)
                 {
-                    o["server_ports"] = new JsonArray([.. hop.Split(',').Select(x => (JsonNode)JsonValue.Create(x.Trim().Replace('-', ':'))!)]);
+                    o.Remove("server_port");
+                    o["server_ports"] = new JsonArray([.. Hysteria2Ports.Ranges(p.Port, hop).Select(x => (JsonNode)JsonValue.Create(x)!)]);
                 }
 
                 if (int.TryParse(p.Option(Keys.UpMbps), out var up))
