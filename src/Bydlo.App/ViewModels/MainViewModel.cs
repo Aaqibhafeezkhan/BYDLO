@@ -49,7 +49,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private int _toastVersion;
     private string? _toastLocalizationKey;
 
-    public MainViewModel(AppServices services, Bydlo.Core.Import.SubscriptionClient? subscriptionClient = null)
+    public MainViewModel(AppServices services, Bydlo.Core.Import.SubscriptionClient? subscriptionClient = null, Bydlo.Core.Diagnostics.ServerLatencyProbe? latencyProbe = null)
     {
         Services = services;
         L.PropertyChanged += (_, _) =>
@@ -73,7 +73,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         Home = new HomeViewModel(this);
         Connections = new ConnectionsViewModel(this);
-        AddServerWizard = new AddServerWizardViewModel(this, subscriptionClient);
+        AddServerWizard = new AddServerWizardViewModel(this, subscriptionClient, latencyProbe);
         ChainEditor = new ChainEditorViewModel(this);
         Tools = new ToolsViewModel(this);
         Routing = new RoutingViewModel(this);

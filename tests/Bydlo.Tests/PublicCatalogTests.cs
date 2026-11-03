@@ -28,6 +28,14 @@ public class PublicCatalogTests
     }
 
     [Fact]
+    public void Catalog_lists_independent_upstreams_besides_igareck()
+    {
+        var ids = PublicSubscriptionCatalog.Sources.Select(source => source.Id).ToList();
+        Assert.Contains("radikal-verified", ids);
+        Assert.Contains("matin-vless", ids);
+    }
+
+    [Fact]
     public async Task FetchFirst_tries_mirrors_in_order_and_returns_working_url()
     {
         var good = Convert.ToBase64String(Encoding.UTF8.GetBytes(

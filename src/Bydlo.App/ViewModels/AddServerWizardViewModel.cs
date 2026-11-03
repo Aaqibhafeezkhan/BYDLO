@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
 using Bydlo.App.Services;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Import;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
@@ -11,28 +13,91 @@ using CommunityToolkit.Mvvm.Input;
 namespace Bydlo.App.ViewModels;
 
 public enum AddServerStep { Source, Link, File, Qr, Manual, Preview, Catalog }
-public sealed record ServerPreviewItem(string Name, string Protocol, string Endpoint);
+
+/// <summary>One previewed server with explicit selection and an optional latency probe result (issue #136).</summary>
+public sealed partial class ServerPreviewItem(ImportedProfile item, string displayName, string displayEndpoint) : ObservableObject
+{
+    /// <summary>Full profile with secrets, used only when the user confirms the selection.</summary>
+    public ImportedProfile Item { get; } = item;
+
+    /// <summary>Credential-masked display name.</summary>
+    public string Name { get; } = displayName;
+
+    public string Protocol => Labels.Protocol(Item.Profile.Protocol);
+
+    /// <summary>Credential-masked display endpoint.</summary>
+    public string Endpoint { get; } = displayEndpoint;
+
+    [ObservableProperty]
+    private bool _isSelected = true;
+
+    /// <summary>Last measured TCP latency (issue #136). Null when not measured yet.</summary>
+    [ObservableProperty]
+    private TimeSpan? _latency;
+
+    /// <summary>True when the last latency probe failed to reach the server.</summary>
+    [ObservableProperty]
+    private bool _latencyFailed;
+
+    public bool HasLatency => Latency is not null || LatencyFailed;
+
+    public bool ShowLatency => Latency is not null;
+
+    public string LatencyText => Latency is { } t ? Format.Latency(t) : "";
+
+    public bool ShowUnreachable => LatencyFailed;
+
+    public bool LatencyOk => !LatencyFailed && Latency is { } ok && ok < TimeSpan.FromMilliseconds(200);
+
+    public bool LatencyWarn => !LatencyFailed && Latency is { } warn && warn >= TimeSpan.FromMilliseconds(200) && warn < TimeSpan.FromMilliseconds(800);
+
+    public bool LatencyBad => LatencyFailed || (Latency is { } bad && bad >= TimeSpan.FromMilliseconds(800));
+
+    partial void OnLatencyChanged(TimeSpan? value) => RefreshLatency();
+
+    partial void OnLatencyFailedChanged(bool value) => RefreshLatency();
+
+    private void RefreshLatency()
+    {
+        OnPropertyChanged(nameof(HasLatency));
+        OnPropertyChanged(nameof(ShowLatency));
+        OnPropertyChanged(nameof(LatencyText));
+        OnPropertyChanged(nameof(ShowUnreachable));
+        OnPropertyChanged(nameof(LatencyOk));
+        OnPropertyChanged(nameof(LatencyWarn));
+        OnPropertyChanged(nameof(LatencyBad));
+    }
+}
 
 public sealed partial class AddServerWizardViewModel : PageViewModel
 {
     private readonly SubscriptionClient _subscriptions;
     private readonly bool _usesDefaultSubscriptions;
+    private readonly ServerLatencyProbe _latency;
+    private readonly bool _usesDefaultLatency;
+    private readonly Dictionary<Guid, ServerLatencyResult> _previewLatencies = new();
     private string? _pendingName;
     private ImportResult? _pending;
     private string? _pendingUrl;
     private SubscriptionMetadata? _pendingMetadata;
+    private List<ImportedProfile>? _previewOriginalOrder;
     private AddServerStep _previousStep;
     private CancellationTokenSource? _preparation;
+    private CancellationTokenSource? _latencyCheck;
 
-    public AddServerWizardViewModel(MainViewModel shell, SubscriptionClient? subscriptions = null) : base(shell)
+    public AddServerWizardViewModel(MainViewModel shell, SubscriptionClient? subscriptions = null, ServerLatencyProbe? latency = null) : base(shell)
     {
         _subscriptions = subscriptions ?? Services.Subscriptions;
         _usesDefaultSubscriptions = subscriptions is null;
+        _latency = latency ?? Services.ServerLatency;
+        _usesDefaultLatency = latency is null;
     }
 
     [ObservableProperty] private AddServerStep _step;
     [ObservableProperty] private bool _busy;
     [ObservableProperty] private bool _isSaving;
+    [ObservableProperty] private bool _isCheckingPreviewLatency;
+    [ObservableProperty] private bool _sortPreviewByLatency;
     [ObservableProperty] private string _input = "";
     // Matches the localized Auto / Profile / Subscription choices in the link form.
     [ObservableProperty] private int _importTypeIndex;
@@ -59,6 +124,21 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     public char SecretMask => ShowSecrets ? '\0' : '●';
 
     public ObservableCollection<ServerPreviewItem> PreviewItems { get; } = [];
+    public bool ShowProgress => Busy || IsCheckingPreviewLatency;
+
+    /// <summary>User-initiated preview latency probe only; never runs in Mock Mode or under the safety lock.</summary>
+    public bool CanCheckPreviewLatency => IsPreview && !Busy && !IsCheckingPreviewLatency
+        && (!_usesDefaultLatency || (!Services.IsMock && !NetworkSafetyGuard.IsLocked));
+
+    public string? PreviewLatencyDisabledReason => !IsPreview || IsCheckingPreviewLatency ? null
+        : _usesDefaultLatency && Services.IsMock ? L["wizard.preview.latency.mock"]
+        : _usesDefaultLatency && NetworkSafetyGuard.IsLocked ? L["wizard.preview.latency.locked"] : null;
+
+    public bool HasPreviewLatencies => _previewLatencies.Count > 0;
+
+    public int SelectedPreviewCount => PreviewItems.Count(item => item.IsSelected);
+
+    public string SelectedSummary => Loc.T("wizard.selected", SelectedPreviewCount, PreviewItems.Count);
     public static IReadOnlyList<ProtocolKind> Protocols { get; } = Enum.GetValues<ProtocolKind>()
         .Where(p => p is not (ProtocolKind.AnyTls or ProtocolKind.ShadowTls or ProtocolKind.Naive or ProtocolKind.Ssh or ProtocolKind.SingBoxConfig or ProtocolKind.XrayConfig)).ToArray();
     public bool IsSource => Step == AddServerStep.Source;
@@ -82,9 +162,23 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
 
     partial void OnStepChanged(AddServerStep value)
     {
-        foreach (var name in new[] { nameof(IsSource), nameof(IsLink), nameof(IsFile), nameof(IsQr), nameof(IsManual), nameof(IsCatalog), nameof(IsPreview) })
+        foreach (var name in new[] { nameof(IsSource), nameof(IsLink), nameof(IsFile), nameof(IsQr), nameof(IsManual), nameof(IsCatalog), nameof(IsPreview),
+            nameof(CanCheckPreviewLatency), nameof(PreviewLatencyDisabledReason) })
         { OnPropertyChanged(name); }
     }
+    partial void OnBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowProgress));
+        OnPropertyChanged(nameof(CanCheckPreviewLatency));
+        OnPropertyChanged(nameof(PreviewLatencyDisabledReason));
+    }
+    partial void OnIsCheckingPreviewLatencyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowProgress));
+        OnPropertyChanged(nameof(CanCheckPreviewLatency));
+        OnPropertyChanged(nameof(PreviewLatencyDisabledReason));
+    }
+    partial void OnSortPreviewByLatencyChanged(bool value) => ApplyPreviewOrder();
     partial void OnErrorKeyChanged(string? value) { OnPropertyChanged(nameof(Error)); OnPropertyChanged(nameof(HasError)); }
     partial void OnSkippedCountChanged(int value) => OnPropertyChanged(nameof(Skipped));
     partial void OnProtocolChanged(ProtocolKind value)
@@ -95,10 +189,14 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
 
     public void Reset()
     {
+        _latencyCheck?.Cancel();
+        _latencyCheck = null;
+        IsCheckingPreviewLatency = false;
         _pending = null;
         _pendingUrl = null;
         _pendingMetadata = null;
         _pendingName = null;
+        _previewOriginalOrder = null;
         Input = Identifier = Password = Configuration = ServerName = Host = Sni = Summary = SubscriptionDetails = "";
         ErrorKey = null;
         SkippedCount = 0;
@@ -107,7 +205,10 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         ShowSecrets = false;
         Port = 443;
         Method = "aes-256-gcm";
+        _previewLatencies.Clear();
+        SortPreviewByLatency = false;
         PreviewItems.Clear();
+        RefreshPreviewState();
         Step = AddServerStep.Source;
     }
 
@@ -148,12 +249,17 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     private void Back()
     {
         if (Busy) { return; }
+        _latencyCheck?.Cancel();
         ErrorKey = null;
         _pending = null;
         _pendingUrl = null;
         _pendingMetadata = null;
         _pendingName = null;
+        _previewOriginalOrder = null;
+        _previewLatencies.Clear();
+        SortPreviewByLatency = false;
         PreviewItems.Clear();
+        RefreshPreviewState();
         Step = IsPreview ? _previousStep : AddServerStep.Source;
     }
 
@@ -162,6 +268,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     {
         if (IsSaving) { return; }
         _preparation?.Cancel();
+        _latencyCheck?.Cancel();
         Reset();
         Shell.IsAddServerOpen = false;
     }
@@ -214,7 +321,15 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pendingMetadata = metadata;
         _pendingName = name;
         _previousStep = Step;
-        PreviewItems.ReplaceWith(result.Profiles.Select(p => new ServerPreviewItem(Safe(p.Profile.Name, p.Secrets), Labels.Protocol(p.Profile.Protocol), Safe(p.Profile.Endpoint, p.Secrets))));
+        _previewLatencies.Clear();
+        _previewOriginalOrder = result.Profiles.ToList();
+        SortPreviewByLatency = false;
+        PreviewItems.ReplaceWith(result.Profiles.Select(p => new ServerPreviewItem(p, Safe(p.Profile.Name, p.Secrets), Safe(p.Profile.Endpoint, p.Secrets))));
+        foreach (var item in PreviewItems)
+        {
+            item.PropertyChanged += OnPreviewItemChanged;
+        }
+        RefreshPreviewState();
         Summary = Loc.T(url is null ? "wizard.recognized" : "wizard.subscription.recognized", result.Profiles.Count);
         var details = new List<string>();
         if (metadata?.Upload is { } up && metadata.Download is { } down && up <= long.MaxValue - down)
@@ -309,6 +424,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     {
         if (Busy) { return; }
         Busy = true;
+        _latencyCheck?.Cancel();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Services.ShutdownToken);
         _preparation = cancellation;
         ErrorKey = null;
@@ -324,23 +440,150 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         finally { _preparation = null; Busy = false; }
     }
 
+    private void OnPreviewItemChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ServerPreviewItem.IsSelected))
+        {
+            RefreshPreviewState();
+        }
+    }
+
+    private void RefreshPreviewState()
+    {
+        OnPropertyChanged(nameof(HasPreviewLatencies));
+        OnPropertyChanged(nameof(SelectedPreviewCount));
+        OnPropertyChanged(nameof(SelectedSummary));
+        OnPropertyChanged(nameof(CanCheckPreviewLatency));
+        OnPropertyChanged(nameof(PreviewLatencyDisabledReason));
+    }
+
+    [RelayCommand]
+    private void SelectAllPreview()
+    {
+        foreach (var item in PreviewItems)
+        {
+            item.IsSelected = true;
+        }
+    }
+
+    [RelayCommand]
+    private void SelectNonePreview()
+    {
+        foreach (var item in PreviewItems)
+        {
+            item.IsSelected = false;
+        }
+    }
+
+    /// <summary>Explicit per-server latency probe over the pending preview (issue #136). Never runs automatically.</summary>
+    [RelayCommand]
+    private async Task CheckPreviewLatency()
+    {
+        if (IsCheckingPreviewLatency || !IsPreview || _pending is null)
+        {
+            return;
+        }
+
+        if (_usesDefaultLatency && (Services.IsMock || NetworkSafetyGuard.IsLocked))
+        {
+            return;
+        }
+
+        IsCheckingPreviewLatency = true;
+        _latencyCheck?.Cancel();
+        var check = _latencyCheck = CancellationTokenSource.CreateLinkedTokenSource(Services.ShutdownToken);
+        try
+        {
+            IReadOnlyDictionary<Guid, ServerLatencyResult>? results = null;
+            try
+            {
+                await Shell.Guard(async () =>
+                {
+                    results = await _latency
+                        .ProbeAsync(_pending.Profiles.Select(p => p.Profile).ToList(), ct: check.Token)
+                        .ConfigureAwait(false);
+                });
+            }
+            catch (OperationCanceledException) when (check.IsCancellationRequested)
+            {
+                return;
+            }
+            if (results is null)
+            {
+                return;
+            }
+
+            _previewLatencies.Clear();
+            foreach (var (id, result) in results)
+            {
+                _previewLatencies[id] = result;
+            }
+
+            foreach (var item in PreviewItems)
+            {
+                if (_previewLatencies.TryGetValue(item.Item.Profile.Id, out var probe))
+                {
+                    item.Latency = probe.Reachable ? probe.Latency : null;
+                    item.LatencyFailed = !probe.Reachable;
+                }
+                else
+                {
+                    item.Latency = null;
+                    item.LatencyFailed = false;
+                }
+            }
+
+            RefreshPreviewState();
+            if (SortPreviewByLatency)
+            {
+                ApplyPreviewOrder();
+            }
+        }
+        finally
+        {
+            IsCheckingPreviewLatency = false;
+        }
+    }
+
+    private void ApplyPreviewOrder()
+    {
+        if (!IsPreview || _pending is null || PreviewItems.Count == 0)
+        {
+            return;
+        }
+
+        var items = PreviewItems.Select(item => item.Item).ToList();
+        var source = SortPreviewByLatency
+            ? CatalogPreview.OrderByLatency(items, _previewLatencies)
+            : _previewOriginalOrder ?? items;
+        var rows = new Dictionary<Guid, ServerPreviewItem>();
+        foreach (var item in PreviewItems)
+        {
+            rows.TryAdd(item.Item.Profile.Id, item);
+        }
+
+        PreviewItems.ReplaceWith(source.Select(profile => rows[profile.Profile.Id]));
+    }
+
     [RelayCommand]
     private async Task Add()
     {
         if (Busy || !IsPreview || _pending is not { IsEmpty: false } pending) { return; }
+        var selected = PreviewItems.Where(item => item.IsSelected).Select(item => item.Item).ToList();
+        if (selected.Count == 0) { ErrorKey = "wizard.error.selection"; return; }
         Busy = true;
         IsSaving = true;
         try
         {
             if (_pendingUrl is { } url)
-            { await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? new Uri(url).Host, url, pending.Profiles, _pendingMetadata); }
-            else { await Services.Profiles.AddAsync(pending.Profiles); }
+            { await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? new Uri(url).Host, url, selected, _pendingMetadata); }
+            else { await Services.Profiles.AddAsync(selected); }
             Shell.ReloadProfiles();
-            Shell.SelectedProfile = Shell.Profiles.FirstOrDefault(p => p.Id == pending.Profiles[0].Profile.Id) ?? Shell.SelectedProfile;
+            Shell.SelectedProfile = Shell.Profiles.FirstOrDefault(p => p.Id == selected[0].Profile.Id) ?? Shell.SelectedProfile;
             Shell.Connections.OnShown();
             Shell.Navigate("connections");
             Shell.IsAddServerOpen = false;
-            Shell.ShowToast(Loc.T("import.added", pending.Profiles.Count));
+            Shell.ShowToast(Loc.T("import.added", selected.Count));
             Reset();
         }
         catch (Exception) { ErrorKey = "wizard.error.save"; }

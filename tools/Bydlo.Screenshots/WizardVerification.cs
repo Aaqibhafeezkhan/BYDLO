@@ -8,6 +8,7 @@ using Avalonia.VisualTree;
 using Bydlo.App.Services;
 using Bydlo.App.ViewModels;
 using Bydlo.App.Views;
+using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Import;
 using Bydlo.Core.Models;
 
@@ -19,7 +20,9 @@ internal static class WizardVerification
     {
         var handler = new SubscriptionHandler();
         using var http = new HttpClient(handler);
-        var shell = new MainViewModel(services, new SubscriptionClient(http, services.Importer));
+        var latency = new ServerLatencyProbe((host, port, timeout, ct) =>
+            Task.FromResult<TimeSpan?>(host.Contains("second", StringComparison.Ordinal) ? TimeSpan.FromMilliseconds(42) : null));
+        var shell = new MainViewModel(services, new SubscriptionClient(http, services.Importer), latency);
         services.Settings.Language = Loc.Instance.Language;
         services.Settings.Theme = ThemePreference.Purple;
         services.Theme.Apply(ThemePreference.Purple);
@@ -236,10 +239,25 @@ internal static class WizardVerification
         Wait(wizard.PreviewCatalogCommand.ExecuteAsync(source));
         Require(wizard.IsPreview && wizard.PreviewItems.Count == 2 && wizard.SkippedCount == 1, "Catalog uses the shared preview and deduplicates nodes");
         Require(handler.Requests == previousRequests + 2 && services.Profiles.Profiles.Count == previousProfiles, "Catalog falls back without saving");
+        Require(wizard.SelectedPreviewCount == 2, "Every previewed server starts selected");
+        wizard.PreviewItems[1].IsSelected = false;
+        Require(wizard.SelectedPreviewCount == 1, "Preview selection is explicit before saving");
+        Wait(wizard.CheckPreviewLatencyCommand.ExecuteAsync(null));
+        Require(wizard.PreviewItems[0].LatencyFailed && wizard.PreviewItems[0].ShowUnreachable, "Unreachable preview servers are marked");
+        Require(wizard.PreviewItems[1].Latency == TimeSpan.FromMilliseconds(42), "Preview shows the measured latency");
+        Require(!wizard.PreviewItems.Any(item => (item.Name + item.Endpoint).Contains("fake-private-password", StringComparison.Ordinal)), "Latency probe never exposes credentials");
+        wizard.SortPreviewByLatency = true;
+        Require(wizard.PreviewItems[0].Name.Contains("Второй"), "Sorting by latency puts the reachable server first");
+        wizard.SortPreviewByLatency = false;
+        Require(wizard.PreviewItems[1].Name.Contains("Второй"), "Switching the sort off restores the preview order");
+        wizard.SelectNonePreviewCommand.Execute(null);
+        Wait(wizard.AddCommand.ExecuteAsync(null));
+        Require(wizard.HasError && services.Profiles.Profiles.Count == previousProfiles, "An empty selection is rejected without saving");
+        wizard.PreviewItems[0].IsSelected = true;
         Wait(wizard.AddCommand.ExecuteAsync(null));
         var publicSubscription = services.Profiles.Subscriptions.Single(s => s.Name == source.Name);
         Require(services.Profiles.GetSubscriptionUrlAsync(publicSubscription.Id).GetAwaiter().GetResult() == source.Source.Urls[1], "The working mirror is saved as subscription provenance");
-        Require(services.Profiles.Profiles.Count(p => p.SubscriptionId == publicSubscription.Id) == 2, "Confirmed profiles belong to the public subscription");
+        Require(services.Profiles.Profiles.Count(p => p.SubscriptionId == publicSubscription.Id) == 1, "Only the selected servers belong to the public subscription");
         foreach (var url in new[] { "https://proxy.example:443", "https://proxy.example", "http://proxy.example:8080", "https://proxy.example:8443" })
         {
             shell.OpenAddServerCommand.Execute(null);

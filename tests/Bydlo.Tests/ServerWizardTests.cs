@@ -143,6 +143,21 @@ public sealed class ServerWizardTests
     }
 
     [Fact]
+    public async Task Confirming_a_preview_selection_persists_only_the_selected_profiles()
+    {
+        var folder = TestDirs.New("wizard-selection");
+        var store = new ProfileStore(Path.Combine(folder, "profiles.json"), new InMemorySecretStore());
+        var imported = new ProfileImporter().ImportText(
+            "trojan://private-password@first.example:443#First\ntrojan://private-password@second.example:443#Second");
+        var selected = CatalogPreview.Selected(imported.Profiles, item => item.Profile.Name == "First");
+        var sub = await store.AddSubscriptionWithProfilesAsync("Subscription", "https://sub.example/private-token", selected);
+        await store.LoadAsync();
+        var saved = Assert.Single(store.Profiles);
+        Assert.Equal("First", saved.Name);
+        Assert.Equal(sub.Id, saved.SubscriptionId);
+    }
+
+    [Fact]
     public async Task Failed_subscription_save_leaves_no_subscription_profiles_or_credentials()
     {
         var folder = TestDirs.New("wizard-subscription");
