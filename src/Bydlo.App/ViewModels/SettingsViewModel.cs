@@ -150,6 +150,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("Newlib", "Newlib contributors", "BSD / MIT", "https://sourceware.org/newlib/", "", "about.newlib"),
         new("tg-ws-proxy", "Flowseal", "MIT", "https://github.com/Flowseal/tg-ws-proxy", "Telegram WebSocket bridge proxy"),
         new("vpn-configs-for-russia", "igareck", "GPL-3.0", "https://github.com/igareck/vpn-configs-for-russia", "Public subscription lists (downloaded on demand)"),
+        new("Free-v2ray-Configs", "0xRadikal", "MIT", "https://github.com/0xRadikal/Free-v2ray-Configs", "Verified public subscription set (downloaded on demand)"),
+        new("v2ray-configs", "MatinGhanbari", "MIT", "https://github.com/MatinGhanbari/v2ray-configs", "Public VLESS list (downloaded on demand)"),
         new("sing-box", "SagerNet (nekohasekai)", "GPL-3.0-or-later", "https://github.com/SagerNet/sing-box", "Universal proxy platform"),
         new("Xray-core", "Project X (XTLS)", "MPL-2.0", "https://github.com/XTLS/Xray-core", "VLESS / REALITY / XHTTP"),
         new("Cronet / cronet-go", "The Chromium Authors / SagerNet", "BSD-3-Clause / GPL-3.0+", "https://github.com/SagerNet/cronet-go", "", "about.cronet"),

@@ -22,6 +22,15 @@ public static class PublicSubscriptionCatalog
         $"https://raw.githack.com/igareck/vpn-configs-for-russia/main/{file}",
     ];
 
+    /// <summary>Primary GitHub raw file plus CDN mirrors that work for any public repository.</summary>
+    private static IReadOnlyList<string> CdnMirrors(string owner, string repo, string file) =>
+    [
+        $"https://raw.githubusercontent.com/{owner}/{repo}/main/{file}",
+        $"https://cdn.jsdelivr.net/gh/{owner}/{repo}@main/{file}",
+        $"https://raw.githack.com/{owner}/{repo}/main/{file}",
+        $"https://github.com/{owner}/{repo}/raw/main/{file}",
+    ];
+
     public static IReadOnlyList<PublicSubscriptionSource> Sources { get; } =
     [
         new("igareck-top150", "catalog.igareck.top150", "catalog.igareck.top150.desc",
@@ -34,5 +43,10 @@ public static class PublicSubscriptionCatalog
             Mirrors("Vless-Reality-White-Lists-Rus-Mobile.txt")),
         new("igareck-white-cidr", "catalog.igareck.white.cidr", "catalog.igareck.white.cidr.desc",
             Mirrors("WHITE-CIDR-RU-checked.txt")),
+        // Independent upstreams (issue #136): verified by their maintainers, downloaded on demand.
+        new("radikal-verified", "catalog.radikal.verified", "catalog.radikal.verified.desc",
+            CdnMirrors("0xRadikal", "Free-v2ray-Configs", "verified/configs_base64.txt")),
+        new("matin-vless", "catalog.matin.vless", "catalog.matin.vless.desc",
+            CdnMirrors("MatinGhanbari", "v2ray-configs", "subscriptions/filtered/subs/vless.txt")),
     ];
 }

@@ -14,7 +14,7 @@
           <TextBlock Classes="h1" Text="{l:T wizard.title}" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center" />
           <Button Grid.Column="1" Classes="ghost" Content="{l:T common.cancel}" Command="{Binding CloseCommand}" IsEnabled="{Binding !IsSaving}" />
         </Grid>
-        <ProgressBar IsIndeterminate="True" IsVisible="{Binding Busy}" Height="3" />
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding ShowProgress}" Height="3" />
         <StackPanel Spacing="18" IsEnabled="{Binding !Busy}">
           <StackPanel IsVisible="{Binding IsSource}" Spacing="12">
             <TextBlock Classes="muted" Text="{l:T wizard.source.hint}" TextWrapping="Wrap" Margin="0,0,0,6" />
@@ -142,16 +142,36 @@
             <TextBlock Classes="h2" Text="{l:T import.preview}" />
             <TextBlock Text="{Binding Summary}" FontSize="18" TextWrapping="Wrap" />
             <TextBlock Classes="muted" Text="{Binding SubscriptionDetails}" IsVisible="{Binding HasSubscriptionDetails}" TextWrapping="Wrap" />
+            <WrapPanel>
+              <Button Classes="ghost" Content="{l:T wizard.preview.select.all}" Command="{Binding SelectAllPreviewCommand}" Margin="0,0,8,8" />
+              <Button Classes="ghost" Content="{l:T wizard.preview.select.none}" Command="{Binding SelectNonePreviewCommand}" Margin="0,0,8,8" />
+              <Button Classes="ghost" Content="{l:T wizard.preview.check.latency}" Command="{Binding CheckPreviewLatencyCommand}" IsEnabled="{Binding CanCheckPreviewLatency}" Margin="0,0,8,8" />
+              <CheckBox Content="{l:T wizard.preview.sort.latency}" IsChecked="{Binding SortPreviewByLatency}" IsEnabled="{Binding HasPreviewLatencies}" VerticalAlignment="Center" Margin="0,0,0,8" />
+            </WrapPanel>
+            <TextBlock Text="{Binding SelectedSummary}" TextWrapping="Wrap" />
+            <TextBlock Classes="faint" Text="{Binding PreviewLatencyDisabledReason}" IsVisible="{Binding PreviewLatencyDisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+            <TextBlock Classes="faint" Text="{l:T wizard.preview.latency.hint}" TextWrapping="Wrap" />
             <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding PreviewItems}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ServerPreviewItem">
                   <Border Classes="tile" Margin="0,0,0,8">
-                    <StackPanel Spacing="4">
-                      <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
-                      <TextBlock Text="{Binding Protocol}" Foreground="{DynamicResource AccentBrush}" />
-                      <TextBlock Classes="faint" Text="{Binding Endpoint}" TextWrapping="Wrap" />
-                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,12,0" AutomationProperties.Name="{Binding Name}" />
+                      <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Text="{Binding Name}" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Protocol}" Foreground="{DynamicResource AccentBrush}" />
+                        <TextBlock Classes="faint" Text="{Binding Endpoint}" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center" MinWidth="72">
+                        <Border Classes="pill" Classes.ok="{Binding LatencyOk}" Classes.warn="{Binding LatencyWarn}" Classes.bad="{Binding LatencyBad}"
+                                IsVisible="{Binding ShowLatency}" HorizontalAlignment="Right">
+                          <TextBlock Text="{Binding LatencyText}" FontSize="10" />
+                        </Border>
+                        <TextBlock Text="{l:T wizard.preview.unreachable}" IsVisible="{Binding ShowUnreachable}"
+                                   Foreground="{DynamicResource DangerBrush}" FontSize="10" HorizontalAlignment="Right" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Grid>
                   </Border>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

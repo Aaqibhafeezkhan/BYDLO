@@ -120,6 +120,8 @@ SOFTWARE.
 | Material Design Icons (геометрия иконок в `src/Bydlo.App/Themes/Icons.axaml`) | Apache-2.0 | https://github.com/Templarian/MaterialDesign |
 | Тестовые файлы `tests/Bydlo.Tests/Fixtures/general*.bat.txt` (стратегии Flowseal без изменений) | MIT, © 2016-2026 bol-van, © 2024-2026 Flowseal | https://github.com/Flowseal/zapret-discord-youtube |
 | Списки подписок [igareck/vpn-configs-for-russia](https://github.com/igareck/vpn-configs-for-russia) (скачиваются приложением с зеркал автора, в проект не копируются) | GPL-3.0 | https://github.com/igareck/vpn-configs-for-russia |
+| Проверенный набор подписок [0xRadikal/Free-v2ray-Configs](https://github.com/0xRadikal/Free-v2ray-Configs) `verified/` (каждый сервер ответил через прокси в независимых проверках; скачивается приложением с зеркал, в проект не копируется) | MIT | https://github.com/0xRadikal/Free-v2ray-Configs |
+| VLESS-список [MatinGhanbari/v2ray-configs](https://github.com/MatinGhanbari/v2ray-configs) `subscriptions/filtered/subs/vless.txt` (скачивается приложением с зеркал, в проект не копируется) | MIT | https://github.com/MatinGhanbari/v2ray-configs |
 
 ## Тексты лицензий
 
