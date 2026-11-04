@@ -623,7 +623,12 @@ public sealed partial class SingBoxConfigBuilder
                 break;
             case ProtocolKind.Shadowsocks:
                 o["type"] = "shadowsocks";
-                o["method"] = p.Option(Keys.Method) ?? "aes-256-gcm";
+                o["method"] = p.Option(Keys.Method) switch
+                {
+                    "chacha20-poly1305" => "chacha20-ietf-poly1305",
+                    "xchacha20-poly1305" => "xchacha20-ietf-poly1305",
+                    var method => method ?? "aes-256-gcm",
+                };
                 o["password"] = Require(s, Keys.Password);
                 if (p.Option(Keys.Plugin) is { } plugin)
                 {

@@ -10,6 +10,7 @@ namespace Bydlo.Tests;
 
 public sealed class PrivilegedHelperTests
 {
+    private static readonly HelperBuild ExpectedBuild = new("0.3.2", "current-bundle");
     [Fact]
     public void WindowsAcl_RestrictsCallerAndForbidsRemoteAccessAndServerCreation()
     {
@@ -34,11 +35,26 @@ public sealed class PrivilegedHelperTests
     public async Task AvailabilityProbe_DisposesItsLeaseSoEngineListsCannotExhaustTheService()
     {
         var probe = new FakeOperations();
-        await using var engine = new HelperEngine(new FakeHelperEngine(), () => probe, () => true);
+        await using var engine = new HelperEngine(new FakeHelperEngine(), () => probe, () => true, ExpectedBuild);
         var availability = await engine.CheckAvailabilityAsync(new AppSettings { Mode = ConnectionMode.Tun });
         Assert.True(availability.IsReady);
         Assert.True(probe.Disposed);
-        Assert.Equal(HelperOperation.Check, Assert.Single(probe.Requests).Operation);
+        var request = Assert.Single(probe.Requests);
+        Assert.Equal(HelperOperation.Check, request.Operation);
+        Assert.Equal(ExpectedBuild, request.ExpectedBuild);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("0.3.0", "current-bundle")]
+    [InlineData("0.3.2", "old-bundle")]
+    public async Task AvailabilityProbe_ReportsOutdatedHelper(string? version, string? bundle)
+    {
+        var probe = new FakeOperations { Build = version is not null && bundle is not null ? new(version, bundle) : null };
+        await using var engine = new HelperEngine(new FakeHelperEngine(), () => probe, () => true, ExpectedBuild);
+        var availability = await engine.CheckAvailabilityAsync(new AppSettings { Mode = ConnectionMode.Tun });
+        Assert.False(availability.IsReady);
+        Assert.Equal(HelperProtocol.Outdated, availability.LocalizationKey);
     }
 
     [Fact]
@@ -94,7 +110,7 @@ public sealed class PrivilegedHelperTests
     private static HelperEngine AttachLease(FakeOperations remote)
     {
         // Attach the fake established lease without invoking privileged startup.
-        var engine = new HelperEngine(new FakeHelperEngine(), () => remote, () => true);
+        var engine = new HelperEngine(new FakeHelperEngine(), () => remote, () => true, ExpectedBuild);
         const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
         typeof(HelperEngine).GetField("_remote", fields)!.SetValue(engine, remote);
         typeof(HelperEngine).GetField("_usingRemote", fields)!.SetValue(engine, true);
@@ -287,6 +303,7 @@ public sealed class PrivilegedHelperTests
     private sealed class FakeOperations : IPrivilegedOperations
     {
         public Func<CancellationToken, Task<HelperReply>>? OnList { get; init; }
+        public HelperBuild? Build { get; init; } = ExpectedBuild;
         public HelperReply StopReply { get; set; } = new() { State = EngineState.Stopped };
         public bool Disposed { get; private set; }
         public List<HelperRequest> Requests { get; } = [];
@@ -295,7 +312,7 @@ public sealed class PrivilegedHelperTests
             Requests.Add(request);
             if (request.Operation == HelperOperation.ListConnections && OnList is not null) { return OnList(ct); }
             if (request.Operation == HelperOperation.Stop) { return Task.FromResult(StopReply); }
-            return Task.FromResult(new HelperReply { Availability = EngineAvailability.Ready("bundled") });
+            return Task.FromResult(new HelperReply { Build = Build, Availability = EngineAvailability.Ready("bundled") });
         }
         public ValueTask DisposeAsync() { Disposed = true; return ValueTask.CompletedTask; }
     }

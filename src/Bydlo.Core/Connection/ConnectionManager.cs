@@ -33,6 +33,7 @@ public sealed record SessionSnapshot(
     public string? ErrorLocalizationKey { get; init; }
     public string[] ErrorLocalizationArguments { get; init; } = [];
     public bool CleanupPending { get; init; }
+    public bool HoldsResources => CleanupPending || Status is not (ConnectionStatus.Disconnected or ConnectionStatus.Error);
 
     /// <summary>Active relay chain, if the session carries chained traffic (issue #75).</summary>
     public ProxyChain? Chain { get; init; }

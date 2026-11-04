@@ -56,6 +56,7 @@ internal static class HelperInstaller
         }
         new DirectoryInfo(data).SetAccessControl(privateAcl);
         VerifyBundle();
+        HelperManagement.WriteInstalledBuild(HelperManagement.GetBuild(Bydlo.Engines.Installation.EngineLock.BundleVersion));
         RunSc("create", HelperConnection.ServiceName, "binPath=", "\"" + HelperConnection.Executable + "\" service", "start=", "auto", "obj=", "LocalSystem");
         RunSc("description", HelperConnection.ServiceName, "BYDLO privileged engine helper (one explicitly authorized user)");
         RunSc("start", HelperConnection.ServiceName);

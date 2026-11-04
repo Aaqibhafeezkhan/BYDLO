@@ -17,6 +17,7 @@
   "helper.remove": "Remove helper (administrator approval)",
   "helper.changed": "Helper updated. New connections use the current installation.",
   "helper.error": "The helper request failed or administrator approval was cancelled. Check the bundled engines, supported profile options and service installation. Remove the helper to return to the existing elevated mode.",
+  "helper.outdated": "The privileged helper is outdated. In Settings → Advanced, remove the helper and install it again from this BYDLO release.",
   "helper.unsupported": "The helper supports Windows, Linux with systemd, and macOS with launchd. Use the existing elevated mode on other platforms.",
   "import.clash.invalid": "Clash/Mihomo YAML could not be read.",
   "import.clash.skipped": "Proxy #{0} is unsupported or invalid.",

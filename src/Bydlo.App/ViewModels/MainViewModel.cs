@@ -465,7 +465,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public void ReloadProfiles()
     {
-        var activeId = Primary.Profile?.Id;
+        var activeId = Primary.Status == ConnectionStatus.Connected ? Primary.Profile?.Id : null;
         var ordered = ServerListOrdering.Order(Services.Profiles.Profiles, Latencies, SortByLatency);
         var profiles = SortBySpeed ? ordered.OrderByDescending(p => _serverSpeeds.GetValueOrDefault(p.Id)).ToList() : ordered;
         var items = profiles
@@ -492,7 +492,7 @@ public sealed partial class MainViewModel : ViewModelBase
     public void ReloadChains()
     {
         var names = Services.Profiles.Profiles.ToDictionary(p => p.Id, p => p.Name);
-        var activeId = Primary.Chain?.Id;
+        var activeId = Primary.Status == ConnectionStatus.Connected ? Primary.Chain?.Id : null;
         var items = Services.Profiles.Chains
             .OrderByDescending(c => c.IsFavorite)
             .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)

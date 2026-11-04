@@ -154,17 +154,27 @@ public sealed partial class ShadowsocksParser : IProfileParser
             raw = raw[..hash];
         }
 
-        // Legacy form: ss://base64(method:password@host:port)
-        if (!raw.Contains('@') && TryDecodeBase64(raw.Split('?')[0], out var legacy))
+        var queryStart = raw.IndexOf('?');
+        var authority = queryStart < 0 ? raw : raw[..queryStart];
+        var query = queryStart < 0 ? "" : raw[queryStart..];
+        // Legacy form encodes the entire authority. SIP002 can encode just the credentials.
+        var isLegacy = false;
+        if (!authority.Contains('@') && TryDecodeBase64(authority, out var legacy))
         {
-            raw = legacy;
+            authority = legacy;
+            isLegacy = true;
         }
 
-        var uri = ParseUri("ss://" + raw, "ss");
-        var userInfo = Uri.UnescapeDataString(uri.UserInfo);
-        if (!userInfo.Contains(':') && TryDecodeBase64(userInfo, out var decoded))
+        var at = authority.LastIndexOf('@');
+        var userInfo = at < 0 ? "" : authority[..at];
+        var uri = ParseUri("ss://" + authority[(at + 1)..] + query, "ss");
+        if (!isLegacy)
         {
-            userInfo = decoded;
+            userInfo = Uri.UnescapeDataString(userInfo);
+            if (!userInfo.Contains(':') && TryDecodeBase64(userInfo, out var decoded))
+            {
+                userInfo = decoded;
+            }
         }
 
         var sep = userInfo.IndexOf(':');

@@ -17,6 +17,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 {
     public bool HelperSupported => Bydlo.Platform.HelperManagement.IsSupported;
     public bool HelperInstalled => Bydlo.Platform.HelperManagement.IsInstalled;
+    public bool HelperOutdated => HelperSupported && Bydlo.Platform.HelperManagement.IsOutdated(AppServices.ExpectedHelperBuild);
     public bool CanManageHelper => HelperSupported && !Services.IsMock && !NetworkSafetyGuard.IsLocked && !HelperBusy;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanManageHelper))]
@@ -40,7 +41,12 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         { HelperStatus = Loc.Instance["helper.error"]; }
-        finally { HelperBusy = false; OnPropertyChanged(nameof(HelperInstalled)); }
+        finally
+        {
+            HelperBusy = false;
+            OnPropertyChanged(nameof(HelperInstalled));
+            OnPropertyChanged(nameof(HelperOutdated));
+        }
     }
 
     public SettingsViewModel(MainViewModel shell)
@@ -75,6 +81,8 @@ public sealed partial class SettingsViewModel : PageViewModel
     public override void OnShown()
     {
         OnPropertyChanged(nameof(SecretProtection));
+        OnPropertyChanged(nameof(HelperInstalled));
+        OnPropertyChanged(nameof(HelperOutdated));
         var s = Services.Settings;
         Theme = s.Theme;
         ReduceMotion = s.ReduceMotion;

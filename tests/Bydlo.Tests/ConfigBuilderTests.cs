@@ -15,6 +15,15 @@ public class ConfigBuilderTests
     private static JsonObject SingBox(ImportedProfile p, AppSettings? s = null) =>
         new SingBoxConfigBuilder().Build(p.Profile, p.Secrets, new BuildContext(s ?? new AppSettings(), 9090, "sec"));
 
+    [Theory]
+    [InlineData("chacha20-poly1305", "chacha20-ietf-poly1305")]
+    [InlineData("xchacha20-poly1305", "xchacha20-ietf-poly1305")]
+    public void Shadowsocks_cipher_aliases_are_normalized_for_sing_box(string alias, string method)
+    {
+        var root = SingBox(Import($"ss://{alias}:password@ss.example.com:8388"));
+        Assert.Equal(method, (string?)root["outbounds"]![0]!["method"]);
+    }
+
     [Fact]
     public void Clash_controller_is_authenticated_and_loopback_only()
     {

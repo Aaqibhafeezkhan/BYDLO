@@ -109,6 +109,7 @@ public class TunnelServiceEngineTests
         Assert.Equal("error.engine.cleanup", error.LocalizationKey);
         Assert.Equal(ConnectionStatus.Error, manager.Primary.Status);
         Assert.True(manager.Primary.CleanupPending);
+        Assert.True(manager.Primary.HoldsResources);
         Assert.True(File.Exists(configPath));
         Assert.Equal(3, runner.Completed.Count);
 
