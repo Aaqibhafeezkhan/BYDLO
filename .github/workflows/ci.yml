@@ -329,7 +329,8 @@ jobs:
   sign-windows:
     name: Sign Windows binaries
     # Release signing only; PRs never touch keys. Secrets live only in CI, never in the repo (see docs/CODE-SIGNING.md).
-    if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    # One-time exception while Azure Artifact Signing is unavailable.
+    if: github.server_url == 'https://github.com' && github.ref != 'refs/tags/v0.3.1' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
     needs: desktop
     runs-on: windows-latest
     permissions:
@@ -454,7 +455,15 @@ jobs:
   package:
     name: Verify release archives
     # Manual runs rehearse release packaging without creating a tag or draft release.
-    if: github.server_url == 'https://github.com' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    if: >-
+      !cancelled()
+      && github.server_url == 'https://github.com'
+      && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+      && needs.desktop.result == 'success'
+      && needs.windows-parity.result == 'success'
+      && needs.macos.result == 'success'
+      && (needs.sign-windows.result == 'success'
+          || (github.ref == 'refs/tags/v0.3.1' && needs.sign-windows.result == 'skipped'))
     needs: [desktop, windows-parity, sign-windows, macos]
     runs-on: ubuntu-latest
     steps:
