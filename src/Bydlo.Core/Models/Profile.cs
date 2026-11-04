@@ -59,6 +59,8 @@ public static class Keys
     public const string Fingerprint = "fp";
     public const string Alpn = "alpn";
     public const string AllowInsecure = "insecure";
+    public const string PinnedPeerCertSha256 = "pcs";
+    public const string VerifyPeerCertByName = "vcn";
     public const string Transport = "type";          // tcp | ws | grpc | http | h2 | httpupgrade | xhttp | quic
     public const string Path = "path";
     public const string HostHeader = "host";

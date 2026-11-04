@@ -473,9 +473,20 @@ public sealed partial class XrayConfigBuilder
                 tls["alpn"] = Arr(SingBoxConfigBuilder.SplitList(alpn));
             }
 
-            if (p.Option(Keys.AllowInsecure) == "true")
+            var pin = p.Option(Keys.PinnedPeerCertSha256);
+            if (!string.IsNullOrWhiteSpace(pin))
             {
-                tls["allowInsecure"] = true;
+                tls["pinnedPeerCertSha256"] = pin;
+            }
+            else if (p.Option(Keys.AllowInsecure) == "true")
+            {
+                throw new EngineException("Xray requires a certificate pin for this TLS profile.", localizationKey: "error.engine.xray.tls.pin");
+            }
+
+            var verifyName = p.Option(Keys.VerifyPeerCertByName);
+            if (!string.IsNullOrWhiteSpace(verifyName))
+            {
+                tls["verifyPeerCertByName"] = verifyName;
             }
 
             stream["tlsSettings"] = tls;

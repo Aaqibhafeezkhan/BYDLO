@@ -144,6 +144,12 @@ public sealed class EngineRegistry
     /// <summary>Some option combinations only work with one engine (e.g. XHTTP transport needs Xray).</summary>
     private static EngineKind? ProtocolNeeds(Profile profile)
     {
+        if (!string.IsNullOrWhiteSpace(profile.Option(Keys.PinnedPeerCertSha256)) ||
+            !string.IsNullOrWhiteSpace(profile.Option(Keys.VerifyPeerCertByName)))
+        {
+            return EngineKind.Xray;
+        }
+
         var transport = profile.Option(Keys.Transport);
         if (transport is not null && (transport.Equals("xhttp", StringComparison.OrdinalIgnoreCase) || transport.Equals("splithttp", StringComparison.OrdinalIgnoreCase)))
         {

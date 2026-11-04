@@ -77,6 +77,7 @@ public static class ProfileExporter
                 scheme = p.Protocol == ProtocolKind.Vless ? "vless" : "trojan";
                 auth = Escape(Required(secrets, p.Protocol == ProtocolKind.Vless ? Keys.Uuid : Keys.Password));
                 Copy(Keys.Security, Keys.Transport, Keys.Sni, Keys.Fingerprint, Keys.Alpn, Keys.RealityPublicKey,
+                    Keys.PinnedPeerCertSha256, Keys.VerifyPeerCertByName,
                     Keys.RealityShortId, Keys.RealitySpiderX, Keys.Path, Keys.HostHeader, Keys.ServiceName,
                     Keys.Flow, Keys.XhttpMode, "headerType");
                 if (p.Protocol == ProtocolKind.Vless) { query["encryption"] = "none"; }
@@ -126,6 +127,7 @@ public static class ProfileExporter
         };
         foreach (var (field, key) in new[] { ("aid", "alterId"), ("type", "headerType"), ("host", Keys.HostHeader),
             ("sni", Keys.Sni), ("alpn", Keys.Alpn), ("fp", Keys.Fingerprint),
+            ("pcs", Keys.PinnedPeerCertSha256), ("vcn", Keys.VerifyPeerCertByName),
             ("path", p.Option(Keys.Transport) == "grpc" ? Keys.ServiceName : Keys.Path) })
         {
             if (p.Option(key) is { } value) { fields[field] = value; }
