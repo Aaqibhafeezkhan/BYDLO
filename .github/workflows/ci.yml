@@ -427,7 +427,7 @@ jobs:
           fingerprint=$( (xcodebuild -version; xcrun --sdk macosx --show-sdk-build-version; clang --version) | shasum -a 256 | cut -d ' ' -f 1)
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
           echo "cache-key=openvpn-osx-arm64-v3-$fingerprint-${{ hashFiles('engines/*.lock.json', 'scripts/build-openvpn.sh', 'scripts/build-bundled-engines.ps1', 'scripts/native-build-cache.ps1', 'scripts/openvpn-cache.ps1') }}" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .tmp/macos-openvpn-cache
           key: ${{ steps.toolchain.outputs.cache-key }}
