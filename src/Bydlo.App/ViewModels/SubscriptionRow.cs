@@ -13,6 +13,7 @@ public sealed partial class SubscriptionRow : ObservableObject
     {
         _subscription = subscription;
         _name = subscription.Name;
+        _userAgent = subscription.UserAgent ?? "";
         Update();
         Loc.Instance.PropertyChanged += (_, _) => Update();
     }
@@ -23,6 +24,10 @@ public sealed partial class SubscriptionRow : ObservableObject
 
     [ObservableProperty]
     private string _name = "";
+
+    /// <summary>Editable User-Agent override; empty means the default BYDLO/x.y.</summary>
+    [ObservableProperty]
+    private string _userAgent = "";
 
     [ObservableProperty]
     private string _details = "";

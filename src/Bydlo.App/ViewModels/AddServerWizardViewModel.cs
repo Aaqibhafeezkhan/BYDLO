@@ -232,7 +232,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
             return;
         }
 
-        var (preview, url) = await _subscriptions.FetchFirstAsync(row.Source.Urls, _preparation!.Token);
+        var (preview, url) = await _subscriptions.FetchFirstAsync(row.Source.Urls, ct: _preparation!.Token);
         if (url is null)
         {
             ErrorKey = "wizard.error.subscription";
@@ -298,7 +298,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         {
             try
             {
-                var downloaded = await _subscriptions.FetchPreviewAsync(text.Trim(), _preparation?.Token ?? Services.ShutdownToken);
+                var downloaded = await _subscriptions.FetchPreviewAsync(text.Trim(), ct: _preparation?.Token ?? Services.ShutdownToken);
                 if (downloaded.Import.IsEmpty) { ErrorKey = "wizard.error.subscription"; return; }
                 ShowPreview(downloaded.Import, text.Trim(), downloaded.Metadata);
             }
@@ -337,6 +337,9 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         { details.Add(Loc.T("wizard.traffic", Format.Bytes(up + down))); }
         if (metadata?.Total is > 0) { details.Add(Loc.T("wizard.limit", Format.Bytes(metadata.Total.Value))); }
         if (metadata?.Expires is { } expires) { details.Add(Loc.T("wizard.expires", expires.ToLocalTime().ToString("g"))); }
+        if (!string.IsNullOrWhiteSpace(metadata?.Title)) { details.Add(Loc.T("wizard.sub.title", metadata.Title)); }
+        if (!string.IsNullOrWhiteSpace(metadata?.SupportUrl)) { details.Add(Loc.T("wizard.sub.support", metadata.SupportUrl)); }
+        if (!string.IsNullOrWhiteSpace(metadata?.Announce)) { details.Add(Loc.T("wizard.sub.announce", metadata.Announce)); }
         SkippedCount = result.Errors.Count;
         foreach (var error in result.Errors.Where(error => error.StartsWith("import.clash.skipped|", StringComparison.Ordinal)))
         {
@@ -587,7 +590,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
                 var mode = selected.Count < pending.Profiles.Count
                     ? SubscriptionMode.SelectedOnly
                     : SubscriptionMode.FollowAll;
-                await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? new Uri(url).Host, url, selected, _pendingMetadata, mode);
+                await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? _pendingMetadata?.Title ?? new Uri(url).Host, url, selected, _pendingMetadata, mode);
             }
             else { await Services.Profiles.AddAsync(selected); }
             Shell.ReloadProfiles();

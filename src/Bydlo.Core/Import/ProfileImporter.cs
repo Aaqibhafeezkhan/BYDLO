@@ -157,23 +157,23 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
     private const int MaxBytes = 5 * 1024 * 1024;
 
     public async Task<ImportResult> FetchAsync(string url, CancellationToken ct = default) =>
-        (await FetchPreviewAsync(url, ct).ConfigureAwait(false)).Import;
+        (await FetchPreviewAsync(url, ct: ct).ConfigureAwait(false)).Import;
 
-    public async Task<SubscriptionPreview> FetchPreviewAsync(string url, CancellationToken ct = default)
+    public async Task<SubscriptionPreview> FetchPreviewAsync(string url, string? userAgent = null, CancellationToken ct = default)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http"))
         {
             return new(new ImportResult([], ["Subscription URL must start with https://"]), new());
         }
 
-        return await FetchOneAsync(uri, ct).ConfigureAwait(false);
+        return await FetchOneAsync(uri, ct, userAgent).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Tries mirrors in order and returns the first one that yields profiles,
     /// with the URL that worked. Returns the last failure when all fail.
     /// </summary>
-    public async Task<(SubscriptionPreview Result, string? Url)> FetchFirstAsync(IEnumerable<string> urls, CancellationToken ct = default)
+    public async Task<(SubscriptionPreview Result, string? Url)> FetchFirstAsync(IEnumerable<string> urls, string? userAgent = null, CancellationToken ct = default)
     {
         var last = new SubscriptionPreview(new ImportResult([], ["Subscription list is empty."]), new());
         foreach (var url in urls)
@@ -187,7 +187,7 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
             SubscriptionPreview result;
             try
             {
-                result = await FetchOneAsync(uri, ct).ConfigureAwait(false);
+                result = await FetchOneAsync(uri, ct, userAgent).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException && !ct.IsCancellationRequested)
             {
@@ -215,16 +215,30 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
         return (last, null);
     }
 
-    public async Task<SubscriptionPreview> FetchRefreshAsync(string url, CancellationToken ct = default)
+    public async Task<SubscriptionPreview> FetchRefreshAsync(string url, string? userAgent = null, CancellationToken ct = default)
     {
         var source = PublicSubscriptionCatalog.Sources.FirstOrDefault(item => item.Urls.Contains(url, StringComparer.Ordinal));
-        if (source is null) { return await FetchPreviewAsync(url, ct).ConfigureAwait(false); }
+        if (source is null) { return await FetchPreviewAsync(url, userAgent, ct).ConfigureAwait(false); }
         var mirrors = source.Urls.Where(mirror => !string.Equals(mirror, url, StringComparison.Ordinal)).Prepend(url);
-        var (preview, _) = await FetchFirstAsync(mirrors, ct).ConfigureAwait(false);
+        var (preview, _) = await FetchFirstAsync(mirrors, userAgent, ct).ConfigureAwait(false);
         return preview;
     }
 
-    private async Task<SubscriptionPreview> FetchOneAsync(Uri uri, CancellationToken ct)
+    /// <summary>
+    /// Per-subscription User-Agent with a safe default. Trims, caps at 256 chars and rejects
+    /// control characters (header injection) back to <c>BYDLO/x.y</c>.
+    /// </summary>
+    public static string NormalizeUserAgent(string? userAgent)
+    {
+        userAgent = userAgent?.Trim();
+        if (string.IsNullOrEmpty(userAgent) || userAgent.Length > 256 || userAgent.Any(char.IsControl))
+        {
+            return AppVersion.UserAgent;
+        }
+        return userAgent;
+    }
+
+    private async Task<SubscriptionPreview> FetchOneAsync(Uri uri, CancellationToken ct, string? userAgent = null)
     {
         // ResponseHeadersRead ends HttpClient's timeout at the headers; keep the same
         // per-mirror budget active until the subscription body has been read.
@@ -233,7 +247,14 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.UserAgent.ParseAdd(AppVersion.UserAgent);
+            try
+            {
+                request.Headers.UserAgent.ParseAdd(NormalizeUserAgent(userAgent));
+            }
+            catch (FormatException)
+            {
+                request.Headers.UserAgent.ParseAdd(AppVersion.UserAgent);
+            }
             using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
@@ -258,7 +279,9 @@ public sealed class SubscriptionClient(HttpClient http, ProfileImporter importer
             buffer.Position = 0;
             using var reader = new StreamReader(buffer);
             var body = await reader.ReadToEndAsync(timeout.Token).ConfigureAwait(false);
-            var metadata = SubscriptionMetadata.Parse(response.Headers.TryGetValues("subscription-userinfo", out var info) ? info.FirstOrDefault() : null);
+            var metadata = SubscriptionMetadata.Parse(
+                response.Headers.TryGetValues("subscription-userinfo", out var info) ? info.FirstOrDefault() : null,
+                response.Headers);
             return new(importer.ImportText(body), metadata);
         }
         catch (OperationCanceledException ex) when (!ct.IsCancellationRequested && timeout.IsCancellationRequested)

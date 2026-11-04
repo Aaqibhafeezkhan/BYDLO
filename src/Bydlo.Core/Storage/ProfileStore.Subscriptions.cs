@@ -90,6 +90,11 @@ public sealed partial class ProfileStore
                 Download = metadata is null ? sub.Download : metadata.Download,
                 Total = metadata is null ? sub.Total : metadata.Total,
                 Expires = metadata is null ? sub.Expires : metadata.Expires,
+                Title = metadata?.Title ?? sub.Title,
+                UpdateIntervalHours = metadata?.UpdateIntervalHours ?? sub.UpdateIntervalHours,
+                SupportUrl = metadata?.SupportUrl ?? sub.SupportUrl,
+                Announce = metadata?.Announce ?? sub.Announce,
+                UserAgent = sub.UserAgent,
             };
             var next = new ProfileDocument
             {

@@ -151,7 +151,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             await Shell.Guard(async () =>
             {
                 var url = await Services.Profiles.GetSubscriptionUrlAsync(row.Id) ?? throw new InvalidOperationException("Subscription URL missing.");
-                var preview = await Services.Subscriptions.FetchRefreshAsync(url, Services.ShutdownToken);
+                var preview = await Services.Subscriptions.FetchRefreshAsync(url, row.Snapshot.UserAgent, Services.ShutdownToken);
                 if (preview.Import.IsEmpty)
                 {
                     Shell.ShowToast(L["wizard.error.subscription"], isError: true);
@@ -196,6 +196,17 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         await Shell.Guard(async () =>
         {
             await Services.Profiles.RenameSubscriptionAsync(row.Id, name);
+            OnShown();
+            Shell.ShowToast(L["toast.saved"]);
+        });
+    }
+
+    [RelayCommand]
+    private async Task SaveSubscriptionUserAgent(SubscriptionRow row)
+    {
+        await Shell.Guard(async () =>
+        {
+            await Services.Profiles.SetSubscriptionUserAgentAsync(row.Id, row.UserAgent);
             OnShown();
             Shell.ShowToast(L["toast.saved"]);
         });
