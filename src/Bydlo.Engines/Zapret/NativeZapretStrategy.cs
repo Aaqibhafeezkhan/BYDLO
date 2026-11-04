@@ -27,8 +27,9 @@ public static class NativeZapretStrategy
 
         var hosts = Path.Combine(install.UserListsDirectory, "default-hosts.txt");
         File.WriteAllText(hosts, DefaultHosts);
-        string[] lists = [$"--hostlist={hosts}", $"--hostlist={install.UserListPath(ZapretUserList.General)}",
-            $"--hostlist-exclude={install.UserListPath(ZapretUserList.Exclude)}", $"--ipset-exclude={install.UserListPath(ZapretUserList.IpsetExclude)}"];
+        string ListPath(string path) => os == OsFamily.Linux ? Path.GetFileName(path) : path;
+        string[] lists = [$"--hostlist={ListPath(hosts)}", $"--hostlist={ListPath(install.UserListPath(ZapretUserList.General))}",
+            $"--hostlist-exclude={ListPath(install.UserListPath(ZapretUserList.Exclude))}", $"--ipset-exclude={ListPath(install.UserListPath(ZapretUserList.IpsetExclude))}"];
         if (os == OsFamily.MacOS)
         {
             // /dev/pf requires root for NAT lookups on macOS. PF excludes root to prevent recursion.

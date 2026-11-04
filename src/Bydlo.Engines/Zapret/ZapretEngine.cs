@@ -12,6 +12,9 @@ namespace Bydlo.Engines.Zapret;
 public sealed class ZapretEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator,
     IPrivilegeService privileges, IZapretFirewall? firewall = null) : ProcessEngineBase(runner, redactor)
 {
+    private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+    private string? _linuxListSnapshot;
+
     public static readonly string[] ConflictingProcesses = ["winws", "goodbyedpi"];
 
     public static readonly EngineDescriptor Info = new()
@@ -131,6 +134,11 @@ public sealed class ZapretEngine(IProcessRunner runner, LogRedactor redactor, En
         }
 
         install.EnsureUserLists();
+        if (locator.Platform.Os == OsFamily.Linux)
+        {
+            install = StageLinuxLists(install, request.WorkDirectory);
+        }
+
         IZapretBackend backend = locator.Platform.Os switch
         {
             OsFamily.Windows => new WinDivertBackend(),
@@ -141,26 +149,70 @@ public sealed class ZapretEngine(IProcessRunner runner, LogRedactor redactor, En
         var parsed = await backend.PrepareAsync(install, Strategy(request.Settings, install)!, request.Settings.Zapret, ct).ConfigureAwait(false);
         foreach (var warning in parsed.Warnings) { EmitLog("warning: " + warning); }
 
+        if (locator.Platform.Os == OsFamily.Linux && OperatingSystem.IsLinux())
+        {
+            foreach (var file in Directory.EnumerateFiles(install.UserListsDirectory))
+            {
+                File.SetUnixFileMode(file, UnixFileMode.UserRead | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
+            }
+
+            // nfqws keeps its cwd after dropping root. Relative paths avoid traversing the private parent.
+            File.SetUnixFileMode(install.UserListsDirectory, OwnerOnly | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
+        }
+
         return new ProcessSpec
         {
-            FileName = install.ExecutablePath,
+            FileName = locator.Platform.Os == OsFamily.Linux ? Path.GetFullPath(install.ExecutablePath) : install.ExecutablePath,
             Arguments = parsed.Arguments,
-            WorkingDirectory = Path.GetDirectoryName(install.ExecutablePath),
+            WorkingDirectory = locator.Platform.Os == OsFamily.Linux ? install.UserListsDirectory : Path.GetDirectoryName(install.ExecutablePath),
             DisplayName = locator.Platform.Os == OsFamily.Windows ? "winws" : locator.Platform.Os == OsFamily.Linux ? "nfqws" : "tpws",
         };
+    }
+
+    private ZapretInstallation StageLinuxLists(ZapretInstallation install, string workDirectory)
+    {
+        var snapshot = Path.Combine(workDirectory, "zapret-" + Guid.NewGuid().ToString("N"));
+        if (OperatingSystem.IsLinux()) { Directory.CreateDirectory(snapshot, OwnerOnly); }
+        else { Directory.CreateDirectory(snapshot); }
+        _linuxListSnapshot = snapshot;
+
+        var lists = Path.Combine(snapshot, "lists");
+        var staged = new ZapretInstallation(install.Root, lists, install.ExecutablePath, install.Os);
+        staged.ImportUserListsFrom(install);
+        return staged;
     }
 
     protected override Task OnStartedAsync(EngineStartRequest request, CancellationToken ct)
     {
         if (locator.Platform.Os == OsFamily.Windows) { return Task.CompletedTask; }
-        var install = ResolveInstallation(request.Settings)!;
+        var install = _linuxListSnapshot is { } snapshot
+            ? new ZapretInstallation(snapshot)
+            : ResolveInstallation(request.Settings)!;
         var excluded = File.ReadLines(install.UserListPath(ZapretUserList.IpsetExclude))
             .Select(l => l.Split('#')[0].Trim()).Where(l => l.Length > 0).ToArray();
         return firewall!.ApplyAsync(locator.Platform.Os, NativeZapretStrategy.TcpPorts(request.Settings.Zapret.GameFilter),
             NativeZapretStrategy.UdpPorts(request.Settings.Zapret.GameFilter), excluded, ct);
     }
 
-    protected override Task OnStoppingAsync() => locator.Platform.Os == OsFamily.Windows ? Task.CompletedTask : firewall?.RemoveAsync() ?? Task.CompletedTask;
+    protected override async Task OnStoppingAsync()
+    {
+        try
+        {
+            if (_linuxListSnapshot is { } snapshot)
+            {
+                try { Directory.Delete(snapshot, recursive: true); }
+                catch (DirectoryNotFoundException) { }
+                _linuxListSnapshot = null;
+            }
+        }
+        finally
+        {
+            if (locator.Platform.Os != OsFamily.Windows && firewall is not null)
+            {
+                await firewall.RemoveAsync().ConfigureAwait(false);
+            }
+        }
+    }
 
     protected override TimeSpan ReadyTimeout => TimeSpan.FromSeconds(5);
 
