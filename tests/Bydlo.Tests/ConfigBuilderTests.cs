@@ -101,6 +101,23 @@ public class ConfigBuilderTests
     }
 
     [Fact]
+    public void Xray_uses_certificate_pin_and_name_instead_of_allow_insecure()
+    {
+        var pin = new string('a', 64);
+        var p = Import($"vless://id@x.example.com:443?security=tls&type=xhttp&allowInsecure=1&pcs={pin}&vcn=x.example.com");
+        var root = new XrayConfigBuilder().Build(p.Profile, p.Secrets, new BuildContext(new AppSettings()));
+        var tls = root["outbounds"]![0]!["streamSettings"]!["tlsSettings"]!;
+        Assert.Equal(pin, (string?)tls["pinnedPeerCertSha256"]);
+        Assert.Equal("x.example.com", (string?)tls["verifyPeerCertByName"]);
+        Assert.Null(tls["allowInsecure"]);
+
+        p.Profile.Options.Remove(Keys.PinnedPeerCertSha256);
+        var error = Assert.Throws<EngineException>(() =>
+            new XrayConfigBuilder().Build(p.Profile, p.Secrets, new BuildContext(new AppSettings())));
+        Assert.Equal("error.engine.xray.tls.pin", error.LocalizationKey);
+    }
+
+    [Fact]
     public void Xray_handles_xhttp_and_registry_routes_it_to_xray()
     {
         var p = Import("vless://id@x.example.com:443?security=tls&type=xhttp&path=%2Fx&mode=auto&sni=x.example.com");

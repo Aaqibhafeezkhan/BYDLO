@@ -14,6 +14,7 @@ internal static class StreamOptions
         p.Options[Keys.Transport] = q.TryGetValue("type", out var t) && !string.IsNullOrWhiteSpace(t) ? t.ToLowerInvariant() : "tcp";
         Copy(q, p,
             ("sni", Keys.Sni), ("peer", Keys.Sni), ("fp", Keys.Fingerprint), ("alpn", Keys.Alpn),
+            ("pcs", Keys.PinnedPeerCertSha256), ("vcn", Keys.VerifyPeerCertByName),
             ("pbk", Keys.RealityPublicKey), ("sid", Keys.RealityShortId), ("spx", Keys.RealitySpiderX),
             ("path", Keys.Path), ("host", Keys.HostHeader), ("serviceName", Keys.ServiceName),
             ("flow", Keys.Flow), ("mode", Keys.XhttpMode), ("headerType", "headerType"));
@@ -101,6 +102,8 @@ public sealed class VmessParser : IProfileParser
         Opt(Keys.Sni, S("sni"));
         Opt(Keys.Alpn, S("alpn"));
         Opt(Keys.Fingerprint, fingerprint ?? S("fp"));
+        Opt(Keys.PinnedPeerCertSha256, S("pcs"));
+        Opt(Keys.VerifyPeerCertByName, S("vcn"));
         Opt(Keys.HostHeader, S("host"));
         Opt(p.Options[Keys.Transport] == "grpc" ? Keys.ServiceName : Keys.Path, S("path"));
         Opt("headerType", S("type"));
