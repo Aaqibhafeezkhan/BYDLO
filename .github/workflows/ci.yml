@@ -66,7 +66,7 @@ jobs:
           test "$(od -An -tx1 -N8 bydlo-amneziawg | tr -d ' \n')" = cffaedfe0c000001
           sha256sum bydlo-amneziawg > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.server_url == 'https://github.com'
         with:
           name: amnezia-macos-arm64
@@ -191,7 +191,7 @@ jobs:
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connect-switch-verification ru --mock --verify-connect-switch
       # Artifacts are kept on GitHub only: artifact actions v4 refuse to run on Gitea (it looks like GHES),
       # and GitHub fails the whole job if a step even references the deprecated v3.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && github.server_url == 'https://github.com'
         with:
           name: test-results-${{ matrix.os }}
@@ -289,7 +289,7 @@ jobs:
         if: ${{ !matrix.managedOnly }}
         shell: bash
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-${{ matrix.rid }}/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.server_url == 'https://github.com'
         with:
           name: ${{ matrix.managedOnly && 'managed-osx-arm64' || format('BYDLO-{0}', matrix.rid) }}
@@ -387,12 +387,12 @@ jobs:
             & signtool verify /pa /v $f
             if ($LASTEXITCODE -ne 0) { throw "Signature verification failed: $f" }
           }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BYDLO-win-x64
           path: dist/BYDLO-win-x64
           overwrite: true
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BYDLO-win-arm64
           path: dist/BYDLO-win-arm64
@@ -446,7 +446,7 @@ jobs:
         run: ./scripts/verify-engine-bundle.ps1 -Rid osx-arm64 -PublishDirectory publish/BYDLO-osx-arm64
       - name: Add notices
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-osx-arm64/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BYDLO-osx-arm64
           path: publish/BYDLO-osx-arm64
@@ -501,7 +501,7 @@ jobs:
                 ;;
             esac
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-packages
           path: |
