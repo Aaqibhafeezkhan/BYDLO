@@ -98,9 +98,9 @@ public sealed partial class HomeViewModel : PageViewModel
     public string? Error => IsError && Shell.Primary.Error is { } error ? Loc.Error(error, Shell.Primary.ErrorLocalizationKey, Shell.Primary.ErrorLocalizationArguments) : null;
 
     /// <summary>Relay chain carrying the active connection, if any (issue #75).</summary>
-    public bool IsChainActive => Shell.Primary.Chain is not null;
+    public bool IsChainActive => IsConnected && Shell.Primary.Chain is not null;
 
-    public string? ActiveChainName => Shell.Primary.Chain?.Name;
+    public string? ActiveChainName => IsChainActive ? Shell.Primary.Chain?.Name : null;
 
     public string Elapsed => IsConnected && Shell.Primary.ConnectedSince is { } since ? Format.Duration(DateTimeOffset.Now - since) : "00:00";
 
