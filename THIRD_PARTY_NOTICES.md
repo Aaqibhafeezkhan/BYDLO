@@ -12,7 +12,7 @@ BYDLO не линкуется с ними. Исключение — перене
 
 | Компонент | Авторы | Лицензия | Исходники | Как использует BYDLO |
 |---|---|---|---|---|
-| zapret-discord-youtube | Flowseal; на основе zapret от bol-van | MIT | https://github.com/Flowseal/zapret-discord-youtube | Стратегии (`general*.bat`), списки и набор `bin/` используются без изменений; BYDLO разбирает стратегии и запускает `winws.exe` напрямую. |
+| zapret-discord-youtube | Flowseal; на основе zapret от bol-van | MIT | https://github.com/Flowseal/zapret-discord-youtube | Стратегии (`general*.bat`) и набор `bin/` используются без изменений. При упаковке BYDLO дополняет `lists/list-general.txt` из собственного `engines/bydlo-zapret-list.txt`. BYDLO разбирает стратегии и запускает `winws.exe` напрямую. |
 | zapret (winws, nfqws, tpws) | bol-van | MIT | https://github.com/bol-van/zapret | Windows: внутри Flowseal; Linux/macOS: закреплённый upstream v72.13, nfqws/tpws как отдельные процессы. |
 | WinDivert | basil00 | LGPL-3.0 или GPL-2.0 | https://github.com/basil00/WinDivert | Драйвер перехвата пакетов, используемый `winws.exe` (входит в релиз Flowseal). |
 | Cygwin 3.4.10 / Newlib | Cygwin contributors / Red Hat и другие | LGPL-3.0-or-later с Cygwin Linking Exception; дополнительные permissive notices Newlib | https://cygwin.com/licensing.html | Неизменённый cygwin1.dll из Flowseal; динамическая библиотека winws. |
@@ -142,6 +142,8 @@ macOS поддерживается только на Apple Silicon (`osx-arm64`)
 tpws сохраняется без изменений; наличие в нём x86_64 не означает поддержку Intel Mac в BYDLO.
 
 ## Встроенный Zapret
+
+Дополнения BYDLO к списку доменов Flowseal основаны на списке сопровождающего BYDLO.
 
 - Flowseal 1.10.3: MIT, текст из закреплённого [LICENSE.txt](https://github.com/Flowseal/zapret-discord-youtube/blob/1.10.3/LICENSE.txt).
 - bol-van/zapret 72.13: MIT, подтверждён по [docs/LICENSE.txt](https://github.com/bol-van/zapret/blob/v72.13/docs/LICENSE.txt), включая copyright bol-van. Универсальный `binaries/mac64/tpws` содержит x86_64 и arm64.

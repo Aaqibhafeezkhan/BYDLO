@@ -1,6 +1,7 @@
 using Bydlo.Core.Models;
 using Bydlo.Engines.Installation;
 using Bydlo.Core.Security;
+using Bydlo.BundleEngines;
 using System.Text.Json;
 using System.Security.Cryptography;
 
@@ -43,6 +44,10 @@ try
         var entry = engineLock.Find(engineId)!;
         var source = installer.InstallDirectory(engineId, entry.Version);
         var destination = Path.Combine(output, "engines", engineId, entry.Version);
+        if (engineId == "zapret")
+        {
+            ZapretHostList.Apply(executable, Path.Combine(repo, "engines", "bydlo-zapret-list.txt"));
+        }
         if (os == OsFamily.Windows || engineId != "zapret-native")
         {
             foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
