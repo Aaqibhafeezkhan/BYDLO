@@ -45,11 +45,7 @@ public sealed class PrivilegedHelperTests
     public async Task Stop_requires_remote_confirmation_and_retains_failed_lease_for_retry()
     {
         var remote = new FakeOperations { StopReply = new HelperReply { State = EngineState.Failed, Error = "helper.error" } };
-        await using var engine = new HelperEngine(new FakeHelperEngine(), () => remote, () => true);
-        // Attach the fake established lease without invoking privileged startup.
-        const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-        typeof(HelperEngine).GetField("_remote", fields)!.SetValue(engine, remote);
-        typeof(HelperEngine).GetField("_usingRemote", fields)!.SetValue(engine, true);
+        await using var engine = AttachLease(remote);
 
         await Assert.ThrowsAsync<EngineException>(() => engine.StopAsync());
         Assert.Equal(EngineState.Failed, engine.State);
@@ -60,6 +56,50 @@ public sealed class PrivilegedHelperTests
         Assert.Equal(EngineState.Stopped, engine.State);
         Assert.True(remote.Disposed);
         Assert.Equal(2, remote.Requests.Count(request => request.Operation == HelperOperation.Stop));
+    }
+
+    [Fact]
+    public async Task Canceling_list_after_send_preserves_the_lease_for_stop()
+    {
+        var pending = new TaskCompletionSource<HelperReply>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var remote = new FakeOperations { OnList = token => pending.Task.WaitAsync(token) };
+        await using var engine = AttachLease(remote);
+        using var page = new CancellationTokenSource();
+        var list = engine.ListConnectionsAsync(page.Token);
+        Assert.Equal(HelperOperation.ListConnections, Assert.Single(remote.Requests).Operation);
+        page.Cancel();
+        pending.SetResult(new HelperReply { State = EngineState.Running });
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => list);
+        Assert.False(remote.Disposed);
+        Assert.Equal(EngineState.Running, engine.State);
+        await engine.StopAsync();
+        Assert.Equal(HelperOperation.Stop, remote.Requests.Last().Operation);
+    }
+
+    [Fact]
+    public async Task Lost_transport_publishes_failure_and_stop_does_not_reuse_the_lease()
+    {
+        var remote = new FakeOperations { OnList = _ => Task.FromException<HelperReply>(new ObjectDisposedException("pipe")) };
+        await using var engine = AttachLease(remote);
+        EngineState? reported = null;
+        engine.StateChanged += (_, args) => reported = args.State;
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => engine.ListConnectionsAsync());
+        Assert.Equal(EngineState.Failed, reported);
+        Assert.True(remote.Disposed);
+        await engine.StopAsync();
+        Assert.Equal(EngineState.Stopped, engine.State);
+        Assert.Single(remote.Requests);
+    }
+
+    private static HelperEngine AttachLease(FakeOperations remote)
+    {
+        // Attach the fake established lease without invoking privileged startup.
+        var engine = new HelperEngine(new FakeHelperEngine(), () => remote, () => true);
+        const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        typeof(HelperEngine).GetField("_remote", fields)!.SetValue(engine, remote);
+        typeof(HelperEngine).GetField("_usingRemote", fields)!.SetValue(engine, true);
+        typeof(HelperEngine).GetField("_state", fields)!.SetValue(engine, EngineState.Running);
+        return engine;
     }
 
     [Fact]
@@ -246,12 +286,14 @@ public sealed class PrivilegedHelperTests
 
     private sealed class FakeOperations : IPrivilegedOperations
     {
+        public Func<CancellationToken, Task<HelperReply>>? OnList { get; init; }
         public HelperReply StopReply { get; set; } = new() { State = EngineState.Stopped };
         public bool Disposed { get; private set; }
         public List<HelperRequest> Requests { get; } = [];
         public Task<HelperReply> SendAsync(HelperRequest request, CancellationToken ct = default)
         {
             Requests.Add(request);
+            if (request.Operation == HelperOperation.ListConnections && OnList is not null) { return OnList(ct); }
             if (request.Operation == HelperOperation.Stop) { return Task.FromResult(StopReply); }
             return Task.FromResult(new HelperReply { Availability = EngineAvailability.Ready("bundled") });
         }
