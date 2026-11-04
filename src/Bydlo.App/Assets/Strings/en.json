@@ -696,7 +696,7 @@
   "error.engine.openvpn.missing": "OpenVPN is missing from this build. Download a complete BYDLO release or select an OpenVPN executable.",
   "error.engine.openvpn.admin": "OpenVPN needs administrator rights.",
   "error.engine.xray.platform": "Xray on this platform is planned.",
-  "error.engine.xray.tun": "TUN mode with Xray is not implemented. Use Local proxy mode or the sing-box engine.",
+  "error.engine.xray.tun": "TUN mode with Xray is not implemented. Use Local proxy mode, the sing-box engine, or TUN with kill switch.",
   "error.engine.xray.missing": "Xray-core is not installed. Install it from Tools → Engines.",
   "error.engine.xray.tls.pin": "Xray no longer supports skipping TLS certificate verification. Import a profile with a certificate pin (pcs), or use sing-box if it supports this profile.",
   "error.engine.transport.xray": "This transport or option requires the Xray engine.",

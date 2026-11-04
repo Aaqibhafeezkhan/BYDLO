@@ -50,7 +50,7 @@ public sealed class EngineRegistry
         var kind = profile.PreferredEngine is { } preferred && candidates.Contains(preferred)
             ? preferred
             : candidates.Count > 0 ? candidates[0] : throw new EngineException($"No engine supports {profile.Protocol} on {os}.");
-        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
+        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind is not (EngineKind.SingBox or EngineKind.Xray))
         {
             throw new EngineException("error.killswitch.engine");
         }
@@ -111,7 +111,7 @@ public sealed class EngineRegistry
             kind = wanted;
         }
 
-        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
+        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind is not (EngineKind.SingBox or EngineKind.Xray))
         {
             throw new EngineException("error.killswitch.engine");
         }

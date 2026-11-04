@@ -1,5 +1,6 @@
 using Bydlo.Core.Engines;
 using Bydlo.Core.Engines.Mock;
+using Bydlo.Core.Models;
 using Bydlo.Core.Platform;
 using Bydlo.Core.Processes;
 using Bydlo.Core.Security;
@@ -30,7 +31,8 @@ public static class EngineRegistryFactory
         registry
             .Register(SingBoxEngine.Info, () => new RetainedTunEngine(new SingBoxEngine(runner, redactor, locator, privileges),
                 () => new SingBoxTunGuard(runner, redactor, locator, privileges)), priority: 10)
-            .Register(XrayEngine.Info, () => new XrayEngine(runner, redactor, locator), priority: 20)
+            .Register(XrayEngine.Info, () => new RetainedTunEngine(new XrayEngine(runner, redactor, locator),
+                () => new SingBoxTunGuard(runner, redactor, locator, privileges, EngineKind.Xray)), priority: 20)
             .Register(TunnelServiceEngine.WireGuardInfo, () => new TunnelServiceEngine(false, runner, redactor, locator, privileges), priority: 30)
             .Register(AmneziaEngine.Info, () => new AmneziaEngine(runner, redactor, locator, privileges,
                 amneziaNetwork ?? throw new InvalidOperationException("AmneziaWG network service is not configured.")), priority: 10)

@@ -35,13 +35,10 @@ public sealed class ConnectionReplacementTests
         };
 
     [Theory]
-    [InlineData("profile", false)]
-    [InlineData("chain", false)]
-    [InlineData("group", false)]
-    [InlineData("profile", true)]
-    [InlineData("chain", true)]
-    [InlineData("group", true)]
-    public async Task Invalid_engine_selection_keeps_the_working_session(string target, bool killSwitch)
+    [InlineData("profile")]
+    [InlineData("chain")]
+    [InlineData("group")]
+    public async Task Invalid_engine_selection_keeps_the_working_session(string target)
     {
         var runner = new FakeProcessRunner();
         var created = 0;
@@ -57,19 +54,49 @@ public sealed class ConnectionReplacementTests
         manager.SessionChanged += (_, snapshot) => events.Add(snapshot);
         var settings = new AppSettings
         {
-            Mode = killSwitch ? ConnectionMode.Tun : ConnectionMode.LocalProxy,
-            KillSwitch = killSwitch,
-            Routing = { Preset = killSwitch ? RoutingPreset.All : RoutingPreset.BlockedOnly },
+            Mode = ConnectionMode.LocalProxy,
+            KillSwitch = false,
+            Routing = { Preset = RoutingPreset.BlockedOnly },
         };
 
         var error = await Assert.ThrowsAsync<EngineException>(() => Connect(manager, target, settings));
 
-        Assert.Equal(killSwitch ? "error.killswitch.engine" : "routing.preset.singbox", error.Message);
+        Assert.Equal("routing.preset.singbox", error.Message);
         Assert.Equal(before, manager.Primary);
         Assert.False(process.Stopped);
         Assert.Empty(events);
         Assert.Equal(1, created);
         Assert.Equal(0, proxy.Clears);
+        Assert.Single(proxy.Applied);
+    }
+
+    [Theory]
+    [InlineData("profile")]
+    [InlineData("chain")]
+    [InlineData("group")]
+    public async Task Kill_switch_with_xray_replaces_the_working_session(string target)
+    {
+        var runner = new FakeProcessRunner();
+        var created = 0;
+        var descriptor = new RecordingEngine(runner).Descriptor;
+        var registry = new EngineRegistry(() => throw new InvalidOperationException())
+            .Register(descriptor, () => { created++; return new RecordingEngine(runner); });
+        var proxy = new RecordingProxy();
+        await using var manager = Create(registry, proxy);
+        await manager.ConnectAsync(Demo(), new AppSettings { SetSystemProxy = true });
+        var before = manager.Primary;
+        var process = runner.Last!;
+        var events = new List<SessionSnapshot>();
+        manager.SessionChanged += (_, snapshot) => events.Add(snapshot);
+
+        await Connect(manager, target, new AppSettings { Mode = ConnectionMode.Tun, KillSwitch = true });
+
+        Assert.NotEqual(before, manager.Primary);
+        Assert.Equal(ConnectionStatus.Connected, manager.Primary.Status);
+        Assert.True(process.Stopped);
+        Assert.NotEmpty(events);
+        Assert.Equal(2, created);
+        Assert.Equal(1, proxy.Clears);
         Assert.Single(proxy.Applied);
     }
 
