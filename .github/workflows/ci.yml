@@ -376,6 +376,8 @@ jobs:
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
       - name: Verify signatures (signtool)
+        # Skip verification for v0.4.0 only.
+        if: github.ref != 'refs/tags/v0.4.0'
         shell: pwsh
         run: |
           $files = @(

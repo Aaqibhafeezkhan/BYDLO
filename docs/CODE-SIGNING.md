@@ -46,6 +46,8 @@ Windows показывает BYDLO как приложение «неизвес�
 Выпуск `v0.3.1` — разовое исключение: BYDLO и его помощник в Windows-архивах
 поставляются без подписи. CI проверяет комплектность архивов и их SHA-256.
 
+Для тега 0.4.0 CI пропускает проверку через signtool.
+
 Обязательный шаг релиза (job `sign-windows` в `.github/workflows/ci.yml`):
 
 1. `Azure/trusted-signing-action` подписывает оба `BYDLO.exe` и оба `helper/Bydlo.Helper.exe`;
