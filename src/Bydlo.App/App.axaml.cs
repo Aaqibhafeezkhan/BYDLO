@@ -72,6 +72,18 @@ public sealed partial class App : Application
 
         // Loading settings and profiles is fast local file I/O; doing it synchronously keeps startup simple.
         Services = Task.Run(() => AppServices.CreateAsync(Args)).GetAwaiter().GetResult();
+        if (Bydlo.Core.Platform.StartupElevation.ShouldElevateOnStartup(
+                Services.Settings, Services.Privileges, Services.IsMock, Bydlo.Core.Security.NetworkSafetyGuard.IsLocked))
+        {
+            var launchArgs = Bydlo.Core.Platform.ElevatedRestart.BuildArguments(
+                Args, Environment.ProcessId, Services.ForcedMock, Services.Paths.DataDirectory);
+            if (Services.Privileges.TryRestartElevated(launchArgs))
+            {
+                Environment.Exit(0);
+                return;
+            }
+            // Declined or failed: continue with limited features, the settings page explains what is unavailable.
+        }
         Loc.Instance.SetLanguage(Services.Settings.Language);
         ApplyTheme(Services);
         Services.Theme.TrackSystemTheme();

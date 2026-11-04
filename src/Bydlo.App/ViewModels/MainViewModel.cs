@@ -48,6 +48,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private const int HistoryLength = 60;
     private int _toastVersion;
     private string? _toastLocalizationKey;
+    private string[]? _toastLocalizationArguments;
 
     public MainViewModel(AppServices services, Bydlo.Core.Import.SubscriptionClient? subscriptionClient = null, Bydlo.Core.Diagnostics.ServerLatencyProbe? latencyProbe = null)
     {
@@ -57,7 +58,7 @@ public sealed partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(ReleaseNotificationText));
             if (Toast is not null && _toastLocalizationKey is not null)
             {
-                Toast = Loc.Error(Toast, _toastLocalizationKey);
+                Toast = Loc.Error(Toast, _toastLocalizationKey, _toastLocalizationArguments);
             }
 
             foreach (var c in Chains)
@@ -549,10 +550,11 @@ public sealed partial class MainViewModel : ViewModelBase
         }
     }
 
-    public void ShowToast(string message, bool isError = false, string? localizationKey = null)
+    public void ShowToast(string message, bool isError = false, string? localizationKey = null, string[]? localizationArguments = null)
     {
         _toastLocalizationKey = localizationKey;
-        message = Loc.Error(message, localizationKey);
+        _toastLocalizationArguments = localizationArguments;
+        message = Loc.Error(message, localizationKey, localizationArguments);
         var version = ++_toastVersion;
         Toast = message;
         ToastIsError = isError;
@@ -576,7 +578,7 @@ public sealed partial class MainViewModel : ViewModelBase
         catch (Exception ex) when (ex is EngineException or InvalidDataException or System.Text.Json.JsonException or InvalidOperationException or IOException or HttpRequestException or NotSupportedException or UnauthorizedAccessException or FormatException or TimeoutException or PlatformNotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
         {
             ShowToast(ex.Message, isError: true, localizationKey: (ex as EngineException)?.LocalizationKey ??
-                (ex is InvalidDataException && ex.Message is "routing.rules.invalid" or "routing.sources.invalid" ? ex.Message : null));
+                (ex is InvalidDataException && ex.Message is "routing.rules.invalid" or "routing.sources.invalid" ? ex.Message : null), localizationArguments: (ex as EngineException)?.LocalizationArguments);
             return false;
         }
     }

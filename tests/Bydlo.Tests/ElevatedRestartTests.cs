@@ -6,6 +6,7 @@ using Bydlo.Core.Models;
 using Bydlo.Core.Platform;
 using Bydlo.Core.Security;
 using Bydlo.Desktop;
+using Bydlo.Platform;
 
 namespace Bydlo.Tests;
 
@@ -16,6 +17,7 @@ public class ElevatedRestartTests
     [InlineData(true)]
     public async Task Uac_result_controls_mock_session_cleanup(bool accepted)
     {
+        var directory = TestDirs.New("elevation-data");
         var registry = new EngineRegistry(() => new MockEngine(seed: 1) { TimeScale = 0.01 });
         await using var manager = new ConnectionManager(registry, new InMemorySecretStore(),
             new RootedAppPaths(TestDirs.New("elevation")), new ConflictDetector(new FakePorts()),
@@ -25,11 +27,13 @@ public class ElevatedRestartTests
         var privileges = new RestartPrivileges(args =>
         {
             Assert.Equal(ConnectionStatus.Connected, manager.Primary.Status);
-            Assert.Equal(["--mock", ElevatedRestart.ParentArgument + "42"], args);
+            Assert.Equal(["--mock", ElevatedRestart.DataDirectoryArgument + directory,
+                ElevatedRestart.ParentArgument + "42"], args);
             return accepted;
         });
 
-        Assert.Equal(accepted, await ElevatedRestart.TryAsync(privileges, ["--mock"], 42, manager.StopAllAsync));
+        Assert.Equal(accepted, await ElevatedRestart.TryAsync(privileges, ["--mock"], 42, manager.StopAllAsync,
+            forcedMock: true, dataDirectory: directory));
         Assert.Equal(accepted ? ConnectionStatus.Disconnected : ConnectionStatus.Connected, manager.Primary.Status);
     }
 
@@ -37,10 +41,49 @@ public class ElevatedRestartTests
     public async Task Cleanup_failure_keeps_the_parent_in_control()
     {
         await Assert.ThrowsAsync<IOException>(() => ElevatedRestart.TryAsync(new RestartPrivileges(_ => true),
-            ["--mock"], 42, () => throw new IOException("fake cleanup failure")));
+            ["--mock"], 42, () => throw new IOException("fake cleanup failure"),
+            forcedMock: true, dataDirectory: TestDirs.New("elevation-cleanup")));
         var args = new[] { "--mock", ElevatedRestart.ParentArgument + "42" };
         Assert.False(ElevationHandoff.WaitForParent(ref args, _ => false));
         Assert.Equal(["--mock"], args);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void Restart_round_trip_preserves_effective_data_directory_and_forced_mock(bool environmentMock, bool argumentMock)
+    {
+        var directory = Path.Combine(TestDirs.New("elevation-path"), "данные с пробелами");
+        var original = new List<string> { "--elevation-parent=1", "--data-dir=old", "--data-dir=older" };
+        if (argumentMock) { original.Add("--mock"); }
+        var forcedMock = AppSettings.IsMockForced(original, environmentMock ? "1" : null);
+        var launch = ElevatedRestart.BuildArguments(original, 42, forcedMock, directory).ToArray();
+
+        // The elevated process receives arguments only; its environment need not contain BYDLO_MOCK.
+        Assert.Equal(environmentMock || argumentMock, AppSettings.IsMockForced(launch, null));
+        Assert.Equal(forcedMock ? 1 : 0, launch.Count(a => a == "--mock"));
+        Assert.Single(launch, a => a.StartsWith(ElevatedRestart.ParentArgument, StringComparison.Ordinal));
+        Assert.Single(launch, a => a.StartsWith(ElevatedRestart.DataDirectoryArgument, StringComparison.Ordinal));
+        Assert.True(ElevationHandoff.WaitForParent(ref launch, id => id == 42));
+        // Explicit arguments take precedence over the BYDLO_DATA_DIR set by the test environment.
+        Assert.Equal(directory, AppPathsFactory.Create(launch).DataDirectory);
+        Assert.Equal(directory, AppPathsFactory.Create(ElevatedRestart.BuildArguments(launch, 43, forcedMock, directory)).DataDirectory);
+    }
+
+    [Fact]
+    public void Safety_lock_refuses_elevation_even_when_called_directly()
+    {
+        Assert.True(NetworkSafetyGuard.IsLocked);
+        var privileges = new PrivilegeService();
+        Assert.False(privileges.CanRestartElevated);
+        Assert.False(privileges.TryRestartElevated(["--mock"]));
+    }
+
+    [Fact]
+    public void Empty_explicit_data_directory_cannot_fall_back_to_another_profile_store()
+    {
+        Assert.Throws<ArgumentException>(() => AppPathsFactory.Create(["--data-dir="]));
     }
 
     [Theory]

@@ -121,6 +121,7 @@ internal static class ClashYamlParser
             security = "reality";
             Copy(reality, "public-key", Keys.RealityPublicKey);
             Copy(reality, "short-id", Keys.RealityShortId);
+            Copy(reality, "spider-x", Keys.RealitySpiderX);
         }
         profile.Options[Keys.Security] = security;
         Copy(proxy, "servername", Keys.Sni);
@@ -137,6 +138,15 @@ internal static class ClashYamlParser
         Copy(proxy, "udp-relay-mode", Keys.UdpRelayMode);
         if (protocol == ProtocolKind.Hysteria2)
         {
+            if (Node(proxy, "ports") is { } ports)
+            {
+                if (ports is not YamlScalarNode { Value: { } value }) { throw new FormatException(); }
+                var ranges = Hysteria2Ports.Parse(value);
+                // Clash's ports field overrides port rather than extending it.
+                profile.Port = ranges[0].Start;
+                var additional = Hysteria2Ports.Additional(ranges);
+                if (additional.Length > 0) { profile.Options["ports"] = additional; }
+            }
             CopyBandwidth("up", Keys.UpMbps);
             CopyBandwidth("down", Keys.DownMbps);
         }

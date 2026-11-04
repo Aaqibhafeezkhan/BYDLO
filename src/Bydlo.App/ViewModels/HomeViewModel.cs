@@ -95,7 +95,7 @@ public sealed partial class HomeViewModel : PageViewModel
         }
     }
 
-    public string? Error => IsError && Shell.Primary.Error is { } error ? Loc.Error(error, Shell.Primary.ErrorLocalizationKey) : null;
+    public string? Error => IsError && Shell.Primary.Error is { } error ? Loc.Error(error, Shell.Primary.ErrorLocalizationKey, Shell.Primary.ErrorLocalizationArguments) : null;
 
     /// <summary>Relay chain carrying the active connection, if any (issue #75).</summary>
     public bool IsChainActive => Shell.Primary.Chain is not null;
@@ -107,6 +107,10 @@ public sealed partial class HomeViewModel : PageViewModel
     public string DownSpeed => Format.Speed(Shell.Primary.LastTraffic?.DownloadBytesPerSecond ?? 0);
 
     public string UpSpeed => Format.Speed(Shell.Primary.LastTraffic?.UploadBytesPerSecond ?? 0);
+
+    public bool HasTraffic => Shell.Primary.LastTraffic is not null;
+
+    public bool NoStatsEngine => IsConnected && Shell.Primary.LastTraffic is null;
 
     public string EngineLabel => Labels.Engine(Shell.Primary.Engine);
 
@@ -435,7 +439,7 @@ public sealed partial class HomeViewModel : PageViewModel
         foreach (var name in new[]
                  {
                      nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(IsEmpty), nameof(StatusText), nameof(ButtonText), nameof(Hint), nameof(Error),
-                     nameof(Elapsed), nameof(DownSpeed), nameof(UpSpeed), nameof(EngineLabel), nameof(ZapretOn), nameof(ZapretState), nameof(TgOn), nameof(TgState),
+                     nameof(Elapsed), nameof(DownSpeed), nameof(UpSpeed), nameof(HasTraffic), nameof(NoStatsEngine), nameof(EngineLabel), nameof(ZapretOn), nameof(ZapretState), nameof(TgOn), nameof(TgState),
                      nameof(IsTun), nameof(IsProxy), nameof(IsWholeDevice), nameof(ModeHint), nameof(HasProfiles), nameof(CanCheckConnection), nameof(CanRunCheck), nameof(CheckDisabledReason), nameof(CheckButtonText),
                       nameof(CheckError), nameof(HasCheckError), nameof(CheckIp), nameof(CheckCountry), nameof(CheckLatency), nameof(HasCheckResult), nameof(HasLatencyResults),
                       nameof(IsChainActive), nameof(ActiveChainName), nameof(IsGroupActive), nameof(ActiveGroupServer),

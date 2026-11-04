@@ -68,6 +68,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _subscriptionAutoUpdate = s.SubscriptionAutoUpdate;
         _subscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         _checkForUpdates = s.CheckForUpdates;
+        _runElevatedOnStartup = s.RunElevatedOnStartup;
     }
 
     /// <summary>Re-read settings changed outside this page, e.g. by the first-run onboarding.</summary>
@@ -240,6 +241,9 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     private bool _setSystemProxy;
+
+    [ObservableProperty]
+    private bool _runElevatedOnStartup;
 
     [ObservableProperty]
     private bool _autoReconnect;
@@ -506,6 +510,12 @@ public sealed partial class SettingsViewModel : PageViewModel
         Persist();
     }
 
+    partial void OnRunElevatedOnStartupChanged(bool value)
+    {
+        Services.Settings.RunElevatedOnStartup = value;
+        Persist();
+    }
+
     partial void OnAutoReconnectChanged(bool value)
     {
         Services.Settings.AutoReconnect = value;
@@ -524,7 +534,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         try
         {
             if (await Bydlo.Core.Platform.ElevatedRestart.TryAsync(Services.Privileges, Services.Args,
-                Environment.ProcessId, Services.Connections.StopAllAsync))
+                Environment.ProcessId, Services.Connections.StopAllAsync, Services.ForcedMock, Services.Paths.DataDirectory))
             {
                 Environment.Exit(0);
             }

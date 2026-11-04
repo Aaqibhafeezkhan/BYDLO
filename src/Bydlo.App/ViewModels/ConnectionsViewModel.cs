@@ -77,12 +77,20 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     [ObservableProperty] private string? _profileSearch;
 
+    [ObservableProperty] private bool _onlyWorking;
+
     public IEnumerable<ProfileItem> VisibleProfiles
     {
         get
         {
+            IEnumerable<ProfileItem> items = Shell.Profiles;
+            if (OnlyWorking)
+            {
+                items = items.Where(profile =>
+                    Shell.Latencies.TryGetValue(profile.Id, out var probe) && probe.Reachable);
+            }
             var query = ProfileSearch?.Trim();
-            return string.IsNullOrEmpty(query) ? Shell.Profiles : Shell.Profiles.Where(profile =>
+            return string.IsNullOrEmpty(query) ? items : items.Where(profile =>
                 profile.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                 profile.Endpoint.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 profile.ProtocolLabel.Contains(query, StringComparison.OrdinalIgnoreCase));
@@ -92,6 +100,8 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     public bool HasNoMatchingProfiles => !IsEmpty && !VisibleProfiles.Any();
 
     partial void OnProfileSearchChanged(string? value) => RefreshProfileSearch();
+
+    partial void OnOnlyWorkingChanged(bool value) => RefreshProfileSearch();
 
     internal void RefreshProfileSearch()
     {

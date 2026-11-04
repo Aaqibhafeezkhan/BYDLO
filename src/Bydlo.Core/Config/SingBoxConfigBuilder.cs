@@ -638,6 +638,10 @@ public sealed partial class SingBoxConfigBuilder
                 break;
             case ProtocolKind.Hysteria2:
                 o["type"] = "hysteria2";
+                if (p.Option("pinSHA256") is not null)
+                {
+                    throw new NotSupportedException("Hysteria2 pinSHA256 is not supported by sing-box; use insecure or a trusted certificate.");
+                }
                 if (s[Keys.Password] is { } auth)
                 {
                     o["password"] = auth;
@@ -645,7 +649,8 @@ public sealed partial class SingBoxConfigBuilder
 
                 if (p.Option("ports") is { } hop)
                 {
-                    o["server_ports"] = new JsonArray([.. hop.Split(',').Select(x => (JsonNode)JsonValue.Create(x.Trim().Replace('-', ':'))!)]);
+                    o.Remove("server_port");
+                    o["server_ports"] = new JsonArray([.. Hysteria2Ports.Ranges(p.Port, hop).Select(x => (JsonNode)JsonValue.Create(x)!)]);
                 }
 
                 if (int.TryParse(p.Option(Keys.UpMbps), out var up))
@@ -660,7 +665,12 @@ public sealed partial class SingBoxConfigBuilder
 
                 if (p.Option(Keys.Obfs) is { } obfs)
                 {
-                    o["obfs"] = new JsonObject { ["type"] = obfs, ["password"] = s[Keys.ObfsPassword] ?? "" };
+                    var obfsObj = new JsonObject { ["type"] = obfs };
+                    if (s[Keys.ObfsPassword] is { } obfsPass)
+                    {
+                        obfsObj["password"] = obfsPass;
+                    }
+                    o["obfs"] = obfsObj;
                 }
 
                 AddTls(o, p, defaultEnabled: true, forceAlpn: "h3");

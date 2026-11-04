@@ -27,7 +27,7 @@ public sealed class AppServices
     {
         Args = args;
         ForcedMock = AppSettings.IsMockForced(args, Environment.GetEnvironmentVariable("BYDLO_MOCK"));
-        Paths = AppPathsFactory.Create();
+        Paths = AppPathsFactory.Create(args);
         Log = new LogHub(LogRedactor.Shared, Paths.LogsDirectory);
         Secrets = SecretStoreFactory.Create(Paths, ForcedMock);
         SettingsStore = new SettingsStore(Paths.SettingsFile);
@@ -45,8 +45,7 @@ public sealed class AppServices
         OpenVpnDriver = new OpenVpnDriver(Runner, Privileges, () => Locator.BundledExecutable("openvpn") is { } exe ? Path.GetDirectoryName(exe) : null);
         TgSecrets = new TgWsProxySecrets(Secrets);
         Registry = EngineRegistryFactory.Create(Runner, LogRedactor.Shared, Locator, Privileges, () => new MockEngine(), ZapretFirewall, AmneziaNetwork, OpenVpnDriver);
-        Registry.Decorate = (engine, settings) => HelperManagement.IsSupported && !Privileges.IsElevated &&
-            !IsMock && !NetworkSafetyGuard.IsLocked && HelperManagement.IsInstalled &&
+        Registry.Decorate = (engine, settings) => UsesPrivilegedHelper &&
             HelperRequestPolicy.Supports(engine.Descriptor.Kind) &&
             (engine.Descriptor.Kind != EngineKind.SingBox || settings.Mode == ConnectionMode.Tun)
                 ? new HelperEngine(engine, () => OperatingSystem.IsWindows() ? new HelperConnection() : new UnixHelperConnection(), () => HelperManagement.IsInstalled) : engine;
@@ -128,6 +127,10 @@ public sealed class AppServices
     public Func<TopLevel?> TopLevel { get; set; } = () => null;
 
     public bool IsMock => ForcedMock || Settings.MockMode;
+
+    /// <summary>Whether privileged engines are delegated to the installed helper.</summary>
+    public bool UsesPrivilegedHelper => HelperManagement.IsSupported && !Privileges.IsElevated &&
+        !IsMock && !NetworkSafetyGuard.IsLocked && HelperManagement.IsInstalled;
 
     /// <summary>Settings passed to engines (Mock Mode forced by the command line wins).</summary>
     public AppSettings EffectiveSettings => Settings.WithMockMode(IsMock);
