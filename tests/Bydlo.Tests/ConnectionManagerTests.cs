@@ -92,6 +92,8 @@ public class ConnectionManagerTests
         var (m, _) = Create();
         await Assert.ThrowsAsync<EngineException>(() => m.ConnectAsync(Demo(), new AppSettings { MockMode = true, MockScenario = MockScenario.FailOnConnect }));
         Assert.Equal(ConnectionStatus.Error, m.Primary.Status);
+        Assert.NotNull(m.Primary.Profile);
+        Assert.False(m.Primary.HoldsResources);
         Assert.Contains("mock", m.Primary.Error, StringComparison.OrdinalIgnoreCase);
     }
 

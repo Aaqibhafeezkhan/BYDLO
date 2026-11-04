@@ -107,10 +107,16 @@ public class ImportTests
         Assert.Equal("chacha20-ietf-poly1305", sip.Profile.Option(Keys.Method));
         Assert.Equal("pass word", sip.Secrets[Keys.Password]);
 
-        var legacy = One("ss://" + Convert.ToBase64String(Encoding.UTF8.GetBytes("aes-256-gcm:pw@1.2.3.4:8000")) + "#Old");
+        var legacy = One("ss://" + Convert.ToBase64String(Encoding.UTF8.GetBytes("aes-256-gcm:pw@1.2.3.4:8000")) + "?plugin=obfs-local%3Bobfs%3Dhttp#Old");
         Assert.Equal("1.2.3.4", legacy.Profile.Host);
         Assert.Equal(8000, legacy.Profile.Port);
         Assert.Equal("pw", legacy.Secrets[Keys.Password]);
+        Assert.Equal("Old", legacy.Profile.Name);
+        Assert.Equal("obfs-local;obfs=http", legacy.Profile.Option(Keys.Plugin));
+
+        var standardBase64 = One("ss://YWVzLTI1Ni1nY206cHcxMDA/Pg==@203.0.113.5:8388#Standard");
+        Assert.Equal("203.0.113.5", standardBase64.Profile.Host);
+        Assert.Equal("pw100?>", standardBase64.Secrets[Keys.Password]);
     }
 
     [Fact]

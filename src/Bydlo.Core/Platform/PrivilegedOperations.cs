@@ -13,6 +13,8 @@ public interface IPrivilegedOperations : IAsyncDisposable
 
 public enum HelperOperation { Check, Start, Poll, Stop, Reconnect, ListConnections, CloseConnection }
 
+public sealed record HelperBuild(string Version, string BundleVersion);
+
 public sealed record HelperRequest
 {
     public int Version { get; init; } = HelperProtocol.Version;
@@ -21,10 +23,12 @@ public sealed record HelperRequest
     public AppSettings Settings { get; init; } = new();
     public EngineStartRequest? Start { get; init; }
     public string? ConnectionId { get; init; }
+    public HelperBuild? ExpectedBuild { get; init; }
 }
 
 public sealed record HelperReply
 {
+    public HelperBuild? Build { get; init; }
     public Guid? SelectedGroupProfileId { get; init; }
     public EngineAvailability? Availability { get; init; }
     public EngineState State { get; init; }
@@ -37,7 +41,8 @@ public sealed record HelperReply
 /// <summary>Length-prefixed UTF-8 JSON, bounded before allocation; unknown versions fail closed.</summary>
 public static class HelperProtocol
 {
-    public const int Version = 1;
+    public const int Version = 2;
+    public const string Outdated = "helper.outdated";
     public const int MaxMessageBytes = 1024 * 1024;
 
     public static async Task WriteAsync<T>(Stream stream, T value, CancellationToken ct)

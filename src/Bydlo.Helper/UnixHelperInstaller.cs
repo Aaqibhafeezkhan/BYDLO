@@ -34,6 +34,7 @@ internal static class UnixHelperInstaller
         Directory.CreateDirectory(data);
         File.SetUnixFileMode(data, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         HelperServer.VerifyBundle();
+        HelperManagement.WriteInstalledBuild(HelperManagement.GetBuild(Bydlo.Engines.Installation.EngineLock.BundleVersion));
         Directory.CreateDirectory(Path.GetDirectoryName(Definition)!);
         File.WriteAllText(Definition, OperatingSystem.IsMacOS() ? LaunchDaemon() : SystemdUnit());
         File.SetUnixFileMode(Definition, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);

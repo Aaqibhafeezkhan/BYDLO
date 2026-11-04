@@ -5,7 +5,7 @@ using Bydlo.Core.Security;
 namespace Bydlo.Core.Engines;
 
 /// <summary>Keeps the local adapter as fallback; a privileged lease is owned by a single IPC connection.</summary>
-public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> connect, Func<bool> installed) : IEngine, IReconnectableEngine, IActiveConnectionSource, IServerGroupSource
+public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> connect, Func<bool> installed, HelperBuild expectedBuild) : IEngine, IReconnectableEngine, IActiveConnectionSource, IServerGroupSource
 {
     private Guid? _remoteGroupProfileId;
     public Guid? SelectedGroupProfileId => _usingRemote ? _remoteGroupProfileId : (local as IServerGroupSource)?.SelectedGroupProfileId;
@@ -43,7 +43,9 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
         if (_remote is not null)
         {
             var reply = await SendRemoteAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Reconnect,
-                Start = request with { WorkDirectory = "", RuleSetDirectory = null }, Settings = request.Settings }, ct).ConfigureAwait(false);
+                Start = request with { WorkDirectory = "", RuleSetDirectory = null }, Settings = request.Settings,
+                ExpectedBuild = expectedBuild }, ct).ConfigureAwait(false);
+            if (IsOutdated(reply)) { throw new EngineException(HelperProtocol.Outdated, localizationKey: HelperProtocol.Outdated); }
             Apply(reply);
             if (reply.Error is not null) { throw new EngineException("helper.error", localizationKey: "helper.error"); }
         }
@@ -54,13 +56,20 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
     private bool UseHelper(AppSettings settings) => installed() && HelperRequestPolicy.Supports(Descriptor.Kind) &&
         (Descriptor.Kind != EngineKind.SingBox || settings.Mode == ConnectionMode.Tun);
 
+    private bool IsOutdated(HelperReply reply) => reply.Build != expectedBuild || reply.Error == HelperProtocol.Outdated;
+
     public async Task<EngineAvailability> CheckAvailabilityAsync(AppSettings settings, CancellationToken ct = default)
     {
         if (!UseHelper(settings)) { return await local.CheckAvailabilityAsync(settings, ct).ConfigureAwait(false); }
         try
         {
             await using var probe = connect();
-            var reply = await probe.SendAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Check, Settings = settings }, ct).ConfigureAwait(false);
+            var reply = await probe.SendAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Check,
+                Settings = settings, ExpectedBuild = expectedBuild }, ct).ConfigureAwait(false);
+            if (IsOutdated(reply))
+            {
+                return EngineAvailability.NotImplemented("Reinstall the helper from this BYDLO release.", HelperProtocol.Outdated);
+            }
             return reply.Availability ?? EngineAvailability.NotImplemented(reply.Error ?? "Helper request failed.", "helper.error");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TimeoutException or System.ComponentModel.Win32Exception ||
@@ -83,7 +92,15 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
         _usingRemote = true;
         _remote ??= connect();
         var reply = await SendRemoteAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Start,
-            Start = request with { WorkDirectory = "", RuleSetDirectory = null }, Settings = request.Settings }, ct).ConfigureAwait(false);
+            Start = request with { WorkDirectory = "", RuleSetDirectory = null }, Settings = request.Settings,
+            ExpectedBuild = expectedBuild }, ct).ConfigureAwait(false);
+        if (IsOutdated(reply))
+        {
+            await _remote.DisposeAsync().ConfigureAwait(false);
+            _remote = null;
+            _usingRemote = false;
+            throw new EngineException(HelperProtocol.Outdated, localizationKey: HelperProtocol.Outdated);
+        }
         Apply(reply);
         if (reply.Error is not null) { throw new EngineException("helper.error", localizationKey: "helper.error"); }
         _pollCancellation?.Dispose();
