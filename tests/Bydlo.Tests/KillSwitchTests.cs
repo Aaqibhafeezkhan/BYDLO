@@ -159,7 +159,8 @@ public class KillSwitchTests
         var backend = new StubEngine();
         var guard = new StubEngine();
         await using var engine = new RetainedTunEngine(backend, () => guard);
-        var request = Request();
+        var request = Request() with { LocalProxyAuth = new LocalProxyAuth("lan-user", "lan-pass") };
+        request.Settings.AllowLan = true;
         await engine.StartAsync(request);
         request.Settings.LocalProxyPort = 9999;
         request.Settings.KillSwitch = false;
@@ -175,6 +176,8 @@ public class KillSwitchTests
         {
             Assert.Equal(ConnectionMode.LocalProxy, r.Settings.Mode);
             Assert.False(r.Settings.KillSwitch);
+            Assert.False(r.Settings.AllowLan);
+            Assert.Null(r.LocalProxyAuth);
             Assert.Equal(2080, r.Settings.LocalProxyPort);
         });
         await engine.StopAsync();
