@@ -14,9 +14,15 @@ internal static class StreamOptions
         p.Options[Keys.Transport] = q.TryGetValue("type", out var t) && !string.IsNullOrWhiteSpace(t) ? t.ToLowerInvariant() : "tcp";
         Copy(q, p,
             ("sni", Keys.Sni), ("peer", Keys.Sni), ("fp", Keys.Fingerprint), ("alpn", Keys.Alpn),
+            ("pcs", Keys.PinnedPeerCertSha256), ("vcn", Keys.VerifyPeerCertByName),
             ("pbk", Keys.RealityPublicKey), ("sid", Keys.RealityShortId), ("spx", Keys.RealitySpiderX),
             ("path", Keys.Path), ("host", Keys.HostHeader), ("serviceName", Keys.ServiceName),
-            ("flow", Keys.Flow), ("mode", Keys.XhttpMode), ("headerType", "headerType"));
+            ("flow", Keys.Flow), ("mode", Keys.XhttpMode), ("headerType", Keys.HeaderType),
+            ("seed", Keys.Seed));
+        if (q.TryGetValue("extra", out var extra) && !string.IsNullOrWhiteSpace(extra))
+        {
+            p.Options[Keys.XhttpExtra] = XhttpExtraValidator.Normalize(extra);
+        }
         if (q.TryGetValue("allowInsecure", out var ai) && ai is "1" or "true" || q.TryGetValue("insecure", out var ins) && ins is "1" or "true")
         {
             p.Options[Keys.AllowInsecure] = "true";
@@ -41,6 +47,14 @@ public sealed class VlessParser : IProfileParser
         var p = new Profile { Protocol = ProtocolKind.Vless, Host = Host(uri), Port = Port(uri, 443) };
         p.Name = Fragment(uri, $"VLESS {p.Host}");
         StreamOptions.Apply(q, p);
+        if (q.TryGetValue("encryption", out var enc) && !string.IsNullOrWhiteSpace(enc))
+        {
+            p.Options[Keys.Encryption] = enc.Trim();
+        }
+        else
+        {
+            p.Options[Keys.Encryption] = "none";
+        }
         if (p.Option(Keys.Security) == "reality" && p.Option(Keys.RealityPublicKey) is null)
         {
             throw new ImportException("VLESS REALITY link has no public key (pbk).");
@@ -101,9 +115,11 @@ public sealed class VmessParser : IProfileParser
         Opt(Keys.Sni, S("sni"));
         Opt(Keys.Alpn, S("alpn"));
         Opt(Keys.Fingerprint, fingerprint ?? S("fp"));
+        Opt(Keys.PinnedPeerCertSha256, S("pcs"));
+        Opt(Keys.VerifyPeerCertByName, S("vcn"));
         Opt(Keys.HostHeader, S("host"));
         Opt(p.Options[Keys.Transport] == "grpc" ? Keys.ServiceName : Keys.Path, S("path"));
-        Opt("headerType", S("type"));
+        Opt(Keys.HeaderType, S("type"));
         Opt("alterId", S("aid"));
 
         var id = S("id");
@@ -151,17 +167,27 @@ public sealed partial class ShadowsocksParser : IProfileParser
             raw = raw[..hash];
         }
 
-        // Legacy form: ss://base64(method:password@host:port)
-        if (!raw.Contains('@') && TryDecodeBase64(raw.Split('?')[0], out var legacy))
+        var queryStart = raw.IndexOf('?');
+        var authority = queryStart < 0 ? raw : raw[..queryStart];
+        var query = queryStart < 0 ? "" : raw[queryStart..];
+        // Legacy form encodes the entire authority. SIP002 can encode just the credentials.
+        var isLegacy = false;
+        if (!authority.Contains('@') && TryDecodeBase64(authority, out var legacy))
         {
-            raw = legacy;
+            authority = legacy;
+            isLegacy = true;
         }
 
-        var uri = ParseUri("ss://" + raw, "ss");
-        var userInfo = Uri.UnescapeDataString(uri.UserInfo);
-        if (!userInfo.Contains(':') && TryDecodeBase64(userInfo, out var decoded))
+        var at = authority.LastIndexOf('@');
+        var userInfo = at < 0 ? "" : authority[..at];
+        var uri = ParseUri("ss://" + authority[(at + 1)..] + query, "ss");
+        if (!isLegacy)
         {
-            userInfo = decoded;
+            userInfo = Uri.UnescapeDataString(userInfo);
+            if (!userInfo.Contains(':') && TryDecodeBase64(userInfo, out var decoded))
+            {
+                userInfo = decoded;
+            }
         }
 
         var sep = userInfo.IndexOf(':');

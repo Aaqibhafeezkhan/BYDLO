@@ -59,6 +59,8 @@ public static class Keys
     public const string Fingerprint = "fp";
     public const string Alpn = "alpn";
     public const string AllowInsecure = "insecure";
+    public const string PinnedPeerCertSha256 = "pcs";
+    public const string VerifyPeerCertByName = "vcn";
     public const string Transport = "type";          // tcp | ws | grpc | http | h2 | httpupgrade | xhttp | quic
     public const string Path = "path";
     public const string HostHeader = "host";
@@ -75,6 +77,10 @@ public static class Keys
     public const string UpMbps = "upmbps";
     public const string DownMbps = "downmbps";
     public const string XhttpMode = "mode";
+    public const string Encryption = "encryption";
+    public const string XhttpExtra = "extra";
+    public const string HeaderType = "headerType";
+    public const string Seed = "seed";
     public const string Username = "username";
     public const string Tls = "tls";
 

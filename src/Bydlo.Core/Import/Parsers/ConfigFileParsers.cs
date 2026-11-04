@@ -124,6 +124,11 @@ public sealed class WireGuardConfParser : IProfileParser
         if (endpoint.StartsWith('['))
         {
             var close = endpoint.IndexOf(']');
+            if (close <= 1 || close + 1 >= endpoint.Length || endpoint[close + 1] != ':')
+            {
+                throw new ImportException("Endpoint must be [host]:port.");
+            }
+
             host = endpoint[1..close];
             portText = endpoint[(close + 2)..];
         }

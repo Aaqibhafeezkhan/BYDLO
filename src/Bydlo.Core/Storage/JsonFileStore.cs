@@ -234,6 +234,21 @@ public sealed class Subscription
 
     public DateTimeOffset? Expires { get; set; }
 
+    /// <summary>Provider display name from the <c>profile-title</c> header (untrusted text).</summary>
+    public string? Title { get; set; }
+
+    /// <summary>Provider-suggested refresh interval from <c>profile-update-interval</c> (hours, 1-168).</summary>
+    public long? UpdateIntervalHours { get; set; }
+
+    /// <summary>Provider support link from <c>support-url</c>, shown as plain text (never a command).</summary>
+    public string? SupportUrl { get; set; }
+
+    /// <summary>Provider announcement from <c>announce</c>, shown as plain text.</summary>
+    public string? Announce { get; set; }
+
+    /// <summary>Per-subscription User-Agent override. Null or empty means the default <c>BYDLO/x.y</c>.</summary>
+    public string? UserAgent { get; set; }
+
     /// <summary>Refresh policy for nodes that are not saved locally. Missing in old files means <see cref="SubscriptionMode.FollowAll"/>.</summary>
     public SubscriptionMode Mode { get; set; } = SubscriptionMode.FollowAll;
 
@@ -420,6 +435,10 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             Download = metadata?.Download,
             Total = metadata?.Total,
             Expires = metadata?.Expires,
+            Title = metadata?.Title,
+            UpdateIntervalHours = metadata?.UpdateIntervalHours,
+            SupportUrl = metadata?.SupportUrl,
+            Announce = metadata?.Announce,
             Mode = mode,
             SourceOptions = [],
         };
@@ -478,6 +497,28 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         }
     }
 
+    public async Task SetSubscriptionUserAgentAsync(Guid subscriptionId, string? userAgent, CancellationToken ct = default)
+    {
+        userAgent = userAgent?.Trim();
+        if (userAgent?.Any(char.IsControl) == true)
+        { throw new ArgumentException("User-Agent must not contain control characters.", nameof(userAgent)); }
+        if (userAgent?.Length > 256)
+        { throw new ArgumentException("User-Agent is too long (max 256 characters).", nameof(userAgent)); }
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            ThrowIfNewerVersion();
+            var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
+                ?? throw new InvalidDataException("Subscription not found.");
+            sub.UserAgent = string.IsNullOrEmpty(userAgent) ? null : userAgent;
+            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task SetSubscriptionModeAsync(Guid subscriptionId, SubscriptionMode mode, CancellationToken ct = default)
     {
         if (!Enum.IsDefined(mode))
@@ -502,6 +543,8 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
                     {
                         Id = item.Id, Name = item.Name, LastUpdated = item.LastUpdated,
                         Upload = item.Upload, Download = item.Download, Total = item.Total, Expires = item.Expires,
+                        Title = item.Title, UpdateIntervalHours = item.UpdateIntervalHours,
+                        SupportUrl = item.SupportUrl, Announce = item.Announce, UserAgent = item.UserAgent,
                         Mode = mode, SourceOptions = item.SourceOptions,
                     }
                     : item).ToList(),

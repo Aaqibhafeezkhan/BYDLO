@@ -207,6 +207,12 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
                 using var req = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{_apiPort}/traffic");
                 req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiSecret);
                 using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+                // An error body (e.g. 401) is not a traffic line: fail fast and retry instead of
+                // feeding it to the parser and spinning silent retries (see #220).
+                // Note: /traffic reports per-second deltas with no backfill, so the deltas sent while
+                // this pause (or a controller restart) is in flight are unrecoverable; the cumulative
+                // totals below are preserved, never reset, so the counters only ever undercount.
+                resp.EnsureSuccessStatusCode();
                 await using var stream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
                 using var reader = new StreamReader(stream);
                 while (!ct.IsCancellationRequested && await reader.ReadLineAsync(ct).ConfigureAwait(false) is { } line)
@@ -219,15 +225,40 @@ public sealed class SingBoxEngine(IProcessRunner runner, LogRedactor redactor, E
                     totalDown += down;
                     EmitTraffic(new TrafficSample(DateTimeOffset.Now, up, down, totalUp, totalDown));
                 }
+                // The stream ended cleanly (controller restart): pause before reconnecting (see #220).
+                if (!await PauseAsync(ct).ConfigureAwait(false))
+                {
+                    return;
+                }
             }
             catch (OperationCanceledException)
             {
                 return;
             }
-            catch (Exception ex) when (ex is HttpRequestException or IOException or JsonException or KeyNotFoundException)
+            catch (Exception ex) when (ex is HttpRequestException or IOException or JsonException or KeyNotFoundException
+                or InvalidOperationException or FormatException)
             {
-                await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
+                // A cancelled pause surfaces as OperationCanceledException: stop quietly instead of
+                // faulting this fire-and-forget loop with an unobserved exception (see #220).
+                if (!await PauseAsync(ct).ConfigureAwait(false))
+                {
+                    return;
+                }
             }
+        }
+    }
+
+    /// <summary>Reconnect pause that stays silent when the engine stops. Returns false when cancelled.</summary>
+    private static async Task<bool> PauseAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
         }
     }
 

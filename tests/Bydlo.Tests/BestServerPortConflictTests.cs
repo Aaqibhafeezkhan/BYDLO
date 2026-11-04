@@ -11,10 +11,10 @@ namespace Bydlo.Tests;
 /// <summary>Covers issue #202: Best Server reconnects on the same local proxy port without a false conflict.</summary>
 public sealed class BestServerPortConflictTests
 {
-    private static (ConnectionManager Manager, MutablePorts Ports) Create()
+    private static (ConnectionManager Manager, MutablePorts Ports) Create(EngineKind kind = EngineKind.SingBox)
     {
         var runner = new FakeProcessRunner { StartupOutput = { "fake ready" } };
-        var engine = new ReconnectableFakeEngine(runner);
+        var engine = new ReconnectableFakeEngine(runner, kind);
         var registry = new EngineRegistry(() => throw new InvalidOperationException())
             .Register(engine.Descriptor, () => engine);
         var ports = new MutablePorts();
@@ -33,15 +33,18 @@ public sealed class BestServerPortConflictTests
     private static Profile Profile(string name) =>
         new() { Name = name, Protocol = ProtocolKind.Trojan, Host = "example.invalid", Port = 443 };
 
-    [Fact]
-    public async Task Connect_to_another_profile_on_own_port_succeeds()
+    [Theory]
+    [InlineData(EngineKind.SingBox)]
+    [InlineData(EngineKind.Xray)]
+    public async Task Connect_to_another_profile_on_own_port_succeeds(EngineKind kind)
     {
-        var (manager, ports) = Create();
+        var (manager, ports) = Create(kind);
         await using var _ = manager;
         var settings = new AppSettings { LocalProxyPort = 2080, AutoReconnect = false };
         await manager.ConnectAsync(Profile("first"), settings);
         Assert.Equal(ConnectionStatus.Connected, manager.Primary.Status);
         ports.Busy.Add(2080);
+        if (kind == EngineKind.Xray) { ports.Busy.Add(2081); }
         await manager.ConnectAsync(Profile("second"), settings);
         Assert.Equal(ConnectionStatus.Connected, manager.Primary.Status);
         Assert.Equal("second", manager.Primary.Profile?.Name);
@@ -71,19 +74,23 @@ public sealed class BestServerPortConflictTests
         await using var _ = manager;
         var firstSettings = new AppSettings { LocalProxyPort = 2080, AutoReconnect = false };
         await manager.ConnectAsync(Profile("first"), firstSettings);
+        var lastPublished = manager.Primary;
+        manager.SessionChanged += (_, snapshot) => lastPublished = snapshot;
         ports.Busy.Add(2099);
         var ex = await Assert.ThrowsAsync<EngineException>(() =>
             manager.ConnectAsync(Profile("second"), new AppSettings { LocalProxyPort = 2099 }));
         Assert.Contains("2099", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(ConnectionStatus.Connected, lastPublished.Status);
+        Assert.Equal("first", lastPublished.Profile?.Name);
     }
 
-    private sealed class ReconnectableFakeEngine(IProcessRunner runner)
+    private sealed class ReconnectableFakeEngine(IProcessRunner runner, EngineKind kind)
         : ProcessEngineBase(runner, new LogRedactor())
     {
         protected override TimeSpan ReadyTimeout => TimeSpan.Zero;
         public override EngineDescriptor Descriptor { get; } = new()
         {
-            Kind = EngineKind.SingBox, DisplayName = "Fake", Upstream = "", License = "",
+            Kind = kind, DisplayName = "Fake", Upstream = "", License = "",
             Protocols = new HashSet<ProtocolKind> { ProtocolKind.Trojan },
             Platforms = new Dictionary<OsFamily, SupportLevel> { [OsFamily.Windows] = SupportLevel.Implemented },
         };

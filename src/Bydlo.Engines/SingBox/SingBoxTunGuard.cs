@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using Bydlo.Platform;
 using System.Text.Json;
 using Bydlo.Core.Config;
@@ -10,7 +12,12 @@ using Bydlo.Core.Security;
 namespace Bydlo.Engines.SingBox;
 
 /// <summary>Session-scoped strict TUN; no persistent firewall rules or services.</summary>
-internal sealed class SingBoxTunGuard(IProcessRunner runner, LogRedactor redactor, EngineLocator locator, IPrivilegeService privileges)
+internal sealed class SingBoxTunGuard(
+    IProcessRunner runner,
+    LogRedactor redactor,
+    EngineLocator locator,
+    IPrivilegeService privileges,
+    EngineKind? backendKind = null)
     : ProcessEngineBase(runner, redactor)
 {
     public override EngineDescriptor Descriptor => SingBoxEngine.Info;
@@ -21,7 +28,7 @@ internal sealed class SingBoxTunGuard(IProcessRunner runner, LogRedactor redacto
 
     protected override async Task<ProcessSpec> PrepareAsync(EngineStartRequest request, EngineAvailability availability, CancellationToken ct)
     {
-        var config = new SingBoxConfigBuilder().BuildKillSwitch(request.Settings, request.Settings.LocalProxyPort, locator.Platform.Os);
+        var config = new SingBoxConfigBuilder().BuildKillSwitch(request.Settings, request.Settings.LocalProxyPort, locator.Platform.Os, TransportExclusions(request));
         var path = Path.Combine(request.WorkDirectory, "tun.json");
         await SecureFile.WriteAsync(path, config.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), ct).ConfigureAwait(false);
         return new ProcessSpec
@@ -32,6 +39,34 @@ internal sealed class SingBoxTunGuard(IProcessRunner runner, LogRedactor redacto
             DisplayName = RetainedTunEngine.GuardProcessName,
             GracefulTermination = true,
         };
+    }
+
+    /// <summary>
+    /// Loop avoidance for a foreign transport (issue #212): the transport server address
+    /// stays outside the TUN and the transport process itself is routed directly.
+    /// </summary>
+    internal KillSwitchExclusions? TransportExclusions(EngineStartRequest request)
+    {
+        if (backendKind is null || request.Profile is not { } profile)
+        {
+            return null;
+        }
+        var addresses = new List<string>();
+        if (IPAddress.TryParse(profile.Host, out _))
+        {
+            addresses.Add(profile.Host);
+        }
+        var processes = new List<string>();
+        if (locator.Locate(backendKind.Value, request.Settings) is { } exe &&
+            Path.GetFileName(exe) is { Length: > 0 } name)
+        {
+            processes.Add(name);
+            if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && name is not ".exe")
+            {
+                processes.Add(name[..^4]);
+            }
+        }
+        return addresses.Count == 0 && processes.Count == 0 ? null : new KillSwitchExclusions(addresses, processes);
     }
 
     protected override bool IsReadyLine(string line) => line.Contains("sing-box started", StringComparison.OrdinalIgnoreCase);

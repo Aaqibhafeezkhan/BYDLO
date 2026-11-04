@@ -15,6 +15,15 @@ public class ConfigBuilderTests
     private static JsonObject SingBox(ImportedProfile p, AppSettings? s = null) =>
         new SingBoxConfigBuilder().Build(p.Profile, p.Secrets, new BuildContext(s ?? new AppSettings(), 9090, "sec"));
 
+    [Theory]
+    [InlineData("chacha20-poly1305", "chacha20-ietf-poly1305")]
+    [InlineData("xchacha20-poly1305", "xchacha20-ietf-poly1305")]
+    public void Shadowsocks_cipher_aliases_are_normalized_for_sing_box(string alias, string method)
+    {
+        var root = SingBox(Import($"ss://{alias}:password@ss.example.com:8388"));
+        Assert.Equal(method, (string?)root["outbounds"]![0]!["method"]);
+    }
+
     [Fact]
     public void Clash_controller_is_authenticated_and_loopback_only()
     {
@@ -101,6 +110,23 @@ public class ConfigBuilderTests
     }
 
     [Fact]
+    public void Xray_uses_certificate_pin_and_name_instead_of_allow_insecure()
+    {
+        var pin = new string('a', 64);
+        var p = Import($"vless://id@x.example.com:443?security=tls&type=xhttp&allowInsecure=1&pcs={pin}&vcn=x.example.com");
+        var root = new XrayConfigBuilder().Build(p.Profile, p.Secrets, new BuildContext(new AppSettings()));
+        var tls = root["outbounds"]![0]!["streamSettings"]!["tlsSettings"]!;
+        Assert.Equal(pin, (string?)tls["pinnedPeerCertSha256"]);
+        Assert.Equal("x.example.com", (string?)tls["verifyPeerCertByName"]);
+        Assert.Null(tls["allowInsecure"]);
+
+        p.Profile.Options.Remove(Keys.PinnedPeerCertSha256);
+        var error = Assert.Throws<EngineException>(() =>
+            new XrayConfigBuilder().Build(p.Profile, p.Secrets, new BuildContext(new AppSettings())));
+        Assert.Equal("error.engine.xray.tls.pin", error.LocalizationKey);
+    }
+
+    [Fact]
     public void Xray_handles_xhttp_and_registry_routes_it_to_xray()
     {
         var p = Import("vless://id@x.example.com:443?security=tls&type=xhttp&path=%2Fx&mode=auto&sni=x.example.com");
@@ -120,7 +146,8 @@ public class ConfigBuilderTests
     public void SingBox_rejects_xhttp()
     {
         var p = Import("vless://id@x.example.com:443?security=tls&type=xhttp");
-        Assert.Throws<NotSupportedException>(() => SingBox(p));
+        var ex = Assert.Throws<EngineException>(() => SingBox(p));
+        Assert.Equal("error.engine.transport.xray", ex.LocalizationKey);
     }
 
     [Fact]

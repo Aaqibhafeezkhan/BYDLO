@@ -47,7 +47,8 @@ public sealed partial class ConnectionsViewModel
     [RelayCommand]
     private async Task DeleteChain(ChainItem item)
     {
-        if (Shell.Primary.Chain?.Id == item.Id)
+        var session = Services.Connections.Primary;
+        if (session.HoldsResources && session.Chain?.Id == item.Id)
         {
             Shell.ShowToast(L["chain.delete.active"], isError: true);
             return;

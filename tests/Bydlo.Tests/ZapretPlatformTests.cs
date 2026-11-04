@@ -98,6 +98,8 @@ public class ZapretPlatformTests
             var arch = os == OsFamily.MacOS ? CpuArch.Arm64 : CpuArch.X64;
             await using var engine = new ZapretEngine(runner, new LogRedactor(), new FakeLocator(new(os, arch)), new FakePrivileges(true), firewall);
             var request = new EngineStartRequest { Settings = new() { Zapret = new() { InstallPath = root } }, WorkDirectory = TestDirs.New("session") };
+            var source = engine.ResolveInstallation(request.Settings)!;
+            source.WriteUserList(ZapretUserList.General, "custom.example");
             if (scenario == "apply-fails")
             {
                 await Assert.ThrowsAsync<EngineException>(() => engine.StartAsync(request));
@@ -107,6 +109,21 @@ public class ZapretPlatformTests
             {
                 await engine.StartAsync(request);
                 Assert.Equal(1, firewall.Applied);
+                if (os == OsFamily.Linux)
+                {
+                    var spec = Assert.Single(runner.Started);
+                    Assert.Equal(exe, spec.FileName);
+                    Assert.NotEqual(source.UserListsDirectory, spec.WorkingDirectory);
+                    Assert.Equal("custom.example\n", File.ReadAllText(Path.Combine(spec.WorkingDirectory!, "list-general-user.txt")));
+                    if (OperatingSystem.IsLinux())
+                    {
+                        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute,
+                            File.GetUnixFileMode(Path.GetDirectoryName(spec.WorkingDirectory)!));
+                        Assert.True(File.GetUnixFileMode(spec.WorkingDirectory!).HasFlag(UnixFileMode.OtherExecute));
+                        Assert.True(File.GetUnixFileMode(Path.Combine(spec.WorkingDirectory!, "list-general-user.txt")).HasFlag(UnixFileMode.OtherRead));
+                    }
+                }
+
                 if (scenario == "crash")
                 {
                     runner.Last!.Crash();
@@ -118,6 +135,11 @@ public class ZapretPlatformTests
 
             Assert.True(firewall.Removed > 0);
             Assert.DoesNotContain(runner.Started, s => s.FileName.EndsWith(".bat", StringComparison.Ordinal));
+            Assert.Equal("custom.example\n", source.ReadUserList(ZapretUserList.General));
+            if (os == OsFamily.Linux)
+            {
+                Assert.False(Directory.Exists(Assert.Single(runner.Started).WorkingDirectory));
+            }
         }
     }
 
@@ -131,8 +153,13 @@ public class ZapretPlatformTests
         Assert.Contains("--filter-udp=443,1024-65535", linux);
         Assert.Contains("--filter-tcp=80,443", linux);
         Assert.Contains("--dpi-desync-fwmark=0x40000000", linux);
+        Assert.Equal(2, linux.Count(a => a == "--hostlist=default-hosts.txt"));
+        Assert.Equal(2, linux.Count(a => a == "--hostlist=list-general-user.txt"));
+        Assert.Equal(2, linux.Count(a => a == "--hostlist-exclude=list-exclude-user.txt"));
+        Assert.Equal(2, linux.Count(a => a == "--ipset-exclude=ipset-exclude-user.txt"));
         var mac = NativeZapretStrategy.Build(OsFamily.MacOS, install, "native-split", "disabled");
         Assert.Contains("--user=root", mac);
+        Assert.Contains("--hostlist=" + Path.Combine(install.UserListsDirectory, "default-hosts.txt"), mac);
         Assert.Contains("--bind-addr=127.0.0.1", mac);
         Assert.DoesNotContain(mac, a => a.Contains("udp", StringComparison.Ordinal) || a.Contains("qnum", StringComparison.Ordinal));
     }

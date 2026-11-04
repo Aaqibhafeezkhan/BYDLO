@@ -1,6 +1,8 @@
 using Bydlo.Platform;
 using Bydlo.Core.Routing;
 using Bydlo.Engines.Groups;
+using Bydlo.Engines.Groups.Rpc;
+using Grpc.Core;
 using Grpc.Net.Client;
 using Bydlo.Core.Config;
 using Bydlo.Core.Engines;
@@ -11,10 +13,7 @@ using Bydlo.Engines.SingBox;
 
 namespace Bydlo.Engines.Xray;
 
-/// <summary>
-/// Xray-core adapter (local proxy mode). Required for XHTTP transport; otherwise an alternative to sing-box.
-/// Live traffic statistics are not wired up yet (Xray exposes them over gRPC only).
-/// </summary>
+/// <summary>Live traffic statistics are polled from the local StatsService (issue #211).</summary>
 public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, EngineLocator locator)
     : ProcessEngineBase(runner, redactor), IServerGroupSource
 {
@@ -36,8 +35,9 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
 
     private readonly XrayConfigBuilder _builder = new();
     private GroupMonitor? _groupMonitor;
-    private GrpcChannel? _groupChannel;
-    private int _groupPort;
+    private GrpcChannel? _statsChannel;
+    private CancellationTokenSource? _trafficCts;
+    private int _statsPort;
     public Guid? SelectedGroupProfileId => _groupMonitor?.Selected;
     private string? _configPath;
     private readonly List<string> _copiedAssets = [];
@@ -53,9 +53,9 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             return Task.FromResult(EngineAvailability.NotImplemented("Xray on this platform is planned.", "error.engine.xray.platform"));
         }
 
-        if (settings.Mode == ConnectionMode.Tun)
+        if (settings.Mode == ConnectionMode.Tun && !settings.KillSwitch)
         {
-            return Task.FromResult(EngineAvailability.NotImplemented("TUN mode with Xray is not implemented. Use Local proxy mode or the sing-box engine.", "error.engine.xray.tun"));
+            return Task.FromResult(EngineAvailability.NotImplemented("TUN mode with Xray is not implemented. Use Local proxy mode, the sing-box engine, or TUN with kill switch.", "error.engine.xray.tun"));
         }
 
         if (locator.Platform.Os == OsFamily.MacOS && settings.Routing.OrderedRules.Any(rule => rule.Condition == RoutingCondition.Process))
@@ -122,8 +122,8 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
                 throw new EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
             }
         }
-        _groupPort = request.Group is null ? 0 : SingBoxEngine.FindFreeLoopbackPort();
-        var ctx = new BuildContext(request.Settings, ClashApiPort: _groupPort == 0 ? null : _groupPort, LocalProxyAuth: request.LocalProxyAuth);
+        _statsPort = SingBoxEngine.FindFreeLoopbackPort();
+        var ctx = new BuildContext(request.Settings, ClashApiPort: _statsPort, LocalProxyAuth: request.LocalProxyAuth);
         var json = request.Group is { } group ? _builder.BuildGroup(group, request.GroupMembers ?? [], ctx).ToJsonString()
             : request.Chain is { } chain ? _builder.BuildChainJson(chain, ctx) : _builder.BuildJson(profile, request.Secrets, ctx);
         _configPath = Path.Combine(request.WorkDirectory, "xray.json");
@@ -142,8 +142,10 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
     protected override async Task OnStoppingAsync()
     {
         if (_groupMonitor is { } monitor) { await monitor.DisposeAsync().ConfigureAwait(false); _groupMonitor = null; }
-        _groupChannel?.Dispose();
-        _groupChannel = null;
+        _trafficCts?.Cancel();
+        _trafficCts = null;
+        _statsChannel?.Dispose();
+        _statsChannel = null;
         if (_configPath is not null)
         {
             SecureFile.DeleteQuietly(_configPath);
@@ -160,17 +162,77 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
 
     protected override Task OnStartedAsync(EngineStartRequest request, CancellationToken ct)
     {
+        // StatsService shares the loopback gRPC channel (see #211); it never goes through a proxy.
+        _statsChannel = GrpcChannel.ForAddress($"http://127.0.0.1:{_statsPort}", new GrpcChannelOptions
+        {
+            HttpHandler = new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false },
+            MaxReceiveMessageSize = 1024 * 1024,
+        });
         if (request.Group is { } group && request.GroupMembers is { } members)
         {
-            _groupChannel = GrpcChannel.ForAddress($"http://127.0.0.1:{_groupPort}", new GrpcChannelOptions
-            {
-                HttpHandler = new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false },
-                MaxReceiveMessageSize = 1024 * 1024,
-            });
-            _groupMonitor = new GroupMonitor(group, members, new XrayGroupController(_groupChannel, members), false);
+            _groupMonitor = new GroupMonitor(group, members, new XrayGroupController(_statsChannel, members), false);
             _groupMonitor.Start();
         }
+        _trafficCts = new CancellationTokenSource();
+        _ = ReadTrafficAsync(request, _trafficCts.Token);
         return Task.CompletedTask;
+    }
+
+    /// <summary>Polls StatsService deltas once a second and emits them as traffic samples.</summary>
+    private async Task ReadTrafficAsync(EngineStartRequest request, CancellationToken ct)
+    {
+        // Tunnel outbounds per request shape (issue #211): the single proxy tag, the exit
+        // hop of a chain (mirrors XrayConfigBuilder.Tag), member tags of a group, or — for
+        // custom JSON with unknown tags — every outbound except direct/block.
+        IReadOnlyCollection<string>? tags = request switch
+        {
+            { Group: not null, GroupMembers: { } members } => members.Select(m => ServerGroup.Tag(m.Profile.Id)).ToList(),
+            { Chain: { } chain } => [$"proxy-{chain.Count - 1}"],
+            { Profile: { Protocol: ProtocolKind.XrayConfig } } => null,
+            _ => ["proxy"],
+        };
+        var reader = new XrayTrafficReader(new StatsService.StatsServiceClient(_statsChannel!), tags);
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                if (await reader.ReadAsync(ct).ConfigureAwait(false) is { } sample)
+                {
+                    EmitTraffic(sample);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception ex) when (ex is RpcException or InvalidOperationException)
+            {
+                // A failed poll (controller restarting) must not fault this fire-and-forget loop.
+                if (!await PauseAsync(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false))
+                {
+                    return;
+                }
+                continue;
+            }
+            if (!await PauseAsync(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false))
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>Reconnect pause that stays silent when the engine stops. Returns false when cancelled.</summary>
+    private static async Task<bool> PauseAsync(TimeSpan delay, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(delay, ct).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
     }
 
     protected override string? TryParseFatal(string line) =>

@@ -31,7 +31,7 @@
 - Реализованы системный прокси для GNOME / KDE и macOS, AmneziaWG для macOS, хранилища секретов Keychain и Secret Service через libsecret.
 - Доступна необязательная привилегированная служба-помощник. Статус ручных проверок указан в [матрице совместимости](COMPATIBILITY.md).
 
-## v0.4 — Android
+## Android — запланировано
 
 - Android ARM64: `VpnService`, интеграция sing-box (libbox), мобильная навигация, сканирование QR камерой и Android Keystore ([#86](https://github.com/endercodezz/BYDLO/issues/86)).
 

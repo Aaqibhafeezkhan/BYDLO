@@ -60,6 +60,7 @@ public sealed class RetainedTunEngine : IEngine, IReconnectableEngine, IActiveCo
         backendSettings.Mode = ConnectionMode.LocalProxy;
         backendSettings.KillSwitch = false;
         backendSettings.SetSystemProxy = false;
+        backendSettings.AllowLan = false;
         backendSettings.Routing = new RoutingSettings
         {
             BypassPrivateNetworks = false,
@@ -71,7 +72,12 @@ public sealed class RetainedTunEngine : IEngine, IReconnectableEngine, IActiveCo
             RemoteDnsThroughProxy = settings.Routing.RemoteDnsThroughProxy,
             DirectDnsThroughProxy = settings.Routing.DirectDnsThroughProxy,
         };
-        _backendRequest = request with { Settings = backendSettings, WorkDirectory = Path.Combine(request.WorkDirectory, "transport") };
+        _backendRequest = request with
+        {
+            Settings = backendSettings,
+            LocalProxyAuth = null,
+            WorkDirectory = Path.Combine(request.WorkDirectory, "transport"),
+        };
         _guard = _guardFactory();
         _guard.Log += (_, line) => Log?.Invoke(this, line);
         _guard.StateChanged += (_, e) =>

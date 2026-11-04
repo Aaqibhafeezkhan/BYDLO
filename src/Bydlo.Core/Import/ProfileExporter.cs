@@ -77,9 +77,10 @@ public static class ProfileExporter
                 scheme = p.Protocol == ProtocolKind.Vless ? "vless" : "trojan";
                 auth = Escape(Required(secrets, p.Protocol == ProtocolKind.Vless ? Keys.Uuid : Keys.Password));
                 Copy(Keys.Security, Keys.Transport, Keys.Sni, Keys.Fingerprint, Keys.Alpn, Keys.RealityPublicKey,
+                    Keys.PinnedPeerCertSha256, Keys.VerifyPeerCertByName,
                     Keys.RealityShortId, Keys.RealitySpiderX, Keys.Path, Keys.HostHeader, Keys.ServiceName,
-                    Keys.Flow, Keys.XhttpMode, "headerType");
-                if (p.Protocol == ProtocolKind.Vless) { query["encryption"] = "none"; }
+                    Keys.Flow, Keys.XhttpMode, Keys.HeaderType, Keys.Seed, Keys.XhttpExtra);
+                if (p.Protocol == ProtocolKind.Vless) { query["encryption"] = p.Option(Keys.Encryption) ?? "none"; }
                 if (p.Option(Keys.AllowInsecure) == "true") { query["allowInsecure"] = "1"; }
                 break;
             case ProtocolKind.Shadowsocks:
@@ -124,8 +125,9 @@ public static class ProfileExporter
             ["id"] = Required(secrets, Keys.Uuid), ["net"] = p.Option(Keys.Transport) ?? "tcp",
             ["tls"] = p.Option(Keys.Security) ?? "none", ["scy"] = p.Option(Keys.Method) ?? "auto",
         };
-        foreach (var (field, key) in new[] { ("aid", "alterId"), ("type", "headerType"), ("host", Keys.HostHeader),
+        foreach (var (field, key) in new[] { ("aid", "alterId"), ("type", Keys.HeaderType), ("host", Keys.HostHeader),
             ("sni", Keys.Sni), ("alpn", Keys.Alpn), ("fp", Keys.Fingerprint),
+            ("pcs", Keys.PinnedPeerCertSha256), ("vcn", Keys.VerifyPeerCertByName),
             ("path", p.Option(Keys.Transport) == "grpc" ? Keys.ServiceName : Keys.Path) })
         {
             if (p.Option(key) is { } value) { fields[field] = value; }

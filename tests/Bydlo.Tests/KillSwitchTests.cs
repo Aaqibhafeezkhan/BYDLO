@@ -159,7 +159,8 @@ public class KillSwitchTests
         var backend = new StubEngine();
         var guard = new StubEngine();
         await using var engine = new RetainedTunEngine(backend, () => guard);
-        var request = Request();
+        var request = Request() with { LocalProxyAuth = new LocalProxyAuth("lan-user", "lan-pass") };
+        request.Settings.AllowLan = true;
         await engine.StartAsync(request);
         request.Settings.LocalProxyPort = 9999;
         request.Settings.KillSwitch = false;
@@ -175,6 +176,8 @@ public class KillSwitchTests
         {
             Assert.Equal(ConnectionMode.LocalProxy, r.Settings.Mode);
             Assert.False(r.Settings.KillSwitch);
+            Assert.False(r.Settings.AllowLan);
+            Assert.Null(r.LocalProxyAuth);
             Assert.Equal(2080, r.Settings.LocalProxyPort);
         });
         await engine.StopAsync();
@@ -285,15 +288,13 @@ public class KillSwitchTests
         finally { NetworkSafetyGuard.OverrideForTests(null); }
     }
 
-    [Theory]
-    [InlineData(EngineKind.OpenVpn, ProtocolKind.OpenVpn)]
-    [InlineData(EngineKind.Xray, ProtocolKind.Vless)]
-    public void Unsupported_engines_cannot_silently_ignore_protection(EngineKind kind, ProtocolKind protocol)
+    [Fact]
+    public void Unsupported_engines_cannot_silently_ignore_protection()
     {
-        var descriptor = new StubEngine().Descriptor with { Kind = kind, Protocols = new HashSet<ProtocolKind> { protocol } };
+        var descriptor = new StubEngine().Descriptor with { Kind = EngineKind.OpenVpn, Protocols = new HashSet<ProtocolKind> { ProtocolKind.OpenVpn } };
         var registry = new EngineRegistry(() => throw new InvalidOperationException())
             .Register(descriptor, () => throw new InvalidOperationException());
-        Assert.Throws<EngineException>(() => registry.CreateFor(new Profile { Protocol = protocol }, Settings(), OsFamily.Windows));
+        Assert.Throws<EngineException>(() => registry.CreateFor(new Profile { Protocol = ProtocolKind.OpenVpn }, Settings(), OsFamily.Windows));
     }
 
     [Fact]

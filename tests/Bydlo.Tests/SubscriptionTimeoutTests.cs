@@ -62,7 +62,7 @@ public sealed class SubscriptionTimeoutTests
         };
         using var cancellation = new CancellationTokenSource();
         var client = new SubscriptionClient(http, new ProfileImporter());
-        var fetch = client.FetchFirstAsync(["https://slow.invalid/sub", "https://good.invalid/sub"], cancellation.Token);
+        var fetch = client.FetchFirstAsync(["https://slow.invalid/sub", "https://good.invalid/sub"], ct: cancellation.Token);
         await stream.ReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         cancellation.Cancel();

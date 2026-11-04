@@ -50,7 +50,7 @@ public sealed class EngineRegistry
         var kind = profile.PreferredEngine is { } preferred && candidates.Contains(preferred)
             ? preferred
             : candidates.Count > 0 ? candidates[0] : throw new EngineException($"No engine supports {profile.Protocol} on {os}.");
-        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
+        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind is not (EngineKind.SingBox or EngineKind.Xray))
         {
             throw new EngineException("error.killswitch.engine");
         }
@@ -111,7 +111,7 @@ public sealed class EngineRegistry
             kind = wanted;
         }
 
-        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind != EngineKind.SingBox)
+        if (settings.KillSwitch && settings.Mode == ConnectionMode.Tun && kind is not (EngineKind.SingBox or EngineKind.Xray))
         {
             throw new EngineException("error.killswitch.engine");
         }
@@ -144,8 +144,32 @@ public sealed class EngineRegistry
     /// <summary>Some option combinations only work with one engine (e.g. XHTTP transport needs Xray).</summary>
     private static EngineKind? ProtocolNeeds(Profile profile)
     {
+        if (!string.IsNullOrWhiteSpace(profile.Option(Keys.PinnedPeerCertSha256)) ||
+            !string.IsNullOrWhiteSpace(profile.Option(Keys.VerifyPeerCertByName)))
+        {
+            return EngineKind.Xray;
+        }
+
         var transport = profile.Option(Keys.Transport);
         if (transport is not null && (transport.Equals("xhttp", StringComparison.OrdinalIgnoreCase) || transport.Equals("splithttp", StringComparison.OrdinalIgnoreCase)))
+        {
+            return EngineKind.Xray;
+        }
+
+        if (transport is not null && (transport.Equals("kcp", StringComparison.OrdinalIgnoreCase) || transport.Equals("mkcp", StringComparison.OrdinalIgnoreCase)))
+        {
+            return EngineKind.Xray;
+        }
+
+        var headerType = profile.Option(Keys.HeaderType);
+        if ((transport is null || transport.Equals("tcp", StringComparison.OrdinalIgnoreCase) || transport.Equals("raw", StringComparison.OrdinalIgnoreCase)) &&
+            headerType is not null && headerType.Equals("http", StringComparison.OrdinalIgnoreCase))
+        {
+            return EngineKind.Xray;
+        }
+
+        var encryption = profile.Option(Keys.Encryption);
+        if (profile.Protocol == ProtocolKind.Vless && encryption is not null && !encryption.Equals("none", StringComparison.OrdinalIgnoreCase))
         {
             return EngineKind.Xray;
         }

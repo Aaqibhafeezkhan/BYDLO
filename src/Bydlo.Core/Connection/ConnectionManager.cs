@@ -33,6 +33,7 @@ public sealed record SessionSnapshot(
     public string? ErrorLocalizationKey { get; init; }
     public string[] ErrorLocalizationArguments { get; init; } = [];
     public bool CleanupPending { get; init; }
+    public bool HoldsResources => CleanupPending || Status is not (ConnectionStatus.Disconnected or ConnectionStatus.Error);
 
     /// <summary>Active relay chain, if the session carries chained traffic (issue #75).</summary>
     public ProxyChain? Chain { get; init; }
@@ -133,30 +134,18 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
     public async Task<IReadOnlyList<ActiveConnection>?> ListActiveConnectionsAsync(CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            return ActiveConnectionSource() is { } source ? await source.ListConnectionsAsync(ct).ConfigureAwait(false) : null;
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        // Snapshot the source under the session lock, then query it outside any gate (issue #220):
+        // the connections screen polls every 2 s and a stuck Clash API must not block Connect/Disconnect.
+        var source = ActiveConnectionSource();
+        return source is { } ? await source.ListConnectionsAsync(ct).ConfigureAwait(false) : null;
     }
 
     public async Task CloseActiveConnectionAsync(string id, CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
+        var source = ActiveConnectionSource();
+        if (source is { })
         {
-            if (ActiveConnectionSource() is { } source)
-            {
-                await source.CloseConnectionAsync(id, ct).ConfigureAwait(false);
-            }
-        }
-        finally
-        {
-            _gate.Release();
+            await source.CloseConnectionAsync(id, ct).ConfigureAwait(false);
         }
     }
 
@@ -214,13 +203,15 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             return [.. issues];
         }
 
-        var ownPort = Snapshot(PrimaryKey).LocalProxyPort;
+        var active = Primary;
+        var ownPort = active.LocalProxyPort;
         if (ownPort == 0 || ownPort != settings.LocalProxyPort)
         {
             return [.. issues];
         }
 
-        return issues.Where(i => !string.Equals(i.Code, "port.local-proxy", StringComparison.Ordinal)).ToList();
+        return issues.Where(i => i.Code != "port.local-proxy" &&
+            (i.Code != "port.local-proxy-http" || active.Engine != EngineKind.Xray)).ToList();
     }
 
     /// <summary>Connects the primary tunnel. Disconnects a previous primary first.</summary>
@@ -710,6 +701,13 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     private void Fail(string key, Profile? profile, AppSettings settings, string message, string? localizationKey = null)
     {
         _log.Error(key, message);
+        var current = Snapshot(key);
+        if (key == PrimaryKey && current.Engine is not null)
+        {
+            SessionChanged?.Invoke(this, current);
+            return;
+        }
+
         SessionChanged?.Invoke(this, new SessionSnapshot(key, ConnectionStatus.Error, profile, null, settings.MockMode, null, message, null)
             { ErrorLocalizationKey = localizationKey });
     }

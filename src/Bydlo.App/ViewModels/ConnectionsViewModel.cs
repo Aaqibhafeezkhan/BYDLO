@@ -151,7 +151,7 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             await Shell.Guard(async () =>
             {
                 var url = await Services.Profiles.GetSubscriptionUrlAsync(row.Id) ?? throw new InvalidOperationException("Subscription URL missing.");
-                var preview = await Services.Subscriptions.FetchRefreshAsync(url, Services.ShutdownToken);
+                var preview = await Services.Subscriptions.FetchRefreshAsync(url, row.Snapshot.UserAgent, Services.ShutdownToken);
                 if (preview.Import.IsEmpty)
                 {
                     Shell.ShowToast(L["wizard.error.subscription"], isError: true);
@@ -202,9 +202,22 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     }
 
     [RelayCommand]
+    private async Task SaveSubscriptionUserAgent(SubscriptionRow row)
+    {
+        await Shell.Guard(async () =>
+        {
+            await Services.Profiles.SetSubscriptionUserAgentAsync(row.Id, row.UserAgent);
+            OnShown();
+            Shell.ShowToast(L["toast.saved"]);
+        });
+    }
+
+    [RelayCommand]
     private async Task DeleteSubscription(SubscriptionRow row)
     {
-        if (Shell.Primary.Profile?.SubscriptionId == row.Id)
+        var session = Services.Connections.Primary;
+        if (session.HoldsResources && (session.Profile?.SubscriptionId == row.Id ||
+            Services.Profiles.Profiles.Any(p => p.SubscriptionId == row.Id && session.Chain?.ProfileIds.Contains(p.Id) == true)))
         {
             Shell.ShowToast(L["connections.delete.active"], isError: true);
             return;
@@ -326,13 +339,14 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     [RelayCommand]
     private async Task Delete(ProfileItem item)
     {
-        if (Shell.Primary.Profile?.Id == item.Id)
+        var session = Services.Connections.Primary;
+        if (session.HoldsResources && session.Profile?.Id == item.Id)
         {
             Shell.ShowToast(L["connections.delete.active"], isError: true);
             return;
         }
 
-        if (Shell.Primary.Chain?.ProfileIds.Contains(item.Id) == true)
+        if (session.HoldsResources && session.Chain?.ProfileIds.Contains(item.Id) == true)
         {
             Shell.ShowToast(L["chain.delete.active"], isError: true);
             return;

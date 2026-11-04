@@ -105,7 +105,7 @@ public sealed partial class XrayConfigBuilder
         };
         // Manual mode observes nothing: the explicit fallback is the only eligible target.
         if (group.Mode == ServerGroupMode.Manual) { root["observatory"]!["subjectSelector"] = new JsonArray("no-group-members"); }
-        if (root["api"] is JsonObject api) { api["services"] = new JsonArray("RoutingService", "ObservatoryService"); }
+        if (root["api"] is JsonObject api) { api["services"] = new JsonArray("RoutingService", "ObservatoryService", "StatsService"); }
         return root;
     }
 }

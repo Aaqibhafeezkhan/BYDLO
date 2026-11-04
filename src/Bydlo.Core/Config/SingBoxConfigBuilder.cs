@@ -8,6 +8,11 @@ using Bydlo.Core.Models;
 
 namespace Bydlo.Core.Config;
 
+/// <summary>Loop avoidance for a TUN front over a local transport (issue #212).</summary>
+/// <param name="Addresses">Server IPs or CIDRs excluded from the TUN.</param>
+/// <param name="Processes">Transport process names routed directly.</param>
+public sealed record KillSwitchExclusions(IReadOnlyList<string> Addresses, IReadOnlyList<string> Processes);
+
 /// <summary>Options that are not part of the profile itself.</summary>
 public sealed record BuildContext(AppSettings Settings, int? ClashApiPort = null, string? ClashApiSecret = null, LocalProxyAuth? LocalProxyAuth = null, IReadOnlyDictionary<string, string>? RuleSets = null, OsFamily Os = OsFamily.Windows);
 
@@ -266,7 +271,7 @@ public sealed partial class SingBoxConfigBuilder
     }
 
     /// <summary>A retained TUN with no Internet-direct fallback. Transport lives in another process.</summary>
-    public JsonObject BuildKillSwitch(AppSettings settings, int backendPort, OsFamily os = OsFamily.Windows)
+    public JsonObject BuildKillSwitch(AppSettings settings, int backendPort, OsFamily os = OsFamily.Windows, KillSwitchExclusions? exclusions = null)
     {
         if (settings.Mode != ConnectionMode.Tun || !settings.KillSwitch)
         {
@@ -287,16 +292,36 @@ public sealed partial class SingBoxConfigBuilder
         };
         var tunSettings = new AppSettings { Mode = ConnectionMode.Tun, Routing = routing };
         var inbound = BuildInbound(tunSettings, null, os);
-        var exclusions = inbound["route_exclude_address"]?.AsArray() ?? new JsonArray();
+        var excluded = inbound["route_exclude_address"]?.AsArray() ?? new JsonArray();
         if (routing.BypassPrivateNetworks)
         {
-            foreach (var cidr in PrivateNetworkRanges) { exclusions.Add(cidr); }
+            foreach (var cidr in PrivateNetworkRanges) { excluded.Add(cidr); }
         }
-        if (exclusions.Parent is null && exclusions.Count > 0) { inbound["route_exclude_address"] = exclusions; }
+        if (exclusions is not null)
+        {
+            foreach (var address in exclusions.Addresses)
+            {
+                if (System.Net.IPAddress.TryParse(address, out var ip))
+                {
+                    excluded.Add(ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? ip + "/32" : ip + "/128");
+                }
+                else if (System.Net.IPNetwork.TryParse(address, out _))
+                {
+                    excluded.Add(address);
+                }
+                // Domains cannot be excluded by address; the owning process is routed directly instead.
+            }
+        }
+        if (excluded.Parent is null && excluded.Count > 0) { inbound["route_exclude_address"] = excluded; }
 
         // ip_is_private includes ULA/CGNAT: use exact ranges so LAN and mesh remain independent.
         var route = BuildRoute(routing, ConnectionMode.Tun);
         route["default_domain_resolver"] = "remote";
+        if (exclusions is { Processes.Count: > 0 })
+        {
+            // The transport's own sockets bypass the tunnel so they cannot loop back into it.
+            route["rules"]!.AsArray().Insert(0, new JsonObject { ["process_name"] = ToArray(exclusions.Processes), ["outbound"] = "direct" });
+        }
         foreach (var rule in route["rules"]!.AsArray().OfType<JsonObject>())
         {
             if (rule.Remove("ip_is_private")) { rule["ip_cidr"] = ToArray(PrivateNetworkRanges); }
@@ -599,6 +624,10 @@ public sealed partial class SingBoxConfigBuilder
             case ProtocolKind.Vless:
                 o["type"] = "vless";
                 o["uuid"] = Require(s, Keys.Uuid);
+                if (p.Option(Keys.Encryption) is { } encryption && !encryption.Equals("none", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new Engines.EngineException("This transport or option requires the Xray engine.", localizationKey: "error.engine.transport.xray");
+                }
                 if (p.Option(Keys.Flow) is { } flow)
                 {
                     o["flow"] = flow;
@@ -623,7 +652,12 @@ public sealed partial class SingBoxConfigBuilder
                 break;
             case ProtocolKind.Shadowsocks:
                 o["type"] = "shadowsocks";
-                o["method"] = p.Option(Keys.Method) ?? "aes-256-gcm";
+                o["method"] = p.Option(Keys.Method) switch
+                {
+                    "chacha20-poly1305" => "chacha20-ietf-poly1305",
+                    "xchacha20-poly1305" => "xchacha20-ietf-poly1305",
+                    var method => method ?? "aes-256-gcm",
+                };
                 o["password"] = Require(s, Keys.Password);
                 if (p.Option(Keys.Plugin) is { } plugin)
                 {
@@ -825,6 +859,11 @@ public sealed partial class SingBoxConfigBuilder
     private static void AddTransport(JsonObject o, Profile p)
     {
         var type = p.Option(Keys.Transport) ?? "tcp";
+        var headerType = p.Option(Keys.HeaderType);
+        if ((type is "tcp" or "raw" or "") && headerType is not null && headerType.Equals("http", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new Engines.EngineException("This transport or option requires the Xray engine.", localizationKey: "error.engine.transport.xray");
+        }
         JsonObject? t = type switch
         {
             "ws" => new JsonObject { ["type"] = "ws", ["path"] = p.Option(Keys.Path) ?? "/" },
@@ -833,7 +872,7 @@ public sealed partial class SingBoxConfigBuilder
             "httpupgrade" => new JsonObject { ["type"] = "httpupgrade", ["path"] = p.Option(Keys.Path) ?? "/" },
             "quic" => new JsonObject { ["type"] = "quic" },
             "tcp" or "raw" or "" => null,
-            _ => throw new NotSupportedException($"Transport '{type}' is not supported by sing-box; use the Xray engine."),
+            _ => throw new Engines.EngineException("This transport or option requires the Xray engine.", localizationKey: "error.engine.transport.xray"),
         };
         if (t is null)
         {

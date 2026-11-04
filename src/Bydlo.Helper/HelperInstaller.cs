@@ -56,9 +56,10 @@ internal static class HelperInstaller
         }
         new DirectoryInfo(data).SetAccessControl(privateAcl);
         VerifyBundle();
-        RunSc("create", HelperConnection.ServiceName, "binPath=", "\"" + HelperConnection.Executable + "\" service", "start=", "auto", "obj=", "LocalSystem");
-        RunSc("description", HelperConnection.ServiceName, "BYDLO privileged engine helper (one explicitly authorized user)");
-        RunSc("start", HelperConnection.ServiceName);
+        HelperManagement.WriteInstalledBuild(HelperManagement.GetBuild(Bydlo.Engines.Installation.EngineLock.BundleVersion));
+        RunSc(HelperServiceDefinitions.BuildServiceCreateArgs(HelperConnection.Executable, HelperConnection.ServiceName));
+        RunSc(HelperServiceDefinitions.BuildServiceDescriptionArgs(HelperConnection.ServiceName));
+        RunSc(HelperServiceDefinitions.BuildServiceStartArgs(HelperConnection.ServiceName));
     }
 
     private static void CopyTree(string source, string target)
@@ -92,13 +93,12 @@ internal static class HelperInstaller
             using var service = new System.ServiceProcess.ServiceController(HelperConnection.ServiceName);
             if (service.Status != System.ServiceProcess.ServiceControllerStatus.Stopped)
             { service.Stop(); service.WaitForStatus(System.ServiceProcess.ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(45)); }
-            RunSc("delete", HelperConnection.ServiceName);
+            RunSc(HelperServiceDefinitions.BuildServiceDeleteArgs(HelperConnection.ServiceName));
         }
         // Only the fixed, administrator-owned installation is deleted. This executable runs from the release folder.
         var root = Path.GetFullPath(HelperConnection.InstallDirectory);
         var expected = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "BYDLO Helper"));
-        if (!root.Equals(expected, StringComparison.OrdinalIgnoreCase) ||
-            AppContext.BaseDirectory.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        if (!HelperServiceDefinitions.IsSafeToDeleteRoot(root, expected, AppContext.BaseDirectory, StringComparison.OrdinalIgnoreCase))
         { throw new IOException("Remove the helper using the original BYDLO release folder."); }
         if (Directory.Exists(root)) { Directory.Delete(root, true); }
     }

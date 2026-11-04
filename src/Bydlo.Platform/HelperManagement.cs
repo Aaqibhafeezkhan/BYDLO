@@ -1,11 +1,42 @@
 using System.Diagnostics;
 using System.Security.Principal;
+using System.Text.Json;
+using Bydlo.Core;
+using Bydlo.Core.Platform;
 using Bydlo.Core.Security;
 
 namespace Bydlo.Platform;
 
 public static class HelperManagement
 {
+    private const string BuildFile = "build.json";
+
+    public static HelperBuild GetBuild(string bundleVersion) => new(AppVersion.Current, bundleVersion);
+
+    public static void WriteInstalledBuild(HelperBuild build)
+    {
+        NetworkSafetyGuard.EnsureAllowed("write the privileged helper version");
+        var path = Path.Combine(HelperPaths.InstallDirectory, BuildFile);
+        File.WriteAllText(path, JsonSerializer.Serialize(build));
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
+        }
+    }
+
+    public static bool IsOutdated(HelperBuild expected)
+    {
+        if (!IsInstalled) { return false; }
+        try
+        {
+            return JsonSerializer.Deserialize<HelperBuild>(File.ReadAllText(Path.Combine(HelperPaths.InstallDirectory, BuildFile))) != expected;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return true;
+        }
+    }
+
     public static bool IsSupported => !OperatingSystem.IsAndroid() && (OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS());
     public static bool IsInstalled
     {

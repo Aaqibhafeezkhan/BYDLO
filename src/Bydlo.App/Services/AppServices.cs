@@ -48,7 +48,8 @@ public sealed class AppServices
         Registry.Decorate = (engine, settings) => UsesPrivilegedHelper &&
             HelperRequestPolicy.Supports(engine.Descriptor.Kind) &&
             (engine.Descriptor.Kind != EngineKind.SingBox || settings.Mode == ConnectionMode.Tun)
-                ? new HelperEngine(engine, () => OperatingSystem.IsWindows() ? new HelperConnection() : new UnixHelperConnection(), () => HelperManagement.IsInstalled) : engine;
+                ? new HelperEngine(engine, () => OperatingSystem.IsWindows() ? new HelperConnection() : new UnixHelperConnection(),
+                    () => HelperManagement.IsInstalled, ExpectedHelperBuild) : engine;
         SystemProxy = SystemProxyFactory.Create(Runner, Paths);
         Connections = new ConnectionManager(Registry, Secrets, Paths, new ConflictDetector(new TcpPortChecker()), Log, SystemProxy);
         ConnectionCheck = new ConnectionCheckService();
@@ -59,6 +60,7 @@ public sealed class AppServices
     }
 
     public string[] Args { get; }
+    internal static HelperBuild ExpectedHelperBuild { get; } = HelperManagement.GetBuild(EngineLock.BundleVersion);
 
     /// <summary>Mock Mode forced for this session by <c>--mock</c> / <c>BYDLO_MOCK=1</c>.</summary>
     public bool ForcedMock { get; }
