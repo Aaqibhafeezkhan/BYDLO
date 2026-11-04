@@ -5,7 +5,7 @@
   xmlns:c="using:Bydlo.App.Controls"
   x:Class="Bydlo.App.Views.HomeView"
   x:DataType="vm:HomeViewModel">
-  <ScrollViewer>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <Border Classes="workspace">
       <StackPanel Classes="page">
         <Grid RowDefinitions="Auto,Auto" RowSpacing="20">
