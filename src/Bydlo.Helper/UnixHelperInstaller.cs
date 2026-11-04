@@ -36,41 +36,11 @@ internal static class UnixHelperInstaller
         HelperServer.VerifyBundle();
         HelperManagement.WriteInstalledBuild(HelperManagement.GetBuild(Bydlo.Engines.Installation.EngineLock.BundleVersion));
         Directory.CreateDirectory(Path.GetDirectoryName(Definition)!);
-        File.WriteAllText(Definition, OperatingSystem.IsMacOS() ? LaunchDaemon() : SystemdUnit());
+        File.WriteAllText(Definition, OperatingSystem.IsMacOS() ? HelperServiceDefinitions.BuildLaunchDaemon(HelperPaths.Executable) : HelperServiceDefinitions.BuildSystemdUnit(HelperPaths.Executable));
         File.SetUnixFileMode(Definition, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
         if (OperatingSystem.IsMacOS()) { Run("/bin/launchctl", "bootstrap", "system", Definition); }
         else { Run(Systemctl(), "daemon-reload"); Run(Systemctl(), "enable", "--now", "bydlo-helper.service"); }
     }
-
-    private static string SystemdUnit() => $"""
-        [Unit]
-        Description=BYDLO privileged engine helper
-        After=network.target
-        [Service]
-        Type=exec
-        ExecStart="{HelperPaths.Executable}" service
-        User=root
-        UMask=0077
-        Restart=on-failure
-        KillMode=mixed
-        TimeoutStopSec=45
-        [Install]
-        WantedBy=multi-user.target
-        """;
-
-    private static string LaunchDaemon() => $"""
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0"><dict>
-        <key>Label</key><string>{Label}</string>
-        <key>ProgramArguments</key><array><string>{System.Security.SecurityElement.Escape(HelperPaths.Executable)}</string><string>service</string></array>
-        <key>RunAtLoad</key><true/>
-        <key>KeepAlive</key><true/>
-        <key>UserName</key><string>root</string>
-        <key>Umask</key><integer>63</integer>
-        <key>ExitTimeOut</key><integer>45</integer>
-        </dict></plist>
-        """;
 
     private static void CopyTree(string source, string target)
     {
@@ -115,7 +85,7 @@ internal static class UnixHelperInstaller
         var expected = OperatingSystem.IsMacOS()
             ? Path.Combine(Path.GetPathRoot(AppContext.BaseDirectory)!, "Library", "PrivilegedHelperTools", "BYDLO")
             : Path.Combine(Path.GetPathRoot(AppContext.BaseDirectory)!, "usr", "local", "lib", "bydlo-helper");
-        if (root != expected || AppContext.BaseDirectory.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+        if (!HelperServiceDefinitions.IsSafeToDeleteRoot(root, expected, AppContext.BaseDirectory, StringComparison.Ordinal))
         { throw new IOException("Remove the helper using the original release folder."); }
         if (Directory.Exists(root)) { Directory.Delete(root, true); }
     }

@@ -114,7 +114,8 @@ jobs:
       - name: Test
         run: |
           source scripts/env.sh
-          dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
+          # Coverage is collected as a CI artifact only, with no threshold gate yet (issue #221).
+          dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --collect:"XPlat Code Coverage" --results-directory TestResults
       - name: Verify server groups (headless, mock only, no network)
         run: |
           source scripts/env.sh

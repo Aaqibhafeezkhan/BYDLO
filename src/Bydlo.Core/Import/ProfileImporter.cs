@@ -137,6 +137,10 @@ public sealed class ProfileImporter
         {
             return new ImportResult([], [ex.Message]);
         }
+        catch (ArgumentException ex)
+        {
+            return new ImportResult([], [ex.Message]);
+        }
     }
 
     // Never echo full links back: they contain credentials.
