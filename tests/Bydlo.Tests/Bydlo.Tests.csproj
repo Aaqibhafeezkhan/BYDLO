@@ -22,6 +22,7 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\..\tools\Bydlo.BundleEngines\ZapretHostList.cs" Link="Packaging\ZapretHostList.cs" />
     <Compile Include="..\..\src\Bydlo.Desktop\ElevationHandoff.cs" Link="Desktop\ElevationHandoff.cs" />
     <Compile Include="..\..\src\Bydlo.Desktop\WindowsActivationBroker.cs" Link="Desktop\WindowsActivationBroker.cs" />
     <Compile Include="..\..\src\Bydlo.Desktop\UnixActivationBroker.cs" Link="Desktop\UnixActivationBroker.cs" />
