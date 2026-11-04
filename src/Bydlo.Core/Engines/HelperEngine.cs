@@ -10,6 +10,7 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
     private Guid? _remoteGroupProfileId;
     public Guid? SelectedGroupProfileId => _usingRemote ? _remoteGroupProfileId : (local as IServerGroupSource)?.SelectedGroupProfileId;
     private IPrivilegedOperations? _remote;
+    private readonly SemaphoreSlim _remoteGate = new(1);
     private CancellationTokenSource? _pollCancellation;
     private Task? _poll;
     private EngineState _state;
@@ -23,12 +24,12 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
     public bool CanHandle(Profile profile) => local.CanHandle(profile);
 
     public async Task<IReadOnlyList<ActiveConnection>> ListConnectionsAsync(CancellationToken ct = default) =>
-        _remote is not null ? (await _remote.SendAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.ListConnections }, ct).ConfigureAwait(false)).Connections :
+        _usingRemote ? (await SendRemoteAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.ListConnections }, ct, finishFrame: true).ConfigureAwait(false)).Connections :
             local is IActiveConnectionSource source ? await source.ListConnectionsAsync(ct).ConfigureAwait(false) : [];
 
     public async Task CloseConnectionAsync(string id, CancellationToken ct = default)
     {
-        if (_remote is not null) { await _remote.SendAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.CloseConnection, ConnectionId = id }, ct).ConfigureAwait(false); }
+        if (_usingRemote) { await SendRemoteAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.CloseConnection, ConnectionId = id }, ct, finishFrame: true).ConfigureAwait(false); }
         else if (local is IActiveConnectionSource source) { await source.CloseConnectionAsync(id, ct).ConfigureAwait(false); }
     }
 
@@ -41,7 +42,7 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
         }
         if (_remote is not null)
         {
-            var reply = await _remote.SendAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Reconnect,
+            var reply = await SendRemoteAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Reconnect,
                 Start = request with { WorkDirectory = "", RuleSetDirectory = null }, Settings = request.Settings }, ct).ConfigureAwait(false);
             Apply(reply);
             if (reply.Error is not null) { throw new EngineException("helper.error", localizationKey: "helper.error"); }
@@ -71,6 +72,7 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
     {
         if (!UseHelper(request.Settings))
         {
+            _usingRemote = false;
             local.StateChanged += LocalState;
             local.Log += LocalLog;
             local.Traffic += LocalTraffic;
@@ -80,7 +82,7 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
         NetworkSafetyGuard.EnsureAllowed("start a privileged engine");
         _usingRemote = true;
         _remote ??= connect();
-        var reply = await _remote.SendAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Start,
+        var reply = await SendRemoteAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Start,
             Start = request with { WorkDirectory = "", RuleSetDirectory = null }, Settings = request.Settings }, ct).ConfigureAwait(false);
         Apply(reply);
         if (reply.Error is not null) { throw new EngineException("helper.error", localizationKey: "helper.error"); }
@@ -96,19 +98,52 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
             while (!ct.IsCancellationRequested)
             {
                 await Task.Delay(500, ct).ConfigureAwait(false);
-                // Finish an in-flight frame before STOP can reuse this connection.
-                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                Apply(await _remote!.SendAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Poll }, deadline.Token).ConfigureAwait(false));
+                Apply(await SendRemoteAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Poll }, ct, finishFrame: true).ConfigureAwait(false));
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TimeoutException or OperationCanceledException or System.ComponentModel.Win32Exception)
+        catch (Exception ex) when (IsTransportFailure(ex) || ex is EngineException && _remote is null) { }
+    }
+
+    private static bool IsTransportFailure(Exception ex) =>
+        ex is IOException or UnauthorizedAccessException or TimeoutException or OperationCanceledException or ObjectDisposedException
+            or System.ComponentModel.Win32Exception or System.Text.Json.JsonException;
+
+    private async Task<HelperReply> SendRemoteAsync(HelperRequest request, CancellationToken ct, bool finishFrame = false)
+    {
+        var remote = _remote;
+        await _remoteGate.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            _state = EngineState.Failed;
-            StateChanged?.Invoke(this, new(_state, "helper.error"));
-            // Closing the lease makes the server stop its engine even when polling failed.
-            if (_remote is not null) { await _remote.DisposeAsync().ConfigureAwait(false); _remote = null; }
+            if (remote is null || !ReferenceEquals(remote, _remote))
+            {
+                throw new EngineException("helper.error", localizationKey: "helper.error");
+            }
+
+            ct.ThrowIfCancellationRequested();
+            // A page or the poll loop can cancel while queued. Once a frame starts, let it finish
+            // within its own deadline so a canceled read does not close the privileged lease.
+            using var deadline = finishFrame ? new CancellationTokenSource(TimeSpan.FromSeconds(5)) : null;
+            HelperReply reply;
+            try { reply = await remote.SendAsync(request, deadline?.Token ?? ct).ConfigureAwait(false); }
+            catch (Exception ex) when (IsTransportFailure(ex))
+            {
+                _remote = null;
+                try { await remote.DisposeAsync().ConfigureAwait(false); }
+                finally { Apply(new HelperReply { State = EngineState.Failed, Error = "helper.error" }); }
+                throw;
+            }
+
+            if (request.Operation == HelperOperation.Stop && reply.State == EngineState.Stopped && reply.Error is null)
+            {
+                _remote = null;
+                await remote.DisposeAsync().ConfigureAwait(false);
+            }
+
+            if (finishFrame) { ct.ThrowIfCancellationRequested(); }
+            return reply;
         }
+        finally { _remoteGate.Release(); }
     }
 
     private void Apply(HelperReply reply)
@@ -129,22 +164,22 @@ public sealed class HelperEngine(IEngine local, Func<IPrivilegedOperations> conn
         if (_poll is not null) { await _poll.ConfigureAwait(false); }
         if (_usingRemote)
         {
-            if (_remote is { } remote)
+            if (_remote is not null)
             {
-                var reply = await remote.SendAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Stop }, ct).ConfigureAwait(false);
-                if (reply.Error is not null || reply.State != EngineState.Stopped)
+                try
                 {
-                    Apply(new HelperReply { State = EngineState.Failed, Error = "helper.error" });
-                    throw new EngineException("Helper did not confirm that the engine stopped.", localizationKey: "error.engine.cleanup");
+                    var reply = await SendRemoteAsync(new HelperRequest { Engine = Descriptor.Kind, Operation = HelperOperation.Stop }, ct).ConfigureAwait(false);
+                    if (reply.Error is not null || reply.State != EngineState.Stopped)
+                    {
+                        Apply(new HelperReply { State = EngineState.Failed, Error = "helper.error" });
+                        throw new EngineException("Helper did not confirm that the engine stopped.", localizationKey: "error.engine.cleanup");
+                    }
                 }
-                Apply(reply);
-                await remote.DisposeAsync().ConfigureAwait(false);
-                _remote = null;
+                catch (Exception ex) when (_remote is null && (IsTransportFailure(ex) || ex is EngineException) && !ct.IsCancellationRequested) { }
             }
-            else if (_state != EngineState.Stopped)
-            {
-                throw new EngineException("Helper disconnected before confirming that the engine stopped.", localizationKey: "error.engine.cleanup");
-            }
+
+            // A dead transport cannot be reused. The helper disposes the engine when its lease closes.
+            Apply(new HelperReply { State = EngineState.Stopped });
         }
         await local.StopAsync(ct).ConfigureAwait(false);
     }
