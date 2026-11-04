@@ -134,30 +134,18 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
     public async Task<IReadOnlyList<ActiveConnection>?> ListActiveConnectionsAsync(CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            return ActiveConnectionSource() is { } source ? await source.ListConnectionsAsync(ct).ConfigureAwait(false) : null;
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        // Snapshot the source under the session lock, then query it outside any gate (issue #220):
+        // the connections screen polls every 2 s and a stuck Clash API must not block Connect/Disconnect.
+        var source = ActiveConnectionSource();
+        return source is { } ? await source.ListConnectionsAsync(ct).ConfigureAwait(false) : null;
     }
 
     public async Task CloseActiveConnectionAsync(string id, CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
+        var source = ActiveConnectionSource();
+        if (source is { })
         {
-            if (ActiveConnectionSource() is { } source)
-            {
-                await source.CloseConnectionAsync(id, ct).ConfigureAwait(false);
-            }
-        }
-        finally
-        {
-            _gate.Release();
+            await source.CloseConnectionAsync(id, ct).ConfigureAwait(false);
         }
     }
 
