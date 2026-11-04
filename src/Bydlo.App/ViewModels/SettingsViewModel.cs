@@ -564,5 +564,48 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
     }
 
+    public string BugTemplateUrl => Bydlo.Core.Diagnostics.DiagnosticReport.BugTemplateUrl;
+
+    [RelayCommand]
+    private async Task CopyDiagnosticReport()
+    {
+        try
+        {
+            var settings = Services.Settings;
+            var byProtocol = Services.Profiles.Profiles
+                .GroupBy(p => p.Protocol)
+                .ToDictionary(g => g.Key, g => g.Count());
+            var settingsLines = Bydlo.Core.Diagnostics.DiagnosticReport.SummarizeSettings(
+                settings, byProtocol, Services.Profiles.Subscriptions.Count);
+            var engines = Services.Lock.Engines
+                .Select(e => new Bydlo.Core.Diagnostics.DiagnosticReport.DiagnosticEngineInfo(
+                    e.Id, e.Version, e.Assets.ToDictionary(a => a.Key, a => a.Value.Sha256, StringComparer.Ordinal)))
+                .ToList();
+            var logs = Services.Log.Snapshot().TakeLast(Bydlo.Core.Diagnostics.DiagnosticReport.MaxLogLines)
+                .Select(e => e.ToString()).ToList();
+            string? crash = null;
+            var reports = Bydlo.Core.Diagnostics.CrashReporter.ListReports(Services.Paths.LogsDirectory);
+            if (reports.Count > 0)
+            {
+                try { crash = await File.ReadAllTextAsync(reports[0]); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { crash = null; }
+            }
+            var text = Bydlo.Core.Diagnostics.DiagnosticReport.Build(
+                Bydlo.Core.AppVersion.Current,
+                System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+                System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier,
+                engines, settingsLines, logs, crash, Bydlo.Core.Security.LogRedactor.Shared);
+            if (Services.TopLevel()?.Clipboard is { } clipboard)
+            {
+                await clipboard.SetTextAsync(text);
+                Shell.ShowToast(L["toast.copied"]);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Shell.ShowToast(ex.Message, isError: true);
+        }
+    }
+
     private void Persist() => _ = Services.SaveSettingsAsync();
 }

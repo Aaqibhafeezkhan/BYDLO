@@ -48,6 +48,9 @@ public sealed partial class LogRedactor
         }
 
         text = UriCredentials().Replace(text, m => $"{m.Groups["scheme"].Value}://{Mask}@");
+        // Whole bodies without userinfo (ss/vmess base64 blobs may embed host and port).
+        text = BareSchemeBody().Replace(text, m => $"{m.Groups["scheme"].Value}://{Mask}");
+        text = AuthHeader().Replace(text, m => m.Groups["prefix"].Value + Mask);
         text = KeyValueSecret().Replace(text, m => $"{m.Groups["key"].Value}{m.Groups["sep"].Value}{Mask}");
         text = Uuid().Replace(text, Mask);
         text = WireGuardKey().Replace(text, m => m.Groups["prefix"].Value + Mask);
@@ -55,12 +58,20 @@ public sealed partial class LogRedactor
         return text;
     }
 
-    // vless://uuid@host, ss://base64@host, socks5://user:pass@host
-    [GeneratedRegex(@"(?<scheme>[a-z][a-z0-9+.\-]{1,15})://[^\s/@]{3,}@", RegexOptions.IgnoreCase)]
+    // vless://uuid@host, ss://base64@host (base64 may contain '/'), socks5://user:pass@host
+    [GeneratedRegex(@"(?<scheme>[a-z][a-z0-9+.\-]{1,15})://[^\s@?]{3,}@", RegexOptions.IgnoreCase)]
     private static partial Regex UriCredentials();
 
-    [GeneratedRegex(@"(?<key>\b(?:password|ss_password|shadow_password|private_key_passphrase|passwd|pass|secret|private[_\- ]?key|presharedkey|pre_shared_key|psk|token|auth|uuid|id)\b[""']?)(?<sep>\s*[:=]\s*[""']?)[^\s""',;&}]+", RegexOptions.IgnoreCase)]
+    // Whole vmess:// and ss:// bodies without '@': base64 JSON or method:password@host:port blobs.
+    [GeneratedRegex(@"(?<scheme>vmess|ss)://[^\s#@]+", RegexOptions.IgnoreCase)]
+    private static partial Regex BareSchemeBody();
+
+    [GeneratedRegex(@"(?<key>\b(?:password|ss_password|shadow_password|private_key_passphrase|passwd|pass|secret|private[_\- ]?key|presharedkey|pre_shared_key|psk|token|auth|auth_str|uuid|id)\b[""']?)(?<sep>\s*[:=]\s*)(""[^""]*""|'[^']*'|[^\s""',;&}]+)", RegexOptions.IgnoreCase)]
     private static partial Regex KeyValueSecret();
+
+    // Authorization: Bearer/Basic/Token <credentials> (or a bare token after the colon).
+    [GeneratedRegex(@"(?<prefix>\bAuthorization\s*[:=]\s*(?:(?:Bearer|Basic|Token)\s+)?)[^\s,;]+", RegexOptions.IgnoreCase)]
+    private static partial Regex AuthHeader();
 
     [GeneratedRegex(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b")]
     private static partial Regex Uuid();
