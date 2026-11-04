@@ -3,6 +3,9 @@
     <RootNamespace>Bydlo.App</RootNamespace>
     <AssemblyName>Bydlo.App</AssemblyName>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- The desktop app ships trimmed; see docs/BUILD.md. -->
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />

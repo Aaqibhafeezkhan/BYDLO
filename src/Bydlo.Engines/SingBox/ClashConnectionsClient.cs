@@ -12,7 +12,7 @@ public sealed class ClashConnectionsClient(HttpClient http, int port, string sec
         using var request = Request(HttpMethod.Get, "connections");
         using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var payload = await response.Content.ReadFromJsonAsync<ConnectionList>(cancellationToken: ct).ConfigureAwait(false);
+        var payload = await response.Content.ReadFromJsonAsync(ClashJsonContext.Default.ConnectionList, ct).ConfigureAwait(false);
         return payload?.Connections?.Where(item => !string.IsNullOrEmpty(item.Id)).Select(item =>
             new ActiveConnection(item.Id!, item.Metadata?.Host is { Length: > 0 } host ? host : item.Metadata?.DestinationIp ?? "",
                 item.Metadata?.Process is { Length: > 0 } process ? process : item.Metadata?.ProcessPath ?? "",
@@ -45,8 +45,8 @@ public sealed class ClashConnectionsClient(HttpClient http, int port, string sec
         return request;
     }
 
-    private sealed record ConnectionList(ConnectionItem[]? Connections);
-    private sealed record ConnectionItem(string? Id, ConnectionMetadata? Metadata, string? Rule, string? RulePayload,
+    internal sealed record ConnectionList(ConnectionItem[]? Connections);
+    internal sealed record ConnectionItem(string? Id, ConnectionMetadata? Metadata, string? Rule, string? RulePayload,
         string[]? Chains, long Download, long Upload);
-    private sealed record ConnectionMetadata(string? Host, string? DestinationIp, string? Process, string? ProcessPath);
+    internal sealed record ConnectionMetadata(string? Host, string? DestinationIp, string? Process, string? ProcessPath);
 }

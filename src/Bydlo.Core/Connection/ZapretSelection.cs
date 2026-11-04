@@ -99,7 +99,7 @@ public sealed partial class ConnectionManager
         return new SelectionSession(this, CloneSettings(settings), original);
     }
 
-    private static AppSettings CloneSettings(AppSettings settings) => JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+    private static AppSettings CloneSettings(AppSettings settings) => Serialization.BydloJson.DeepClone(settings);
 
     private sealed class SelectionSession(ConnectionManager manager, AppSettings settings, AppSettings? original) : IZapretSelectionSession
     {

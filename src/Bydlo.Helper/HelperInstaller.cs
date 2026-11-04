@@ -44,7 +44,7 @@ internal static class HelperInstaller
         var hashes = Directory.GetFiles(Path.Combine(target, "engines"), "*", SearchOption.AllDirectories)
             .ToDictionary(file => Path.GetRelativePath(target, file), file => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file))));
         if (hashes.Count == 0) { throw new InvalidDataException("The engine bundle is empty."); }
-        File.WriteAllText(Path.Combine(target, "bundle.sha256.json"), JsonSerializer.Serialize(hashes));
+        File.WriteAllText(Path.Combine(target, "bundle.sha256.json"), JsonSerializer.Serialize(hashes, HelperJsonContext.Default.DictionaryStringString));
         var data = Path.Combine(target, "data");
         Directory.CreateDirectory(data);
         var privateAcl = new DirectorySecurity();
@@ -79,7 +79,7 @@ internal static class HelperInstaller
     public static void VerifyBundle()
     {
         var root = HelperConnection.InstallDirectory;
-        var hashes = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(root, "bundle.sha256.json")))
+        var hashes = JsonSerializer.Deserialize(File.ReadAllText(Path.Combine(root, "bundle.sha256.json")), HelperJsonContext.Default.DictionaryStringString)
             ?? throw new InvalidDataException("Missing bundle hashes.");
         HelperBundleIntegrity.Verify(root, hashes);
     }

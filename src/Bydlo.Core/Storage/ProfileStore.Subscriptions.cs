@@ -137,13 +137,9 @@ public sealed partial class ProfileStore
     private static (ProtocolKind Protocol, string Host, int Port) EndpointIdentity(Profile profile) =>
         (profile.Protocol, profile.Host.ToUpperInvariant(), profile.Port);
 
-    private static string NodeIdentity(Profile profile, ProfileSecrets secrets) => JsonSerializer.Serialize(new
-    {
-        profile.Protocol,
-        Host = profile.Host.ToUpperInvariant(),
-        profile.Port,
-        Credentials = CanonicalValues(secrets.Values),
-    });
+    private static string NodeIdentity(Profile profile, ProfileSecrets secrets) => JsonSerializer.Serialize(
+        new Serialization.NodeIdentityKey(profile.Protocol, profile.Host.ToUpperInvariant(), profile.Port, CanonicalValues(secrets.Values)),
+        Serialization.CoreJsonContext.Default.NodeIdentityKey);
 
     private static Profile CopySubscriptionProfile(Profile profile, Guid subscriptionId, Dictionary<string, string> options) =>
         new()
@@ -172,7 +168,7 @@ public sealed partial class ProfileStore
         return merged;
     }
 
-    private static string ConnectionOptions(Dictionary<string, string> options) => JsonSerializer.Serialize(CanonicalValues(options));
+    private static string ConnectionOptions(Dictionary<string, string> options) => JsonSerializer.Serialize(CanonicalValues(options), Serialization.CoreJsonContext.Default.IEnumerableKeyValuePairStringString);
 
     private static IEnumerable<KeyValuePair<string, string>> CanonicalValues(Dictionary<string, string> values) =>
         values.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)

@@ -184,7 +184,7 @@ public sealed class ZapretFirewall(IProcessRunner runner, string dataDirectory) 
             return;
         }
 
-        var lease = JsonSerializer.Deserialize<ZapretFirewallLease>(await File.ReadAllTextAsync(JournalPath).ConfigureAwait(false))
+        var lease = JsonSerializer.Deserialize(await File.ReadAllTextAsync(JournalPath).ConfigureAwait(false), PlatformJsonContext.Default.ZapretFirewallLease)
             ?? throw new InvalidDataException("Zapret firewall journal is invalid; refusing to discard it.");
         var scope = ZapretFirewallRules.Scope(lease);
         if (lease.Os == OsFamily.Linux)
@@ -248,7 +248,7 @@ public sealed class ZapretFirewall(IProcessRunner runner, string dataDirectory) 
         var temp = JournalPath + ".tmp";
         using (var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            JsonSerializer.Serialize(file, lease);
+            JsonSerializer.Serialize(file, lease, PlatformJsonContext.Default.ZapretFirewallLease);
             file.Flush(flushToDisk: true);
         }
 

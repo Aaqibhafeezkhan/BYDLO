@@ -1,4 +1,5 @@
-<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:Class="Bydlo.App.Themes.OledPalette">
   <Color x:Key="AccentColor">#E8E8E8</Color>
   <Color x:Key="PrimaryColor">#F2F2F2</Color>
   <SolidColorBrush x:Key="BgBrush" Color="#000000" />

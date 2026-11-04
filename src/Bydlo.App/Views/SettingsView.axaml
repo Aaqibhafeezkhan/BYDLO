@@ -58,7 +58,7 @@
         </Border>
         <Grid x:Name="SettingsContent" Grid.Row="1" RowDefinitions="Auto,*">
           <Border Classes="page-heading" Margin="0,0,0,12">
-            <TextBlock Classes="h2" x:CompileBindings="False" Text="{Binding #CompactCategory.SelectedItem.Content}" />
+            <TextBlock Classes="h2" Text="{Binding #CompactCategory.((ComboBoxItem)SelectedItem).Content}" />
           </Border>
         <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" ScrollChanged="OnSettingsScrolled" SizeChanged="OnScrollSizeChanged">
           <StackPanel x:Name="SettingsSections" Classes="page" Margin="0">

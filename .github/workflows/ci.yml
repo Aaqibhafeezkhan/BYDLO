@@ -198,9 +198,60 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: TestResults
 
+  # Native AOT cannot cross-compile between operating systems, so the privileged helper is built on each target OS.
+  # Linux uses the official .NET cross-build images: their Ubuntu 18.04 sysroot keeps the glibc baseline of the
+  # .NET runtime itself, so the helper runs everywhere the app does. The helper is never executed here.
+  helper:
+    name: Native AOT helper ${{ matrix.rid }}
+    if: github.server_url == 'https://github.com'
+    needs: test
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: win-x64, os: windows-latest }
+          - { rid: win-arm64, os: windows-latest }
+          - { rid: linux-x64, os: ubuntu-24.04, container: 'mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-amd64', sysroot: /crossrootfs/x64 }
+          - { rid: linux-arm64, os: ubuntu-24.04, container: 'mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-arm64', sysroot: /crossrootfs/arm64 }
+          - { rid: osx-arm64, os: macos-15 }
+    env:
+      # The cross images ship without ICU; the build does not need culture data.
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: ${{ matrix.container && '1' || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Publish Native AOT helper (never executed)
+        shell: bash
+        run: |
+          source scripts/env.sh
+          # The ILCompiler locates the MSVC linker through vswhere.
+          if [ "$RUNNER_OS" = Windows ]; then export PATH="$PATH:$(cygpath -F 42)/Microsoft Visual Studio/Installer"; fi
+          args=()
+          if [ -n "${{ matrix.sysroot }}" ]; then
+            args+=(-p:SysRoot=${{ matrix.sysroot }} -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy)
+          fi
+          dotnet publish src/Bydlo.Helper/Bydlo.Helper.csproj -c Release -r ${{ matrix.rid }} \
+            -p:WarningsAsErrors=CA1416 "${args[@]}" -o .tmp/helper-publish
+          mkdir -p artifacts/helper
+          # Ship only the executable: symbols (.pdb / .dbg / .dSYM) stay out of the release bundle.
+          find .tmp/helper-publish -maxdepth 1 -type f -name 'Bydlo.Helper*' ! -name '*.pdb' ! -name '*.dbg' -exec cp {} artifacts/helper/ \;
+          ls -l artifacts/helper
+          test "$(find artifacts/helper -type f | wc -l)" = 1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: helper-${{ matrix.rid }}
+          path: artifacts/helper
+          if-no-files-found: error
+
   desktop:
     name: Publish ${{ matrix.rid }}
-    needs: test
+    needs: [test, helper]
+    # The Gitea mirror has no Windows/macOS runners: there the helper job is skipped and a trimmed helper is built below.
+    if: ${{ !cancelled() && needs.test.result == 'success' && (needs.helper.result == 'success' || needs.helper.result == 'skipped') }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -215,12 +266,24 @@ jobs:
         shell: bash
         run: |
           source scripts/env.sh
+          # Trimming and ReadyToRun come from Bydlo.Desktop.csproj; both cross-compile from Linux.
           dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }} \
             --self-contained true -p:WarningsAsErrors=CA1416 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
             -o publish/BYDLO-${{ matrix.rid }}
+      - name: Add the Native AOT helper
+        if: github.server_url == 'https://github.com'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: helper-${{ matrix.rid }}
+          path: publish/BYDLO-${{ matrix.rid }}/helper
+      - name: Publish a trimmed helper (Gitea mirror)
+        if: github.server_url != 'https://github.com'
+        shell: bash
+        run: |
+          source scripts/env.sh
           dotnet publish src/Bydlo.Helper/Bydlo.Helper.csproj -c Release -r ${{ matrix.rid }} \
-            --self-contained true -p:WarningsAsErrors=CA1416 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
-            -o publish/BYDLO-${{ matrix.rid }}/helper
+            -p:PublishAot=false --self-contained true -p:PublishTrimmed=true -p:WarningsAsErrors=CA1416 \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/BYDLO-${{ matrix.rid }}/helper
       - name: Bundle pinned sing-box, Xray and Zapret (never execute engines)
         shell: bash
         run: |

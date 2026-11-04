@@ -111,7 +111,7 @@ public sealed partial class SingBoxConfigBuilder
                     ep["detour"] = via;
                 }
 
-                endpoints.Add(ep);
+                endpoints.AddNode(ep);
             }
             else
             {
@@ -121,7 +121,7 @@ public sealed partial class SingBoxConfigBuilder
                     o["detour"] = via;
                 }
 
-                outbounds.Add(o);
+                outbounds.AddNode(o);
             }
         }
 
@@ -130,7 +130,7 @@ public sealed partial class SingBoxConfigBuilder
             root["endpoints"] = endpoints;
         }
 
-        outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
+        outbounds.AddNode(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
         root["outbounds"] = outbounds;
         root["route"] = BuildRoute(routing, settings.Mode, exitTag, ctx.RuleSets);
 
@@ -175,18 +175,18 @@ public sealed partial class SingBoxConfigBuilder
         }
         else
         {
-            outbounds.Add(BuildOutbound(profile, secrets, settings.DpiDefaults));
+            outbounds.AddNode(BuildOutbound(profile, secrets, settings.DpiDefaults));
             if (profile.Protocol == ProtocolKind.ShadowTls)
             {
                 var shadow = new JsonObject { ["type"] = "shadowtls", ["tag"] = "shadowtls", ["server"] = profile.Host,
                     ["server_port"] = profile.Port, ["version"] = int.Parse(profile.Option("version") ?? "3", System.Globalization.CultureInfo.InvariantCulture) };
                 if (secrets[SingBoxUriParser.ShadowPassword] is { } password) { shadow["password"] = password; }
                 AddTls(shadow, profile, defaultEnabled: true);
-                outbounds.Add(shadow);
+                outbounds.AddNode(shadow);
             }
         }
 
-        outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
+        outbounds.AddNode(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
         root["outbounds"] = outbounds;
         root["route"] = BuildRoute(routing, settings.Mode, ruleSets: ctx.RuleSets);
 
@@ -224,7 +224,7 @@ public sealed partial class SingBoxConfigBuilder
             {
                 throw new EngineException("import.json.unsafe", localizationKey: "import.json.unsafe");
             }
-            outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = directTag });
+            outbounds.AddNode(new JsonObject { ["type"] = "direct", ["tag"] = directTag });
         }
 
         custom["log"] = new JsonObject { ["level"] = "info", ["timestamp"] = true };
@@ -295,7 +295,7 @@ public sealed partial class SingBoxConfigBuilder
         var excluded = inbound["route_exclude_address"]?.AsArray() ?? new JsonArray();
         if (routing.BypassPrivateNetworks)
         {
-            foreach (var cidr in PrivateNetworkRanges) { excluded.Add(cidr); }
+            foreach (var cidr in PrivateNetworkRanges) { excluded.AddNode(cidr); }
         }
         if (exclusions is not null)
         {
@@ -303,11 +303,11 @@ public sealed partial class SingBoxConfigBuilder
             {
                 if (System.Net.IPAddress.TryParse(address, out var ip))
                 {
-                    excluded.Add(ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? ip + "/32" : ip + "/128");
+                    excluded.AddNode(ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? ip + "/32" : ip + "/128");
                 }
                 else if (System.Net.IPNetwork.TryParse(address, out _))
                 {
-                    excluded.Add(address);
+                    excluded.AddNode(address);
                 }
                 // Domains cannot be excluded by address; the owning process is routed directly instead.
             }
@@ -380,26 +380,24 @@ public sealed partial class SingBoxConfigBuilder
     private static JsonObject BuildDns(RoutingSettings routing, ConnectionMode mode, string proxyTag = ProxyTag,
         IReadOnlyDictionary<string, string>? ruleSets = null)
     {
-        var servers = new JsonArray
-        {
+        var servers = new JsonArray(
             Server("remote", routing.RemoteDnsTransport, routing.RemoteDns, routing.RemoteDnsThroughProxy),
             Server("local", routing.DirectDnsTransport, routing.DirectDns, routing.DirectDnsThroughProxy),
-            new JsonObject { ["type"] = "local", ["tag"] = "bootstrap" },
-        };
+            new JsonObject { ["type"] = "local", ["tag"] = "bootstrap" });
         var rules = new JsonArray();
         AddRules("remote", routing.RemoteDnsDomains, routing.RemoteDnsRuleSets);
         AddRules("local", routing.DirectDomains.Concat(routing.DirectDnsDomains).Distinct(), routing.DirectDnsRuleSets);
         if (mode == ConnectionMode.Tun && routing.FakeIp)
         {
-            servers.Add(new JsonObject
+            servers.AddNode(new JsonObject
             {
                 ["type"] = "fakeip", ["tag"] = "fakeip", ["inet4_range"] = "198.18.0.0/15", ["inet6_range"] = "fc00::/18",
             });
             if (routing.FakeIpExceptions.Count > 0)
             {
-                rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.FakeIpExceptions), ["server"] = "remote" });
+                rules.AddNode(new JsonObject { ["domain_suffix"] = ToArray(routing.FakeIpExceptions), ["server"] = "remote" });
             }
-            rules.Add(new JsonObject { ["query_type"] = new JsonArray("A", "AAAA"), ["server"] = "fakeip" });
+            rules.AddNode(new JsonObject { ["query_type"] = new JsonArray("A", "AAAA"), ["server"] = "fakeip" });
         }
 
         return new JsonObject { ["servers"] = servers, ["rules"] = rules, ["final"] = "remote" };
@@ -429,7 +427,7 @@ public sealed partial class SingBoxConfigBuilder
             var suffixes = ToArray(domains);
             if (suffixes.Count > 0)
             {
-                rules.Add(new JsonObject { ["domain_suffix"] = suffixes, ["server"] = server });
+                rules.AddNode(new JsonObject { ["domain_suffix"] = suffixes, ["server"] = server });
             }
             if (sets.Count > 0)
             {
@@ -437,7 +435,7 @@ public sealed partial class SingBoxConfigBuilder
                 {
                     throw new Bydlo.Core.Engines.EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
                 }
-                rules.Add(new JsonObject { ["rule_set"] = ToArray(sets), ["server"] = server });
+                rules.AddNode(new JsonObject { ["rule_set"] = ToArray(sets), ["server"] = server });
             }
         }
     }
@@ -464,13 +462,13 @@ public sealed partial class SingBoxConfigBuilder
             {
                 foreach (var r in MeshVpnRanges)
                 {
-                    exclude.Add(r);
+                    exclude.AddNode(r);
                 }
             }
 
             foreach (var c in settings.Routing.DirectCidrs)
             {
-                exclude.Add(c);
+                exclude.AddNode(c);
             }
 
             if (exclude.Count > 0)
@@ -498,57 +496,55 @@ public sealed partial class SingBoxConfigBuilder
 
     private static JsonObject BuildRoute(RoutingSettings routing, ConnectionMode mode, string proxyTag = ProxyTag, IReadOnlyDictionary<string, string>? ruleSets = null)
     {
-        var rules = new JsonArray
-        {
+        var rules = new JsonArray(
             new JsonObject { ["action"] = "sniff" },
             new JsonObject { ["protocol"] = "dns", ["action"] = "hijack-dns" },
-            new JsonObject { ["domain_suffix"] = ToArray(ConnectionCheckService.ProviderDomains), ["outbound"] = proxyTag },
-        };
+            new JsonObject { ["domain_suffix"] = ToArray(ConnectionCheckService.ProviderDomains), ["outbound"] = proxyTag });
         if (routing.BypassPrivateNetworks)
         {
-            rules.Add(new JsonObject { ["ip_is_private"] = true, ["outbound"] = "direct" });
+            rules.AddNode(new JsonObject { ["ip_is_private"] = true, ["outbound"] = "direct" });
         }
 
         if (routing.PreserveMeshVpnRanges)
         {
-            rules.Add(new JsonObject { ["ip_cidr"] = ToArray(MeshVpnRanges), ["outbound"] = "direct" });
+            rules.AddNode(new JsonObject { ["ip_cidr"] = ToArray(MeshVpnRanges), ["outbound"] = "direct" });
         }
 
         foreach (var rule in routing.OrderedRules)
         {
-            rules.Add(OrderedRoutingRules.Compile(rule, true, mode, proxyTag, ruleSets));
+            rules.AddNode(OrderedRoutingRules.Compile(rule, true, mode, proxyTag, ruleSets));
         }
 
         if (routing.BlockDomains.Count > 0)
         {
-            rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.BlockDomains), ["action"] = "reject" });
+            rules.AddNode(new JsonObject { ["domain_suffix"] = ToArray(routing.BlockDomains), ["action"] = "reject" });
         }
 
         if (routing.DirectDomains.Count > 0)
         {
-            rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.DirectDomains), ["outbound"] = "direct" });
+            rules.AddNode(new JsonObject { ["domain_suffix"] = ToArray(routing.DirectDomains), ["outbound"] = "direct" });
         }
 
         if (routing.DirectCidrs.Count > 0)
         {
-            rules.Add(new JsonObject { ["ip_cidr"] = ToArray(routing.DirectCidrs), ["outbound"] = "direct" });
+            rules.AddNode(new JsonObject { ["ip_cidr"] = ToArray(routing.DirectCidrs), ["outbound"] = "direct" });
         }
 
         var onlyListedProcesses = mode == ConnectionMode.Tun && routing.ProxyOnlyListedProcesses;
         if (onlyListedProcesses && routing.Preset != RoutingPreset.All)
         {
-            rules.Add(routing.DirectProcesses.Count == 0
+            rules.AddNode(routing.DirectProcesses.Count == 0
                 ? new JsonObject { ["outbound"] = "direct" }
                 : new JsonObject { ["process_name"] = ToArray(routing.DirectProcesses), ["invert"] = true, ["outbound"] = "direct" });
         }
         else if (mode == ConnectionMode.Tun && routing.DirectProcesses.Count > 0)
         {
-            rules.Add(new JsonObject { ["process_name"] = ToArray(routing.DirectProcesses), ["outbound"] = onlyListedProcesses ? proxyTag : "direct" });
+            rules.AddNode(new JsonObject { ["process_name"] = ToArray(routing.DirectProcesses), ["outbound"] = onlyListedProcesses ? proxyTag : "direct" });
         }
 
         if (!onlyListedProcesses && (routing.ProxyOnlyListed || routing.Preset == RoutingPreset.BlockedOnly) && routing.ProxyDomains.Count > 0)
         {
-            rules.Add(new JsonObject { ["domain_suffix"] = ToArray(routing.ProxyDomains), ["outbound"] = proxyTag });
+            rules.AddNode(new JsonObject { ["domain_suffix"] = ToArray(routing.ProxyDomains), ["outbound"] = proxyTag });
         }
 
         var preset = routing.Preset;
@@ -560,7 +556,7 @@ public sealed partial class SingBoxConfigBuilder
                 throw new Bydlo.Core.Engines.EngineException("routing.preset.missing", localizationKey: "routing.preset.missing");
             }
 
-            rules.Add(new JsonObject
+            rules.AddNode(new JsonObject
             {
                 ["rule_set"] = ToArray(sources.Select(source => source.Tag)),
                 ["outbound"] = preset == RoutingPreset.ExceptLocal ? "direct" : proxyTag,
@@ -811,7 +807,7 @@ public sealed partial class SingBoxConfigBuilder
                 po["persistent_keepalive_interval"] = ka;
             }
 
-            peers.Add(po);
+            peers.AddNode(po);
         }
 
         ep["peers"] = peers;

@@ -49,7 +49,7 @@ public sealed partial class GalleryThemeRow(ThemeGalleryEntry entry) : Observabl
 
     [ObservableProperty] private bool _isInstalled;
 
-    private readonly Avalonia.Markup.Xaml.Styling.ResourceInclude _basePalette = ThemeService.CustomBasePalette(entry.Dark);
+    private readonly Avalonia.Controls.ResourceDictionary _basePalette = ThemeService.CustomBasePalette(entry.Dark);
 
     public IBrush? Background => PreviewBrush("Bg");
     public IBrush? Sidebar => PreviewBrush("Sidebar");
@@ -70,7 +70,6 @@ public sealed partial class GalleryThemeRow(ThemeGalleryEntry entry) : Observabl
 /// <summary>Custom JSON themes: import/export/apply/delete plus the repository gallery (issue #41).</summary>
 public sealed partial class SettingsViewModel
 {
-    private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
     public bool ThemeCustom => Theme == ThemePreference.Custom;
 
     public ObservableCollection<CustomThemeRow> InstalledThemes { get; } = [];
@@ -248,16 +247,8 @@ public sealed partial class SettingsViewModel
                 }
             }
             var dark = Application.Current?.RequestedThemeVariant != Avalonia.Styling.ThemeVariant.Light;
-            var template = new
-            {
-                id = "my-theme",
-                name = "My theme",
-                author = "",
-                version = CustomTheme.FormatVersion,
-                @base = dark ? "dark" : "light",
-                colors,
-            };
-            var json = JsonSerializer.Serialize(template, IndentedJson);
+            var template = new ThemeTemplate("my-theme", "My theme", "", CustomTheme.FormatVersion, dark ? "dark" : "light", colors);
+            var json = JsonSerializer.Serialize(template, AppIndentedJsonContext.Default.ThemeTemplate);
             await using var stream = await file.OpenWriteAsync();
             stream.SetLength(0);
             await stream.WriteAsync(Encoding.UTF8.GetBytes(json));

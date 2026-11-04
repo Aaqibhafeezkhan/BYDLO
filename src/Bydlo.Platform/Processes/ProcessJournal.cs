@@ -145,7 +145,7 @@ public sealed class ProcessJournal(string filePath)
         try
         {
             return File.Exists(filePath)
-                ? JsonSerializer.Deserialize<List<JournalEntry>>(File.ReadAllText(filePath)) ?? []
+                ? JsonSerializer.Deserialize(File.ReadAllText(filePath), PlatformJsonContext.Default.ListJournalEntry) ?? []
                 : [];
         }
         catch (JsonException)
@@ -163,7 +163,7 @@ public sealed class ProcessJournal(string filePath)
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-            File.WriteAllText(filePath, JsonSerializer.Serialize(list));
+            File.WriteAllText(filePath, JsonSerializer.Serialize(list, PlatformJsonContext.Default.ListJournalEntry));
         }
         catch (IOException)
         {

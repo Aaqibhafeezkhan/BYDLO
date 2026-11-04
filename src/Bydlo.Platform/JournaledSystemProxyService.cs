@@ -85,7 +85,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
         ProxyJournal? journal;
         await using (var stream = File.OpenRead(Journal))
         {
-            journal = await JsonSerializer.DeserializeAsync<ProxyJournal>(stream, cancellationToken: ct).ConfigureAwait(false);
+            journal = await JsonSerializer.DeserializeAsync(stream, PlatformJsonContext.Default.DesktopProxyJournal, ct).ConfigureAwait(false);
         }
         if (journal?.Kind != kind || journal.Changes is null)
         {
@@ -115,8 +115,8 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
                 continue;
             }
             if (kind == DesktopProxyKind.MacOs && journal.RestoringIndex == index &&
-                JsonSerializer.Deserialize<MacProxy>(change.Previous) is { Enabled: false, Port: > 0 } previous &&
-                current == JsonSerializer.Serialize(previous with { Enabled = true }))
+                JsonSerializer.Deserialize(change.Previous, PlatformJsonContext.Default.MacProxy) is { Enabled: false, Port: > 0 } previous &&
+                current == JsonSerializer.Serialize(previous with { Enabled = true }, PlatformJsonContext.Default.MacProxy))
             {
                 await RunAsync("networksetup", true, ct, "-set" + change.Key + "proxystate", change.Scope, "off").ConfigureAwait(false);
             }
@@ -138,7 +138,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
         var temporary = Journal + ".tmp";
         await using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            await JsonSerializer.SerializeAsync(stream, journal, cancellationToken: ct).ConfigureAwait(false);
+            await JsonSerializer.SerializeAsync(stream, journal, PlatformJsonContext.Default.DesktopProxyJournal, ct).ConfigureAwait(false);
             stream.Flush(flushToDisk: true);
         }
         File.Move(temporary, Journal, overwrite: true);
@@ -178,7 +178,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
         foreach (var (scope, key, value) in updates)
         {
             var previous = await ReadAsync(scope, key, ct).ConfigureAwait(false);
-            if (kind == DesktopProxyKind.MacOs && JsonSerializer.Deserialize<MacProxy>(previous)?.Authenticated == true)
+            if (kind == DesktopProxyKind.MacOs && JsonSerializer.Deserialize(previous, PlatformJsonContext.Default.MacProxy)?.Authenticated == true)
             {
                 throw new InvalidOperationException("An authenticated system proxy cannot be restored automatically.");
             }
@@ -196,7 +196,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
         {
             throw new IOException("No active macOS network services are available.");
         }
-        var settings = JsonSerializer.Serialize(new MacProxy(true, host, port, false));
+        var settings = JsonSerializer.Serialize(new MacProxy(true, host, port, false), PlatformJsonContext.Default.MacProxy);
         return active.SelectMany(service => new[] { (service, "web", settings), (service, "secureweb", settings) }).ToArray();
     }
 
@@ -222,7 +222,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
             throw new InvalidDataException("Unexpected networksetup proxy settings.");
         }
         return JsonSerializer.Serialize(new MacProxy(enabled == "Yes", fields.GetValueOrDefault("Server") ?? "", port,
-            fields.GetValueOrDefault("Authenticated Proxy Enabled") is "1" or "Yes"));
+            fields.GetValueOrDefault("Authenticated Proxy Enabled") is "1" or "Yes"), PlatformJsonContext.Default.MacProxy);
     }
 
     private async Task WriteAsync(string scope, string key, string value, CancellationToken ct)
@@ -242,7 +242,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
             return;
         }
 
-        var proxy = JsonSerializer.Deserialize<MacProxy>(value) ?? throw new InvalidDataException("Invalid proxy snapshot.");
+        var proxy = JsonSerializer.Deserialize(value, PlatformJsonContext.Default.MacProxy) ?? throw new InvalidDataException("Invalid proxy snapshot.");
         if (proxy.Authenticated || proxy.Port is < 0 or > 65535 ||
             (!string.IsNullOrEmpty(proxy.Host) && Uri.CheckHostName(proxy.Host) == UriHostNameType.Unknown))
         {
@@ -304,7 +304,7 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
         else { NetworkSafetyGuard.EnsureAllowed("change the system proxy"); }
     }
 
-    private sealed record ProxyJournal(DesktopProxyKind Kind, ProxyChange[] Changes, int? RestoringIndex = null);
-    private sealed record ProxyChange(string Scope, string Key, string Previous, string Applied);
-    private sealed record MacProxy(bool Enabled, string Host, int Port, bool Authenticated);
+    internal sealed record ProxyJournal(DesktopProxyKind Kind, ProxyChange[] Changes, int? RestoringIndex = null);
+    internal sealed record ProxyChange(string Scope, string Key, string Previous, string Applied);
+    internal sealed record MacProxy(bool Enabled, string Host, int Port, bool Authenticated);
 }

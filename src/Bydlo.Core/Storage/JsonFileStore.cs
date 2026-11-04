@@ -2,17 +2,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
+using Bydlo.Core.Serialization;
 
 namespace Bydlo.Core.Storage;
 
 internal static class JsonDefaults
 {
-    public static readonly JsonSerializerOptions Options = new()
-    {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() },
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
+    /// <summary>Indented, string enums, nulls omitted; source-generated (see <see cref="CoreStoreJsonContext"/>).</summary>
+    public static readonly JsonSerializerOptions Options = CoreStoreJsonContext.Default.Options;
 
     /// <summary>Writes atomically (temp file + fsync + move) so a crash never leaves a half-written file.</summary>
     public static async Task WriteAtomicAsync<T>(string path, T value, CancellationToken ct)
@@ -21,7 +18,7 @@ internal static class JsonDefaults
         var tmp = path + ".tmp";
         await using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            await JsonSerializer.SerializeAsync(fs, value, Options, ct).ConfigureAwait(false);
+            await JsonSerializer.SerializeAsync(fs, value, Options.Info<T>(), ct).ConfigureAwait(false);
             await fs.FlushAsync(ct).ConfigureAwait(false);
             fs.Flush(flushToDisk: true);
         }
@@ -40,7 +37,7 @@ internal static class JsonDefaults
         try
         {
             await using var fs = File.OpenRead(path);
-            var value = await JsonSerializer.DeserializeAsync<T>(fs, Options, ct).ConfigureAwait(false);
+            var value = await JsonSerializer.DeserializeAsync(fs, Options.Info<T>(), ct).ConfigureAwait(false);
             BackupLastGood(path);
             return value;
         }
@@ -99,7 +96,7 @@ internal static class JsonDefaults
         try
         {
             using var fs = File.OpenRead(backup);
-            restored = JsonSerializer.Deserialize<T>(fs, Options);
+            restored = JsonSerializer.Deserialize(fs, Options.Info<T>());
             return restored is not null;
         }
         catch (JsonException)
@@ -129,7 +126,7 @@ internal static class JsonDefaults
         {
             await using (var fs = File.OpenRead(path))
             {
-                value = await JsonSerializer.DeserializeAsync<T>(fs, Options, ct).ConfigureAwait(false);
+                value = await JsonSerializer.DeserializeAsync(fs, Options.Info<T>(), ct).ConfigureAwait(false);
             }
         }
         catch (JsonException)

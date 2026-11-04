@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Text.Json;
 using Bydlo.Core.Engines;
 using Bydlo.Core.Models;
+using Bydlo.Core.Serialization;
 
 namespace Bydlo.Core.Platform;
 
@@ -47,7 +48,7 @@ public static class HelperProtocol
 
     public static async Task WriteAsync<T>(Stream stream, T value, CancellationToken ct)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(value);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(value, BydloJson.Core.Info<T>());
         if (bytes.Length > MaxMessageBytes) { throw new InvalidDataException("Helper message too large."); }
         var header = new byte[4];
         BinaryPrimitives.WriteInt32LittleEndian(header, bytes.Length);
@@ -64,6 +65,6 @@ public static class HelperProtocol
         if (size is <= 0 or > MaxMessageBytes) { throw new InvalidDataException("Invalid helper frame size."); }
         var bytes = new byte[size];
         await stream.ReadExactlyAsync(bytes, ct).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<T>(bytes) ?? throw new InvalidDataException("Empty helper message.");
+        return JsonSerializer.Deserialize(bytes, BydloJson.Core.Info<T>()) ?? throw new InvalidDataException("Empty helper message.");
     }
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
 using Avalonia.Data;
@@ -64,7 +65,7 @@ public sealed class Loc : INotifyPropertyChanged
         try
         {
             using var stream = AssetLoader.Open(new Uri($"avares://Bydlo.App/Assets/Strings/{lang}.json"));
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(stream) ?? [];
+            return JsonSerializer.Deserialize(stream, AppJsonContext.Default.DictionaryStringString) ?? [];
         }
         catch (Exception ex) when (ex is FileNotFoundException or JsonException or InvalidOperationException)
         {
@@ -78,6 +79,9 @@ public sealed class TExtension(string key) : MarkupExtension
 {
     public string Key { get; set; } = key;
 
+    // The path binding reflects over Loc's public indexer; DynamicDependency keeps it in trimmed builds.
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Loc))]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Loc's public properties are preserved by DynamicDependency.")]
     public override object ProvideValue(IServiceProvider serviceProvider) =>
         new Binding($"[{Key}]") { Source = Loc.Instance, Mode = BindingMode.OneWay };
 }

@@ -45,7 +45,7 @@ public sealed class RetainedTunEngine : IEngine, IReconnectableEngine, IActiveCo
         _stopping = false;
         if (_guard is not null) { throw new EngineException("error.killswitch.active"); }
         // Edits in the UI apply to the next connection, including when reconnecting a proxy session.
-        var settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(request.Settings))!;
+        var settings = Serialization.BydloJson.DeepClone(request.Settings);
         _backendRequest = request with { Settings = settings };
         if (!settings.KillSwitch || settings.Mode != ConnectionMode.Tun)
         {
@@ -56,7 +56,7 @@ public sealed class RetainedTunEngine : IEngine, IReconnectableEngine, IActiveCo
         SingBoxConfigBuilder.ValidateKillSwitchDns(settings.Routing);
 
         // Snapshot settings: edits in the UI must not change the active protection or backend port.
-        var backendSettings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        var backendSettings = Serialization.BydloJson.DeepClone(settings);
         backendSettings.Mode = ConnectionMode.LocalProxy;
         backendSettings.KillSwitch = false;
         backendSettings.SetSystemProxy = false;

@@ -247,13 +247,13 @@ internal sealed class MacAmneziaNetwork(IProcessRunner runner, string directory,
     }
 
     private async Task<Lease> LoadAsync(CancellationToken ct) =>
-        JsonSerializer.Deserialize<Lease>(await File.ReadAllTextAsync(Journal, ct).ConfigureAwait(false))
+        JsonSerializer.Deserialize(await File.ReadAllTextAsync(Journal, ct).ConfigureAwait(false), PlatformJsonContext.Default.MacAmneziaLease)
             ?? throw new InvalidDataException("Invalid AmneziaWG recovery journal.");
 
     private async Task SaveAsync(Lease lease, CancellationToken ct)
     {
         var temp = Journal + ".tmp";
-        await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(lease), ct).ConfigureAwait(false);
+        await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(lease, PlatformJsonContext.Default.MacAmneziaLease), ct).ConfigureAwait(false);
         File.Move(temp, Journal, overwrite: true);
     }
 
@@ -288,8 +288,8 @@ internal sealed class MacAmneziaNetwork(IProcessRunner runner, string directory,
         else { NetworkSafetyGuard.EnsureAllowed("configure an AmneziaWG interface"); }
     }
 
-    private sealed record Endpoint(string Address, string Interface, string Gateway);
-    private sealed record DnsChange(string Service, string[] Previous, string[] Applied);
-    private sealed record Lease(Endpoint[] Endpoints, DnsChange[] Dns);
+    internal sealed record Endpoint(string Address, string Interface, string Gateway);
+    internal sealed record DnsChange(string Service, string[] Previous, string[] Applied);
+    internal sealed record Lease(Endpoint[] Endpoints, DnsChange[] Dns);
     private sealed record RouteInfo(string Destination, string Interface, string Gateway, string Flags);
 }
