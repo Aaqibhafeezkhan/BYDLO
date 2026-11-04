@@ -696,6 +696,8 @@
   "error.engine.xray.tun": "Режим TUN с Xray не реализован. Используйте режим локального прокси или движок sing-box.",
   "error.engine.xray.missing": "Xray-core не установлен. Установите его в «Инструменты → Движки».",
   "error.engine.xray.tls.pin": "Xray больше не позволяет пропускать проверку TLS-сертификата. Импортируйте профиль с отпечатком сертификата (pcs) или используйте sing-box, если он поддерживает этот профиль.",
+  "error.engine.transport.xray": "Этот транспорт или параметр требует движок Xray.",
+  "error.engine.transport.singbox": "Эта опция требует движок sing-box.",
   "error.engine.tunnel.admin": "Для создания туннеля нужны права администратора.",
   "error.engine.amnezia.missing": "Отсутствует встроенный AmneziaWG. Скачайте полный релиз BYDLO для своей платформы.",
   "error.engine.wireguard.missing": "Установите WireGuard (wireguard.com/install) или используйте движок sing-box.",

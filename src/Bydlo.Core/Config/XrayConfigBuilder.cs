@@ -332,7 +332,7 @@ public sealed partial class XrayConfigBuilder
         {
             case ProtocolKind.Vless:
                 o["protocol"] = "vless";
-                var vlessUser = new JsonObject { ["id"] = s[Keys.Uuid] ?? "", ["encryption"] = "none" };
+                var vlessUser = new JsonObject { ["id"] = s[Keys.Uuid] ?? "", ["encryption"] = p.Option(Keys.Encryption) ?? "none" };
                 if (p.Option(Keys.Flow) is { } flow)
                 {
                     vlessUser["flow"] = flow;
@@ -354,7 +354,7 @@ public sealed partial class XrayConfigBuilder
             case ProtocolKind.Shadowsocks:
                 if (p.Option(Keys.Plugin) is not null)
                 {
-                    throw new NotSupportedException("Shadowsocks plugins require the sing-box engine; Xray silently drops the plugin.");
+                    throw new EngineException("This option requires the sing-box engine.", localizationKey: "error.engine.transport.singbox");
                 }
                 o["protocol"] = "shadowsocks";
                 o["settings"] = new JsonObject
@@ -370,7 +370,7 @@ public sealed partial class XrayConfigBuilder
             case ProtocolKind.Http:
                 if (p.Option(Keys.Tls) == "true")
                 {
-                    throw new NotSupportedException("TLS-wrapped HTTP/SOCKS requires the sing-box engine; Xray silently drops TLS here.");
+                    throw new EngineException("This option requires the sing-box engine.", localizationKey: "error.engine.transport.singbox");
                 }
                 o["protocol"] = p.Protocol == ProtocolKind.Socks5 ? "socks" : "http";
                 var server = new JsonObject { ["address"] = p.Host, ["port"] = p.Port };
@@ -451,6 +451,11 @@ public sealed partial class XrayConfigBuilder
             network = "xhttp";
         }
 
+        if (network == "mkcp")
+        {
+            network = "kcp";
+        }
+
         var security = p.Option(Keys.Security) ?? defaultSecurity;
         var stream = new JsonObject { ["network"] = network == "tcp" ? "raw" : network, ["security"] = security };
         var sni = p.Option(Keys.Sni) ?? p.Host;
@@ -493,6 +498,8 @@ public sealed partial class XrayConfigBuilder
         }
 
         var host = p.Option(Keys.HostHeader);
+        var headerType = p.Option(Keys.HeaderType);
+        var isTcp = network is "tcp" or "raw";
         switch (network)
         {
             case "ws":
@@ -505,10 +512,47 @@ public sealed partial class XrayConfigBuilder
                 stream["httpupgradeSettings"] = new JsonObject { ["path"] = p.Option(Keys.Path) ?? "/", ["host"] = host ?? "" };
                 break;
             case "xhttp":
-                stream["xhttpSettings"] = new JsonObject { ["path"] = p.Option(Keys.Path) ?? "/", ["host"] = host ?? "", ["mode"] = p.Option(Keys.XhttpMode) ?? "auto" };
+                var xhttp = new JsonObject { ["path"] = p.Option(Keys.Path) ?? "/", ["host"] = host ?? "", ["mode"] = p.Option(Keys.XhttpMode) ?? "auto" };
+                if (p.Option(Keys.XhttpExtra) is { } extraRaw)
+                {
+                    try
+                    {
+                        var normalized = Bydlo.Core.Import.Parsers.XhttpExtraValidator.Normalize(extraRaw);
+                        xhttp["extra"] = System.Text.Json.Nodes.JsonNode.Parse(normalized);
+                    }
+                    catch (Exception ex) when (ex is System.Text.Json.JsonException or Bydlo.Core.Import.ImportException)
+                    {
+                        throw new EngineException("The XHTTP extra parameter is not valid.", localizationKey: "error.engine.transport.xray");
+                    }
+                }
+                stream["xhttpSettings"] = xhttp;
+                break;
+            case "kcp":
+                var kcpHeaderType = headerType ?? "none";
+                if (kcpHeaderType.Equals("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new EngineException("This transport or option requires the Xray engine.", localizationKey: "error.engine.transport.xray");
+                }
+                var kcpHeader = new JsonObject { ["type"] = kcpHeaderType };
+                var kcp = new JsonObject { ["header"] = kcpHeader };
+                if (p.Option(Keys.Seed) is { } seed)
+                {
+                    kcp["seed"] = seed;
+                }
+                stream["kcpSettings"] = kcp;
                 break;
             case "http":
-                throw new NotSupportedException("The HTTP/2 transport was removed from Xray-core; use the sing-box engine for this profile.");
+                throw new EngineException("This option requires the sing-box engine.", localizationKey: "error.engine.transport.singbox");
+        }
+
+        if (isTcp && headerType is not null && headerType.Equals("http", StringComparison.OrdinalIgnoreCase))
+        {
+            var request = new JsonObject { ["path"] = new JsonArray(p.Option(Keys.Path) ?? "/") };
+            if (host is not null)
+            {
+                request["headers"] = new JsonObject { ["Host"] = new JsonArray(host) };
+            }
+            stream["tcpSettings"] = new JsonObject { ["header"] = new JsonObject { ["type"] = "http", ["request"] = request } };
         }
 
         return stream;

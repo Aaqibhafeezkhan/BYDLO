@@ -77,6 +77,10 @@ public static class Keys
     public const string UpMbps = "upmbps";
     public const string DownMbps = "downmbps";
     public const string XhttpMode = "mode";
+    public const string Encryption = "encryption";
+    public const string XhttpExtra = "extra";
+    public const string HeaderType = "headerType";
+    public const string Seed = "seed";
     public const string Username = "username";
     public const string Tls = "tls";
 

@@ -24,8 +24,9 @@ public class CatalogImportRoundTripTests
         p.Options[Keys.Transport] = "h2";
         Assert.Equal([EngineKind.SingBox], Registry().CandidatesFor(p, OsFamily.Linux));
         var secrets = new ProfileSecrets { Values = { [Keys.Uuid] = Guid.NewGuid().ToString() } };
-        Assert.Throws<NotSupportedException>(() =>
+        var ex = Assert.Throws<EngineException>(() =>
             new XrayConfigBuilder().Build(p, secrets, new BuildContext(new AppSettings())));
+        Assert.Equal("error.engine.transport.singbox", ex.LocalizationKey);
     }
 
     [Fact]
@@ -35,8 +36,9 @@ public class CatalogImportRoundTripTests
         p.Options[Keys.Tls] = "true";
         Assert.DoesNotContain(EngineKind.Xray, Registry().CandidatesFor(p, OsFamily.Linux));
         Assert.Contains(EngineKind.SingBox, Registry().CandidatesFor(p, OsFamily.Linux));
-        Assert.Throws<NotSupportedException>(() =>
+        var ex = Assert.Throws<EngineException>(() =>
             new XrayConfigBuilder().Build(p, ProfileSecrets.Empty, new BuildContext(new AppSettings())));
+        Assert.Equal("error.engine.transport.singbox", ex.LocalizationKey);
     }
 
     [Fact]
@@ -46,10 +48,11 @@ public class CatalogImportRoundTripTests
         p.Options[Keys.Method] = "aes-256-gcm";
         p.Options[Keys.Plugin] = "obfs-local;obfs=http";
         Assert.DoesNotContain(EngineKind.Xray, Registry().CandidatesFor(p, OsFamily.Linux));
-        Assert.Throws<NotSupportedException>(() =>
+        var ex = Assert.Throws<EngineException>(() =>
             new XrayConfigBuilder().Build(p,
                 new ProfileSecrets { Values = { [Keys.Password] = "x" } },
                 new BuildContext(new AppSettings())));
+        Assert.Equal("error.engine.transport.singbox", ex.LocalizationKey);
     }
 
     [Fact]

@@ -156,6 +156,24 @@ public sealed class EngineRegistry
             return EngineKind.Xray;
         }
 
+        if (transport is not null && (transport.Equals("kcp", StringComparison.OrdinalIgnoreCase) || transport.Equals("mkcp", StringComparison.OrdinalIgnoreCase)))
+        {
+            return EngineKind.Xray;
+        }
+
+        var headerType = profile.Option(Keys.HeaderType);
+        if ((transport is null || transport.Equals("tcp", StringComparison.OrdinalIgnoreCase) || transport.Equals("raw", StringComparison.OrdinalIgnoreCase)) &&
+            headerType is not null && headerType.Equals("http", StringComparison.OrdinalIgnoreCase))
+        {
+            return EngineKind.Xray;
+        }
+
+        var encryption = profile.Option(Keys.Encryption);
+        if (profile.Protocol == ProtocolKind.Vless && encryption is not null && !encryption.Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            return EngineKind.Xray;
+        }
+
         // Xray removed HTTP/2 transport; sing-box still carries h2/http (issue #242).
         if (transport is not null && (transport.Equals("h2", StringComparison.OrdinalIgnoreCase) || transport.Equals("http", StringComparison.OrdinalIgnoreCase)))
         {

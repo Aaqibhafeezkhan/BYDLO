@@ -696,6 +696,8 @@
   "error.engine.xray.tun": "TUN mode with Xray is not implemented. Use Local proxy mode or the sing-box engine.",
   "error.engine.xray.missing": "Xray-core is not installed. Install it from Tools → Engines.",
   "error.engine.xray.tls.pin": "Xray no longer supports skipping TLS certificate verification. Import a profile with a certificate pin (pcs), or use sing-box if it supports this profile.",
+  "error.engine.transport.xray": "This transport or option requires the Xray engine.",
+  "error.engine.transport.singbox": "This option requires the sing-box engine.",
   "error.engine.tunnel.admin": "Creating a tunnel needs administrator rights.",
   "error.engine.amnezia.missing": "Bundled AmneziaWG is missing. Download a complete BYDLO release for your platform.",
   "error.engine.wireguard.missing": "Install WireGuard (wireguard.com/install) or use the sing-box engine.",

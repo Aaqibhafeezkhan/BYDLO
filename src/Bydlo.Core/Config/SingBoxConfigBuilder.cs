@@ -599,6 +599,10 @@ public sealed partial class SingBoxConfigBuilder
             case ProtocolKind.Vless:
                 o["type"] = "vless";
                 o["uuid"] = Require(s, Keys.Uuid);
+                if (p.Option(Keys.Encryption) is { } encryption && !encryption.Equals("none", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new Engines.EngineException("This transport or option requires the Xray engine.", localizationKey: "error.engine.transport.xray");
+                }
                 if (p.Option(Keys.Flow) is { } flow)
                 {
                     o["flow"] = flow;
@@ -830,6 +834,11 @@ public sealed partial class SingBoxConfigBuilder
     private static void AddTransport(JsonObject o, Profile p)
     {
         var type = p.Option(Keys.Transport) ?? "tcp";
+        var headerType = p.Option(Keys.HeaderType);
+        if ((type is "tcp" or "raw" or "") && headerType is not null && headerType.Equals("http", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new Engines.EngineException("This transport or option requires the Xray engine.", localizationKey: "error.engine.transport.xray");
+        }
         JsonObject? t = type switch
         {
             "ws" => new JsonObject { ["type"] = "ws", ["path"] = p.Option(Keys.Path) ?? "/" },
@@ -838,7 +847,7 @@ public sealed partial class SingBoxConfigBuilder
             "httpupgrade" => new JsonObject { ["type"] = "httpupgrade", ["path"] = p.Option(Keys.Path) ?? "/" },
             "quic" => new JsonObject { ["type"] = "quic" },
             "tcp" or "raw" or "" => null,
-            _ => throw new NotSupportedException($"Transport '{type}' is not supported by sing-box; use the Xray engine."),
+            _ => throw new Engines.EngineException("This transport or option requires the Xray engine.", localizationKey: "error.engine.transport.xray"),
         };
         if (t is null)
         {

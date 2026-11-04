@@ -17,7 +17,12 @@ internal static class StreamOptions
             ("pcs", Keys.PinnedPeerCertSha256), ("vcn", Keys.VerifyPeerCertByName),
             ("pbk", Keys.RealityPublicKey), ("sid", Keys.RealityShortId), ("spx", Keys.RealitySpiderX),
             ("path", Keys.Path), ("host", Keys.HostHeader), ("serviceName", Keys.ServiceName),
-            ("flow", Keys.Flow), ("mode", Keys.XhttpMode), ("headerType", "headerType"));
+            ("flow", Keys.Flow), ("mode", Keys.XhttpMode), ("headerType", Keys.HeaderType),
+            ("seed", Keys.Seed));
+        if (q.TryGetValue("extra", out var extra) && !string.IsNullOrWhiteSpace(extra))
+        {
+            p.Options[Keys.XhttpExtra] = XhttpExtraValidator.Normalize(extra);
+        }
         if (q.TryGetValue("allowInsecure", out var ai) && ai is "1" or "true" || q.TryGetValue("insecure", out var ins) && ins is "1" or "true")
         {
             p.Options[Keys.AllowInsecure] = "true";
@@ -42,6 +47,14 @@ public sealed class VlessParser : IProfileParser
         var p = new Profile { Protocol = ProtocolKind.Vless, Host = Host(uri), Port = Port(uri, 443) };
         p.Name = Fragment(uri, $"VLESS {p.Host}");
         StreamOptions.Apply(q, p);
+        if (q.TryGetValue("encryption", out var enc) && !string.IsNullOrWhiteSpace(enc))
+        {
+            p.Options[Keys.Encryption] = enc.Trim();
+        }
+        else
+        {
+            p.Options[Keys.Encryption] = "none";
+        }
         if (p.Option(Keys.Security) == "reality" && p.Option(Keys.RealityPublicKey) is null)
         {
             throw new ImportException("VLESS REALITY link has no public key (pbk).");
@@ -106,7 +119,7 @@ public sealed class VmessParser : IProfileParser
         Opt(Keys.VerifyPeerCertByName, S("vcn"));
         Opt(Keys.HostHeader, S("host"));
         Opt(p.Options[Keys.Transport] == "grpc" ? Keys.ServiceName : Keys.Path, S("path"));
-        Opt("headerType", S("type"));
+        Opt(Keys.HeaderType, S("type"));
         Opt("alterId", S("aid"));
 
         var id = S("id");
