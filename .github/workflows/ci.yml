@@ -35,8 +35,8 @@ jobs:
     if: github.server_url == 'https://github.com'
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
       - name: Test owner-only local IPC (no engines or network)
@@ -48,8 +48,8 @@ jobs:
     name: Cross-build AmneziaWG for macOS ARM64
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: '1.27.3'
           cache: false
@@ -66,7 +66,7 @@ jobs:
           test "$(od -An -tx1 -N8 bydlo-amneziawg | tr -d ' \n')" = cffaedfe0c000001
           sha256sum bydlo-amneziawg > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: github.server_url == 'https://github.com'
         with:
           name: amnezia-macos-arm64
@@ -80,8 +80,8 @@ jobs:
       matrix:
         os: ${{ fromJSON(github.server_url == 'https://github.com' && '["ubuntu-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
       - name: Hook self-test
@@ -103,6 +103,14 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet build BYDLO.slnx -c Release -warnaserror
+      - name: Audit NuGet dependencies (including transitive packages)
+        run: |
+          source scripts/env.sh
+          dotnet list BYDLO.slnx package --vulnerable --include-transitive
+          # The list command reports advisories but does not fail on vulnerable packages.
+          # Force a fresh audit and fail on advisories or unavailable vulnerability data.
+          dotnet restore BYDLO.slnx --force-evaluate -warnaserror \
+            -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low
       - name: Test
         run: |
           source scripts/env.sh
@@ -133,7 +141,9 @@ jobs:
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/simple-ui-verification ru --mock --verify-simple-ui
       - name: Verify contributors page (headless, mock only, no network)
-        run: dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/contributors-verification ru --mock --verify-contributors
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/contributors-verification ru --mock --verify-contributors
       - name: Verify settings section navigation (headless, mock only, no network)
         run: |
           source scripts/env.sh
@@ -181,7 +191,7 @@ jobs:
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/connect-switch-verification ru --mock --verify-connect-switch
       # Artifacts are kept on GitHub only: artifact actions v4 refuse to run on Gitea (it looks like GHES),
       # and GitHub fails the whole job if a step even references the deprecated v3.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always() && github.server_url == 'https://github.com'
         with:
           name: test-results-${{ matrix.os }}
@@ -196,8 +206,8 @@ jobs:
       matrix:
         include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"ubuntu-latest"},{"rid":"win-arm64","os":"ubuntu-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-arm64","os":"ubuntu-24.04","managedOnly":true}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"},{"rid":"win-x64","os":"ubuntu-latest"},{"rid":"win-arm64","os":"ubuntu-latest"}]') }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
       - name: Publish
@@ -227,7 +237,7 @@ jobs:
             echo "::warning::Engine bundling failed (attempt $attempt/3); retrying."
             sleep "$((attempt * 10))"
           done
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         if: ${{ !matrix.managedOnly }}
         with:
           go-version: '1.27.3'
@@ -279,7 +289,7 @@ jobs:
         if: ${{ !matrix.managedOnly }}
         shell: bash
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-${{ matrix.rid }}/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: github.server_url == 'https://github.com'
         with:
           name: ${{ matrix.managedOnly && 'managed-osx-arm64' || format('BYDLO-{0}', matrix.rid) }}
@@ -295,15 +305,15 @@ jobs:
       matrix:
         rid: [win-x64, win-arm64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: '1.27.3'
           cache: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: BYDLO-${{ matrix.rid }}
           path: artifacts/windows-cross
@@ -326,17 +336,17 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: BYDLO-win-x64
           path: dist/BYDLO-win-x64
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: BYDLO-win-arm64
           path: dist/BYDLO-win-arm64
       - name: Sign with Azure Trusted Signing (OIDC, timestamped)
-        uses: Azure/trusted-signing-action@v0.5.0
+        uses: Azure/trusted-signing-action@07c81171dd46a04e1b9f382b6c693815828bbbf7 # v0.5.0
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -350,7 +360,7 @@ jobs:
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
       - name: Sign helpers with Azure Trusted Signing (OIDC, timestamped)
-        uses: Azure/trusted-signing-action@v0.5.0
+        uses: Azure/trusted-signing-action@07c81171dd46a04e1b9f382b6c693815828bbbf7 # v0.5.0
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -377,12 +387,12 @@ jobs:
             & signtool verify /pa /v $f
             if ($LASTEXITCODE -ne 0) { throw "Signature verification failed: $f" }
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: BYDLO-win-x64
           path: dist/BYDLO-win-x64
           overwrite: true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: BYDLO-win-arm64
           path: dist/BYDLO-win-arm64
@@ -394,8 +404,8 @@ jobs:
     needs: desktop
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
       - name: Run isolated tests
@@ -407,7 +417,7 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/macos-wizard ru --mock --verify-wizard
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: managed-osx-arm64
           path: publish/BYDLO-osx-arm64
@@ -417,11 +427,11 @@ jobs:
           fingerprint=$( (xcodebuild -version; xcrun --sdk macosx --show-sdk-build-version; clang --version) | shasum -a 256 | cut -d ' ' -f 1)
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
           echo "cache-key=openvpn-osx-arm64-v3-$fingerprint-${{ hashFiles('engines/*.lock.json', 'scripts/build-openvpn.sh', 'scripts/build-bundled-engines.ps1', 'scripts/native-build-cache.ps1', 'scripts/openvpn-cache.ps1') }}" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .tmp/macos-openvpn-cache
           key: ${{ steps.toolchain.outputs.cache-key }}
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: '1.27.3'
           cache: false
@@ -436,7 +446,7 @@ jobs:
         run: ./scripts/verify-engine-bundle.ps1 -Rid osx-arm64 -PublishDirectory publish/BYDLO-osx-arm64
       - name: Add notices
         run: cp LICENSE THIRD_PARTY_NOTICES.md README.md publish/BYDLO-osx-arm64/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: BYDLO-osx-arm64
           path: publish/BYDLO-osx-arm64
@@ -448,7 +458,7 @@ jobs:
     needs: [desktop, windows-parity, sign-windows, macos]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Verify release tag matches app version
         # Manual runs rehearse packaging from a branch; only real tags must match Directory.Build.props.
         if: startsWith(github.ref, 'refs/tags/v')
@@ -457,7 +467,7 @@ jobs:
           echo "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "Invalid release tag '${GITHUB_REF_NAME}': expected vX.Y.Z" >&2; exit 1; }
           test "${GITHUB_REF_NAME}" = "v${version}" || { echo "Release tag '${GITHUB_REF_NAME}' does not match app version 'v${version}' from Directory.Build.props" >&2; exit 1; }
           echo "Release ${GITHUB_REF_NAME} matches app version."
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
           pattern: BYDLO-*
@@ -491,7 +501,7 @@ jobs:
                 ;;
             esac
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-packages
           path: |
@@ -508,8 +518,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: release-packages
           path: dist
