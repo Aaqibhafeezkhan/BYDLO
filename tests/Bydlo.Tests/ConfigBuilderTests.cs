@@ -146,7 +146,8 @@ public class ConfigBuilderTests
     public void SingBox_rejects_xhttp()
     {
         var p = Import("vless://id@x.example.com:443?security=tls&type=xhttp");
-        Assert.Throws<NotSupportedException>(() => SingBox(p));
+        var ex = Assert.Throws<EngineException>(() => SingBox(p));
+        Assert.Equal("error.engine.transport.xray", ex.LocalizationKey);
     }
 
     [Fact]
