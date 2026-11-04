@@ -214,13 +214,15 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             return [.. issues];
         }
 
-        var ownPort = Snapshot(PrimaryKey).LocalProxyPort;
+        var active = Primary;
+        var ownPort = active.LocalProxyPort;
         if (ownPort == 0 || ownPort != settings.LocalProxyPort)
         {
             return [.. issues];
         }
 
-        return issues.Where(i => !string.Equals(i.Code, "port.local-proxy", StringComparison.Ordinal)).ToList();
+        return issues.Where(i => i.Code != "port.local-proxy" &&
+            (i.Code != "port.local-proxy-http" || active.Engine != EngineKind.Xray)).ToList();
     }
 
     /// <summary>Connects the primary tunnel. Disconnects a previous primary first.</summary>
@@ -710,6 +712,13 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     private void Fail(string key, Profile? profile, AppSettings settings, string message, string? localizationKey = null)
     {
         _log.Error(key, message);
+        var current = Snapshot(key);
+        if (key == PrimaryKey && current.Engine is not null)
+        {
+            SessionChanged?.Invoke(this, current);
+            return;
+        }
+
         SessionChanged?.Invoke(this, new SessionSnapshot(key, ConnectionStatus.Error, profile, null, settings.MockMode, null, message, null)
             { ErrorLocalizationKey = localizationKey });
     }
