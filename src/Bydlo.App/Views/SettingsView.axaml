@@ -184,6 +184,15 @@
           </Border>
           <Button x:Name="ContributorsButton" Classes="ghost" HorizontalAlignment="Left" Content="{l:T nav.contributors}"
                   Command="{Binding Shell.NavigateCommand}" CommandParameter="contributors" />
+          <Border Classes="tile">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{l:T report.hint}" Classes="faint" TextWrapping="Wrap" />
+              <WrapPanel>
+                <Button Classes="ghost" Content="{l:T report.copy}" Command="{Binding CopyDiagnosticReportCommand}" Margin="0,0,8,0" />
+                <Button Classes="ghost" Content="{l:T report.open}" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding BugTemplateUrl}" />
+              </WrapPanel>
+            </StackPanel>
+          </Border>
           <TextBlock Classes="caps" Text="{l:T about.credits}" Margin="0,6,0,0" />
           <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.Credits}">
             <ItemsControl.ItemTemplate>
