@@ -53,9 +53,9 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
             return Task.FromResult(EngineAvailability.NotImplemented("Xray on this platform is planned.", "error.engine.xray.platform"));
         }
 
-        if (settings.Mode == ConnectionMode.Tun)
+        if (settings.Mode == ConnectionMode.Tun && !settings.KillSwitch)
         {
-            return Task.FromResult(EngineAvailability.NotImplemented("TUN mode with Xray is not implemented. Use Local proxy mode or the sing-box engine.", "error.engine.xray.tun"));
+            return Task.FromResult(EngineAvailability.NotImplemented("TUN mode with Xray is not implemented. Use Local proxy mode, the sing-box engine, or TUN with kill switch.", "error.engine.xray.tun"));
         }
 
         if (locator.Platform.Os == OsFamily.MacOS && settings.Routing.OrderedRules.Any(rule => rule.Condition == RoutingCondition.Process))
