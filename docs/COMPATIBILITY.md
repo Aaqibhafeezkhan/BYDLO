@@ -51,7 +51,7 @@ macOS создаёт пользовательский `.app`-обработчи�
 | Трей и меню сессий | ✅ Avalonia TrayIcon | 🧪 нужен StatusNotifierItem/AppIndicator | 🧪 меню строки состояния | ❌ |
 | Автозапуск при входе (по выбору) | ✅ HKCU Run | 🧪 XDG autostart | 🧪 LaunchAgent | ❌ |
 | Системные уведомления (отключаемые) | ✅ Shell balloon | 🧪 notify-send + демон уведомлений | 🧪 osascript, разрешение ОС | ❌ |
-| Статистика трафика в реальном времени | sing-box ✅ (Clash API), TgWsProxy ✅ (встроенные счётчики), остальные 🗓 | так же | так же | 🗓 |
+| Статистика трафика в реальном времени | sing-box ✅ (Clash API), TgWsProxy ✅ (встроенные счётчики), Xray-core 🧪 (gRPC StatsService), остальные 🗓 | так же | так же | 🗓 |
 
 ## Группы серверов
 
