@@ -44,7 +44,7 @@ internal sealed class SingBoxTunGuard(
     /// <summary>
     /// Loop avoidance for a foreign transport (issue #212): the transport server address
     /// stays outside the TUN and the transport process itself is routed directly.
-    /// Processes are full executable paths matched via sing-box process_path (issue #339):
+    /// Processes are executable paths matched via sing-box process_path (issue #339):
     /// a bare process_name would also exempt any unrelated process with the same file name.
     /// </summary>
     internal KillSwitchExclusions? TransportExclusions(EngineStartRequest request)
@@ -61,9 +61,50 @@ internal sealed class SingBoxTunGuard(
         var processes = new List<string>();
         if (locator.Locate(backendKind.Value, request.Settings) is { Length: > 0 } exe)
         {
-            processes.Add(exe);
+            processes.AddRange(BackendProcessPaths(exe));
         }
         return addresses.Count == 0 && processes.Count == 0 ? null : new KillSwitchExclusions(addresses, processes);
+    }
+
+    /// <summary>
+    /// Candidate process_path values for the launched backend (issue #339 review).
+    /// The locator may return a relative path or a symlink while the OS reports the
+    /// resolved absolute path (or vice versa), so include the verbatim, absolute and
+    /// link-resolved forms. All still pin the same backend file.
+    /// </summary>
+    internal static IReadOnlyList<string> BackendProcessPaths(string exe)
+    {
+        var candidates = new List<string> { exe };
+        string full;
+        try
+        {
+            full = Path.GetFullPath(exe);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return candidates;
+        }
+        if (!candidates.Contains(full, StringComparer.Ordinal))
+        {
+            candidates.Add(full);
+        }
+        try
+        {
+            var target = new FileInfo(full);
+            for (var depth = 0; depth < 8 && target.LinkTarget is { } link; depth++)
+            {
+                var next = Path.IsPathFullyQualified(link) ? link : Path.Combine(target.DirectoryName ?? "", link);
+                target = new FileInfo(Path.GetFullPath(next));
+            }
+            if (!candidates.Contains(target.FullName, StringComparer.Ordinal))
+            {
+                candidates.Add(target.FullName);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+        }
+        return candidates;
     }
 
     protected override bool IsReadyLine(string line) => line.Contains("sing-box started", StringComparison.OrdinalIgnoreCase);

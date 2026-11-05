@@ -69,7 +69,8 @@ public sealed class XrayTunTests
     [Fact]
     public async Task Tun_guard_excludes_xray_server_and_process()
     {
-        var backendPath = "C:/engines/xray.exe".Replace('/', Path.DirectorySeparatorChar);
+        var backendPath = Path.Combine(TestDirs.New("xray-tun-exe"), "xray" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        await File.WriteAllTextAsync(backendPath, "fake backend");
         var runner = new FakeProcessRunner { StartupOutput = { "sing-box started" } };
         await using var guard = new SingBoxTunGuard(runner, new LogRedactor(),
             new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64), backendPath),
@@ -89,9 +90,11 @@ public sealed class XrayTunTests
     [Fact]
     public async Task Tun_guard_with_domain_server_routes_only_the_process_directly()
     {
+        var backendPath = Path.Combine(TestDirs.New("xray-tun-exe-domain"), "xray" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        await File.WriteAllTextAsync(backendPath, "fake backend");
         var runner = new FakeProcessRunner { StartupOutput = { "sing-box started" } };
         await using var guard = new SingBoxTunGuard(runner, new LogRedactor(),
-            new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64), "/usr/local/bin/xray"),
+            new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64), backendPath),
             new FakePrivileges(true), EngineKind.Xray);
         var request = Request() with
         {
@@ -103,9 +106,47 @@ public sealed class XrayTunTests
         var excluded = config["inbounds"]![0]!["route_exclude_address"]?.AsArray().Select(n => (string?)n).ToList() ?? [];
         Assert.DoesNotContain("xhttp.invalid", excluded);
         var first = config["route"]!["rules"]![0]!;
-        Assert.Equal(["/usr/local/bin/xray"], first["process_path"]!.AsArray().Select(n => (string?)n).ToList());
+        Assert.Equal([backendPath], first["process_path"]!.AsArray().Select(n => (string?)n).ToList());
         Assert.Null(first["process_name"]);
         await guard.StopAsync();
+    }
+
+    [Fact]
+    public void Backend_paths_cover_relative_and_symlinked_executables()
+    {
+        var dir = TestDirs.New("xray-tun-links");
+        var target = Path.Combine(dir, "xray-real" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        File.WriteAllText(target, "fake backend");
+        var paths = SingBoxTunGuard.BackendProcessPaths(target);
+        Assert.Contains(target, paths);
+        Assert.DoesNotContain(paths, p => p == "xray" || p == "xray.exe");
+
+        var cwd = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(dir);
+            var relative = SingBoxTunGuard.BackendProcessPaths("xray-real" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+            Assert.Contains(target, relative);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(cwd);
+        }
+
+        var link = Path.Combine(dir, "xray-link" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        try
+        {
+            File.CreateSymbolicLink(link, target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Symlinks need extra privileges on some machines; the absolute and
+            // resolved forms above already passed without them.
+            return;
+        }
+        var linked = SingBoxTunGuard.BackendProcessPaths(link);
+        Assert.Contains(link, linked);
+        Assert.Contains(target, linked);
     }
 
     [Fact]
