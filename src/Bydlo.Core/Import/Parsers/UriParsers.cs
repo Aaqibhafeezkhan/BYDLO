@@ -87,14 +87,21 @@ public sealed class VmessParser : IProfileParser
             }
         }
 
-        JsonElement root;
+        JsonDocument document;
         try
         {
-            root = JsonDocument.Parse(json).RootElement;
+            document = JsonDocument.Parse(json);
         }
         catch (JsonException)
         {
             throw new ImportException("VMess link contains invalid JSON.");
+        }
+
+        using var ownedDocument = document;
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            throw new ImportException("VMess link JSON must be an object.");
         }
 
         string S(string name) => root.TryGetProperty(name, out var v) ? v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : v.ToString() : "";
@@ -333,3 +340,4 @@ public sealed class ProxyParser : IProfileParser
         return new ImportedProfile(p, secrets);
     }
 }
+
