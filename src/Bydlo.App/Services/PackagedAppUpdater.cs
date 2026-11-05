@@ -10,8 +10,7 @@ internal sealed class PackagedAppUpdater(string dataDirectory) : IAppUpdateBacke
     private readonly UpdateManager _manager = new(new GithubSource("https://github.com/endercodezz/BYDLO", null, false));
 
     public bool IsInstalled => !File.Exists(Path.Combine(AppContext.BaseDirectory, "portable.txt")) &&
-        !Path.GetFullPath(dataDirectory).StartsWith(Path.GetFullPath(AppContext.BaseDirectory),
-            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) && _manager.IsInstalled;
+        AutomaticAppUpdater.HasSeparateDataDirectory(AppContext.BaseDirectory, dataDirectory) && _manager.IsInstalled;
 
     public async Task<bool> DownloadLatestAsync(CancellationToken ct)
     {

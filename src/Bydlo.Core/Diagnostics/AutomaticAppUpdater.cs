@@ -12,6 +12,15 @@ public interface IAppUpdateBackend
 
 public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, TimeProvider? timeProvider = null)
 {
+    public static bool HasSeparateDataDirectory(string applicationDirectory, string dataDirectory)
+    {
+        var application = Path.TrimEndingDirectorySeparator(Path.GetFullPath(applicationDirectory));
+        var data = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dataDirectory));
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return !data.Equals(application, comparison) &&
+            !data.StartsWith(application + Path.DirectorySeparatorChar, comparison);
+    }
+
     private IAppUpdateBackend? _backend;
     private bool _ready;
     private bool _busy;

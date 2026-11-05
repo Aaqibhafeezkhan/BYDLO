@@ -6,6 +6,16 @@ namespace Bydlo.Tests;
 
 public class AutomaticAppUpdaterTests
 {
+    [Fact]
+    public void Data_directory_must_be_outside_replaceable_payload_including_exact_path()
+    {
+        var application = Path.Combine(TestDirs.New("updater-paths"), "app");
+        Assert.False(AutomaticAppUpdater.HasSeparateDataDirectory(application + Path.DirectorySeparatorChar, application));
+        Assert.False(AutomaticAppUpdater.HasSeparateDataDirectory(application, application + Path.DirectorySeparatorChar));
+        Assert.False(AutomaticAppUpdater.HasSeparateDataDirectory(application, Path.Combine(application, "data")));
+        Assert.True(AutomaticAppUpdater.HasSeparateDataDirectory(application, application + "-data"));
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, true)]
