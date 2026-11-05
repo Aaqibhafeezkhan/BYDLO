@@ -13,6 +13,8 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
     private IManagedProcess? _process;
     private TaskCompletionSource? _ready;
     private bool _stopping;
+    private int? _exitDuringStart;
+    private string? _exitDuringStartFatal;
 
     public abstract EngineDescriptor Descriptor { get; }
 
@@ -99,6 +101,8 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             Directory.CreateDirectory(request.WorkDirectory);
             var spec = await PrepareAsync(request, availability, ct).ConfigureAwait(false);
             _stopping = false;
+            _exitDuringStart = null;
+            _exitDuringStartFatal = null;
             _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             string? fatal = null;
 
@@ -120,9 +124,10 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             var timeout = Task.Delay(ReadyTimeout, ct);
             var finished = await Task.WhenAny(_ready.Task, timeout).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
-            if (_process.HasExited)
+            var exitedEarly = _process.HasExited;
+            if (exitedEarly || _exitDuringStart.HasValue)
             {
-                throw new EngineException(fatal ?? $"{Descriptor.DisplayName} exited with code {_process.ExitCode}.");
+                throw new EngineException(_exitDuringStartFatal ?? fatal ?? $"{Descriptor.DisplayName} exited with code {_exitDuringStart ?? _process.ExitCode}.");
             }
 
             if (finished == timeout && !AliveMeansReady)
@@ -131,9 +136,10 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             }
 
             await OnStartedAsync(request, ct).ConfigureAwait(false);
-            if (_process.HasExited)
+            var exitedLate = _process.HasExited;
+            if (exitedLate || _exitDuringStart.HasValue)
             {
-                throw new EngineException($"{Descriptor.DisplayName} exited during startup.");
+                throw new EngineException(_exitDuringStartFatal ?? fatal ?? $"{Descriptor.DisplayName} exited during startup.");
             }
 
             SetState(EngineState.Running);
@@ -175,8 +181,14 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
     private void OnProcessExited(int code, string? fatal)
     {
         _ready?.TrySetResult();
-        if (_stopping || State is EngineState.Stopped or EngineState.Starting)
+        if (_stopping || State is EngineState.Stopped)
         {
+            return;
+        }
+        if (State is EngineState.Starting)
+        {
+            _exitDuringStart = code;
+            _exitDuringStartFatal = fatal;
             return;
         }
 
