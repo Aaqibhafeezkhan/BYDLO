@@ -80,15 +80,14 @@ public sealed partial class SettingsViewModel
             else
             {
                 // Providers without a local path have no safe replacement primitive.
-                // Never truncate first: a failed write then leaves the old content
-                // past the written prefix instead of an empty file.
-                await using var stream = await file.OpenWriteAsync();
-                await stream.WriteAsync(encrypted);
-                await stream.FlushAsync();
-                if (stream.CanSeek && stream.Length != encrypted.Length)
+                // Never overwrite: a partial write (or a truncate-on-open provider)
+                // would destroy the previous backup (issue #334).
+                if (!await BackupExport.IsRemoteTargetMissingAsync(() => file.OpenReadAsync()))
                 {
-                    stream.SetLength(encrypted.Length);
+                    Shell.ShowToast(L["backup.export.exists"], isError: true);
+                    return;
                 }
+                await BackupExport.WriteRemoteAsync(() => file.OpenWriteAsync(), encrypted);
             }
             Shell.ShowToast(L["backup.exported"]);
         }

@@ -37,4 +37,41 @@ public static class BackupExport
             throw;
         }
     }
+
+    /// <summary>
+    /// Probes whether a non-local backup target already exists without opening it
+    /// for writing (issue #334). Some providers truncate on open, so even probing
+    /// with a write stream could destroy the previous backup.
+    /// </summary>
+    /// <returns>False when the target exists and must be kept; true when missing.</returns>
+    public static async Task<bool> IsRemoteTargetMissingAsync(Func<Task<Stream>> openRead, CancellationToken ct = default)
+    {
+        try
+        {
+            await using var probe = await openRead().ConfigureAwait(false);
+            return false;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch
+        {
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Writes a new backup to a non-local target previously confirmed missing.
+    /// Without an atomic replacement primitive a mid-write failure can still leave
+    /// a partial file, which is why existing targets are never overwritten.
+    /// </summary>
+    public static async Task WriteRemoteAsync(Func<Task<Stream>> openWrite, byte[] payload, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        await using var stream = await openWrite().ConfigureAwait(false);
+        await stream.WriteAsync(payload.AsMemory(), ct).ConfigureAwait(false);
+        await stream.FlushAsync(ct).ConfigureAwait(false);
+        if (stream.CanSeek && stream.Length != payload.Length)
+        {
+            stream.SetLength(payload.Length);
+        }
+    }
 }

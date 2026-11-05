@@ -231,6 +231,7 @@
   "backup.cancel": "Cancel preview",
   "backup.disconnect": "Stop all BYDLO connections and tools before importing.",
   "backup.exported": "Encrypted backup saved.",
+  "backup.export.exists": "The selected file already exists. Choose a new file name so the previous backup is kept.",
   "backup.imported": "Backup imported. Connections start only when you choose to connect.",
   "backup.error": "Could not process the backup. Check the password, file format and available storage.",
   "share.title": "Share server",

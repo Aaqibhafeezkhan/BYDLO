@@ -63,7 +63,67 @@ public sealed class BackupExportTests
         var body = text.Substring(start, end - start);
         Assert.Contains("WriteAtomicAsync", body, StringComparison.Ordinal);
         Assert.Contains("TryGetLocalPath", body, StringComparison.Ordinal);
+        Assert.Contains("IsRemoteTargetMissingAsync", body, StringComparison.Ordinal);
+        Assert.Contains("backup.export.exists", body, StringComparison.Ordinal);
         Assert.DoesNotContain("SetLength(0)", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Remote_existing_target_is_never_opened_for_writing()
+    {
+        var writeOpened = false;
+        Task<Stream> OpenRead() => Task.FromResult<Stream>(new MemoryStream("old-backup"u8.ToArray()));
+        Task<Stream> OpenWrite()
+        {
+            writeOpened = true;
+            return Task.FromResult<Stream>(new MemoryStream());
+        }
+
+        Assert.False(await BackupExport.IsRemoteTargetMissingAsync(OpenRead));
+        Assert.False(writeOpened);
+    }
+
+    [Fact]
+    public async Task Remote_missing_target_writes_fully()
+    {
+        static Task<Stream> OpenRead() => Task.FromException<Stream>(new FileNotFoundException());
+        var written = new MemoryStream();
+        Task<Stream> OpenWrite() => Task.FromResult<Stream>(written);
+        var payload = "new-backup-payload"u8.ToArray();
+
+        Assert.True(await BackupExport.IsRemoteTargetMissingAsync(OpenRead));
+        await BackupExport.WriteRemoteAsync(OpenWrite, payload);
+        Assert.Equal(payload, written.ToArray());
+    }
+
+    [Fact]
+    public async Task Remote_mid_write_failure_is_reported()
+    {
+        static Task<Stream> OpenRead() => Task.FromException<Stream>(new FileNotFoundException());
+        var stream = new FailAfterStream(failAfter: 4);
+        Task<Stream> OpenWrite() => Task.FromResult<Stream>(stream);
+        var payload = "new-backup-payload"u8.ToArray();
+
+        Assert.True(await BackupExport.IsRemoteTargetMissingAsync(OpenRead));
+        await Assert.ThrowsAsync<IOException>(() => BackupExport.WriteRemoteAsync(OpenWrite, payload));
+        Assert.True(stream.Received < payload.Length);
+    }
+
+    private sealed class FailAfterStream(int failAfter) : MemoryStream
+    {
+        public int Received { get; private set; }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            var room = Math.Max(0, failAfter - Received);
+            var take = Math.Min(room, count);
+            if (take > 0)
+            {
+                base.Write(buffer, offset, take);
+                Received += take;
+            }
+            throw new IOException("Fake mid-write failure.");
+        }
     }
 
     private static string FindRepoRoot()
