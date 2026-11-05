@@ -42,6 +42,8 @@ public static class BackupExport
     /// Probes whether a non-local backup target already exists without opening it
     /// for writing (issue #334). Some providers truncate on open, so even probing
     /// with a write stream could destroy the previous backup.
+    /// Fail-closed: only a confirmed not-found counts as missing; any other read
+    /// error is rethrown so the export aborts instead of risking an overwrite.
     /// </summary>
     /// <returns>False when the target exists and must be kept; true when missing.</returns>
     public static async Task<bool> IsRemoteTargetMissingAsync(Func<Task<Stream>> openRead, CancellationToken ct = default)
@@ -51,8 +53,7 @@ public static class BackupExport
             await using var probe = await openRead().ConfigureAwait(false);
             return false;
         }
-        catch (OperationCanceledException) { throw; }
-        catch
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             return true;
         }

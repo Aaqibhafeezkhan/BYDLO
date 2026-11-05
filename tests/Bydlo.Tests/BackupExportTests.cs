@@ -78,6 +78,16 @@ public sealed class BackupExportTests
     }
 
     [Fact]
+    public async Task Remote_unexpected_read_error_fails_closed()
+    {
+        static Task<Stream> DeniedRead() => Task.FromException<Stream>(new UnauthorizedAccessException());
+        static Task<Stream> NetworkRead() => Task.FromException<Stream>(new IOException("Fake provider failure."));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => BackupExport.IsRemoteTargetMissingAsync(DeniedRead));
+        await Assert.ThrowsAsync<IOException>(() => BackupExport.IsRemoteTargetMissingAsync(NetworkRead));
+    }
+
+    [Fact]
     public async Task Remote_missing_target_writes_fully()
     {
         static Task<Stream> OpenRead() => Task.FromException<Stream>(new FileNotFoundException());
