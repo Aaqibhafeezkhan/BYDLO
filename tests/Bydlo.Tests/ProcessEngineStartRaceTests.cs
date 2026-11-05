@@ -115,6 +115,21 @@ public sealed class ProcessEngineStartRaceTests
         Assert.Equal(EngineState.Failed, engine.State);
     }
 
+    [Fact]
+    public async Task Concurrent_stop_and_exit_always_finish_stopped()
+    {
+        for (var i = 0; i < 100; i++)
+        {
+            var runner = new FakeProcessRunner();
+            var engine = new RaceEngine(runner);
+            await engine.StartAsync(Request());
+            var process = runner.Last!;
+            await Task.WhenAll(Task.Run(() => engine.StopAsync()), Task.Run(() => process.Crash(2)));
+            Assert.Equal(EngineState.Stopped, engine.State);
+            await engine.DisposeAsync();
+        }
+    }
+
     private sealed class RaceEngine(IProcessRunner runner) : ProcessEngineBase(runner, new LogRedactor())
     {
         public Action? CrashAtStarted { get; set; }
