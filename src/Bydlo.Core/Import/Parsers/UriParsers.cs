@@ -44,7 +44,7 @@ public sealed class VlessParser : IProfileParser
         }
 
         var q = Query(uri);
-        var p = new Profile { Protocol = ProtocolKind.Vless, Host = Host(uri), Port = Port(uri, 443) };
+        var p = new Profile { Protocol = ProtocolKind.Vless, Host = Host(uri), Port = Port(uri, 443, input) };
         p.Name = Fragment(uri, $"VLESS {p.Host}");
         StreamOptions.Apply(q, p);
         if (q.TryGetValue("encryption", out var enc) && !string.IsNullOrWhiteSpace(enc))
@@ -152,7 +152,7 @@ public sealed class TrojanParser : IProfileParser
             throw new ImportException("Trojan link has no password.");
         }
 
-        var p = new Profile { Protocol = ProtocolKind.Trojan, Host = Host(uri), Port = Port(uri, 443) };
+        var p = new Profile { Protocol = ProtocolKind.Trojan, Host = Host(uri), Port = Port(uri, 443, input) };
         p.Name = Fragment(uri, $"Trojan {p.Host}");
         StreamOptions.Apply(Query(uri), p, defaultSecurity: "tls");
         return new ImportedProfile(p, new ProfileSecrets { Values = { [Keys.Password] = password } });
@@ -205,7 +205,7 @@ public sealed partial class ShadowsocksParser : IProfileParser
 
         var method = userInfo[..sep];
         var password = userInfo[(sep + 1)..];
-        var p = new Profile { Protocol = ProtocolKind.Shadowsocks, Host = Host(uri), Port = Port(uri, 8388) };
+        var p = new Profile { Protocol = ProtocolKind.Shadowsocks, Host = Host(uri), Port = Port(uri, 8388, input) };
         p.Name = string.IsNullOrWhiteSpace(name) ? $"Shadowsocks {p.Host}" : name.Trim();
         p.Options[Keys.Method] = method.ToLowerInvariant();
         var q = Query(uri);
@@ -242,7 +242,7 @@ public sealed partial class Hysteria2Parser : IProfileParser
 
         var uri = ParseUri(text, "hysteria2");
         var auth = Uri.UnescapeDataString(uri.UserInfo);
-        var p = new Profile { Protocol = ProtocolKind.Hysteria2, Host = Host(uri), Port = Port(uri, 443) };
+        var p = new Profile { Protocol = ProtocolKind.Hysteria2, Host = Host(uri), Port = Port(uri, 443, input) };
         p.Name = Fragment(uri, $"Hysteria2 {p.Host}");
         var q = Query(uri);
         Copy(q, p, ("sni", Keys.Sni), ("obfs", Keys.Obfs), ("alpn", Keys.Alpn), ("upmbps", Keys.UpMbps), ("downmbps", Keys.DownMbps), ("pinSHA256", "pinSHA256"));
@@ -288,7 +288,7 @@ public sealed class TuicParser : IProfileParser
             throw new ImportException("TUIC link must contain uuid:password.");
         }
 
-        var p = new Profile { Protocol = ProtocolKind.Tuic, Host = Host(uri), Port = Port(uri, 443) };
+        var p = new Profile { Protocol = ProtocolKind.Tuic, Host = Host(uri), Port = Port(uri, 443, input) };
         p.Name = Fragment(uri, $"TUIC {p.Host}");
         var q = Query(uri);
         Copy(q, p, ("sni", Keys.Sni), ("alpn", Keys.Alpn), ("congestion_control", Keys.CongestionControl), ("udp_relay_mode", Keys.UdpRelayMode));
@@ -317,7 +317,7 @@ public sealed class ProxyParser : IProfileParser
         {
             Protocol = isHttp ? ProtocolKind.Http : ProtocolKind.Socks5,
             Host = Host(uri),
-            Port = Port(uri, isHttp ? (scheme == "https" ? 443 : 8080) : 1080),
+            Port = Port(uri, isHttp ? (scheme == "https" ? 443 : 8080) : 1080, input),
         };
         p.Name = Fragment(uri, $"{(isHttp ? "HTTP" : "SOCKS5")} {p.Host}");
         if (scheme == "https")
