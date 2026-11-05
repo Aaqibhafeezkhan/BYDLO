@@ -1,6 +1,9 @@
 using System.Buffers.Binary;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Bydlo.Core.Import;
 
@@ -25,9 +28,11 @@ internal sealed class UnixActivationBroker : IDisposable
     {
         _activate = activate;
         _timeout = timeout ?? TimeSpan.FromSeconds(5);
-        var directory = Path.Combine(Path.GetFullPath(dataDirectory), "ipc");
-        _socketPath = Path.Combine(directory, "desktop.sock");
+        _socketPath = ResolveSocketPath(dataDirectory);
+        var directory = Path.GetDirectoryName(_socketPath)!;
         // The directory, rather than socket mode bits alone, is the access boundary on macOS.
+        // The socket lives under a short per-user runtime dir (hashed by data dir) so long
+        // BYDLO_DATA_DIR values never exceed the ~108-byte sun_path limit (issue #341).
         Directory.CreateDirectory(directory, DirectoryMode);
         if (new DirectoryInfo(directory).LinkTarget is not null || File.GetUnixFileMode(directory) != DirectoryMode)
         {
@@ -38,7 +43,8 @@ internal sealed class UnixActivationBroker : IDisposable
         {
             // Preserve the inode, including after shutdown or a crash. Only the lock owner may
             // replace a stale socket. Keep the existing desktop.lock for upgrade compatibility.
-            _lock = new FileStream(Path.Combine(dataDirectory, "desktop.lock"),
+            // The lock stays in the data dir (file paths have no 108-byte limit).
+            _lock = new FileStream(Path.Combine(Path.GetFullPath(dataDirectory), "desktop.lock"),
                 FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
         catch (IOException)
@@ -46,6 +52,55 @@ internal sealed class UnixActivationBroker : IDisposable
             // A lock failure is never permission to initialize engines or recovery.
         }
     }
+
+    /// <summary>
+    /// Short deterministic socket path for a (possibly very long) data directory.
+    /// Pure: primary and secondary compute the same value from the same data dir.
+    /// Layout: <c>$XDG_RUNTIME_DIR/bydlo/bydlo-&lt;uid&gt;-&lt;hash16&gt;/desktop.sock</c>,
+    /// else <c>$TMPDIR/bydlo-&lt;uid&gt;-&lt;hash16&gt;/desktop.sock</c>, else <c>/tmp/...</c>.
+    /// The hash is the first 16 hex chars (64 bits) of SHA-256 over the normalized full path.
+    /// </summary>
+    internal static string ResolveSocketPath(string dataDirectory)
+    {
+        var full = Path.GetFullPath(dataDirectory);
+        if (full.Length > 1)
+        {
+            full = full.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (full.Length == 0) { full = Path.DirectorySeparatorChar.ToString(); }
+        }
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(full));
+        var shortHash = Convert.ToHexStringLower(hash)[..16];
+        var uid = CurrentUid();
+        var runtimeBase = ResolveRuntimeBase();
+        var directory = Path.Combine(runtimeBase, $"bydlo-{uid}-{shortHash}");
+        return Path.Combine(directory, "desktop.sock");
+    }
+
+    internal static string ResolveRuntimeBase()
+    {
+        var xdg = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        if (!string.IsNullOrEmpty(xdg)) { return Path.Combine(xdg, "bydlo"); }
+        var tmpdir = Environment.GetEnvironmentVariable("TMPDIR");
+        if (!string.IsNullOrEmpty(tmpdir)) { return tmpdir; }
+        return "/tmp";
+    }
+
+    internal static uint CurrentUid()
+    {
+        try
+        {
+            if (!OperatingSystem.IsWindows()) { return GetUid(); }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or MarshalDirectiveException)
+        {
+        }
+
+        return 0;
+    }
+
+    [DllImport("libc", EntryPoint = "getuid")]
+    private static extern uint GetUid();
 
     public bool IsPrimary => _lock is not null;
 
