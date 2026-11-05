@@ -310,7 +310,7 @@ public sealed class ProxyParser : IProfileParser
         {
             Protocol = isHttp ? ProtocolKind.Http : ProtocolKind.Socks5,
             Host = Host(uri),
-            Port = Port(uri, isHttp ? (scheme == "https" ? 443 : 8080) : 1080),
+            Port = Port(uri, isHttp ? (scheme == "https" ? 443 : 8080) : 1080, input),
         };
         p.Name = Fragment(uri, $"{(isHttp ? "HTTP" : "SOCKS5")} {p.Host}");
         if (scheme == "https")
