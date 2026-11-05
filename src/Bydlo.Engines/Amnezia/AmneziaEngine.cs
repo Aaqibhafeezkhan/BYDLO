@@ -62,7 +62,7 @@ public sealed class AmneziaEngine(IProcessRunner runner, LogRedactor redactor, E
         }
         await ConfigureNetworkAsync(() => network.PrepareAsync(_config.Endpoints, ct)).ConfigureAwait(false);
         _configFile = Path.Combine(request.WorkDirectory, "amnezia.json");
-        await SecureFile.WriteAsync(_configFile, JsonSerializer.Serialize(new { Name = network.TunnelName, MTU = _config.Mtu, UAPI = _config.Uapi }), ct).ConfigureAwait(false);
+        await SecureFile.WriteAsync(_configFile, JsonSerializer.Serialize(new AmneziaHostConfig(network.TunnelName, _config.Mtu, _config.Uapi), EnginesJsonContext.Default.AmneziaHostConfig), ct).ConfigureAwait(false);
         if (network.TunnelName == "utun")
         {
             _interfaceFile = Path.Combine(request.WorkDirectory, "utun-name");

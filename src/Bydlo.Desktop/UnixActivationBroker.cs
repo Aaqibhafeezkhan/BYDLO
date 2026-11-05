@@ -64,7 +64,7 @@ internal sealed class UnixActivationBroker : IDisposable
 
     internal async Task ForwardAsync(string[] args)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(ExternalImportInput.LaunchInputs(args).ToArray());
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(ExternalImportInput.LaunchInputs(args).ToArray(), DesktopJsonContext.Default.StringArray);
         if (bytes.Length > MaxMessageBytes) { throw new IOException("Activation message is too large."); }
         using var timeout = new CancellationTokenSource(_timeout);
         // The primary may have claimed its lock before binding the socket. Retry only connection
@@ -117,7 +117,7 @@ internal sealed class UnixActivationBroker : IDisposable
                 if (length is <= 0 or > MaxMessageBytes) { continue; }
                 var bytes = new byte[length];
                 await stream.ReadExactlyAsync(bytes, timeout.Token).ConfigureAwait(false);
-                if (JsonSerializer.Deserialize<string[]>(bytes) is { } args)
+                if (JsonSerializer.Deserialize(bytes, DesktopJsonContext.Default.StringArray) is { } args)
                 {
                     _activate(ExternalImportInput.LaunchInputs(args.OfType<string>()).ToArray());
                     await stream.WriteAsync(new byte[] { 1 }, timeout.Token).ConfigureAwait(false);

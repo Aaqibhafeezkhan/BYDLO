@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Bydlo.Core.Models;
 using Bydlo.Core.Import.Parsers;
+using Bydlo.Core.Serialization;
 
 namespace Bydlo.Core.Import;
 
@@ -132,7 +133,7 @@ public static class ProfileExporter
         {
             if (p.Option(key) is { } value) { fields[field] = value; }
         }
-        return "vmess://" + Base64(JsonSerializer.Serialize(fields));
+        return "vmess://" + Base64(JsonSerializer.Serialize(fields, BydloJson.Core.Info<Dictionary<string, string>>()));
     }
 
     private static string Escape(string value) => Uri.EscapeDataString(value);

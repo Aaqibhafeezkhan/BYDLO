@@ -17,7 +17,7 @@ public static class HelperManagement
     {
         NetworkSafetyGuard.EnsureAllowed("write the privileged helper version");
         var path = Path.Combine(HelperPaths.InstallDirectory, BuildFile);
-        File.WriteAllText(path, JsonSerializer.Serialize(build));
+        File.WriteAllText(path, JsonSerializer.Serialize(build, PlatformJsonContext.Default.HelperBuild));
         if (!OperatingSystem.IsWindows())
         {
             File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
@@ -29,7 +29,7 @@ public static class HelperManagement
         if (!IsInstalled) { return false; }
         try
         {
-            return JsonSerializer.Deserialize<HelperBuild>(File.ReadAllText(Path.Combine(HelperPaths.InstallDirectory, BuildFile))) != expected;
+            return JsonSerializer.Deserialize(File.ReadAllText(Path.Combine(HelperPaths.InstallDirectory, BuildFile)), PlatformJsonContext.Default.HelperBuild) != expected;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {

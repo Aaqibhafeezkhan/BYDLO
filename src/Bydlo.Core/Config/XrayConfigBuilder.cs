@@ -111,7 +111,7 @@ public sealed partial class XrayConfigBuilder
             {
                 throw new EngineException("import.json.unsafe", localizationKey: "import.json.unsafe");
             }
-            outbounds.Add(new JsonObject { ["protocol"] = "freedom", ["tag"] = directTag });
+            outbounds.AddNode(new JsonObject { ["protocol"] = "freedom", ["tag"] = directTag });
         }
         var routing = custom["routing"] as JsonObject ?? new JsonObject();
         var rules = routing["rules"] as JsonArray ?? new JsonArray();
@@ -136,23 +136,21 @@ public sealed partial class XrayConfigBuilder
             throw new EngineException($"Local proxy port {settings.LocalProxyPort} is invalid for Xray (HTTP port out of range). Use a port ≤ {ProxyPorts.MaxLocalProxyPort}.");
         }
         var routing = settings.Routing;
-        var rules = new JsonArray
-        {
+        var rules = new JsonArray(
             new JsonObject
             {
                 ["type"] = "field",
                 ["domain"] = Arr(ConnectionCheckService.ProviderDomains.Select(d => "domain:" + d)),
                 ["outboundTag"] = proxyTag,
-            },
-        };
+            });
         if (routing.BypassPrivateNetworks)
         {
-            rules.Add(new JsonObject { ["type"] = "field", ["ip"] = new JsonArray("geoip:private"), ["outboundTag"] = "direct" });
+            rules.AddNode(new JsonObject { ["type"] = "field", ["ip"] = new JsonArray("geoip:private"), ["outboundTag"] = "direct" });
         }
 
         if (routing.PreserveMeshVpnRanges)
         {
-            rules.Add(new JsonObject { ["type"] = "field", ["ip"] = Arr(SingBoxConfigBuilder.MeshVpnRanges), ["outboundTag"] = "direct" });
+            rules.AddNode(new JsonObject { ["type"] = "field", ["ip"] = Arr(SingBoxConfigBuilder.MeshVpnRanges), ["outboundTag"] = "direct" });
         }
 
         foreach (var rule in routing.OrderedRules)
@@ -161,37 +159,37 @@ public sealed partial class XrayConfigBuilder
             {
                 throw new EngineException("routing.rules.unsupported", localizationKey: "routing.rules.unsupported");
             }
-            rules.Add(OrderedRoutingRules.Compile(rule, false, settings.Mode, proxyTag, null));
+            rules.AddNode(OrderedRoutingRules.Compile(rule, false, settings.Mode, proxyTag, null));
         }
 
         if (routing.BlockDomains.Count > 0)
         {
-            rules.Add(new JsonObject { ["type"] = "field", ["domain"] = Arr(routing.BlockDomains.Select(d => "domain:" + d)), ["outboundTag"] = "block" });
+            rules.AddNode(new JsonObject { ["type"] = "field", ["domain"] = Arr(routing.BlockDomains.Select(d => "domain:" + d)), ["outboundTag"] = "block" });
         }
 
         if (routing.DirectDomains.Count > 0)
         {
-            rules.Add(new JsonObject { ["type"] = "field", ["domain"] = Arr(routing.DirectDomains.Select(d => "domain:" + d)), ["outboundTag"] = "direct" });
+            rules.AddNode(new JsonObject { ["type"] = "field", ["domain"] = Arr(routing.DirectDomains.Select(d => "domain:" + d)), ["outboundTag"] = "direct" });
         }
 
         if (routing.DirectCidrs.Count > 0)
         {
-            rules.Add(new JsonObject { ["type"] = "field", ["ip"] = Arr(routing.DirectCidrs), ["outboundTag"] = "direct" });
+            rules.AddNode(new JsonObject { ["type"] = "field", ["ip"] = Arr(routing.DirectCidrs), ["outboundTag"] = "direct" });
         }
 
         if (!routing.ProxyOnlyListedProcesses && routing.DirectProcesses.Count > 0)
         {
-            rules.Add(new JsonObject { ["type"] = "field", ["process"] = Arr(routing.DirectProcesses), ["outboundTag"] = "direct" });
+            rules.AddNode(new JsonObject { ["type"] = "field", ["process"] = Arr(routing.DirectProcesses), ["outboundTag"] = "direct" });
         }
 
         if (routing.ProxyDomains.Count > 0)
         {
-            rules.Add(new JsonObject { ["type"] = "field", ["domain"] = Arr(routing.ProxyDomains.Select(d => "domain:" + d)), ["outboundTag"] = "proxy" });
+            rules.AddNode(new JsonObject { ["type"] = "field", ["domain"] = Arr(routing.ProxyDomains.Select(d => "domain:" + d)), ["outboundTag"] = "proxy" });
         }
 
         if (routing.ProxyOnlyListed && routing.ProxyDomains.Count > 0)
         {
-            rules.Add(new JsonObject { ["type"] = "field", ["network"] = "tcp,udp", ["outboundTag"] = "direct" });
+            rules.AddNode(new JsonObject { ["type"] = "field", ["network"] = "tcp,udp", ["outboundTag"] = "direct" });
         }
 
         var lanAuth = ctx.LocalProxyAuth;
@@ -282,9 +280,9 @@ public sealed partial class XrayConfigBuilder
         var servers = new JsonArray();
         if (localDomains.Length > 0)
         {
-            servers.Add(Server("dns-local", routing.DirectDns, routing.DirectDnsTransport, routing.DirectDnsThroughProxy, localDomains));
+            servers.AddNode(Server("dns-local", routing.DirectDns, routing.DirectDnsTransport, routing.DirectDnsThroughProxy, localDomains));
         }
-        servers.Add(Server("dns-remote", routing.RemoteDns, routing.RemoteDnsTransport, routing.RemoteDnsThroughProxy,
+        servers.AddNode(Server("dns-remote", routing.RemoteDns, routing.RemoteDnsTransport, routing.RemoteDnsThroughProxy,
             routing.RemoteDnsDomains));
         return new JsonObject { ["servers"] = servers, ["disableFallbackIfMatch"] = true };
 

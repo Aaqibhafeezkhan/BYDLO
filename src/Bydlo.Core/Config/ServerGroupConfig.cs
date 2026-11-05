@@ -41,18 +41,18 @@ public sealed partial class SingBoxConfigBuilder
             selection["tolerance"] = group.ToleranceMs;
         }
         else { selection["default"] = ServerGroup.Tag(group.InitialProfileId(members)); }
-        outbounds.Add(selection);
+        outbounds.AddNode(selection);
         var endpoints = new JsonArray();
         foreach (var member in members)
         {
             var tag = ServerGroup.Tag(member.Profile.Id);
             if (member.Profile.Protocol == ProtocolKind.WireGuard)
             {
-                endpoints.Add(BuildWireGuardEndpoint(member.Profile, member.Secrets, tag));
+                endpoints.AddNode(BuildWireGuardEndpoint(member.Profile, member.Secrets, tag));
             }
-            else { outbounds.Add(BuildOutbound(member.Profile, member.Secrets, ctx.Settings.DpiDefaults, tag)); }
+            else { outbounds.AddNode(BuildOutbound(member.Profile, member.Secrets, ctx.Settings.DpiDefaults, tag)); }
         }
-        outbounds.Add(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
+        outbounds.AddNode(new JsonObject { ["type"] = "direct", ["tag"] = "direct" });
         root["outbounds"] = outbounds;
         if (endpoints.Count > 0) { root["endpoints"] = endpoints; }
         return root;
@@ -91,7 +91,7 @@ public sealed partial class XrayConfigBuilder
             rule.Remove("outboundTag");
             rule["balancerTag"] = "proxy";
         }
-        rules.Add(new JsonObject { ["type"] = "field", ["network"] = "tcp,udp", ["balancerTag"] = "proxy" });
+        rules.AddNode(new JsonObject { ["type"] = "field", ["network"] = "tcp,udp", ["balancerTag"] = "proxy" });
         routing["balancers"] = new JsonArray(new JsonObject
         {
             ["tag"] = "proxy", ["selector"] = Arr(members.Select(m => ServerGroup.Tag(m.Profile.Id))),

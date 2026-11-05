@@ -1,10 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Bydlo.Core.Models;
+using Bydlo.App.Themes;
 using Bydlo.Core.Themes;
 
 namespace Bydlo.App.Services;
@@ -25,9 +25,12 @@ public sealed class ThemeService
 
         var effective = preference == ThemePreference.System ? FromSystem(app) : preference;
         // Custom without loaded overrides falls back to the default dark palette; never leave a half-applied UI.
-        var palette = new ResourceInclude(new Uri("avares://Bydlo.App/App.axaml"))
+        // Compiled palette classes: URI lookup of precompiled XAML does not survive trimming.
+        ResourceDictionary palette = effective switch
         {
-            Source = new Uri($"avares://Bydlo.App/Themes/{effective switch { ThemePreference.Light => "Light", ThemePreference.Oled => "Oled", _ => "Purple" }}.axaml"),
+            ThemePreference.Light => new LightPalette(),
+            ThemePreference.Oled => new OledPalette(),
+            _ => new PurplePalette(),
         };
 
         var merged = app.Resources.MergedDictionaries;
@@ -117,11 +120,7 @@ public sealed class ThemeService
         return HasLowContrast(app);
     }
 
-    internal static ResourceInclude CustomBasePalette(bool dark) =>
-        new(new Uri("avares://Bydlo.App/App.axaml"))
-        {
-            Source = new Uri($"avares://Bydlo.App/Themes/{(dark ? "Purple" : "Light")}.axaml"),
-        };
+    internal static ResourceDictionary CustomBasePalette(bool dark) => dark ? new PurplePalette() : new LightPalette();
 
     /// <summary>Current effective palette as full resource keys to #AARRGGBB (for exporting a template).</summary>
     public static IReadOnlyDictionary<string, string> ExportCurrentPalette()

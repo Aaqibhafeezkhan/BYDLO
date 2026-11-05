@@ -20,7 +20,7 @@ public abstract class FileSecretStoreBase(string directory) : ISecretStore
     public async Task SaveAsync(string id, ProfileSecrets secrets, CancellationToken ct = default)
     {
         System.IO.Directory.CreateDirectory(Directory);
-        var plain = JsonSerializer.SerializeToUtf8Bytes(secrets.Values);
+        var plain = JsonSerializer.SerializeToUtf8Bytes(secrets.Values, PlatformJsonContext.Default.DictionaryStringString);
         var path = PathFor(id);
         var tmp = path + ".tmp";
         await File.WriteAllBytesAsync(tmp, Protect(plain), ct).ConfigureAwait(false);
@@ -39,7 +39,7 @@ public abstract class FileSecretStoreBase(string directory) : ISecretStore
         try
         {
             var plain = Unprotect(await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false));
-            var values = JsonSerializer.Deserialize<Dictionary<string, string>>(plain) ?? [];
+            var values = JsonSerializer.Deserialize(plain, PlatformJsonContext.Default.DictionaryStringString) ?? [];
             CryptographicOperations.ZeroMemory(plain);
             return new ProfileSecrets { Values = new(values, StringComparer.OrdinalIgnoreCase) };
         }

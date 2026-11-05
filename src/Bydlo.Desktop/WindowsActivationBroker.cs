@@ -41,7 +41,7 @@ internal sealed class WindowsActivationBroker : IDisposable
 
     private async Task ForwardAsync(string[] args)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(ExternalImportInput.LaunchInputs(args).ToArray());
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(ExternalImportInput.LaunchInputs(args).ToArray(), DesktopJsonContext.Default.StringArray);
         if (bytes.Length > MaxMessageBytes)
         {
             throw new IOException("Activation message is too large.");
@@ -86,7 +86,7 @@ internal sealed class WindowsActivationBroker : IDisposable
 
                 var bytes = new byte[length];
                 await server.ReadExactlyAsync(bytes, timeout.Token).ConfigureAwait(false);
-                if (JsonSerializer.Deserialize<string[]>(bytes) is { } args)
+                if (JsonSerializer.Deserialize(bytes, DesktopJsonContext.Default.StringArray) is { } args)
                 {
                     _activate(ExternalImportInput.LaunchInputs(args.OfType<string>()).ToArray());
                     await server.WriteAsync(new byte[] { 1 }, timeout.Token).ConfigureAwait(false);

@@ -6,8 +6,16 @@
     <ApplicationIcon>..\Bydlo.App\Assets\bydlo.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
-    <!-- Self-contained single-file publishing is configured per RID in CI (see .github/workflows). -->
-    <PublishTrimmed>false</PublishTrimmed>
+    <!-- Self-contained single-file publishing is configured per RID in CI (see .github/workflows).
+         Trimming needs reflection-free code: JSON is source-generated and the analyzers below fail the build on regressions. -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishTrimmed>true</PublishTrimmed>
+    <!-- Precompiled code roughly halves cold start (measured on win-x64 in Mock Mode). -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
   <!-- The manifest carries the app version, so it is stamped from Directory.Build.props at build time (issue #143). -->
   <UsingTask TaskName="StampManifestVersion" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">

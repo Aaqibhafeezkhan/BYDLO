@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
+using Bydlo.Core.Serialization;
 
 namespace Bydlo.Core.Warp;
 
@@ -89,7 +90,7 @@ public sealed class WarpClient(HttpClient http, LogRedactor redactor)
                 ["type"] = "Android",
                 ["model"] = options.DeviceModel,
                 ["locale"] = options.Locale,
-            });
+            }, BydloJson.Core.Info<Dictionary<string, string>>());
 
             using var regDoc = await PostJsonAsync(regUrl, registerBody, token: null, options, ct).ConfigureAwait(false);
             var accountId = Required(regDoc, "id");

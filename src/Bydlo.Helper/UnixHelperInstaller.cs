@@ -29,7 +29,7 @@ internal static class UnixHelperInstaller
         File.WriteAllText(Path.Combine(target, "owner.sid"), uid.ToString(System.Globalization.CultureInfo.InvariantCulture));
         var hashes = Directory.GetFiles(Path.Combine(target, "engines"), "*", SearchOption.AllDirectories)
             .ToDictionary(file => Path.GetRelativePath(target, file), file => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file))));
-        File.WriteAllText(Path.Combine(target, "bundle.sha256.json"), JsonSerializer.Serialize(hashes));
+        File.WriteAllText(Path.Combine(target, "bundle.sha256.json"), JsonSerializer.Serialize(hashes, HelperJsonContext.Default.DictionaryStringString));
         var data = Path.Combine(target, "data");
         Directory.CreateDirectory(data);
         File.SetUnixFileMode(data, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);

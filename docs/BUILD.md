@@ -90,6 +90,33 @@ Mock — инструмент агентской разработки, а не �
 dotnet publish src/Bydlo.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
 ```
 
+Приложение публикуется с trimming и ReadyToRun (настройки в `Bydlo.Desktop.csproj`): исполняемый файл
+меньше, а холодный старт примерно в 2,5 раза быстрее. Обе опции собираются кросс-платформенно, в том числе
+Windows-сборка на Linux. Trimming требует кода без reflection: JSON сериализуется через source-generated
+контексты (`BydloJson`, `*JsonContext`), привязки в AXAML — compiled. Анализаторы trimming/AOT включены для всех
+проектов в `src/`, и любое их предупреждение (IL2026, IL3050 и др.) останавливает сборку.
+
+Привилегированная служба публикуется как Native AOT: один нативный исполняемый файл без встроенной среды .NET.
+Native AOT не собирается для другой ОС, поэтому службу собирают на целевой системе. Пользователю ничего
+дополнительно ставить не нужно; инструменты нужны только машине сборки:
+
+- Windows — Visual Studio Build Tools с компонентом C++ (для `win-arm64` — ещё «C++ ARM64 build tools»);
+  `vswhere.exe` должен быть в `PATH` (`C:\Program Files (x86)\Microsoft Visual Studio\Installer`);
+- macOS — Xcode;
+- Linux — `clang` и `zlib`. В CI Linux-служба собирается в официальных образах
+  `mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-amd64` / `-cross-arm64` с sysroot
+  Ubuntu 18.04, поэтому ей нужна та же версия glibc, что и самой среде .NET.
+
+```powershell
+dotnet publish src/Bydlo.Helper -c Release -r win-x64 -o artifacts/win-x64/helper
+```
+
+Без нужных инструментов можно собрать прежнюю самодостаточную службу с trimming (так делает зеркало Gitea):
+
+```powershell
+dotnet publish src/Bydlo.Helper -c Release -r win-x64 -p:PublishAot=false --self-contained -p:PublishTrimmed=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64/helper
+```
+
 Чтобы добавить sing-box, Xray и Zapret в локальный релиз, после публикации выполните упаковщик (только скачивание, SHA-256 и извлечение; движки не запускаются):
 
 ```powershell

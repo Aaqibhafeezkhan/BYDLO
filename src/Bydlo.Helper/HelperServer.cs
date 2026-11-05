@@ -99,7 +99,7 @@ internal static class HelperServer
     public static void VerifyBundle()
     {
         var root = HelperPaths.InstallDirectory;
-        var hashes = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(root, "bundle.sha256.json")))
+        var hashes = System.Text.Json.JsonSerializer.Deserialize(File.ReadAllText(Path.Combine(root, "bundle.sha256.json")), HelperJsonContext.Default.DictionaryStringString)
             ?? throw new InvalidDataException("Missing bundle hashes.");
         HelperBundleIntegrity.Verify(root, hashes);
     }

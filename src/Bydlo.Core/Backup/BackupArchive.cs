@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Bydlo.Core.Models;
+using Bydlo.Core.Serialization;
 using Bydlo.Core.Storage;
 
 namespace Bydlo.Core.Backup;
@@ -34,7 +35,7 @@ public static class BackupArchive
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
         Validate(data);
-        var plaintext = JsonSerializer.SerializeToUtf8Bytes(data, JsonDefaults.Options);
+        var plaintext = JsonSerializer.SerializeToUtf8Bytes(data, JsonDefaults.Options.Info<BackupData>());
         byte[]? key = null;
         try
         {
@@ -66,7 +67,7 @@ public static class BackupArchive
         {
             using var aes = new AesGcm(key, 16);
             aes.Decrypt(file.AsSpan(24, 12), file.AsSpan(Overhead), file.AsSpan(36, 16), plaintext, file.AsSpan(0, 24));
-            var data = JsonSerializer.Deserialize<BackupData>(plaintext, JsonDefaults.Options) ?? throw new InvalidDataException("Invalid backup.");
+            var data = JsonSerializer.Deserialize(plaintext, JsonDefaults.Options.Info<BackupData>()) ?? throw new InvalidDataException("Invalid backup.");
             Validate(data);
             return data;
         }
@@ -126,7 +127,7 @@ public static class BackupArchive
     private static List<string> Union(List<string> current, List<string> incoming) =>
         [.. current.Concat(incoming).Distinct(StringComparer.OrdinalIgnoreCase)];
 
-    internal static T Clone<T>(T value) => JsonSerializer.Deserialize<T>(JsonSerializer.SerializeToUtf8Bytes(value, JsonDefaults.Options), JsonDefaults.Options)!;
+    internal static T Clone<T>(T value) => JsonSerializer.Deserialize(JsonSerializer.SerializeToUtf8Bytes(value, JsonDefaults.Options.Info<T>()), JsonDefaults.Options.Info<T>())!;
 
     internal static void Validate(BackupData data)
     {

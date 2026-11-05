@@ -2,6 +2,15 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+  </PropertyGroup>
+  <!-- Native AOT: one small native executable, no bundled runtime. Must be published on the target OS (see docs/BUILD.md).
+       Only RID-specific publishes restore the ILCompiler package, so plain builds and tests stay independent of it. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Bydlo.Tests" />
