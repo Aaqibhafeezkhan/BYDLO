@@ -30,7 +30,7 @@ public sealed class UnixActivationBrokerTests
         Assert.True(File.Exists(SocketPath(directory)));
         Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(SocketPath(directory)));
         Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute,
-            File.GetUnixFileMode(Path.Combine(directory, "ipc")));
+            File.GetUnixFileMode(Path.GetDirectoryName(SocketPath(directory))!));
     }
 
     [UnixFact]
@@ -124,15 +124,35 @@ public sealed class UnixActivationBrokerTests
     public void Private_directory_is_required_and_symlinks_are_rejected()
     {
         var directory = NewDirectory();
-        var ipc = Path.Combine(directory, "ipc");
-        Directory.CreateDirectory(ipc);
-        File.SetUnixFileMode(ipc, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.OtherExecute);
-        Assert.Throws<IOException>(() => new UnixActivationBroker(directory, _ => { }));
-        Directory.Delete(ipc);
+        var runtimeDir = Path.GetDirectoryName(SocketPath(directory))!;
+        // The runtime dir is unique per data dir (hash), so it must not exist yet.
+        if (Directory.Exists(runtimeDir) || new DirectoryInfo(runtimeDir).LinkTarget is not null)
+        {
+            Directory.Delete(runtimeDir);
+        }
+
+        Directory.CreateDirectory(runtimeDir);
+        File.SetUnixFileMode(runtimeDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.OtherExecute);
+        try
+        {
+            Assert.Throws<IOException>(() => new UnixActivationBroker(directory, _ => { }));
+        }
+        finally
+        {
+            Directory.Delete(runtimeDir);
+        }
+
         var target = Path.Combine(directory, "target");
         Directory.CreateDirectory(target, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-        Directory.CreateSymbolicLink(ipc, target);
-        Assert.Throws<IOException>(() => new UnixActivationBroker(directory, _ => { }));
+        Directory.CreateSymbolicLink(runtimeDir, target);
+        try
+        {
+            Assert.Throws<IOException>(() => new UnixActivationBroker(directory, _ => { }));
+        }
+        finally
+        {
+            Directory.Delete(runtimeDir);
+        }
     }
 
     [UnixFact]
@@ -169,7 +189,7 @@ public sealed class UnixActivationBrokerTests
         return header;
     }
 
-    private static string SocketPath(string directory) => Path.Combine(directory, "ipc", "desktop.sock");
+    private static string SocketPath(string directory) => UnixActivationBroker.ResolveSocketPath(directory);
 
     private static string NewDirectory()
     {
