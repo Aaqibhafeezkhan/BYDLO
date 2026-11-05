@@ -441,8 +441,13 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
     }
 
     /// <summary>Saves a previewed subscription and its credentials together, without downloading it again.</summary>
-    public async Task<Subscription> AddSubscriptionWithProfilesAsync(string name, string url, IReadOnlyList<ImportedProfile> profiles, Bydlo.Core.Import.SubscriptionMetadata? metadata = null, SubscriptionMode mode = SubscriptionMode.FollowAll, CancellationToken ct = default)
+    public async Task<Subscription> AddSubscriptionWithProfilesAsync(string name, string url, IReadOnlyList<ImportedProfile> profiles, Bydlo.Core.Import.SubscriptionMetadata? metadata = null, SubscriptionMode mode = SubscriptionMode.FollowAll, string? userAgent = null, CancellationToken ct = default)
     {
+        userAgent = userAgent?.Trim();
+        if (userAgent?.Any(char.IsControl) == true)
+        { throw new ArgumentException("User-Agent must not contain control characters.", nameof(userAgent)); }
+        if (userAgent?.Length > 256)
+        { throw new ArgumentException("User-Agent is too long (max 256 characters).", nameof(userAgent)); }
         var sub = new Subscription
         {
             Name = name,
@@ -455,6 +460,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             UpdateIntervalHours = metadata?.UpdateIntervalHours,
             SupportUrl = metadata?.SupportUrl,
             Announce = metadata?.Announce,
+            UserAgent = string.IsNullOrEmpty(userAgent) ? null : userAgent,
             Mode = mode,
             SourceOptions = [],
         };
