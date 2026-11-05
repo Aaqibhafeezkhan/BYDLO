@@ -61,7 +61,7 @@ public sealed partial class HomeViewModel
     {
         var profiles = group.Resolve(Services.Profiles.Profiles);
         group.Validate(profiles);
-        foreach (var warning in Services.Connections.PreviewChainConflicts(profiles, Services.EffectiveSettings)
+        foreach (var warning in Services.Connections.PreviewChainConflicts(profiles, Services.EffectiveSettings, group.Engine)
             .Where(i => i.Severity == ConflictSeverity.Warning))
         { Shell.ShowToast(warning.Message); }
         var members = new List<ChainHop>();

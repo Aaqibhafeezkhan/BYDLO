@@ -114,7 +114,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         if (group.SubscriptionId is { } subscription && profiles.Any(p => p.SubscriptionId != subscription)
             || group.SubscriptionId is null && !group.ProfileIds.SequenceEqual(profiles.Select(p => p.Id)))
         { throw ServerGroup.Invalid(); }
-        var blocking = PreviewChainConflicts(profiles, settings).FirstOrDefault(i => i.Severity == ConflictSeverity.Blocking);
+        var blocking = PreviewChainConflicts(profiles, settings, group.Engine).FirstOrDefault(i => i.Severity == ConflictSeverity.Blocking);
         if (blocking is not null) { throw new EngineException(blocking.Message); }
         var auth = await LoadLocalProxyAuthAsync(settings, profiles[0], ct).ConfigureAwait(false);
         await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -172,18 +172,20 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
     public IReadOnlyList<ConflictIssue> PreviewConflicts(Profile profile, AppSettings settings)
     {
-        var issues = _conflicts.CheckPrimary(profile, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey));
+        var engine = ResolvePrimaryEngine(profile, settings);
+        var issues = _conflicts.CheckPrimary(profile, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey), engine);
         return FilterOwnPrimaryPort(issues, settings);
     }
 
     /// <summary>Aggregates per-hop checks for a relay chain (deduped by issue code).</summary>
-    public IReadOnlyList<ConflictIssue> PreviewChainConflicts(IReadOnlyList<Profile> hops, AppSettings settings)
+    public IReadOnlyList<ConflictIssue> PreviewChainConflicts(IReadOnlyList<Profile> hops, AppSettings settings, EngineKind? preferredEngine = null)
     {
+        var chainEngine = ResolveChainEngine(hops, settings, preferredEngine);
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var issues = new List<ConflictIssue>();
         foreach (var hop in hops)
         {
-            foreach (var issue in _conflicts.CheckPrimary(hop, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey)))
+            foreach (var issue in _conflicts.CheckPrimary(hop, settings, IsActive(ZapretKey), IsActive(TgWsProxyKey), chainEngine))
             {
                 if (seen.Add(issue.Code))
                 {
@@ -193,6 +195,50 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         }
 
         return FilterOwnPrimaryPort(issues, settings);
+    }
+
+    /// <summary>Resolves the adapter that <see cref="EngineRegistry.CreateFor"/> would pick, without starting anything.</summary>
+    private EngineKind? ResolvePrimaryEngine(Profile profile, AppSettings settings)
+    {
+        if (settings.MockMode)
+        {
+            return null;
+        }
+
+        var candidates = _registry.CandidatesFor(profile, _os);
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        if (profile.PreferredEngine is { } preferred && candidates.Contains(preferred))
+        {
+            return preferred;
+        }
+
+        return candidates[0];
+    }
+
+    /// <summary>Resolves the adapter that <see cref="EngineRegistry.CreateForChain"/> would pick, without starting anything.</summary>
+    private EngineKind? ResolveChainEngine(IReadOnlyList<Profile> hops, AppSettings settings, EngineKind? preferred)
+    {
+        if (settings.MockMode || hops.Count == 0)
+        {
+            return null;
+        }
+
+        var candidates = _registry.CandidatesForChain(hops, _os);
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        if (preferred is { } wanted)
+        {
+            return candidates.Contains(wanted) ? wanted : null;
+        }
+
+        return candidates[0];
     }
 
     /// <summary>An active primary owns its local proxy port; reconnecting on the same port is not a conflict (issue #202).</summary>
@@ -264,7 +310,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
         ChainValidator.ThrowIfInvalid(chain, id => hops.FirstOrDefault(h => h.Profile.Id == id)?.Profile);
         var hopProfiles = hops.Select(h => h.Profile).ToList();
-        var blocking = PreviewChainConflicts(hopProfiles, settings).Where(i => i.Severity == ConflictSeverity.Blocking).ToList();
+        var blocking = PreviewChainConflicts(hopProfiles, settings, chain.PreferredEngine).Where(i => i.Severity == ConflictSeverity.Blocking).ToList();
         if (blocking.Count > 0)
         {
             Fail(PrimaryKey, hopProfiles[^1], settings, string.Join(" ", blocking.Select(b => b.Message)));
@@ -359,7 +405,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         StartToolAsync(ZapretKey, EngineKind.Zapret, settings, _conflicts.CheckZapret(settings, IsActive(PrimaryKey)), ct);
 
     public Task StartTgWsProxyAsync(AppSettings settings, CancellationToken ct = default) =>
-        StartToolAsync(TgWsProxyKey, EngineKind.TgWsProxy, settings, _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey)), ct);
+        StartToolAsync(TgWsProxyKey, EngineKind.TgWsProxy, settings, _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey), ActivePrimaryEngine()), ct);
 
     /// <summary>Start once and return the credentials of the actual running session.</summary>
     public async Task<(TgWsProxySettings Settings, string Secret)> EnsureTgWsProxyAsync(AppSettings settings, CancellationToken ct = default)
@@ -370,7 +416,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             if (TgWsProxy.Status != ConnectionStatus.Connected || TgWsProxy.CleanupPending)
             {
                 await StartToolUnsafeAsync(TgWsProxyKey, EngineKind.TgWsProxy, CloneSettings(settings),
-                    _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey)), ct).ConfigureAwait(false);
+                    _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey), ActivePrimaryEngine()), ct).ConfigureAwait(false);
             }
 
             var session = _sessions[TgWsProxyKey];
@@ -464,6 +510,8 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         var snapshot = Snapshot(key);
         return snapshot.CleanupPending || snapshot.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting or ConnectionStatus.Reconnecting;
     }
+
+    private EngineKind? ActivePrimaryEngine() => IsActive(PrimaryKey) ? Primary.Engine : null;
 
     private async Task StartSessionUnsafeAsync(Session session, CancellationToken ct)
     {
