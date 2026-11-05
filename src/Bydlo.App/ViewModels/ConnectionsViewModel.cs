@@ -274,6 +274,9 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
             && Shell.Primary.Chain is null
             && Shell.Primary.Group is null
             && Shell.Primary.Profile?.Id == item.Id;
+        var previousProfile = Shell.SelectedProfile;
+        var previousChain = Shell.SelectedChain;
+        var previousUseGroup = Shell.Home.UseGroup;
         Shell.Home.UseGroup = false;
         Shell.SelectedProfile = item;
         Shell.SelectedChain = null;
@@ -286,7 +289,26 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         {
             Shell.ShowToast(w.Message);
         }
-        await Shell.Guard(() => Services.Connections.ConnectAsync(item.Profile, Services.EffectiveSettings));
+        bool connected;
+        try
+        {
+            connected = await Shell.Guard(() => Services.Connections.ConnectAsync(item.Profile, Services.EffectiveSettings));
+        }
+        catch
+        {
+            // An unexpected failure must not leave the new profile selected
+            // while another session is active (issue #332 review).
+            Shell.SelectedProfile = previousProfile;
+            Shell.SelectedChain = previousChain;
+            Shell.Home.UseGroup = previousUseGroup;
+            throw;
+        }
+        if (!connected)
+        {
+            Shell.SelectedProfile = previousProfile;
+            Shell.SelectedChain = previousChain;
+            Shell.Home.UseGroup = previousUseGroup;
+        }
     }
 
     [RelayCommand]
