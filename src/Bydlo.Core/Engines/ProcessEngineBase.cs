@@ -16,6 +16,15 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
     private int? _exitDuringStart;
     private string? _exitDuringStartFatal;
 
+    /// <summary>
+    /// Serializes the final exit check with the Running transition (issue #340):
+    /// an exit landing between the check and SetState must either be observed
+    /// by the check or drive Failed cleanup afterwards, never a stuck Running.
+    /// A plain monitor (reentrant) is used on purpose: a synchronous exit event
+    /// fired from inside the HasExited read must record instead of deadlocking.
+    /// </summary>
+    private readonly object _startGate = new();
+
     public abstract EngineDescriptor Descriptor { get; }
 
     public EngineState State { get; private set; } = EngineState.Stopped;
@@ -136,13 +145,16 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             }
 
             await OnStartedAsync(request, ct).ConfigureAwait(false);
-            var exitedLate = _process.HasExited;
-            if (exitedLate || _exitDuringStart.HasValue)
+            lock (_startGate)
             {
-                throw new EngineException(_exitDuringStartFatal ?? fatal ?? $"{Descriptor.DisplayName} exited during startup.");
-            }
+                var exitedLate = _process.HasExited;
+                if (exitedLate || _exitDuringStart.HasValue)
+                {
+                    throw new EngineException(_exitDuringStartFatal ?? fatal ?? $"{Descriptor.DisplayName} exited during startup.");
+                }
 
-            SetState(EngineState.Running);
+                SetState(EngineState.Running);
+            }
         }
         catch (Exception ex)
         {
@@ -185,11 +197,17 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
         {
             return;
         }
-        if (State is EngineState.Starting)
+        lock (_startGate)
         {
-            _exitDuringStart = code;
-            _exitDuringStartFatal = fatal;
-            return;
+            // The state read must hold the gate: otherwise an exit racing the
+            // final check in StartAsync would be recorded as "during start"
+            // after Running was already published and then dropped.
+            if (State is EngineState.Starting)
+            {
+                _exitDuringStart = code;
+                _exitDuringStartFatal = fatal;
+                return;
+            }
         }
 
         _ = CleanupAfterExitAsync(code, fatal);
