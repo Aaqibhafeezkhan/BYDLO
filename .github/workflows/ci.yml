@@ -745,12 +745,12 @@ jobs:
         with:
           name: release-packages
           path: dist
-      - name: Extract release notes for this tag
-        run: bash scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/RELEASE_NOTES.md .tmp/release-notes.md
       - name: Attest native packages and update feeds
         uses: actions/attest-build-provenance@8beda2b7ed98355c0e97c0a63bec38ae472e66c4 # v4
         with:
           subject-path: dist/native/*
+      - name: Extract release notes for this tag
+        run: bash scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/RELEASE_NOTES.md .tmp/release-notes.md
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
