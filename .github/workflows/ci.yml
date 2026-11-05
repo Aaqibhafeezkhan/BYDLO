@@ -30,32 +30,6 @@ env:
   BYDLO_MOCK: "1"
 
 jobs:
-  native-package-smoke:
-    name: Inspect native package fixture ${{ matrix.rid }}
-    if: github.server_url == 'https://github.com'
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { rid: win-x64, os: windows-latest }
-          - { rid: win-arm64, os: windows-latest }
-          - { rid: linux-x64, os: ubuntu-24.04 }
-          - { rid: linux-arm64, os: ubuntu-24.04-arm }
-          - { rid: osx-arm64, os: macos-15 }
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          global-json-file: global.json
-      - name: Publish application without engines
-        run: |
-          source scripts/env.sh
-          dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/native-smoke
-      - name: Inspect package with synthetic engine headers (never execute payload)
-        shell: pwsh
-        run: ./scripts/test-native-package.ps1 -Rid '${{ matrix.rid }}' -ApplicationPublishDirectory artifacts/native-smoke
-
   unix-activation:
     name: Verify macOS single-instance activation
     if: github.server_url == 'https://github.com'
@@ -546,6 +520,32 @@ jobs:
         with:
           name: BYDLO-osx-arm64
           path: publish/BYDLO-osx-arm64
+
+  native-package-smoke:
+    name: Inspect native package fixture ${{ matrix.rid }}
+    if: github.server_url == 'https://github.com'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: win-x64, os: windows-latest }
+          - { rid: win-arm64, os: windows-latest }
+          - { rid: linux-x64, os: ubuntu-24.04 }
+          - { rid: linux-arm64, os: ubuntu-24.04-arm }
+          - { rid: osx-arm64, os: macos-15 }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Publish application without engines
+        run: |
+          source scripts/env.sh
+          dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/native-smoke
+      - name: Inspect package with synthetic engine headers (never execute payload)
+        shell: pwsh
+        run: ./scripts/test-native-package.ps1 -Rid '${{ matrix.rid }}' -ApplicationPublishDirectory artifacts/native-smoke
 
   native-packages:
     name: Native package ${{ matrix.rid }}

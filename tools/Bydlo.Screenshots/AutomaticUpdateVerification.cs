@@ -16,9 +16,6 @@ internal static class AutomaticUpdateVerification
     {
         shell.FinishOnboardingCommand.Execute(null);
         shell.Settings.ReduceMotion = true;
-        var view = new SettingsView { DataContext = shell.Settings };
-        var window = new Window { Width = 1180, Height = 900, Content = view };
-        window.Show();
         foreach (var language in new[] { "ru", "en" })
         foreach (var theme in new[] { ThemePreference.Light, ThemePreference.Oled })
         foreach (var width in new[] { 1180, 380 })
@@ -27,7 +24,10 @@ internal static class AutomaticUpdateVerification
             Loc.Instance.SetLanguage(language);
             shell.Settings.Theme = theme;
             shell.Services.Theme.Apply(theme);
-            window.Width = width;
+            Pump();
+            var view = new SettingsView { DataContext = shell.Settings };
+            var window = new Window { Width = width, Height = 900, Content = view };
+            window.Show();
             Pump();
             var picker = view.FindControl<ComboBox>("CompactCategory")!;
             picker.SelectedIndex = 0;
@@ -53,10 +53,12 @@ internal static class AutomaticUpdateVerification
             shell.Settings.AutoUpdateApp = false;
             Pump();
             if (Loc.Instance.Language != language) { throw new InvalidOperationException("Verification language changed unexpectedly"); }
+            if (!view.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == Loc.Instance["settings.update.auto"]))
+            { throw new InvalidOperationException("Update label did not render in the requested language"); }
             using var frame = window.CaptureRenderedFrame();
             frame!.Save(Path.Combine(output, $"auto-update-{language}-{theme}-{width}.png"));
+            window.Close();
         }
-        window.Close();
         Console.WriteLine("Automatic update UI passed: keyboard toggle/persistence, Mock guard, RU/EN, Light/Black, wide/narrow.");
     }
 
