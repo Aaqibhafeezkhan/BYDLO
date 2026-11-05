@@ -27,6 +27,68 @@ public sealed partial class LogRedactor
         {
             _known.Add(value);
         }
+
+        // Credential blobs stored as JSON (e.g. XHTTP headers, raw configs) would
+        // otherwise mask only the whole blob: register every nested string value
+        // too, so a separately logged Cookie or token is still redacted.
+        if ((value[0] is '{' or '[') && value.Length <= 16384)
+        {
+            try
+            {
+                foreach (var leaf in JsonStringLeaves(value, depth: 0))
+                {
+                    if (leaf.Length >= 4)
+                    {
+                        lock (_gate)
+                        {
+                            _known.Add(leaf);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is System.Text.Json.JsonException or ArgumentException)
+            {
+            }
+        }
+    }
+
+    private static IEnumerable<string> JsonStringLeaves(string json, int depth)
+    {
+        if (depth > 8)
+        {
+            yield break;
+        }
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var stack = new Stack<(System.Text.Json.JsonElement Element, int Depth)>();
+        stack.Push((doc.RootElement, depth));
+        while (stack.Count > 0)
+        {
+            var (element, current) = stack.Pop();
+            switch (element.ValueKind)
+            {
+                case System.Text.Json.JsonValueKind.String:
+                    yield return element.GetString() ?? "";
+                    break;
+                case System.Text.Json.JsonValueKind.Object:
+                    if (current < 8)
+                    {
+                        foreach (var property in element.EnumerateObject())
+                        {
+                            stack.Push((property.Value, current + 1));
+                        }
+                    }
+                    break;
+                case System.Text.Json.JsonValueKind.Array:
+                    if (current < 8)
+                    {
+                        foreach (var item in element.EnumerateArray())
+                        {
+                            stack.Push((item, current + 1));
+                        }
+                    }
+                    break;
+            }
+        }
     }
 
     public string Redact(string? text)

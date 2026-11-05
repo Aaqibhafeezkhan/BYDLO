@@ -90,6 +90,11 @@ internal static class XhttpExtraValidator
                 RejectExternal(text);
             }
         }
+        else if (obj.ContainsKey("headers"))
+        {
+            // Non-object headers would bypass the secret store split (issue #338).
+            throw new ImportException("The XHTTP extra parameter contains an invalid header.");
+        }
 
         return obj.ToJsonString();
     }

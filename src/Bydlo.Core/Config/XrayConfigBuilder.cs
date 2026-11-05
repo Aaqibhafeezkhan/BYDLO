@@ -384,7 +384,7 @@ public sealed partial class XrayConfigBuilder
 
         if (needsStream)
         {
-            o["streamSettings"] = BuildStream(p, p.Protocol == ProtocolKind.Trojan ? "tls" : "none");
+            o["streamSettings"] = BuildStream(p, s, p.Protocol == ProtocolKind.Trojan ? "tls" : "none");
         }
 
         // Chain relay: dial the server through the previous hop.
@@ -436,7 +436,7 @@ public sealed partial class XrayConfigBuilder
         ["vnext"] = new JsonArray(new JsonObject { ["address"] = p.Host, ["port"] = p.Port, ["users"] = new JsonArray(user) }),
     };
 
-    private static JsonObject BuildStream(Profile p, string defaultSecurity)
+    private static JsonObject BuildStream(Profile p, ProfileSecrets s, string defaultSecurity)
     {
         var network = p.Option(Keys.Transport) ?? "tcp";
         if (network is "h2")
@@ -511,7 +511,8 @@ public sealed partial class XrayConfigBuilder
                 break;
             case "xhttp":
                 var xhttp = new JsonObject { ["path"] = p.Option(Keys.Path) ?? "/", ["host"] = host ?? "", ["mode"] = p.Option(Keys.XhttpMode) ?? "auto" };
-                if (p.Option(Keys.XhttpExtra) is { } extraRaw)
+                var extraRaw = Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Merge(p.Option(Keys.XhttpExtra), s[Keys.XhttpHeaders]);
+                if (extraRaw is { })
                 {
                     try
                     {

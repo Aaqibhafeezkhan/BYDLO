@@ -305,6 +305,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         _doc.Subscriptions ??= [];
         _doc.Chains ??= [];
         _doc.PendingSecretDeletes ??= [];
+        await MigrateXhttpSecretHeadersAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<Profile>> AddAsync(IEnumerable<ImportedProfile> imported, Guid? subscriptionId = null, CancellationToken ct = default)
@@ -324,6 +325,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
                 {
                     item.Profile.SubscriptionId = subscriptionId ?? item.Profile.SubscriptionId;
                     written.Add(item.Profile.Id.ToString());
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(item.Profile, item.Secrets);
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     added.Add(item.Profile);
                 }
@@ -363,12 +365,29 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
             next.Profiles[index] = profile;
             var id = profile.Id.ToString();
-            var previous = updatedSecrets is null ? null : await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+            ProfileSecrets? previous = null;
+            ProfileSecrets? toSave = updatedSecrets;
+            if (updatedSecrets is not null)
+            {
+                previous = await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+            }
+            else if (profile.Options.TryGetValue(Bydlo.Core.Models.Keys.XhttpExtra, out var raw) &&
+                Bydlo.Core.Import.Parsers.XhttpSecretHeaders.TryExtractHeaders(raw, out _, out var splitHeaders) &&
+                splitHeaders is not null)
+            {
+                // Without accompanying secrets, headers edited into options would
+                // persist as plaintext (issue #338): move them first, touching the
+                // secret store only when headers are actually present.
+                var current = await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+                previous = new ProfileSecrets { Values = new Dictionary<string, string>(current.Values, StringComparer.OrdinalIgnoreCase) };
+                toSave = current;
+            }
             try
             {
-                if (updatedSecrets is not null)
+                if (toSave is not null)
                 {
-                    await secrets.SaveAsync(id, updatedSecrets, ct).ConfigureAwait(false);
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(profile, toSave);
+                    await secrets.SaveAsync(id, toSave, ct).ConfigureAwait(false);
                 }
                 await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
                 _doc = next;
@@ -454,6 +473,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
                 foreach (var item in profiles)
                 {
                     written.Add(item.Profile.Id.ToString());
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(item.Profile, item.Secrets);
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     item.Profile.SubscriptionId = sub.Id;
                     sub.SourceOptions!.Add(item.Profile.Id, new(item.Profile.Options, StringComparer.OrdinalIgnoreCase));
