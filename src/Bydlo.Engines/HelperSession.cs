@@ -6,13 +6,14 @@ using Bydlo.Core.Security;
 namespace Bydlo.Engines;
 
 /// <summary>One authenticated connection, one engine, no cross-client process control.</summary>
-public sealed class HelperSession(Func<Core.Models.EngineKind, IEngine> createEngine, string sessionRoot, HelperLeasePool? leases = null) : IAsyncDisposable
+public sealed class HelperSession(Func<Core.Models.EngineKind, IEngine> createEngine, string sessionRoot, HelperLeasePool? leases = null, Func<string, Task>? deleteDirectory = null) : IAsyncDisposable
 {
     private IDisposable? _lease;
     private IEngine? _engine;
     private Core.Models.EngineKind? _kind;
     private string? _workDirectory;
     private bool _stopped = true;
+    private bool _disposed;
     private readonly ConcurrentQueue<string> _logs = new();
     private TrafficSample? _traffic;
 
@@ -80,13 +81,32 @@ public sealed class HelperSession(Func<Core.Models.EngineKind, IEngine> createEn
 
     public async ValueTask DisposeAsync()
     {
+        // Retryable and idempotent: only clear a stage after it succeeds.
+        // The lease is released right after a confirmed engine Stop+Dispose,
+        // even if the session directory deletion still fails. A Stop failure
+        // keeps the lease and the engine so a later Dispose can retry.
+        if (_disposed) { return; }
         if (_engine is not null)
         {
-            await _engine.StopAsync(CancellationToken.None).ConfigureAwait(false);
-            await _engine.DisposeAsync().ConfigureAwait(false);
+            var engine = _engine;
+            await engine.StopAsync(CancellationToken.None).ConfigureAwait(false);
+            await engine.DisposeAsync().ConfigureAwait(false);
+            engine.Log -= OnLog;
+            engine.Traffic -= OnTraffic;
+            _engine = null;
+            _lease?.Dispose();
+            _lease = null;
         }
-        if (_workDirectory is not null && Directory.Exists(_workDirectory)) { Directory.Delete(_workDirectory, true); }
-        _lease?.Dispose();
-        _lease = null;
+        if (_workDirectory is not null)
+        {
+            var directory = _workDirectory;
+            if (Directory.Exists(directory))
+            {
+                if (deleteDirectory is not null) { await deleteDirectory(directory).ConfigureAwait(false); }
+                else { Directory.Delete(directory, true); }
+            }
+            _workDirectory = null;
+        }
+        _disposed = true;
     }
 }
