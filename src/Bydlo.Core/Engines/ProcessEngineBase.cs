@@ -120,23 +120,25 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             _stopping = false;
             _exitDuringStart = null;
             _exitDuringStartFatal = null;
-            _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _ready = ready;
             string? fatal = null;
 
-            _process = runner.Start(spec);
-            _process.OutputLine += (_, line) =>
+            var process = runner.Start(spec);
+            _process = process;
+            process.OutputLine += (_, line) =>
             {
                 EmitLog(line);
                 if (IsReadyLine(line))
                 {
-                    _ready.TrySetResult();
+                    ready.TrySetResult();
                 }
                 else if (TryParseFatal(line) is { } f)
                 {
                     Interlocked.CompareExchange(ref fatal, redactor.Redact(f), null);
                 }
             };
-            _process.Exited += (_, code) => OnProcessExited(code, Volatile.Read(ref fatal));
+            process.Exited += (_, code) => OnProcessExited(process, code, Volatile.Read(ref fatal));
 
             var timeout = Task.Delay(ReadyTimeout, ct);
             var finished = await Task.WhenAny(_ready.Task, timeout).ConfigureAwait(false);
@@ -206,15 +208,12 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
         GC.SuppressFinalize(this);
     }
 
-    private void OnProcessExited(int code, string? fatal)
+    private void OnProcessExited(IManagedProcess process, int code, string? fatal)
     {
-        _ready?.TrySetResult();
-        if (_stopping || State is EngineState.Stopped)
-        {
-            return;
-        }
         lock (_startGate)
         {
+            if (!ReferenceEquals(process, _process) || _stopping || State is EngineState.Stopped) { return; }
+            _ready?.TrySetResult();
             // The state read must hold the gate: otherwise an exit racing the
             // final check in StartAsync would be recorded as "during start"
             // after Running was already published and then dropped.
@@ -226,7 +225,7 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
             }
         }
 
-        _ = CleanupAfterExitAsync(code, fatal, _process);
+        _ = CleanupAfterExitAsync(code, fatal, process);
     }
 
     private async Task CleanupAfterExitAsync(int code, string? fatal, IManagedProcess? process)
@@ -234,11 +233,11 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
         await _lifecycle.WaitAsync().ConfigureAwait(false);
         try
         {
-        if (_stopping || State != EngineState.Running || !ReferenceEquals(process, _process)) { return; }
-        var message = fatal ?? $"{Descriptor.DisplayName} exited unexpectedly (code {code}).";
-        try { await OnStoppingAsync().ConfigureAwait(false); }
-        catch (Exception ex) { message += " Cleanup failed: " + ex.Message; }
-        if (!_stopping) { SetState(EngineState.Failed, message); }
+            if (_stopping || State != EngineState.Running || !ReferenceEquals(process, _process)) { return; }
+            var message = fatal ?? $"{Descriptor.DisplayName} exited unexpectedly (code {code}).";
+            try { await OnStoppingAsync().ConfigureAwait(false); }
+            catch (Exception ex) { message += " Cleanup failed: " + ex.Message; }
+            SetState(EngineState.Failed, message);
         }
         finally { _lifecycle.Release(); }
     }
