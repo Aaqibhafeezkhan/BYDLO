@@ -79,7 +79,7 @@ public sealed class AppServices
 
     public IPrivilegeService Privileges { get; }
 
-    public ProcessJournal Journal { get; }
+    public ProcessJournal Journal { get; private set; }
 
     public IProcessRunner Runner { get; }
 
@@ -208,10 +208,22 @@ public sealed class AppServices
 
     public int CleanupOrphans()
     {
-        var n = Journal.KillOrphans();
-        Orphans = [];
-        Log.Warn("app", $"Stopped {n} engine process(es) left by a previous session.");
-        return n;
+        var killed = Journal.KillOrphans();
+        Orphans = Journal.FindOrphans();
+        if (Orphans.Count > 0)
+        {
+            Log.Error("app", $"Stopped {killed} engine process(es); {Orphans.Count} still running and kept for retry.");
+            throw new InvalidOperationException(Loc.Instance["error.orphans.stop"]);
+        }
+        Log.Warn("app", $"Stopped {killed} engine process(es) left by a previous session.");
+        return killed;
+    }
+
+    /// <summary>Replaces the process journal (isolated unit tests only).</summary>
+    internal void ReplaceJournalForTests(ProcessJournal journal)
+    {
+        Journal = journal;
+        Orphans = Journal.FindOrphans();
     }
 
     private readonly object _shutdownGate = new();

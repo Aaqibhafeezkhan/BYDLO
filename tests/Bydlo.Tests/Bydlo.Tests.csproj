@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bydlo.Core\Bydlo.Core.csproj" />
+    <ProjectReference Include="..\..\src\Bydlo.App\Bydlo.App.csproj" />
     <ProjectReference Include="..\..\src\Bydlo.Engines\Bydlo.Engines.csproj" />
     <ProjectReference Include="..\..\src\Bydlo.Helper\Bydlo.Helper.csproj" />
     <ProjectReference Include="..\..\src\Bydlo.Platform\Bydlo.Platform.csproj" />
