@@ -201,3 +201,16 @@ BYDLO распространяется по [GNU General Public License v3.0 и�
 Сторонние компоненты сохраняют свои лицензии — см. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Используйте BYDLO в соответствии с законодательством вашей страны. Это клиент для сетей и серверов, которыми вы вправе пользоваться.
+
+### Проверка скачанного релиза
+
+Новые релизы после #216 имеют GitHub artifact attestations. До распаковки проверьте архив
+(замените платформу и `vX.Y.Z` на выбранный тег):
+
+```bash
+gh attestation verify BYDLO-linux-x64.zip --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
+```
+
+Проверка связывает файл с репозиторием, workflow и тегом. Обычный `SHA256SUMS.txt` сам
+по себе не защищает от подмены архива вместе с суммами. Проверка списка сумм и ограничения
+для старых релизов описаны в [BUILD.md](docs/BUILD.md#проверка-происхождения-релиза).
