@@ -43,6 +43,10 @@
     <PackageReference Include="Avalonia.Diagnostics" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\..\licenses\Velopack.txt" Link="LICENSE-Velopack.txt"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Bydlo.App\Bydlo.App.csproj" />
     <InternalsVisibleTo Include="Bydlo.Screenshots" />
   </ItemGroup>

@@ -128,6 +128,11 @@ public sealed class AppSettings
     /// <summary>Automatically check GitHub Releases for a new BYDLO version. On by default.</summary>
     public bool CheckForUpdates { get; set; } = true;
 
+    /// <summary>Opt in to packaged application updates. Legacy notification consent does not enable installation.</summary>
+    public bool AutoUpdateApp { get; set; }
+
+    public DateTimeOffset? LastAutomaticUpdateCheck { get; set; }
+
     public DateTimeOffset? LastUpdateCheck { get; set; }
 
     /// <summary>

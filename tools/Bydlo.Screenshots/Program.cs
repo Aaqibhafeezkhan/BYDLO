@@ -79,6 +79,11 @@ if (args.Contains("--verify-wizard", StringComparer.Ordinal))
     return;
 }
 var shell = new MainViewModel(services);
+if (args.Contains("--verify-auto-updates", StringComparer.Ordinal))
+{
+    AutomaticUpdateVerification.Run(shell, output);
+    return;
+}
 if (args.Contains("--verify-settings-navigation", StringComparer.Ordinal))
 {
     SettingsNavigationVerification.Run(shell, output);

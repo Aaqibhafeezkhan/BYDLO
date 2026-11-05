@@ -57,6 +57,7 @@ public sealed class AppServices
         Subscriptions = new SubscriptionClient(Http, Importer);
         Zapret = new ZapretEngine(Runner, LogRedactor.Shared, Locator, Privileges, ZapretFirewall);
         ZapretUpdater = new ZapretUpdater(Installer, PlatformInfo.Current);
+        AutomaticUpdates = new(() => new PackagedAppUpdater(Paths.DataDirectory));
     }
 
     public string[] Args { get; }
@@ -129,6 +130,8 @@ public sealed class AppServices
     public Func<TopLevel?> TopLevel { get; set; } = () => null;
 
     public bool IsMock => ForcedMock || Settings.MockMode;
+
+    public AutomaticAppUpdater AutomaticUpdates { get; }
 
     /// <summary>Whether privileged engines are delegated to the installed helper.</summary>
     public bool UsesPrivilegedHelper => HelperManagement.IsSupported && !Privileges.IsElevated &&

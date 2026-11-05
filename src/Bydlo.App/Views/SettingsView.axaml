@@ -173,7 +173,7 @@
                   <TextBlock Text="{l:T settings.update.auto}" FontWeight="Medium" TextWrapping="Wrap" />
                   <TextBlock Classes="faint" Text="{l:T settings.update.auto.hint}" TextWrapping="Wrap" />
                 </StackPanel>
-                <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.update.auto}" IsChecked="{Binding CheckForUpdates}" />
+                <ToggleSwitch x:Name="AutoUpdateToggle" Grid.Column="1" AutomationProperties.Name="{l:T settings.update.auto}" IsChecked="{Binding AutoUpdateApp}" />
               </Grid>
               <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" />
               <WrapPanel>

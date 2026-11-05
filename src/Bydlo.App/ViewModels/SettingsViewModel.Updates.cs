@@ -10,6 +10,19 @@ namespace Bydlo.App.ViewModels;
 public sealed partial class SettingsViewModel
 {
     [ObservableProperty]
+    private bool _autoUpdateApp;
+
+    private CancellationTokenSource? _automaticUpdateCheck;
+
+    partial void OnAutoUpdateAppChanged(bool value)
+    {
+        Services.Settings.AutoUpdateApp = value;
+        Services.Settings.CheckForUpdates = value;
+        if (!value) { _automaticUpdateCheck?.Cancel(); }
+        Persist();
+    }
+
+    [ObservableProperty]
     private bool _checkForUpdates;
 
     [ObservableProperty]
@@ -107,15 +120,23 @@ public sealed partial class SettingsViewModel
     /// <summary>Scheduled check: at most once per 24 hours, only when enabled and allowed.</summary>
     public async Task CheckForUpdatesIfDueAsync()
     {
-        if (!Services.Settings.CheckForUpdates || Services.IsMock || NetworkSafetyGuard.IsLocked || IsCheckingUpdates)
+        if (!Services.Settings.AutoUpdateApp || Services.IsMock || NetworkSafetyGuard.IsLocked || IsCheckingUpdates)
         {
             return;
         }
         IsCheckingUpdates = true;
+        using var automaticCancellation = CancellationTokenSource.CreateLinkedTokenSource(Services.ShutdownToken);
+        _automaticUpdateCheck = automaticCancellation;
         try
         {
+            if (await Services.AutomaticUpdates.DownloadIfDueAsync(Services.Settings,
+                    Services.IsMock || NetworkSafetyGuard.IsLocked, automaticCancellation.Token))
+            {
+                UpdateStatus = L["settings.update.ready"];
+            }
+            if (!Services.Settings.AutoUpdateApp || automaticCancellation.IsCancellationRequested) { return; }
             var release = await new StartupUpdateChecker(new GitHubUpdateClient()).CheckAsync(
-                Services.Settings, Version, Services.IsMock || NetworkSafetyGuard.IsLocked, Services.ShutdownToken);
+                Services.Settings, Version, Services.IsMock || NetworkSafetyGuard.IsLocked, automaticCancellation.Token);
             await Services.SaveSettingsAsync();
             if (release is not null)
             {
@@ -126,12 +147,13 @@ public sealed partial class SettingsViewModel
                 Shell.ShowReleaseNotification(release);
             }
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or InvalidOperationException or IOException or UnauthorizedAccessException)
+        catch (Exception ex)
         {
             Services.Log.Warn("update", ex.GetType().Name);
         }
         finally
         {
+            _automaticUpdateCheck = null;
             IsCheckingUpdates = false;
         }
     }
