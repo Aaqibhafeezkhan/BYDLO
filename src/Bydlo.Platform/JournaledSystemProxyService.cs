@@ -58,14 +58,17 @@ internal sealed class JournaledSystemProxyService(IProcessRunner runner, Desktop
 
     public async Task ClearAsync(CancellationToken ct = default)
     {
-        if (!File.Exists(Journal))
-        {
-            return;
-        }
         EnsureAllowed();
+        // The journal check must wait for a concurrent SetAsync: otherwise Clear
+        // can return success before Set writes its journal, and Set later applies
+        // the proxy with no owner left to clean it up (issue #337).
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            if (!File.Exists(Journal))
+            {
+                return;
+            }
             Acquire();
             await RestoreAsync(ct).ConfigureAwait(false);
         }
