@@ -33,8 +33,10 @@ public sealed partial class ProfileStore
                 current.Values[Keys.XhttpHeaders] = headersJson;
                 await secrets.SaveAsync(profile.Id.ToString(), current, ct).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Engines.EngineException)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Leave the profile unmigrated for the next launch rather than
+                // aborting startup: secret stores can fail independently.
                 continue;
             }
             if (publicExtra is null) { profile.Options.Remove(Keys.XhttpExtra); }

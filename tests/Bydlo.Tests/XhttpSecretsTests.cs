@@ -93,6 +93,17 @@ public sealed class XhttpSecretsTests
         Assert.Contains("xPaddingBytes", p.Profile.Option(Keys.XhttpExtra)!, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("{\"headers\":\"Bearer abc\"}")]
+    [InlineData("{\"headers\":[\"Bearer abc\"]}")]
+    [InlineData("{\"headers\":42}")]
+    public void Non_object_headers_are_rejected(string extra)
+    {
+        var r = new ProfileImporter().ImportText(Link(extra));
+        Assert.Empty(r.Profiles);
+        Assert.NotEmpty(r.Errors);
+    }
+
     [Fact]
     public async Task Load_migrates_old_options_and_baselines_to_secrets()
     {
