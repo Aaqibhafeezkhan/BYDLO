@@ -129,6 +129,10 @@ public static class BackupArchive
 
     internal static T Clone<T>(T value) => JsonSerializer.Deserialize(JsonSerializer.SerializeToUtf8Bytes(value, JsonDefaults.Options.Info<T>()), JsonDefaults.Options.Info<T>())!;
 
+    /// <summary>Raw JSON configs (issue #344) carry their document inline; every other protocol needs stored credentials.</summary>
+    public static bool IsMandatory(ProtocolKind protocol) =>
+        protocol is not ProtocolKind.SingBoxConfig and not ProtocolKind.XrayConfig;
+
     internal static void Validate(BackupData data)
     {
         if (data.Version != 1 || data.Settings is null || data.Profiles is null || data.Subscriptions is null || data.ToolSecrets?.Values is null || data.Chains is null)
@@ -172,6 +176,8 @@ public static class BackupArchive
                 p.Options is null || p.Name is null || p.Host is null || !Enum.IsDefined(p.Protocol) ||
                 p.Port is < 0 or > 65535 || (p.SubscriptionId is { } id && !ids.Contains(id)))
             { throw new InvalidDataException("Invalid profile."); }
+            if (IsMandatory(p.Protocol) && item.Secrets.Values.Count == 0)
+            { throw new InvalidDataException($"Invalid profile '{p.Id}': credentials are missing."); }
         }
         var chainIds = new HashSet<Guid>();
         foreach (var chain in data.Chains)

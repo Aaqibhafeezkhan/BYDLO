@@ -233,6 +233,7 @@
   "backup.exported": "Encrypted backup saved.",
   "backup.imported": "Backup imported. Connections start only when you choose to connect.",
   "backup.error": "Could not process the backup. Check the password, file format and available storage.",
+  "backup.secret.failed": "Could not export backup: credentials for '{0}' are missing or unreadable. Unlock the credential store or restore the profile, then try again.",
   "share.title": "Share server",
   "share.qr": "Show QR code",
   "share.copy": "Copy link",
