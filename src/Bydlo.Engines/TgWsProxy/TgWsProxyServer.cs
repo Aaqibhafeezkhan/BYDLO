@@ -30,6 +30,7 @@ public sealed class TgWsProxyServer : IAsyncDisposable
     private readonly ConcurrentDictionary<Task, byte> _clients = new();
     private readonly ConcurrentDictionary<string, (int Failures, DateTimeOffset RetryAfter, bool Connecting)> _tcpBackoff = new();
     private readonly List<Task> _background = [];
+    private readonly object _listenerGate = new();
     private ITgListener? _listener;
     private int? _appDataLength;
     private int _disposed;
@@ -67,7 +68,12 @@ public sealed class TgWsProxyServer : IAsyncDisposable
                 : $"Fake TLS profile: first encrypted record {_appDataLength} bytes");
         }
 
-        _listener = _context.Network.Listen(Options.Host, Options.Port);
+        var bound = _context.Network.Listen(Options.Host, Options.Port);
+        lock (_listenerGate)
+        {
+            _listener = bound;
+        }
+
         LogBanner();
         _background.Add(Task.Run(AcceptLoopAsync, CancellationToken.None));
         _background.Add(Task.Run(() => _pool.MaintainAsync(_stop.Token), CancellationToken.None));
@@ -83,8 +89,44 @@ public sealed class TgWsProxyServer : IAsyncDisposable
         }
 
         await _stop.CancelAsync().ConfigureAwait(false);
-        _listener?.Dispose();
+        ITgListener? current;
+        lock (_listenerGate)
+        {
+            current = _listener;
+        }
+
+        // Unblock AcceptAsync for listeners that ignore the cancellation token.
+        try
+        {
+            current?.Dispose();
+        }
+        catch (Exception)
+        {
+        }
+
         await Task.WhenAll([.. _clients.Keys, .. _background]).WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+
+        // The accept loop may have published a replacement listener after the
+        // first dispose (issue #346): close whatever is current after the loop
+        // has exited so no socket stays bound. See also #51.
+        ITgListener? last;
+        lock (_listenerGate)
+        {
+            last = _listener;
+            _listener = null;
+        }
+
+        if (last is not null && !ReferenceEquals(last, current))
+        {
+            try
+            {
+                last.Dispose();
+            }
+            catch (Exception)
+            {
+            }
+        }
+
         await _pool.CloseAsync().ConfigureAwait(false);
         _context.Log(TgLogLevel.Info, "Stopped. Final stats: " + Stats.Summary());
         _stop.Dispose();
@@ -525,11 +567,24 @@ public sealed class TgWsProxyServer : IAsyncDisposable
         var ct = _stop.Token;
         while (!ct.IsCancellationRequested)
         {
+            ITgListener? snapshot;
+            lock (_listenerGate)
+            {
+                snapshot = _listener;
+            }
+
+            if (snapshot is null)
+            {
+                return;
+            }
+
             Stream stream;
             string label;
             try
             {
-                (stream, label) = await _listener!.AcceptAsync(ct).ConfigureAwait(false);
+                // The blocking AcceptAsync call itself stays outside the lock so
+                // DisposeAsync can still take the gate while we are waiting.
+                (stream, label) = await snapshot.AcceptAsync(ct).ConfigureAwait(false);
             }
             catch (Exception) when (ct.IsCancellationRequested)
             {
@@ -560,13 +615,58 @@ public sealed class TgWsProxyServer : IAsyncDisposable
 
     private async Task<bool> RestartListenerAsync(CancellationToken ct)
     {
-        _listener?.Dispose();
+        ITgListener? old;
+        lock (_listenerGate)
+        {
+            old = _listener;
+            _listener = null;
+        }
+
+        try
+        {
+            old?.Dispose();
+        }
+        catch (Exception)
+        {
+        }
+
         for (var attempt = 1; attempt <= ListenerRestartAttempts; attempt++)
         {
             try
             {
                 await Task.Delay(ListenerRestartDelay, _context.Time, ct).ConfigureAwait(false);
-                _listener = _context.Network.Listen(Options.Host, Options.Port);
+                if (ct.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                var fresh = _context.Network.Listen(Options.Host, Options.Port);
+                bool cancelled;
+                lock (_listenerGate)
+                {
+                    cancelled = ct.IsCancellationRequested;
+                    if (!cancelled)
+                    {
+                        _listener = fresh;
+                    }
+                }
+
+                if (cancelled)
+                {
+                    // DisposeAsync already ran (or is running): the loop is
+                    // exiting, so nobody would close this socket otherwise.
+                    // Disposing here keeps the port from staying bound (#346).
+                    try
+                    {
+                        fresh.Dispose();
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    return false;
+                }
+
                 _context.Log(TgLogLevel.Warning, $"Server restored, listening on {Options.Host}:{Options.Port}");
                 return true;
             }
@@ -576,6 +676,11 @@ public sealed class TgWsProxyServer : IAsyncDisposable
             }
             catch (Exception ex)
             {
+                if (ct.IsCancellationRequested)
+                {
+                    return false;
+                }
+
                 _context.Log(TgLogLevel.Error, $"Failed to restart the listener (attempt {attempt}/{ListenerRestartAttempts}): {ex.Message}");
             }
         }
