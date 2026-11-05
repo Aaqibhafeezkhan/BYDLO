@@ -202,6 +202,20 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: TestResults
 
+  # The flake must keep building: nix/deps.json pins every NuGet package and goes stale when
+  # Directory.Packages.props changes (refresh with scripts/update-nix-deps.sh). Builds only, never runs the app.
+  nix:
+    name: Nix flake (x86_64-linux)
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+      - name: Evaluate and build the flake
+        run: |
+          nix flake check --no-build
+          nix build .#bydlo -L
+
   # Native AOT cannot cross-compile between operating systems, so the privileged helper is built on each target OS.
   # Linux uses the official .NET cross-build images: their Ubuntu 18.04 sysroot keeps the glibc baseline of the
   # .NET runtime itself, so the helper runs everywhere the app does. The helper is never executed here.
@@ -704,6 +718,13 @@ jobs:
           path: dist/native
           pattern: native-*
           merge-multiple: true
+      - name: Build .deb and AppImage from the verified Linux bundles (never execute payloads)
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq squashfs-tools
+          for rid in linux-x64 linux-arm64; do
+            bash scripts/package-linux.sh "$rid" "dist/BYDLO-$rid" dist/linux deb appimage
+          done
+          ls -l dist/linux
       - name: Package and checksum
         run: |
           cd dist
@@ -716,7 +737,7 @@ jobs:
             esac
             (cd "$d" && zip -qr "../$d.zip" .)
           done
-          sha256sum *.zip native/* > SHA256SUMS.txt
+          sha256sum *.zip native/* linux/* > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
           for archive in *.zip; do
             unzip -tq "$archive"
@@ -735,6 +756,7 @@ jobs:
             dist/*.zip
             dist/SHA256SUMS.txt
             dist/native/*
+            dist/linux/*
           if-no-files-found: error
 
   release:
@@ -771,8 +793,9 @@ jobs:
         with:
           subject-path: |
             dist/*.zip
+            dist/linux/*
             dist/SHA256SUMS.txt
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/*.zip dist/SHA256SUMS.txt dist/native/* --draft --generate-notes --notes-file .tmp/release-notes.md --repo "${GITHUB_REPOSITORY}"
+        run: gh release create "${GITHUB_REF_NAME}" dist/*.zip dist/SHA256SUMS.txt dist/native/* dist/linux/* --draft --generate-notes --notes-file .tmp/release-notes.md --repo "${GITHUB_REPOSITORY}"

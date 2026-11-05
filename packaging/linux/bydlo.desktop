@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=BYDLO
+GenericName=Bypass Your Digital Limitations Online
+Comment=One app. Every protocol.
+Exec=bydlo
+Icon=bydlo
+Terminal=false
+Categories=Network;Utility;
+StartupWMClass=BYDLO

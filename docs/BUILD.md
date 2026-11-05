@@ -9,7 +9,8 @@
 
 Для сборки нужны Git и .NET SDK 10.0.100 или новее в линейке 10.0 (см. `global.json`),
 а также PowerShell или bash. Установите зависимости, клонируйте репозиторий и перейдите в его каталог.
-На Linux нужны системные зависимости Avalonia (X11 и fontconfig).
+На Linux нужны системные зависимости Avalonia (X11 и fontconfig). На NixOS сначала выполните `nix develop`:
+оболочка подключает эти библиотеки и `protoc` из nixpkgs (см. [LINUX.md](LINUX.md#разработка-на-nixos)).
 
 **PowerShell — обычный пользовательский запуск:**
 
@@ -176,6 +177,10 @@ macOS поддерживается только на Apple Silicon; упаков
 4. **package** — по тегу или вручную, после успешных `desktop` и `macos`. Повторно проверяет все пять скачанных комплектов, создаёт ZIP и `SHA256SUMS.txt`, проверяет целостность архивов и сохраняет артефакт `release-packages`.
 5. **release** — GitHub-сценарий только для тегов `v*`: после успешного `package` создаёт **черновик** релиза через `gh` из проверенных архивов. Текст [RELEASE_NOTES.md](RELEASE_NOTES.md) добавляется перед автоматически сформированным списком изменений; перед следующим релизом обновите этот файл. На зеркале Gitea релизы не публикуются. Старые релизы и архивы не удаляются.
 
+Задача **Nix flake** на GitHub выполняет `nix flake check` и `nix build .#bydlo`: она ловит устаревший
+`nix/deps.json` после изменения `Directory.Packages.props` (см. [LINUX.md](LINUX.md#разработка-на-nixos)).
+Приложение и движки в ней не запускаются; в список обязательных проверок она не входит.
+
 Дополнительная задача **windows-parity** на GitHub повторяет упаковку обоих Windows RID
 на Windows через lessmsi и сравнивает имена и SHA-256 всех файлов движков с Linux-комплектом.
 Архивы исходников исключены из сравнения: метаданные tar зависят от хоста.
@@ -306,7 +311,7 @@ Velopack использует стабильные GitHub Releases и отдел
 | Платформа | Пакет |
 |---|---|
 | Windows x64/ARM64 | `BydloDesktop-<RID>-Setup.exe`, portable ZIP, update `.nupkg` |
-| Linux x64/ARM64 | AppImage с `.desktop` и иконкой, update `.nupkg` |
+| Linux x64/ARM64 | AppImage с `.desktop` и иконкой, update `.nupkg`; отдельно `.deb` и AppImage без автообновления из `scripts/package-linux.sh` ([LINUX.md](LINUX.md)) |
 | macOS Apple Silicon | `.app` внутри ZIP с Info.plist/иконкой, `.pkg`, update `.nupkg` |
 
 Все `releases.<RID>.json` и `*-full.nupkg` должны находиться в том же GitHub Release,

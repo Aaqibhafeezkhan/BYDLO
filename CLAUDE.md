@@ -64,6 +64,8 @@ src/Bydlo.App         Cross-platform Avalonia UI (views, view models, themes, lo
 src/Bydlo.Desktop     Desktop head (Windows / Linux / macOS).
 tests/Bydlo.Tests     Isolated unit tests (no network, no processes).
 engines/engines.lock.json   Pinned third-party engine versions + SHA-256 digests.
+flake.nix, nix/       Nix flake: package, NixOS module, dev shell, NuGet lock (nix/deps.json).
+packaging/            Linux distribution files: .deb/AppImage assets, Arch PKGBUILDs.
 docs/                 Architecture, build, compatibility, testing, roadmap.
 scripts/              Environment + build/check scripts (bash and PowerShell).
 .claude/              Agent skills, hooks, settings (see .claude/README.md).

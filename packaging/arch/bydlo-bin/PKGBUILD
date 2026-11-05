@@ -1,0 +1,69 @@
+# Prebuilt BYDLO from the official GitHub release (self-contained, with pinned engines).
+# Update: bump pkgver, then `updpkgsums` and `makepkg --printsrcinfo > .SRCINFO`.
+pkgname=bydlo-bin
+pkgver=0.4.0
+pkgrel=1
+pkgdesc='Bypass Your Digital Limitations Online — one app for every protocol'
+arch=('x86_64' 'aarch64')
+url='https://github.com/endercodezz/BYDLO'
+license=('GPL-3.0-or-later')
+# Self-contained .NET still loads ICU and OpenSSL; Avalonia needs X11 and fontconfig.
+depends=('glibc' 'gcc-libs' 'zlib' 'icu' 'openssl' 'fontconfig' 'freetype2'
+         'libx11' 'libice' 'libsm' 'libxcursor' 'libxext' 'libxi' 'libxrandr')
+optdepends=('libsecret: store profile secrets in the Secret Service keyring'
+            'libnotify: desktop notifications'
+            'wireguard-tools: WireGuard profiles')
+provides=('bydlo')
+conflicts=('bydlo')
+# The single-file .NET bundle must not be stripped: that corrupts the embedded payload.
+options=('!strip' '!debug')
+_assets="https://raw.githubusercontent.com/endercodezz/BYDLO/v${pkgver}"
+source=("bydlo-256-${pkgver}.png::${_assets}/src/Bydlo.App/Assets/bydlo-256.png")
+source_x86_64=("BYDLO-${pkgver}-linux-x64.zip::${url}/releases/download/v${pkgver}/BYDLO-linux-x64.zip")
+source_aarch64=("BYDLO-${pkgver}-linux-arm64.zip::${url}/releases/download/v${pkgver}/BYDLO-linux-arm64.zip")
+noextract=("BYDLO-${pkgver}-linux-x64.zip" "BYDLO-${pkgver}-linux-arm64.zip")
+sha256sums=('b20861df8526b6995be98dcb23f89a8a6f9fc41789b50c77a2b2a805927f87f8')
+sha256sums_x86_64=('f70c7099fd9ec4f409d47c21727d8dece19333a6c562efe06fbd6867581a16af')
+sha256sums_aarch64=('da57bb56adace6c2edd0ca097f604a65d3d67cb84c412bd46ea46cbcab592a46')
+
+prepare() {
+  local rid=linux-x64
+  [[ $CARCH == aarch64 ]] && rid=linux-arm64
+  rm -rf bydlo
+  mkdir bydlo
+  bsdtar -xf "BYDLO-${pkgver}-${rid}.zip" -C bydlo
+}
+
+package() {
+  install -dm755 "$pkgdir/opt/bydlo"
+  cp -a bydlo/. "$pkgdir/opt/bydlo/"
+  find "$pkgdir/opt/bydlo" -type f \( -name BYDLO -o -name Bydlo.Helper -o -name nfqws -o -name tpws -o -name sing-box \
+    -o -name xray -o -name bydlo-amneziawg -o -name openvpn \) -exec chmod 755 {} +
+
+  # BYDLO_LAUNCHER keeps autostart / import associations on this stable path.
+  install -dm755 "$pkgdir/usr/bin"
+  cat > "$pkgdir/usr/bin/bydlo" <<'EOF'
+#!/bin/sh
+export BYDLO_LAUNCHER="${BYDLO_LAUNCHER:-/usr/bin/bydlo}"
+exec /opt/bydlo/BYDLO "$@"
+EOF
+  chmod 755 "$pkgdir/usr/bin/bydlo"
+
+  install -dm755 "$pkgdir/usr/share/applications"
+  cat > "$pkgdir/usr/share/applications/bydlo.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=BYDLO
+GenericName=Bypass Your Digital Limitations Online
+Comment=One app. Every protocol.
+Exec=bydlo
+Icon=bydlo
+Terminal=false
+Categories=Network;Utility;
+StartupWMClass=BYDLO
+EOF
+  chmod 644 "$pkgdir/usr/share/applications/bydlo.desktop"
+  install -Dm644 "bydlo-256-${pkgver}.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/bydlo.png"
+  install -Dm644 bydlo/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 bydlo/THIRD_PARTY_NOTICES.md "$pkgdir/usr/share/licenses/$pkgname/THIRD_PARTY_NOTICES.md"
+}
