@@ -12,7 +12,11 @@ version="${tag#v}"
 # Exact top-level header, e.g. "# BYDLO v0.4.0".
 header="# BYDLO v${version}"
 
-count=$(grep -c -x -F -- "$header" "$input" || true)
+if [ ! -f "$input" ]; then
+  echo "Release notes input not found: ${input}" >&2
+  exit 1
+fi
+count=$(grep -c -x -F -- "$header" "$input")
 if [ "$count" -eq 0 ]; then
   echo "Release notes section not found for tag '${tag}': expected header '${header}' in ${input}" >&2
   exit 1
@@ -29,7 +33,7 @@ awk -v hdr="$header" '
   printing { print }
 ' "$input" > "$output"
 
-if [ ! -s "$output" ]; then
+if [ ! -s "$output" ] || ! grep -q '[^[:space:]]' "$output"; then
   echo "Release notes section for tag '${tag}' is empty in ${input}" >&2
   exit 1
 fi
