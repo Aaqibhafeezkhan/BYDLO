@@ -29,7 +29,7 @@ public sealed class XrayTunTests
     public void Kill_switch_excludes_server_addresses_and_routes_transport_directly()
     {
         var config = new SingBoxConfigBuilder().BuildKillSwitch(TunKillSwitch(), 2080, OsFamily.Windows,
-            new KillSwitchExclusions(["203.0.113.7", "2001:db8::1", "198.51.100.0/24", "not-an-address", "example.com"], ["xray", "xray.exe"]));
+            new KillSwitchExclusions(["203.0.113.7", "2001:db8::1", "198.51.100.0/24", "not-an-address", "example.com"], ["C:/engines/xray.exe"]));
         var excluded = config["inbounds"]![0]!["route_exclude_address"]!.AsArray().Select(n => (string?)n).ToList();
         Assert.Contains("203.0.113.7/32", excluded);
         Assert.Contains("2001:db8::1/128", excluded);
@@ -37,9 +37,25 @@ public sealed class XrayTunTests
         Assert.DoesNotContain("not-an-address", excluded);
         Assert.DoesNotContain("example.com", excluded);
         var first = config["route"]!["rules"]![0]!;
-        Assert.Equal(["xray", "xray.exe"], first["process_name"]!.AsArray().Select(n => (string?)n).ToList());
+        Assert.Equal(["C:/engines/xray.exe"], first["process_path"]!.AsArray().Select(n => (string?)n).ToList());
+        Assert.Null(first["process_name"]);
         Assert.Equal("direct", (string?)first["outbound"]);
         Assert.Equal("proxy", (string?)config["route"]!["final"]);
+    }
+
+    [Fact]
+    public void Kill_switch_transport_rule_uses_path_not_bare_name()
+    {
+        // Issue #339: a bare process_name would also exempt an unrelated xray.exe
+        // from another directory. The rule must pin the launched backend path.
+        var config = new SingBoxConfigBuilder().BuildKillSwitch(TunKillSwitch(), 2080, OsFamily.Windows,
+            new KillSwitchExclusions(["203.0.113.7"], ["C:/engines/xray.exe"]));
+        var first = config["route"]!["rules"]![0]!;
+        Assert.Null(first["process_name"]);
+        var paths = first["process_path"]!.AsArray().Select(n => (string?)n).ToList();
+        Assert.Equal(["C:/engines/xray.exe"], paths);
+        Assert.DoesNotContain("xray.exe", paths);
+        Assert.DoesNotContain("xray", paths);
     }
 
     [Fact]
@@ -47,14 +63,17 @@ public sealed class XrayTunTests
     {
         var config = new SingBoxConfigBuilder().BuildKillSwitch(TunKillSwitch(), 2080);
         Assert.DoesNotContain(config["route"]!["rules"]!.AsArray(), n => n?["process_name"] is not null);
+        Assert.DoesNotContain(config["route"]!["rules"]!.AsArray(), n => n?["process_path"] is not null);
     }
 
     [Fact]
     public async Task Tun_guard_excludes_xray_server_and_process()
     {
+        var backendPath = Path.Combine(TestDirs.New("xray-tun-exe"), "xray" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        await File.WriteAllTextAsync(backendPath, "fake backend");
         var runner = new FakeProcessRunner { StartupOutput = { "sing-box started" } };
         await using var guard = new SingBoxTunGuard(runner, new LogRedactor(),
-            new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64), "C:/engines/xray.exe".Replace('/', Path.DirectorySeparatorChar)),
+            new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64), backendPath),
             new FakePrivileges(true), EngineKind.Xray);
         var request = Request() with { WorkDirectory = TestDirs.New("xray-tun-guard") };
         await guard.StartAsync(request);
@@ -62,7 +81,8 @@ public sealed class XrayTunTests
         var excluded = config["inbounds"]![0]!["route_exclude_address"]!.AsArray().Select(n => (string?)n).ToList();
         Assert.Contains("203.0.113.7/32", excluded);
         var first = config["route"]!["rules"]![0]!;
-        Assert.Equal(["xray.exe", "xray"], first["process_name"]!.AsArray().Select(n => (string?)n).ToList());
+        Assert.Equal([backendPath], first["process_path"]!.AsArray().Select(n => (string?)n).ToList());
+        Assert.Null(first["process_name"]);
         Assert.Equal("direct", (string?)first["outbound"]);
         await guard.StopAsync();
     }
@@ -70,9 +90,11 @@ public sealed class XrayTunTests
     [Fact]
     public async Task Tun_guard_with_domain_server_routes_only_the_process_directly()
     {
+        var backendPath = Path.Combine(TestDirs.New("xray-tun-exe-domain"), "xray" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        await File.WriteAllTextAsync(backendPath, "fake backend");
         var runner = new FakeProcessRunner { StartupOutput = { "sing-box started" } };
         await using var guard = new SingBoxTunGuard(runner, new LogRedactor(),
-            new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64), "/usr/local/bin/xray"),
+            new FakeLocator(new PlatformInfo(OsFamily.Windows, CpuArch.X64), backendPath),
             new FakePrivileges(true), EngineKind.Xray);
         var request = Request() with
         {
@@ -84,8 +106,44 @@ public sealed class XrayTunTests
         var excluded = config["inbounds"]![0]!["route_exclude_address"]?.AsArray().Select(n => (string?)n).ToList() ?? [];
         Assert.DoesNotContain("xhttp.invalid", excluded);
         var first = config["route"]!["rules"]![0]!;
-        Assert.Equal(["xray"], first["process_name"]!.AsArray().Select(n => (string?)n).ToList());
+        Assert.Equal([backendPath], first["process_path"]!.AsArray().Select(n => (string?)n).ToList());
+        Assert.Null(first["process_name"]);
         await guard.StopAsync();
+    }
+
+    [Fact]
+    public void Backend_paths_cover_relative_and_symlinked_executables()
+    {
+        var dir = TestDirs.New("xray-tun-links");
+        var exeName = "xray-real" + (OperatingSystem.IsWindows() ? ".exe" : "");
+        var target = Path.Combine(dir, exeName);
+        File.WriteAllText(target, "fake backend");
+        var paths = SingBoxTunGuard.BackendProcessPaths(target);
+        Assert.Contains(target, paths);
+        Assert.DoesNotContain(paths, p => p == "xray" || p == "xray.exe");
+
+        // A relative locator spelling still yields absolute candidates without
+        // touching the process-wide current directory (xUnit runs in parallel).
+        var relativeInput = Path.Combine("rel", exeName);
+        var relative = SingBoxTunGuard.BackendProcessPaths(relativeInput);
+        Assert.Equal(relativeInput, relative[0]);
+        Assert.True(relative.Count > 1);
+        Assert.All(relative.Skip(1), p => Assert.True(Path.IsPathFullyQualified(p), $"Not absolute: {p}"));
+
+        var link = Path.Combine(dir, "xray-link" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        try
+        {
+            File.CreateSymbolicLink(link, target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Symlinks need extra privileges on some machines; the absolute and
+            // resolved forms above already passed without them.
+            return;
+        }
+        var linked = SingBoxTunGuard.BackendProcessPaths(link);
+        Assert.Contains(link, linked);
+        Assert.Contains(target, linked);
     }
 
     [Fact]
