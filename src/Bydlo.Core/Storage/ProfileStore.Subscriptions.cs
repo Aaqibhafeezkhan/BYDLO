@@ -104,9 +104,10 @@ public sealed partial class ProfileStore
             };
             // Matched profiles keep their IDs but take merged options; any headers
             // surviving in the merge (e.g. user-edited saved options) move to secrets
-            // here so the persisted document never carries tokens (issue #338).
+            // inside the rollback scope below, so the persisted document never
+            // carries tokens (issue #338).
             var mergedById = new Dictionary<Guid, Dictionary<string, string>>();
-            var matchedSecretsBackup = new Dictionary<string, ProfileSecrets>();
+            var pendingSecretSplits = new Dictionary<string, (Dictionary<string, string> Merged, string Headers)>();
             foreach (var (id, match) in matched)
             {
                 var saved = _doc.Profiles.First(p => p.Id == id);
@@ -115,11 +116,7 @@ public sealed partial class ProfileStore
                     Bydlo.Core.Import.Parsers.XhttpSecretHeaders.TryExtractHeaders(raw, out var publicExtra, out var headersJson) &&
                     headersJson is not null)
                 {
-                    var key = id.ToString();
-                    var current = await secrets.LoadAsync(key, ct).ConfigureAwait(false);
-                    matchedSecretsBackup[key] = new ProfileSecrets { Values = new Dictionary<string, string>(current.Values, StringComparer.OrdinalIgnoreCase) };
-                    current.Values[Keys.XhttpHeaders] = headersJson;
-                    await secrets.SaveAsync(key, current, ct).ConfigureAwait(false);
+                    pendingSecretSplits[id.ToString()] = (merged, headersJson);
                     if (publicExtra is null) { merged.Remove(Keys.XhttpExtra); }
                     else { merged[Keys.XhttpExtra] = publicExtra; }
                 }
@@ -138,8 +135,17 @@ public sealed partial class ProfileStore
             };
 
             var staged = new List<Guid>();
+            var matchedSecretsBackup = new Dictionary<string, ProfileSecrets>();
             try
             {
+                foreach (var (id, split) in pendingSecretSplits)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var current = await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+                    matchedSecretsBackup[id] = new ProfileSecrets { Values = new Dictionary<string, string>(current.Values, StringComparer.OrdinalIgnoreCase) };
+                    current.Values[Keys.XhttpHeaders] = split.Headers;
+                    await secrets.SaveAsync(id, current, ct).ConfigureAwait(false);
+                }
                 foreach (var item in added)
                 {
                     ct.ThrowIfCancellationRequested();
