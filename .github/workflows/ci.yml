@@ -10,6 +10,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      skip_signing:
+        description: Rehearse unsigned packaging without creating a release
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -30,6 +35,20 @@ env:
   BYDLO_MOCK: "1"
 
 jobs:
+  signing-policy:
+    name: Select release signing policy
+    runs-on: ubuntu-latest
+    outputs:
+      unsigned: ${{ steps.policy.outputs.unsigned }}
+    steps:
+      - id: policy
+        env:
+          # Explicit release exceptions; future tags still require signing.
+          UNSIGNED: ${{ github.ref == 'refs/tags/v0.3.1' || github.ref == 'refs/tags/v0.4.0' || github.ref == 'refs/tags/v0.4.1' || (github.event_name == 'workflow_dispatch' && inputs.skip_signing) }}
+        run: |
+          echo "unsigned=$UNSIGNED" >> "$GITHUB_OUTPUT"
+          echo "Unsigned packaging: $UNSIGNED" >> "$GITHUB_STEP_SUMMARY"
+
   unix-activation:
     name: Verify macOS single-instance activation
     if: github.server_url == 'https://github.com'
@@ -412,9 +431,9 @@ jobs:
   sign-windows:
     name: Sign Windows binaries
     # Release signing only; PRs never touch keys. Secrets live only in CI, never in the repo (see docs/CODE-SIGNING.md).
-    # One-time exception while Azure Artifact Signing is unavailable.
-    if: github.server_url == 'https://github.com' && github.ref != 'refs/tags/v0.3.1' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
-    needs: desktop
+    # Unsigned releases/rehearsals must be explicitly allowed by signing-policy.
+    if: github.server_url == 'https://github.com' && needs.signing-policy.outputs.unsigned != 'true' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    needs: [desktop, signing-policy]
     runs-on: windows-latest
     permissions:
       contents: read
@@ -577,8 +596,9 @@ jobs:
       !cancelled() && github.server_url == 'https://github.com'
       && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
       && needs.desktop.result == 'success' && needs.macos.result == 'success'
-      && (needs.sign-windows.result == 'success' || github.event_name == 'workflow_dispatch')
-    needs: [desktop, macos, sign-windows]
+      && (needs.sign-windows.result == 'success'
+          || (needs.signing-policy.outputs.unsigned == 'true' && needs.sign-windows.result == 'skipped'))
+    needs: [desktop, macos, sign-windows, signing-policy]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -605,14 +625,14 @@ jobs:
           name: BYDLO-${{ matrix.rid }}
           path: native-payload
       - name: Authenticate Azure signing (OIDC)
-        if: startsWith(matrix.rid, 'win-') && env.AZURE_CLIENT_ID != ''
+        if: startsWith(matrix.rid, 'win-') && needs.signing-policy.outputs.unsigned != 'true' && env.AZURE_CLIENT_ID != ''
         uses: Azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Prepare Windows signing metadata
-        if: startsWith(matrix.rid, 'win-') && env.AZURE_CLIENT_ID != ''
+        if: startsWith(matrix.rid, 'win-') && needs.signing-policy.outputs.unsigned != 'true' && env.AZURE_CLIENT_ID != ''
         shell: pwsh
         env:
           SIGN_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
@@ -625,7 +645,7 @@ jobs:
           $metadata | ConvertTo-Json | Set-Content $file
           "BYDLO_AZURE_SIGN_METADATA=$file" >> $env:GITHUB_ENV
       - name: Prepare Apple signing and notarization
-        if: matrix.rid == 'osx-arm64' && env.MAC_CERTIFICATE != ''
+        if: matrix.rid == 'osx-arm64' && needs.signing-policy.outputs.unsigned != 'true' && env.MAC_CERTIFICATE != ''
         shell: bash
         env:
           CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERTIFICATE_PASSWORD }}
@@ -660,11 +680,11 @@ jobs:
       - name: Build and inspect native packages (never execute engines)
         shell: pwsh
         env:
-          BYDLO_MAC_APP_IDENTITY: ${{ secrets.MACOS_APP_IDENTITY }}
-          BYDLO_MAC_INSTALLER_IDENTITY: ${{ secrets.MACOS_INSTALLER_IDENTITY }}
-        run: ./scripts/package-native.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory native-payload -OutputDirectory native-output -RequireSigning:$${{ startsWith(github.ref, 'refs/tags/v') }}
+          BYDLO_MAC_APP_IDENTITY: ${{ needs.signing-policy.outputs.unsigned != 'true' && secrets.MACOS_APP_IDENTITY || '' }}
+          BYDLO_MAC_INSTALLER_IDENTITY: ${{ needs.signing-policy.outputs.unsigned != 'true' && secrets.MACOS_INSTALLER_IDENTITY || '' }}
+        run: ./scripts/package-native.ps1 -Rid '${{ matrix.rid }}' -PublishDirectory native-payload -OutputDirectory native-output -RequireSigning:$${{ needs.signing-policy.outputs.unsigned != 'true' }}
       - name: Remove temporary Apple keychain
-        if: always() && matrix.rid == 'osx-arm64' && env.MAC_CERTIFICATE != ''
+        if: always() && matrix.rid == 'osx-arm64' && needs.signing-policy.outputs.unsigned != 'true' && env.MAC_CERTIFICATE != ''
         run: security delete-keychain "$PWD/.tmp/native-signing.keychain-db"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -690,8 +710,8 @@ jobs:
       && needs.macos.result == 'success'
       && needs.native-packages.result == 'success'
       && (needs.sign-windows.result == 'success'
-          || (github.ref == 'refs/tags/v0.3.1' && needs.sign-windows.result == 'skipped'))
-    needs: [desktop, windows-parity, sign-windows, macos, native-packages]
+          || (needs.signing-policy.outputs.unsigned == 'true' && needs.sign-windows.result == 'skipped'))
+    needs: [desktop, windows-parity, sign-windows, macos, native-packages, signing-policy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
