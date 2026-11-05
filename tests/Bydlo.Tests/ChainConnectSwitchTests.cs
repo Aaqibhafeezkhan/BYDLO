@@ -77,6 +77,21 @@ public sealed class ChainConnectSwitchTests
         Assert.DoesNotContain("if (!Shell.Home.IsConnected)", body);
     }
 
+    [Fact]
+    public void ConnectChain_restores_previous_selection_on_failure()
+    {
+        var root = FindRepoRoot();
+        var text = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "ViewModels", "ConnectionsViewModel.Chains.cs"));
+        var start = text.IndexOf("private async Task ConnectChain(", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var end = text.IndexOf("private async Task ToggleChainFavorite", StringComparison.Ordinal);
+        Assert.True(end > start);
+        var body = text.Substring(start, end - start);
+        Assert.Contains("previousProfile", body, StringComparison.Ordinal);
+        Assert.Contains("previousChain", body, StringComparison.Ordinal);
+        Assert.Contains("previousUseGroup", body, StringComparison.Ordinal);
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
