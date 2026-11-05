@@ -74,7 +74,13 @@ internal sealed class UnixActivationBroker : IDisposable
         var uid = CurrentUid();
         var runtimeBase = ResolveRuntimeBase();
         var directory = Path.Combine(runtimeBase, $"bydlo-{uid}-{shortHash}");
-        return Path.Combine(directory, "desktop.sock");
+        var fullSock = Path.Combine(directory, "desktop.sock");
+        if (fullSock.Length >= 100)
+        {
+            directory = Path.Combine("/tmp", $"bydlo-{uid}-{shortHash}");
+            fullSock = Path.Combine(directory, "desktop.sock");
+        }
+        return fullSock;
     }
 
     internal static string ResolveRuntimeBase()
@@ -88,19 +94,27 @@ internal sealed class UnixActivationBroker : IDisposable
 
     internal static uint CurrentUid()
     {
-        try
+        if (!OperatingSystem.IsWindows())
         {
-            if (!OperatingSystem.IsWindows()) { return GetUid(); }
-        }
-        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or MarshalDirectiveException)
-        {
+            try { return GetUidLibc(); }
+            catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or MarshalDirectiveException) { }
+            try { return GetUidLibSystem(); }
+            catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or MarshalDirectiveException) { }
+            var user = Environment.UserName;
+            if (!string.IsNullOrEmpty(user))
+            {
+                var h = SHA256.HashData(Encoding.UTF8.GetBytes("uid:" + user));
+                return BitConverter.ToUInt32(h, 0);
+            }
         }
 
         return 0;
     }
 
     [DllImport("libc", EntryPoint = "getuid")]
-    private static extern uint GetUid();
+    private static extern uint GetUidLibc();
+    [DllImport("libSystem.dylib", EntryPoint = "getuid")]
+    private static extern uint GetUidLibSystem();
 
     public bool IsPrimary => _lock is not null;
 
