@@ -86,6 +86,21 @@ public sealed class ListConnectTests
         Assert.Contains("ConnectAsync", body);
     }
 
+    [Fact]
+    public void ConnectTo_restores_previous_selection_on_failure()
+    {
+        var root = FindRepoRoot();
+        var text = File.ReadAllText(Path.Combine(root, "src", "Bydlo.App", "ViewModels", "ConnectionsViewModel.cs"));
+        var start = text.IndexOf("private async Task ConnectTo(", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var end = text.IndexOf("private async Task ToggleFavorite", StringComparison.Ordinal);
+        Assert.True(end > start);
+        var body = text.Substring(start, end - start);
+        Assert.Contains("previousProfile", body, StringComparison.Ordinal);
+        Assert.Contains("previousChain", body, StringComparison.Ordinal);
+        Assert.Contains("previousUseGroup", body, StringComparison.Ordinal);
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
