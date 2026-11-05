@@ -75,7 +75,7 @@ internal sealed class UnixActivationBroker : IDisposable
         var runtimeBase = ResolveRuntimeBase();
         var directory = Path.Combine(runtimeBase, $"bydlo-{uid}-{shortHash}");
         var fullSock = Path.Combine(directory, "desktop.sock");
-        if (fullSock.Length >= 100)
+        if (Encoding.UTF8.GetByteCount(fullSock) >= 100)
         {
             directory = Path.Combine("/tmp", $"bydlo-{uid}-{shortHash}");
             fullSock = Path.Combine(directory, "desktop.sock");

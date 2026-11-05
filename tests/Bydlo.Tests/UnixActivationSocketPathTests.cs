@@ -75,6 +75,30 @@ public sealed class UnixActivationSocketPathTests
             File.GetUnixFileMode(Path.GetDirectoryName(socketPath)!));
     }
 
+    [Fact]
+    public void Unicode_runtime_dir_counts_bytes_not_chars()
+    {
+        var prevXdg = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        var prevTmpdir = Environment.GetEnvironmentVariable("TMPDIR");
+        try
+        {
+            // Each Cyrillic char is 2 bytes in UTF-8: 60 chars ~= 120 bytes.
+            // Char count stays small, byte count must trigger the /tmp fallback.
+            var unicodeBase = Path.Combine(Path.GetTempPath(), new string('\u0434', 60));
+            Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", unicodeBase);
+            Environment.SetEnvironmentVariable("TMPDIR", unicodeBase);
+            var socketPath = UnixActivationBroker.ResolveSocketPath("/data-" + Guid.NewGuid().ToString("N")[..8]);
+            Assert.True(Encoding.UTF8.GetByteCount(socketPath) < 100,
+                $"Unicode runtime path must fall back to short socket, was {Encoding.UTF8.GetByteCount(socketPath)} bytes: {socketPath}");
+            Assert.EndsWith("desktop.sock", socketPath, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", prevXdg);
+            Environment.SetEnvironmentVariable("TMPDIR", prevTmpdir);
+        }
+    }
+
     private static string NewLongDirectory()
     {
         var root = Environment.GetEnvironmentVariable("BYDLO_ROOT") ?? Directory.GetCurrentDirectory();
