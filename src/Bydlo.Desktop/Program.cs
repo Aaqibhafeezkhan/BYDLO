@@ -28,7 +28,7 @@ internal static class Program
 
         var dataDirectory = earlyPaths.DataDirectory;
         using var activation = OperatingSystem.IsWindows() ? new WindowsActivationBroker(
-            dataDirectory, Bydlo.App.App.PendingActivations.Enqueue) : null;
+            dataDirectory, Bydlo.App.App.EnqueueActivation) : null;
         if (activation is { IsPrimary: false })
         {
             try
@@ -48,7 +48,7 @@ internal static class Program
             UnixActivationBroker? unixActivation = null;
             try
             {
-                unixActivation = new UnixActivationBroker(dataDirectory, Bydlo.App.App.PendingActivations.Enqueue);
+                unixActivation = new UnixActivationBroker(dataDirectory, Bydlo.App.App.EnqueueActivation);
                 if (!unixActivation.IsPrimary)
                 {
                     unixActivation.Forward(args);
@@ -87,6 +87,10 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<Bydlo.App.App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions
+            {
+                CompositionMode = [Win32CompositionMode.RedirectionSurface],
+            })
             .WithInterFont()
             .With(new FontManagerOptions { DefaultFamilyName = "fonts:Inter#Inter" })
             .LogToTrace();
