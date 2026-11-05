@@ -200,4 +200,58 @@ public sealed class XhttpSecretsTests
         var raw = await File.ReadAllTextAsync(Path.Combine(dir, "profiles.json"));
         Assert.DoesNotContain(Token, raw, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task Refresh_normalizes_unsplit_incoming_and_matched_options()
+    {
+        var file = Path.Combine(TestDirs.New("xhttp-refresh"), "profiles.json");
+        var secrets = new InMemorySecretStore();
+        var store = new ProfileStore(file, secrets);
+        var saved = Import(Link(ExtraWithSecrets()));
+        var sub = await store.AddSubscriptionWithProfilesAsync("Sub", "https://sub.example/token", [saved]);
+
+        // Simulate an unsplit producer: headers back in options, out of secrets.
+        var fresh = Import(Link(ExtraWithSecrets()));
+        fresh.Profile.Options[Keys.XhttpExtra] = ExtraWithSecrets();
+        fresh.Secrets.Values.Remove(Keys.XhttpHeaders);
+
+        await store.ReplaceSubscriptionProfilesAsync(sub.Id, [fresh]);
+
+        var raw = await File.ReadAllTextAsync(file);
+        Assert.DoesNotContain(Token, raw, StringComparison.Ordinal);
+        Assert.DoesNotContain(Cookie, raw, StringComparison.Ordinal);
+        var kept = Assert.Single(store.Profiles);
+        Assert.DoesNotContain(Token, OptionsText(kept), StringComparison.Ordinal);
+        var keptSecrets = await secrets.LoadAsync(kept.Id.ToString());
+        Assert.NotNull(keptSecrets[Keys.XhttpHeaders]);
+        Assert.Contains(Token, keptSecrets[Keys.XhttpHeaders]!, StringComparison.Ordinal);
+        var baseline = Assert.Single(Assert.Single(store.Subscriptions).SourceOptions!.Values);
+        Assert.DoesNotContain(Token, string.Join("\n", baseline.Select(kv => kv.Key + "=" + kv.Value)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Engine_start_registration_masks_each_header_value()
+    {
+        var redactor = new LogRedactor();
+        foreach (var value in new ProfileSecrets
+        {
+            Values = { [Keys.XhttpHeaders] = "{\"Authorization\":\"Bearer " + Token + "\",\"Cookie\":\"" + Cookie + "\"}" },
+        }.Values.Values)
+        {
+            redactor.RegisterSecret(value);
+        }
+        Assert.DoesNotContain(Cookie, redactor.Redact("Cookie: " + Cookie), StringComparison.Ordinal);
+        Assert.DoesNotContain(Token, redactor.Redact("Authorization: Bearer " + Token), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plain_and_malformed_secrets_keep_working()
+    {
+        var redactor = new LogRedactor();
+        redactor.RegisterSecret("plain-credential");
+        redactor.RegisterSecret("not json at all {{{");
+        redactor.RegisterSecret("{\"unclosed\": ");
+        Assert.Equal("***", redactor.Redact("plain-credential"));
+        Assert.Equal("ok", redactor.Redact("ok"));
+    }
 }

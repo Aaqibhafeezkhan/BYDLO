@@ -16,6 +16,12 @@ public sealed partial class ProfileStore
             ThrowIfNewerVersion();
             var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
                 ?? throw new InvalidDataException("Subscription not found.");
+            // Normalize transports before matching so unsplit headers can never
+            // reach SourceOptions baselines or identity comparisons (issue #338).
+            foreach (var item in fresh)
+            {
+                Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(item.Profile, item.Secrets);
+            }
             var existingIds = _doc.Profiles.Select(profile => profile.Id).ToHashSet();
             if (fresh.Count == 0 || fresh.Any(item => !existingIds.Add(item.Profile.Id)))
             {
@@ -96,13 +102,36 @@ public sealed partial class ProfileStore
                 Announce = metadata?.Announce ?? sub.Announce,
                 UserAgent = sub.UserAgent,
             };
+            // Matched profiles keep their IDs but take merged options; any headers
+            // surviving in the merge (e.g. user-edited saved options) move to secrets
+            // here so the persisted document never carries tokens (issue #338).
+            var mergedById = new Dictionary<Guid, Dictionary<string, string>>();
+            var matchedSecretsBackup = new Dictionary<string, ProfileSecrets>();
+            foreach (var (id, match) in matched)
+            {
+                var saved = _doc.Profiles.First(p => p.Id == id);
+                var merged = MergeOptions(saved, match.Profile, sub);
+                if (merged.TryGetValue(Keys.XhttpExtra, out var raw) &&
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.TryExtractHeaders(raw, out var publicExtra, out var headersJson) &&
+                    headersJson is not null)
+                {
+                    var key = id.ToString();
+                    var current = await secrets.LoadAsync(key, ct).ConfigureAwait(false);
+                    matchedSecretsBackup[key] = new ProfileSecrets { Values = new Dictionary<string, string>(current.Values, StringComparer.OrdinalIgnoreCase) };
+                    current.Values[Keys.XhttpHeaders] = headersJson;
+                    await secrets.SaveAsync(key, current, ct).ConfigureAwait(false);
+                    if (publicExtra is null) { merged.Remove(Keys.XhttpExtra); }
+                    else { merged[Keys.XhttpExtra] = publicExtra; }
+                }
+                mergedById[id] = merged;
+            }
             var next = new ProfileDocument
             {
                 Version = _doc.Version,
                 PendingSecretDeletes = [.. _doc.PendingSecretDeletes],
                 Profiles = _doc.Profiles.Where(profile => !removedIds.Contains(profile.Id))
-                    .Select(profile => matched.TryGetValue(profile.Id, out var match)
-                        ? CopySubscriptionProfile(profile, subscriptionId, MergeOptions(profile, match.Profile, sub))
+                    .Select(profile => matched.ContainsKey(profile.Id)
+                        ? CopySubscriptionProfile(profile, subscriptionId, mergedById[profile.Id])
                         : profile).ToList(),
                 Subscriptions = _doc.Subscriptions.Select(item => item.Id == subscriptionId ? updated : item).ToList(),
                 Chains = [.. _doc.Chains],
@@ -126,6 +155,13 @@ public sealed partial class ProfileStore
             }
             catch
             {
+                foreach (var (id, backup) in matchedSecretsBackup)
+                {
+                    try { await secrets.SaveAsync(id, backup, CancellationToken.None).ConfigureAwait(false); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Engines.EngineException)
+                    {
+                    }
+                }
                 await DeleteUnreferencedSecretsAsync(staged.Select(id => id.ToString())).ConfigureAwait(false);
                 throw;
             }
