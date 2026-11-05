@@ -377,3 +377,26 @@ broker. Реальное подтверждение UAC и подключени�
 - Сборки для Windows подписываются в CI релиза через Azure Trusted Signing с меткой времени (см. [CODE-SIGNING.md](CODE-SIGNING.md)); неподписанные dev-сборки показывают «неизвестного издателя».
 - Встроенный OpenVPN для Linux собирается на Ubuntu 24.04; совместимость со старыми версиями glibc не заявляется.
 - Android не входит в v0.3 и запланирован на v0.4 (см. [ROADMAP.md](ROADMAP.md)).
+
+### Проверка происхождения релиза
+
+Новые релизы после внедрения #216 получают GitHub artifact attestations для каждого ZIP
+и `SHA256SUMS.txt`. Проверяйте скачанный файл **до распаковки и запуска**:
+
+```bash
+gh attestation verify BYDLO-linux-x64.zip --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
+gh attestation verify SHA256SUMS.txt --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
+```
+
+Замените `vX.Y.Z` на выбранный тег и имя архива на свою платформу. Нужны актуальная
+GitHub CLI и доступ к GitHub. Успешная проверка подтверждает digest файла, репозиторий,
+workflow и тег; одна лишь сумма из неподписанного списка происхождение не подтверждает.
+Дополнительно на Linux: `sha256sum -c SHA256SUMS.txt --ignore-missing`.
+Старые релизы и локальные сборки attestations не имеют: ошибка проверки не должна
+игнорироваться для релиза, который заявляет их наличие. Это проверка происхождения,
+а не проверка работоспособности приложения и не замена системной подписи macOS/Windows.
+
+В job `release` разрешения `id-token: write` и `attestations: write` выдаются только
+для релизного задания GitHub. Неуспешная аттестация блокирует создание черновика.
+Приватный ключ в Secrets не нужен: используется OIDC и Sigstore.
+См. [документацию GitHub](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
