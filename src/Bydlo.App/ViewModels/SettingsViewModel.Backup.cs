@@ -71,10 +71,25 @@ public sealed partial class SettingsViewModel
                 FileTypeChoices = [new FilePickerFileType("BYDLO") { Patterns = ["*.bydlobackup"] }],
             });
             if (file is null) { return; }
-            await using var stream = await file.OpenWriteAsync();
-            stream.SetLength(0);
-            await stream.WriteAsync(encrypted);
-            await stream.FlushAsync();
+            if (file.TryGetLocalPath() is { } localPath)
+            {
+                // Atomic replacement (issue #334): the previous backup stays
+                // readable until the new payload is fully flushed to disk.
+                await BackupExport.WriteAtomicAsync(localPath, encrypted);
+            }
+            else
+            {
+                // Providers without a local path have no safe replacement primitive.
+                // Never truncate first: a failed write then leaves the old content
+                // past the written prefix instead of an empty file.
+                await using var stream = await file.OpenWriteAsync();
+                await stream.WriteAsync(encrypted);
+                await stream.FlushAsync();
+                if (stream.CanSeek && stream.Length != encrypted.Length)
+                {
+                    stream.SetLength(encrypted.Length);
+                }
+            }
             Shell.ShowToast(L["backup.exported"]);
         }
         catch (Exception) { Shell.ShowToast(L["backup.error"], isError: true); }
