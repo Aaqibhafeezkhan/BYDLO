@@ -34,6 +34,7 @@ public static class NativeZapretStrategy
             $"--hostlist-exclude={ListPath(install.UserListPath(ZapretUserList.Exclude))}", $"--ipset-exclude={ListPath(install.UserListPath(ZapretUserList.IpsetExclude))}"];
         if (os == OsFamily.MacOS)
         {
+            File.WriteAllText(hosts, NativeZapretDomains.Load());
             // /dev/pf requires root for NAT lookups on macOS. PF excludes root to prevent recursion.
             return ["--user=root", "--bind-addr=127.0.0.1", $"--port={ProxyPort}", "--split-pos=1,midsld",
                 .. (strategy == "native-disorder" ? new[] { "--disorder" } : []), .. lists];
