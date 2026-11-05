@@ -267,8 +267,9 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     [RelayCommand]
     private async Task ConnectTo(ProfileItem item)
     {
-        // MainViewModel.Primary is a snapshot refreshed on the UI thread, so ToggleConnection
-        // could misread it mid-switch. Disconnect and connect explicitly instead (issue #141).
+        // ConnectionManager.ConnectAsync validates the replacement engine before
+        // stopping the live session (issue #266). Disconnecting here first would
+        // drop a working session when the new profile is incompatible (issue #332).
         var alreadyActive = Shell.Home.IsConnected
             && Shell.Primary.Chain is null
             && Shell.Primary.Group is null
@@ -281,7 +282,6 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         {
             return;
         }
-        await Shell.Guard(() => Services.Connections.DisconnectAsync());
         foreach (var w in Services.Connections.PreviewConflicts(item.Profile, Services.EffectiveSettings).Where(i => i.Severity == ConflictSeverity.Warning))
         {
             Shell.ShowToast(w.Message);
