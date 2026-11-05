@@ -44,6 +44,8 @@ internal sealed class SingBoxTunGuard(
     /// <summary>
     /// Loop avoidance for a foreign transport (issue #212): the transport server address
     /// stays outside the TUN and the transport process itself is routed directly.
+    /// Processes are full executable paths matched via sing-box process_path (issue #339):
+    /// a bare process_name would also exempt any unrelated process with the same file name.
     /// </summary>
     internal KillSwitchExclusions? TransportExclusions(EngineStartRequest request)
     {
@@ -57,14 +59,9 @@ internal sealed class SingBoxTunGuard(
             addresses.Add(profile.Host);
         }
         var processes = new List<string>();
-        if (locator.Locate(backendKind.Value, request.Settings) is { } exe &&
-            Path.GetFileName(exe) is { Length: > 0 } name)
+        if (locator.Locate(backendKind.Value, request.Settings) is { Length: > 0 } exe)
         {
-            processes.Add(name);
-            if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && name is not ".exe")
-            {
-                processes.Add(name[..^4]);
-            }
+            processes.Add(exe);
         }
         return addresses.Count == 0 && processes.Count == 0 ? null : new KillSwitchExclusions(addresses, processes);
     }

@@ -10,7 +10,7 @@ namespace Bydlo.Core.Config;
 
 /// <summary>Loop avoidance for a TUN front over a local transport (issue #212).</summary>
 /// <param name="Addresses">Server IPs or CIDRs excluded from the TUN.</param>
-/// <param name="Processes">Transport process names routed directly.</param>
+/// <param name="Processes">Transport executable paths routed directly via process_path (issue #339).</param>
 public sealed record KillSwitchExclusions(IReadOnlyList<string> Addresses, IReadOnlyList<string> Processes);
 
 /// <summary>Options that are not part of the profile itself.</summary>
@@ -320,7 +320,9 @@ public sealed partial class SingBoxConfigBuilder
         if (exclusions is { Processes.Count: > 0 })
         {
             // The transport's own sockets bypass the tunnel so they cannot loop back into it.
-            route["rules"]!.AsArray().Insert(0, new JsonObject { ["process_name"] = ToArray(exclusions.Processes), ["outbound"] = "direct" });
+            // process_path pins the actually launched backend (issue #339): process_name
+            // would also exempt any unrelated process with the same file name.
+            route["rules"]!.AsArray().Insert(0, new JsonObject { ["process_path"] = ToArray(exclusions.Processes), ["outbound"] = "direct" });
         }
         foreach (var rule in route["rules"]!.AsArray().OfType<JsonObject>())
         {
