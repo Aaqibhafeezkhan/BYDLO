@@ -161,19 +161,19 @@ public sealed class ProcessJournal(string filePath)
         catch (JsonException)
         {
             // A crash mid-write (or external edit) can leave truncated JSON behind.
-            // Keep the broken file under a unique name for diagnosis (issue #343)
-            // instead of silently dropping the retained-guard snapshot.
+            // The content is unrecoverable, so keep the broken file under a unique
+            // name for diagnosis (issue #343) instead of silently dropping it.
             SaveCorruptCopy();
             return [];
         }
-        catch (IOException)
+        catch (FileNotFoundException)
         {
+            // Removed between the Exists check and the read: no snapshot to lose.
             return [];
         }
-        catch (UnauthorizedAccessException)
-        {
-            return [];
-        }
+        // Fail closed on real I/O errors (locked file, permissions, disk): returning
+        // an empty list here would let a subsequent Record() overwrite and lose the
+        // still-valid snapshot, hiding retained processes (issue #343 review).
     }
 
     private void SaveCorruptCopy()
@@ -221,13 +221,13 @@ public sealed class ProcessJournal(string filePath)
 
             File.Move(tmp, filePath, overwrite: true);
         }
-        catch (IOException)
+        catch
         {
+            // Fail closed: a caller that believes the PID was recorded would leave an
+            // untracked process behind. SystemProcessRunner kills a newly started
+            // process when recording fails instead of leaking it (issue #343 review).
             DeleteTempQuietly(tmp);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            DeleteTempQuietly(tmp);
+            throw;
         }
     }
 
