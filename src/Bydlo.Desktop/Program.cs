@@ -10,6 +10,12 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (!NetworkSafetyGuard.IsLocked && !Bydlo.Core.Models.AppSettings.IsMockForced(args,
+                Environment.GetEnvironmentVariable("BYDLO_MOCK")))
+        {
+            // Pending updates are applied only after settings opt-in and graceful shutdown.
+            Velopack.VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
+        }
         var earlyPaths = Bydlo.Platform.AppPathsFactory.Create(args);
         CrashReporter.Install(earlyPaths.LogsDirectory, LogRedactor.Shared);
         // Do this before claiming the single-instance mutex or forwarding activation.

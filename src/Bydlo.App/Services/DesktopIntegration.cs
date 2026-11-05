@@ -95,6 +95,15 @@ public sealed class DesktopIntegration : IDisposable
             _shell.ShowToast(Loc.Instance["tray.exit.error"], isError: true);
             return;
         }
+        try
+        {
+            _shell.Services.AutomaticUpdates.ApplyOnExit(_shell.Services.Settings,
+                _shell.Services.IsMock || NetworkSafetyGuard.IsLocked);
+        }
+        catch (Exception ex)
+        {
+            _shell.Services.Log.Warn("update", "Update deferred: " + ex.GetType().Name);
+        }
         _lifetime.Shutdown();
     }
 

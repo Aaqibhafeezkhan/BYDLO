@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
+    <PackageReference Include="Velopack" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
