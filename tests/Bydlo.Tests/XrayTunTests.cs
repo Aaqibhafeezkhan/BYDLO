@@ -115,23 +115,20 @@ public sealed class XrayTunTests
     public void Backend_paths_cover_relative_and_symlinked_executables()
     {
         var dir = TestDirs.New("xray-tun-links");
-        var target = Path.Combine(dir, "xray-real" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        var exeName = "xray-real" + (OperatingSystem.IsWindows() ? ".exe" : "");
+        var target = Path.Combine(dir, exeName);
         File.WriteAllText(target, "fake backend");
         var paths = SingBoxTunGuard.BackendProcessPaths(target);
         Assert.Contains(target, paths);
         Assert.DoesNotContain(paths, p => p == "xray" || p == "xray.exe");
 
-        var cwd = Directory.GetCurrentDirectory();
-        try
-        {
-            Directory.SetCurrentDirectory(dir);
-            var relative = SingBoxTunGuard.BackendProcessPaths("xray-real" + (OperatingSystem.IsWindows() ? ".exe" : ""));
-            Assert.Contains(target, relative);
-        }
-        finally
-        {
-            Directory.SetCurrentDirectory(cwd);
-        }
+        // A relative locator spelling still yields absolute candidates without
+        // touching the process-wide current directory (xUnit runs in parallel).
+        var relativeInput = Path.Combine("rel", exeName);
+        var relative = SingBoxTunGuard.BackendProcessPaths(relativeInput);
+        Assert.Equal(relativeInput, relative[0]);
+        Assert.True(relative.Count > 1);
+        Assert.All(relative.Skip(1), p => Assert.True(Path.IsPathFullyQualified(p), $"Not absolute: {p}"));
 
         var link = Path.Combine(dir, "xray-link" + (OperatingSystem.IsWindows() ? ".exe" : ""));
         try
