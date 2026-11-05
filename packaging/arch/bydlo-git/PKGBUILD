@@ -1,0 +1,97 @@
+# Maintainer: Dmitri Shimanski <dshiafeed at gmail dot com>
+# BYDLO built from the latest default branch, the same way as the release bundle (docs/BUILD.md):
+# self-contained app and privileged helper, pinned sing-box/Xray/Zapret (SHA-256 checked, never executed)
+# and the AmneziaWG host from tools/amneziawg. OpenVPN comes from the Arch package.
+# pkgver is computed from `git describe`; refresh .SRCINFO with `makepkg --printsrcinfo > .SRCINFO`.
+pkgname=bydlo-git
+pkgver=0.4.0
+pkgrel=1
+pkgdesc='Bypass Your Digital Limitations Online — one app for every protocol'
+arch=('x86_64' 'aarch64')
+url='https://github.com/endercodezz/BYDLO'
+license=('GPL-3.0-or-later')
+depends=('glibc' 'gcc-libs' 'zlib' 'icu' 'openssl' 'fontconfig' 'freetype2'
+         'libx11' 'libice' 'libsm' 'libxcursor' 'libxext' 'libxi' 'libxrandr')
+makedepends=('git' 'dotnet-sdk' 'go' 'jq')
+optdepends=('libsecret: store profile secrets in the Secret Service keyring'
+            'libnotify: desktop notifications'
+            'openvpn: OpenVPN profiles'
+            'wireguard-tools: WireGuard profiles')
+provides=('bydlo')
+conflicts=('bydlo' 'bydlo-bin')
+# The single-file .NET bundle must not be stripped: that corrupts the embedded payload.
+options=('!strip' '!debug')
+source=("BYDLO::git+${url}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd BYDLO
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+_rid() { [[ $CARCH == aarch64 ]] && echo linux-arm64 || echo linux-x64; }
+
+prepare() {
+  cd BYDLO
+  # global.json pins the 10.0 band; let a newer Arch SDK build the net10.0 projects.
+  sed -i 's/"latestFeature"/"latestMajor"/' global.json
+}
+
+build() {
+  cd BYDLO
+  export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_HOME="$srcdir/dotnet-home" \
+    NUGET_PACKAGES="$srcdir/nuget" GOPATH="$srcdir/go" GOFLAGS='-modcacherw'
+  local rid out="$srcdir/publish"
+  rid=$(_rid)
+  rm -rf "$out"
+
+  dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r "$rid" --self-contained true \
+    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "$out"
+  # Single-file helper like the release bundle; Native AOT would also need clang and differs between tags.
+  dotnet publish src/Bydlo.Helper/Bydlo.Helper.csproj -c Release -r "$rid" -p:PublishAot=false --self-contained true \
+    -p:PublishTrimmed=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "$srcdir/helper"
+  install -Dm755 "$srcdir/helper/Bydlo.Helper" "$out/helper/Bydlo.Helper"
+
+  # Downloads only pinned archives from engines/engines.lock.json and verifies their SHA-256.
+  dotnet run --project tools/Bydlo.BundleEngines -c Release -- "$rid" "$out" .
+
+  local awg
+  awg=$(jq -r '.engines[] | select(.id == "amneziawg") | .version' engines/engines.lock.json)
+  go -C tools/amneziawg mod verify
+  CGO_ENABLED=0 go -C tools/amneziawg build -mod=readonly -trimpath -buildvcs=false -ldflags=-s \
+    -o "$out/engines/amneziawg/$awg/bydlo-amneziawg" .
+}
+
+package() {
+  cd BYDLO
+  install -dm755 "$pkgdir/opt/bydlo"
+  cp -a "$srcdir/publish/." "$pkgdir/opt/bydlo/"
+  find "$pkgdir/opt/bydlo" -name '*.pdb' -delete
+
+  # BYDLO_LAUNCHER keeps autostart / import associations on this stable path.
+  install -dm755 "$pkgdir/usr/bin"
+  cat > "$pkgdir/usr/bin/bydlo" <<'EOF'
+#!/bin/sh
+export BYDLO_LAUNCHER="${BYDLO_LAUNCHER:-/usr/bin/bydlo}"
+exec /opt/bydlo/BYDLO "$@"
+EOF
+  chmod 755 "$pkgdir/usr/bin/bydlo"
+
+  install -dm755 "$pkgdir/usr/share/applications"
+  cat > "$pkgdir/usr/share/applications/bydlo.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=BYDLO
+GenericName=Bypass Your Digital Limitations Online
+Comment=One app. Every protocol.
+Exec=bydlo
+Icon=bydlo
+Terminal=false
+Categories=Network;Utility;
+StartupWMClass=BYDLO
+EOF
+  chmod 644 "$pkgdir/usr/share/applications/bydlo.desktop"
+  install -Dm644 src/Bydlo.App/Assets/bydlo-256.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/bydlo.png"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 THIRD_PARTY_NOTICES.md "$pkgdir/usr/share/licenses/$pkgname/THIRD_PARTY_NOTICES.md"
+}

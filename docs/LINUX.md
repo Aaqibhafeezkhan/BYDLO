@@ -105,22 +105,47 @@ AppImage запускается в инвариантном режиме гло�
 Этот AppImage не обновляется автоматически. Вариант с автообновлением — AppImage `BydloDesktop`
 от Velopack (см. [BUILD.md](BUILD.md#нативные-пакеты-и-подпись-215)).
 
-## Arch Linux
+## Arch Linux (AUR)
 
-В `packaging/arch/` два PKGBUILD:
+В `packaging/arch/` три пакета, готовых для AUR (у каждого есть `.SRCINFO`):
 
-- `bydlo-bin` — готовый комплект из релиза GitHub (x86_64, aarch64);
-- `bydlo` — сборка из исходников по тегу так же, как в CI: самодостаточное приложение, служба Native AOT,
-  закреплённые sing-box/Xray/Zapret (только загрузка и SHA-256) и хост AmneziaWG. OpenVPN берётся из пакета Arch.
+| Пакет | Источник |
+|---|---|
+| `bydlo-bin` | Готовый комплект `BYDLO-linux-<arch>.zip` из релиза GitHub (x86_64, aarch64) |
+| `bydlo` | Исходники тега `v<pkgver>` (архив с SHA-256), сборка как в CI |
+| `bydlo-git` | Последний коммит ветки по умолчанию, версия из `git describe` |
+
+`bydlo` и `bydlo-git` собирают самодостаточное приложение и однофайловую привилегированную службу,
+скачивают закреплённые sing-box/Xray/Zapret через `tools/Bydlo.BundleEngines` (только загрузка и проверка SHA-256)
+и собирают хост AmneziaWG из `tools/amneziawg`. OpenVPN берётся из пакета Arch (`optdepends`).
+Нужны `dotnet-sdk`, `go` и `jq`; при сборке требуется сеть (NuGet, модули Go, архивы движков).
+Пакеты конфликтуют друг с другом и ставят одинаковые файлы: `/opt/bydlo`, `/usr/bin/bydlo`, ярлык и иконку.
+
+Установка из checkout:
 
 ```bash
-cd packaging/arch/bydlo-bin   # или packaging/arch/bydlo
+cd packaging/arch/bydlo-bin   # или bydlo, bydlo-git
 makepkg -si
 ```
 
-Бинарный комплект .NET нельзя обрабатывать `strip`, поэтому в PKGBUILD указано `options=('!strip')`.
-При выпуске новой версии обновите `pkgver`, выполните `updpkgsums` (для `bydlo-bin`)
-и `makepkg --printsrcinfo > .SRCINFO`.
+Бинарный комплект .NET нельзя обрабатывать `strip`, поэтому в PKGBUILD указано `options=('!strip' '!debug')`.
+
+### Публикация в AUR
+
+Нужна учётная запись AUR с SSH-ключом. Для каждого пакета:
+
+```bash
+git clone ssh://aur@aur.archlinux.org/bydlo-bin.git aur-bydlo-bin
+cp packaging/arch/bydlo-bin/{PKGBUILD,.SRCINFO} aur-bydlo-bin/
+cd aur-bydlo-bin
+git add PKGBUILD .SRCINFO
+git commit -m "Update to 0.4.0"
+git push
+```
+
+При выпуске новой версии в `bydlo` и `bydlo-bin` обновите `pkgver`, сбросьте `pkgrel=1`,
+выполните `updpkgsums` и `makepkg --printsrcinfo > .SRCINFO`. `bydlo-git` обновлять не нужно,
+кроме изменений самого процесса сборки. В строке `# Maintainer:` укажите сопровождающего пакета в AUR.
 
 ## Сборка пакетов
 

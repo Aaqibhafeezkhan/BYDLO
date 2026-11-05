@@ -25,6 +25,7 @@ pkgbase = bydlo-bin
 	optdepends = wireguard-tools: WireGuard profiles
 	provides = bydlo
 	conflicts = bydlo
+	conflicts = bydlo-git
 	noextract = BYDLO-0.4.0-linux-x64.zip
 	noextract = BYDLO-0.4.0-linux-arm64.zip
 	options = !strip

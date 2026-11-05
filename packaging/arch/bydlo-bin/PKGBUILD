@@ -1,3 +1,4 @@
+# Maintainer: Dmitri Shimanski <dshiafeed at gmail dot com>
 # Prebuilt BYDLO from the official GitHub release (self-contained, with pinned engines).
 # Update: bump pkgver, then `updpkgsums` and `makepkg --printsrcinfo > .SRCINFO`.
 pkgname=bydlo-bin
@@ -14,7 +15,7 @@ optdepends=('libsecret: store profile secrets in the Secret Service keyring'
             'libnotify: desktop notifications'
             'wireguard-tools: WireGuard profiles')
 provides=('bydlo')
-conflicts=('bydlo')
+conflicts=('bydlo' 'bydlo-git')
 # The single-file .NET bundle must not be stripped: that corrupts the embedded payload.
 options=('!strip' '!debug')
 _assets="https://raw.githubusercontent.com/endercodezz/BYDLO/v${pkgver}"

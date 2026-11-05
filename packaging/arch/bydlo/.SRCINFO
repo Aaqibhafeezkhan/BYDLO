@@ -6,10 +6,8 @@ pkgbase = bydlo
 	arch = x86_64
 	arch = aarch64
 	license = GPL-3.0-or-later
-	makedepends = git
 	makedepends = dotnet-sdk
 	makedepends = go
-	makedepends = clang
 	makedepends = jq
 	depends = glibc
 	depends = gcc-libs
@@ -31,9 +29,10 @@ pkgbase = bydlo
 	optdepends = wireguard-tools: WireGuard profiles
 	provides = bydlo
 	conflicts = bydlo-bin
+	conflicts = bydlo-git
 	options = !strip
 	options = !debug
-	source = BYDLO::git+https://github.com/endercodezz/BYDLO.git#tag=v0.4.0
-	sha256sums = SKIP
+	source = bydlo-0.4.0.tar.gz::https://github.com/endercodezz/BYDLO/archive/refs/tags/v0.4.0.tar.gz
+	sha256sums = 87eaa419e58db81d5b55cd683f38e6f7b44f78b575d9ddd0cb13fc78a4a24cf1
 
 pkgname = bydlo

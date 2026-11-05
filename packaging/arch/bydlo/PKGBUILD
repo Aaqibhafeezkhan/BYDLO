@@ -1,7 +1,8 @@
+# Maintainer: Dmitri Shimanski <dshiafeed at gmail dot com>
 # BYDLO built from source, the same way as the release bundle (docs/BUILD.md):
-# self-contained app, Native AOT helper, pinned sing-box/Xray/Zapret (SHA-256 checked, never executed)
+# self-contained app and privileged helper, pinned sing-box/Xray/Zapret (SHA-256 checked, never executed)
 # and the AmneziaWG host from tools/amneziawg. OpenVPN comes from the Arch package.
-# Update: bump pkgver, then `makepkg --printsrcinfo > .SRCINFO`.
+# Update: bump pkgver, then `updpkgsums` and `makepkg --printsrcinfo > .SRCINFO`.
 pkgname=bydlo
 pkgver=0.4.0
 pkgrel=1
@@ -11,28 +12,28 @@ url='https://github.com/endercodezz/BYDLO'
 license=('GPL-3.0-or-later')
 depends=('glibc' 'gcc-libs' 'zlib' 'icu' 'openssl' 'fontconfig' 'freetype2'
          'libx11' 'libice' 'libsm' 'libxcursor' 'libxext' 'libxi' 'libxrandr')
-makedepends=('git' 'dotnet-sdk' 'go' 'clang' 'jq')
+makedepends=('dotnet-sdk' 'go' 'jq')
 optdepends=('libsecret: store profile secrets in the Secret Service keyring'
             'libnotify: desktop notifications'
             'openvpn: OpenVPN profiles'
             'wireguard-tools: WireGuard profiles')
 provides=('bydlo')
-conflicts=('bydlo-bin')
+conflicts=('bydlo-bin' 'bydlo-git')
 # The single-file .NET bundle must not be stripped: that corrupts the embedded payload.
 options=('!strip' '!debug')
-source=("BYDLO::git+${url}.git#tag=v${pkgver}")
-sha256sums=('SKIP')
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('87eaa419e58db81d5b55cd683f38e6f7b44f78b575d9ddd0cb13fc78a4a24cf1')
 
 _rid() { [[ $CARCH == aarch64 ]] && echo linux-arm64 || echo linux-x64; }
 
 prepare() {
-  cd BYDLO
+  cd "BYDLO-${pkgver}"
   # global.json pins the 10.0 band; let a newer Arch SDK build the net10.0 projects.
   sed -i 's/"latestFeature"/"latestMajor"/' global.json
 }
 
 build() {
-  cd BYDLO
+  cd "BYDLO-${pkgver}"
   export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_HOME="$srcdir/dotnet-home" \
     NUGET_PACKAGES="$srcdir/nuget" GOPATH="$srcdir/go" GOFLAGS='-modcacherw'
   local rid out="$srcdir/publish"
@@ -41,7 +42,9 @@ build() {
 
   dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r "$rid" --self-contained true \
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "$out"
-  dotnet publish src/Bydlo.Helper/Bydlo.Helper.csproj -c Release -r "$rid" -o "$srcdir/helper"
+  # Single-file helper like the release bundle; Native AOT would also need clang and differs between tags.
+  dotnet publish src/Bydlo.Helper/Bydlo.Helper.csproj -c Release -r "$rid" -p:PublishAot=false --self-contained true \
+    -p:PublishTrimmed=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "$srcdir/helper"
   install -Dm755 "$srcdir/helper/Bydlo.Helper" "$out/helper/Bydlo.Helper"
 
   # Downloads only pinned archives from engines/engines.lock.json and verifies their SHA-256.
@@ -55,7 +58,7 @@ build() {
 }
 
 package() {
-  cd BYDLO
+  cd "BYDLO-${pkgver}"
   install -dm755 "$pkgdir/opt/bydlo"
   cp -a "$srcdir/publish/." "$pkgdir/opt/bydlo/"
   find "$pkgdir/opt/bydlo" -name '*.pdb' -delete
