@@ -26,7 +26,9 @@ public static class NativeZapretStrategy
         }
 
         var hosts = Path.Combine(install.UserListsDirectory, "default-hosts.txt");
-        File.WriteAllText(hosts, DefaultHosts);
+        var domains = DefaultHosts;
+        if (os == OsFamily.Linux) { domains = NativeZapretDomains.Load(); }
+        File.WriteAllText(hosts, domains);
         string ListPath(string path) => os == OsFamily.Linux ? Path.GetFileName(path) : path;
         string[] lists = [$"--hostlist={ListPath(hosts)}", $"--hostlist={ListPath(install.UserListPath(ZapretUserList.General))}",
             $"--hostlist-exclude={ListPath(install.UserListPath(ZapretUserList.Exclude))}", $"--ipset-exclude={ListPath(install.UserListPath(ZapretUserList.IpsetExclude))}"];
