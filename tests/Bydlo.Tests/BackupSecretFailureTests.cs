@@ -58,11 +58,11 @@ public sealed class BackupSecretFailureTests
 
         var snapshot = await profiles.CaptureBackupAsync(new AppSettings());
         Assert.Single(snapshot.Profiles);
-        Assert.Equal([Keys.RawConfig], BackupArchive.RequiredSecretKeys(ProtocolKind.SingBoxConfig));
-        Assert.Equal([Keys.RawConfig], BackupArchive.RequiredSecretKeys(ProtocolKind.XrayConfig));
-        Assert.Equal([Keys.Uuid], BackupArchive.RequiredSecretKeys(ProtocolKind.Vless));
-        Assert.Empty(BackupArchive.RequiredSecretKeys(ProtocolKind.Http));
-        Assert.Empty(BackupArchive.RequiredSecretKeys(ProtocolKind.Socks5));
+        Assert.Equal([Keys.RawConfig], BackupArchive.RequiredSecretKeys(new Profile { Protocol = ProtocolKind.SingBoxConfig }));
+        Assert.Equal([Keys.RawConfig], BackupArchive.RequiredSecretKeys(new Profile { Protocol = ProtocolKind.XrayConfig }));
+        Assert.Equal([Keys.Uuid], BackupArchive.RequiredSecretKeys(new Profile { Protocol = ProtocolKind.Vless }));
+        Assert.Empty(BackupArchive.RequiredSecretKeys(new Profile { Protocol = ProtocolKind.Http }));
+        Assert.Empty(BackupArchive.RequiredSecretKeys(new Profile { Protocol = ProtocolKind.Socks5 }));
     }
 
     [Fact]
@@ -115,5 +115,70 @@ public sealed class BackupSecretFailureTests
         var data = new BackupData { Profiles = [new ImportedProfile(profile, new ProfileSecrets())] };
         var error = Assert.Throws<InvalidDataException>(() => BackupArchive.Encrypt(data, "a long backup password"));
         Assert.Contains(profile.Id.ToString(), error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShadowTls_v1_without_outer_password_exports_ok()
+    {
+        var profiles = NewStore(new InMemorySecretStore());
+        var v1 = new Profile { Name = "shadow-v1", Protocol = ProtocolKind.ShadowTls, Host = "sh.test", Port = 443 };
+        v1.Options["version"] = "1";
+        await profiles.AddAsync([new ImportedProfile(v1, new ProfileSecrets { Values = { [Keys.Password] = "inner-only" } })]);
+
+        // The parser omits shadow_password for v1: inner password alone is valid (issue #344 review).
+        var snapshot = await profiles.CaptureBackupAsync(new AppSettings());
+        Assert.Single(snapshot.Profiles);
+    }
+
+    [Fact]
+    public async Task ShadowTls_v3_without_outer_password_aborts_export()
+    {
+        var profiles = NewStore(new InMemorySecretStore());
+        var v3 = new Profile { Name = "shadow-v3", Protocol = ProtocolKind.ShadowTls, Host = "sh.test", Port = 443 };
+        v3.Options["version"] = "3";
+        await profiles.AddAsync([new ImportedProfile(v3, new ProfileSecrets { Values = { [Keys.Password] = "inner-only" } })]);
+
+        await Assert.ThrowsAsync<SecretAccessException>(() => profiles.CaptureBackupAsync(new AppSettings()));
+    }
+
+    [Fact]
+    public async Task Ssh_without_username_aborts_export()
+    {
+        var profiles = NewStore(new InMemorySecretStore());
+        var ssh = new Profile { Name = "ssh", Protocol = ProtocolKind.Ssh, Host = "ssh.test", Port = 22 };
+        await profiles.AddAsync([new ImportedProfile(ssh, new ProfileSecrets { Values = { [Keys.Password] = "pw" } })]);
+
+        // The parser always stores the username: password alone is not a complete SSH identity (issue #344 review).
+        await Assert.ThrowsAsync<SecretAccessException>(() => profiles.CaptureBackupAsync(new AppSettings()));
+    }
+
+    [Fact]
+    public async Task Ssh_with_username_and_private_key_exports_ok()
+    {
+        var profiles = NewStore(new InMemorySecretStore());
+        var ssh = new Profile { Name = "ssh", Protocol = ProtocolKind.Ssh, Host = "ssh.test", Port = 22 };
+        await profiles.AddAsync([new ImportedProfile(ssh, new ProfileSecrets { Values = { [Keys.Username] = "user", ["private_key"] = "key" } })]);
+
+        var snapshot = await profiles.CaptureBackupAsync(new AppSettings());
+        Assert.Single(snapshot.Profiles);
+    }
+
+    [Fact]
+    public async Task Restore_with_unreadable_existing_secret_fails_closed_without_deleting()
+    {
+        var dir = TestDirs.New("backup-secret-rollback-failclosed");
+        var store = new DpapiSecretStore(dir, new ThrowingProtection());
+        var profiles = NewStore(store);
+        var profile = new Profile { Name = "VLESS", Protocol = ProtocolKind.Vless, Host = "example.test", Port = 443 };
+        await profiles.AddAsync([new ImportedProfile(profile, new ProfileSecrets { Values = { [Keys.Uuid] = "uuid-value" } })]);
+        var before = Directory.GetFiles(dir);
+        Assert.NotEmpty(before);
+
+        var backup = new BackupData { Profiles = [new ImportedProfile(profile, new ProfileSecrets { Values = { [Keys.Uuid] = "new-uuid" } })] };
+        var error = await Assert.ThrowsAsync<SecretAccessException>(() => profiles.RestoreBackupAsync(backup, BackupImportMode.Replace));
+        Assert.Equal("backup.secret.failed", error.LocalizationKey);
+
+        // Fail closed: nothing was written and the original ciphertext is preserved (issue #344 review).
+        Assert.Equal(before, Directory.GetFiles(dir));
     }
 }
