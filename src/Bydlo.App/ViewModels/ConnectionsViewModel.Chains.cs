@@ -23,6 +23,9 @@ public sealed partial class ConnectionsViewModel
         // is the bug reported in issue #333.
         var alreadyActive = Shell.Home.IsConnected
             && Shell.Primary.Chain?.Id == item.Id;
+        var previousProfile = Shell.SelectedProfile;
+        var previousChain = Shell.SelectedChain;
+        var previousUseGroup = Shell.Home.UseGroup;
         Shell.Home.UseGroup = false;
         Shell.SelectedProfile = null;
         Shell.SelectedChain = item;
@@ -31,18 +34,37 @@ public sealed partial class ConnectionsViewModel
         {
             return;
         }
-        await Shell.Guard(async () =>
+        bool connected;
+        try
         {
-            var chain = Services.Profiles.Chains.FirstOrDefault(c => c.Id == item.Id)
-                ?? throw new EngineException("One of the chain servers no longer exists.", localizationKey: "error.chain.unknown");
-            var hops = await ResolveChainAsync(chain);
-            foreach (var w in Services.Connections.PreviewChainConflicts(hops.Select(h => h.Profile).ToList(), Services.EffectiveSettings).Where(i => i.Severity == ConflictSeverity.Warning))
+            connected = await Shell.Guard(async () =>
             {
-                Shell.ShowToast(w.Message);
-            }
+                var chain = Services.Profiles.Chains.FirstOrDefault(c => c.Id == item.Id)
+                    ?? throw new EngineException("One of the chain servers no longer exists.", localizationKey: "error.chain.unknown");
+                var hops = await ResolveChainAsync(chain);
+                foreach (var w in Services.Connections.PreviewChainConflicts(hops.Select(h => h.Profile).ToList(), Services.EffectiveSettings).Where(i => i.Severity == ConflictSeverity.Warning))
+                {
+                    Shell.ShowToast(w.Message);
+                }
 
-            await Services.Connections.ConnectChainAsync(chain, hops, Services.EffectiveSettings);
-        });
+                await Services.Connections.ConnectChainAsync(chain, hops, Services.EffectiveSettings);
+            });
+        }
+        catch
+        {
+            // A failed switch must not leave the new chain selected
+            // while another session is active (issue #333).
+            Shell.SelectedProfile = previousProfile;
+            Shell.SelectedChain = previousChain;
+            Shell.Home.UseGroup = previousUseGroup;
+            throw;
+        }
+        if (!connected)
+        {
+            Shell.SelectedProfile = previousProfile;
+            Shell.SelectedChain = previousChain;
+            Shell.Home.UseGroup = previousUseGroup;
+        }
     }
 
     [RelayCommand]
