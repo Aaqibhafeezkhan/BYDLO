@@ -58,10 +58,10 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-      - name: Test owner-only local IPC (no engines or network)
+      - name: Test isolated suite including owner-only local IPC (no engines or network)
         run: |
           source scripts/env.sh
-          dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --filter FullyQualifiedName~UnixActivationBrokerTests
+          dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release
 
   amnezia-macos:
     name: Cross-build AmneziaWG for macOS ARM64

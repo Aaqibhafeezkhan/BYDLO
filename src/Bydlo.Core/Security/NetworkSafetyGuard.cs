@@ -8,13 +8,13 @@ public static class NetworkSafetyGuard
 {
     public const string SafeDevVariable = "BYDLO_SAFE_DEV";
 
-    private static bool? _override;
+    private static readonly AsyncLocal<bool?> TestLock = new();
 
     /// <summary>True when the development safety lock is active.</summary>
-    public static bool IsLocked => _override ?? IsTruthy(Environment.GetEnvironmentVariable(SafeDevVariable));
+    public static bool IsLocked => IsTruthy(Environment.GetEnvironmentVariable(SafeDevVariable)) || TestLock.Value == true;
 
-    /// <summary>Used by tests only.</summary>
-    internal static void OverrideForTests(bool? locked) => _override = locked;
+    /// <summary>Tests may add a lock in their async flow, but cannot disable the environment safety lock.</summary>
+    internal static void OverrideForTests(bool? locked) => TestLock.Value = locked;
 
     /// <summary>Throws <see cref="NetworkSafetyException"/> if real network actions are locked.</summary>
     public static void EnsureAllowed(string action)
