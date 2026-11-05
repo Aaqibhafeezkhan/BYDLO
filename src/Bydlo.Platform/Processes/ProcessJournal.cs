@@ -11,7 +11,7 @@ public sealed record JournalEntry(string DisplayName, int Pid, string ImageName,
 /// Persists PIDs of engine processes so that, after a BYDLO crash, orphaned engines can be found and stopped
 /// on the next start (crash recovery). Only processes whose image name and start time match are touched.
 /// </summary>
-public sealed class ProcessJournal(string filePath)
+public class ProcessJournal(string filePath)
 {
     private readonly Lock _gate = new();
 
@@ -49,7 +49,7 @@ public sealed class ProcessJournal(string filePath)
     }
 
     /// <summary>Returns journal entries whose process is still alive and matches the recorded image.</summary>
-    public IReadOnlyList<JournalEntry> FindOrphans()
+    public virtual IReadOnlyList<JournalEntry> FindOrphans()
     {
         var alive = new List<JournalEntry>();
         foreach (var e in Entries())
@@ -88,7 +88,7 @@ public sealed class ProcessJournal(string filePath)
     }
 
     /// <summary>Kills orphaned engines left after a crash.</summary>
-    public int KillOrphans(string? displayName = null)
+    public virtual int KillOrphans(string? displayName = null)
     {
         NetworkSafetyGuard.EnsureAllowed("clean up orphaned network engines");
         var killed = 0;

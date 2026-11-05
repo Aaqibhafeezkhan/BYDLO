@@ -394,9 +394,18 @@ public sealed partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void CleanupOrphans()
     {
-        var n = Services.CleanupOrphans();
-        HasOrphans = false;
-        ShowToast(Loc.T("toast.orphans", n));
+        try
+        {
+            var n = Services.CleanupOrphans();
+            HasOrphans = false;
+            ShowToast(Loc.T("toast.orphans", n));
+        }
+        catch (InvalidOperationException ex)
+        {
+            HasOrphans = Services.Orphans.Count > 0;
+            var key = ex.Message == Loc.Instance["error.orphans.stop"] ? "error.orphans.stop" : null;
+            ShowToast(ex.Message, isError: true, localizationKey: key);
+        }
     }
 
     private void RefreshCrashReports()

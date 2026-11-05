@@ -679,6 +679,7 @@
   "settings.associations.removed": "BYDLO associations removed.",
   "settings.associations.conflict": "Another application already handles one of these protocols. Remove its registration first.",
   "error.engine.cleanup": "Cleanup did not finish. The engine or its network settings may still be active. Retry stopping it; see the log for details.",
+  "error.orphans.stop": "Could not stop all leftover engines. Restart BYDLO with the same administrator/root rights and try again.",
   "error.systemproxy.failed": "The system proxy could not be set, so the connection was stopped. Check the system proxy settings and try again.",
   "error.engine.zapret.android": "Android Zapret requires a separate root / VpnService implementation.",
   "error.engine.zapret.arch": "No compatible pinned Zapret build / WinDivert driver for this architecture.",
