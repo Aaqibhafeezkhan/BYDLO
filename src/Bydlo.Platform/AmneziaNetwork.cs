@@ -172,7 +172,7 @@ public sealed class AmneziaNetwork(IProcessRunner runner, OsFamily os, string di
 
     private async Task<AmneziaNetworkLease> LoadAsync(CancellationToken ct)
     {
-        var lease = JsonSerializer.Deserialize<AmneziaNetworkLease>(await File.ReadAllTextAsync(Journal, ct).ConfigureAwait(false))
+        var lease = JsonSerializer.Deserialize(await File.ReadAllTextAsync(Journal, ct).ConfigureAwait(false), PlatformJsonContext.Default.AmneziaNetworkLease)
             ?? throw new InvalidDataException("Invalid AmneziaWG recovery journal.");
         if (lease.Os != os) { throw new InvalidDataException("Recovery journal belongs to another platform."); }
         foreach (var e in lease.Endpoints) { _ = IPAddress.Parse(e.Address); _ = IPAddress.Parse(e.Gateway); ValidateDevice(e.Device, os); }
@@ -182,7 +182,7 @@ public sealed class AmneziaNetwork(IProcessRunner runner, OsFamily os, string di
     private async Task SaveAsync(AmneziaNetworkLease lease, CancellationToken ct)
     {
         var temp = Journal + ".tmp";
-        await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(lease), ct).ConfigureAwait(false);
+        await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(lease, PlatformJsonContext.Default.AmneziaNetworkLease), ct).ConfigureAwait(false);
         File.Move(temp, Journal, overwrite: true);
     }
 

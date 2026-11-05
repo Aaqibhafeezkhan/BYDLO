@@ -197,3 +197,9 @@ SOFTWARE.
 Для клиента используются [gRPC for .NET](https://github.com/grpc/grpc-dotnet) (The gRPC Authors, Apache-2.0),
 [Protocol Buffers](https://github.com/protocolbuffers/protobuf) (Google LLC, BSD-3-Clause);
 Grpc.Tools (The gRPC Authors, Apache-2.0) используется только при сборке.
+
+## Velopack
+
+Установщики, AppImage и обновления используют [Velopack 1.2.161](https://github.com/velopack/velopack/tree/92d6a1c91716729d449034df5c50307dcce39493).
+Авторские права: Caelan Sayler (2021), Velopack Ltd. (2024). Лицензия MIT включена
+в [licenses/Velopack.txt](licenses/Velopack.txt) и распространяется как `LICENSE-Velopack.txt` рядом с приложением.

@@ -1,4 +1,5 @@
-<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:Class="Bydlo.App.Themes.LightPalette">
   <Color x:Key="AccentColor">#222222</Color>
   <Color x:Key="PrimaryColor">#191919</Color>
   <SolidColorBrush x:Key="BgBrush" Color="#F5F5F5" />

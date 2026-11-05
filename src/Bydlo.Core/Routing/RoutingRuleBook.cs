@@ -11,6 +11,7 @@ public sealed record RoutingRuleBook(List<OrderedRoutingRule> Rules, List<RuleSe
     {
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter<RoutingCondition>(), new JsonStringEnumConverter<RoutingAction>() },
+        TypeInfoResolver = Serialization.CoreJsonContext.Default,
     };
 
     public void Validate()
@@ -51,7 +52,7 @@ public sealed record RoutingRuleBook(List<OrderedRoutingRule> Rules, List<RuleSe
     public string Export()
     {
         Validate();
-        return JsonSerializer.Serialize(this, Json);
+        return JsonSerializer.Serialize(this, Serialization.BydloJson.Info<RoutingRuleBook>(Json));
     }
 
     public static RoutingRuleBook Import(ReadOnlySpan<byte> bytes)
@@ -60,8 +61,8 @@ public sealed record RoutingRuleBook(List<OrderedRoutingRule> Rules, List<RuleSe
         using var document = JsonDocument.Parse(bytes.ToArray());
         // Preserve compatibility with the original rules-only array format.
         var book = document.RootElement.ValueKind == JsonValueKind.Array
-            ? new RoutingRuleBook(document.RootElement.Deserialize<List<OrderedRoutingRule>>(Json)!, [])
-            : document.RootElement.Deserialize<RoutingRuleBook>(Json)
+            ? new RoutingRuleBook(document.RootElement.Deserialize(Serialization.BydloJson.Info<List<OrderedRoutingRule>>(Json))!, [])
+            : document.RootElement.Deserialize(Serialization.BydloJson.Info<RoutingRuleBook>(Json))
                 ?? throw new InvalidDataException("routing.rules.invalid");
         book.Validate();
         return book;

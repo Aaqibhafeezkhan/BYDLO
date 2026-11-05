@@ -15,7 +15,6 @@ public sealed record ZapretResultRow(string Strategy, string Successes, string E
 
 public sealed partial class ToolsViewModel
 {
-    private static readonly JsonSerializerOptions SelectionJsonOptions = new() { WriteIndented = true };
     [ObservableProperty] private bool _isSelecting;
     [ObservableProperty] private string _testTargets = "";
     [ObservableProperty] private string _selectionStatus = "";
@@ -34,7 +33,7 @@ public sealed partial class ToolsViewModel
             var files = install is null ? [] : install.Strategies.Where(s => !s.FileName.StartsWith("native-", StringComparison.Ordinal))
                 .Select(s => Path.Combine(install.Root, s.FileName)).Append(install.ExecutablePath);
             var hashes = files.Select(path => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))));
-            return JsonSerializer.Serialize(Services.Settings.Zapret) + install?.Root + install?.Version + string.Join(':', hashes);
+            return JsonSerializer.Serialize(Services.Settings.Zapret, AppJsonContext.Default.ZapretSettings) + install?.Root + install?.Version + string.Join(':', hashes);
         }
     }
 
@@ -45,7 +44,7 @@ public sealed partial class ToolsViewModel
         {
             if (File.Exists(SelectionFile))
             {
-                _selectionReport = JsonSerializer.Deserialize<ZapretSelectionReport>(File.ReadAllText(SelectionFile));
+                _selectionReport = JsonSerializer.Deserialize(File.ReadAllText(SelectionFile), AppJsonContext.Default.ZapretSelectionReport);
                 if (_selectionReport is not null) { ShowSelectionReport(_selectionReport); }
             }
         }
@@ -191,7 +190,7 @@ public sealed partial class ToolsViewModel
     private async Task SaveSelectionReportAsync(ZapretSelectionReport report)
     {
         var temporary = SelectionFile + ".tmp";
-        await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(report, SelectionJsonOptions));
+        await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(report, AppIndentedJsonContext.Default.ZapretSelectionReport));
         File.Move(temporary, SelectionFile, overwrite: true);
     }
 

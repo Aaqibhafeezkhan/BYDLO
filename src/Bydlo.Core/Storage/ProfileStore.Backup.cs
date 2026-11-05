@@ -31,6 +31,23 @@ public sealed partial class ProfileStore
     {
         data = BackupArchive.Clone(data);
         BackupArchive.Validate(data);
+        // Old archives keep XHTTP headers in plain options: move them to secrets
+        // before anything is persisted (issue #338).
+        foreach (var item in data.Profiles)
+        {
+            Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(item.Profile, item.Secrets);
+        }
+        foreach (var sub in data.Subscriptions)
+        {
+            if (sub.Subscription.SourceOptions is null)
+            {
+                continue;
+            }
+            foreach (var options in sub.Subscription.SourceOptions.Values)
+            {
+                Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Strip(options);
+            }
+        }
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {

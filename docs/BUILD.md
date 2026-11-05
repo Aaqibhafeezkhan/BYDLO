@@ -9,7 +9,8 @@
 
 Для сборки нужны Git и .NET SDK 10.0.100 или новее в линейке 10.0 (см. `global.json`),
 а также PowerShell или bash. Установите зависимости, клонируйте репозиторий и перейдите в его каталог.
-На Linux нужны системные зависимости Avalonia (X11 и fontconfig).
+На Linux нужны системные зависимости Avalonia (X11 и fontconfig). На NixOS сначала выполните `nix develop`:
+оболочка подключает эти библиотеки и `protoc` из nixpkgs (см. [LINUX.md](LINUX.md#разработка-на-nixos)).
 
 **PowerShell — обычный пользовательский запуск:**
 
@@ -90,6 +91,33 @@ Mock — инструмент агентской разработки, а не �
 dotnet publish src/Bydlo.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
 ```
 
+Приложение публикуется с trimming и ReadyToRun (настройки в `Bydlo.Desktop.csproj`): исполняемый файл
+меньше, а холодный старт примерно в 2,5 раза быстрее. Обе опции собираются кросс-платформенно, в том числе
+Windows-сборка на Linux. Trimming требует кода без reflection: JSON сериализуется через source-generated
+контексты (`BydloJson`, `*JsonContext`), привязки в AXAML — compiled. Анализаторы trimming/AOT включены для всех
+проектов в `src/`, и любое их предупреждение (IL2026, IL3050 и др.) останавливает сборку.
+
+Привилегированная служба публикуется как Native AOT: один нативный исполняемый файл без встроенной среды .NET.
+Native AOT не собирается для другой ОС, поэтому службу собирают на целевой системе. Пользователю ничего
+дополнительно ставить не нужно; инструменты нужны только машине сборки:
+
+- Windows — Visual Studio Build Tools с компонентом C++ (для `win-arm64` — ещё «C++ ARM64 build tools»);
+  `vswhere.exe` должен быть в `PATH` (`C:\Program Files (x86)\Microsoft Visual Studio\Installer`);
+- macOS — Xcode;
+- Linux — `clang` и `zlib`. В CI Linux-служба собирается в официальных образах
+  `mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-amd64` / `-cross-arm64` с sysroot
+  Ubuntu 18.04, поэтому ей нужна та же версия glibc, что и самой среде .NET.
+
+```powershell
+dotnet publish src/Bydlo.Helper -c Release -r win-x64 -o artifacts/win-x64/helper
+```
+
+Без нужных инструментов можно собрать прежнюю самодостаточную службу с trimming (так делает зеркало Gitea):
+
+```powershell
+dotnet publish src/Bydlo.Helper -c Release -r win-x64 -p:PublishAot=false --self-contained -p:PublishTrimmed=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64/helper
+```
+
 Чтобы добавить sing-box, Xray и Zapret в локальный релиз, после публикации выполните упаковщик (только скачивание, SHA-256 и извлечение; движки не запускаются):
 
 ```powershell
@@ -148,6 +176,10 @@ macOS поддерживается только на Apple Silicon; упаков
 3. **macos** — по тегу релиза или при ручном запуске, на `macos-15` (Apple Silicon, архитектура дополнительно проверяется через `uname -m`). Берёт промежуточный артефакт Linux, запускает изолированные тесты и headless-проверку мастера в Mock Mode, добавляет AmneziaWG и OpenVPN и проверяет полный комплект. Windows/Linux от этой задачи не зависят.
 4. **package** — по тегу или вручную, после успешных `desktop` и `macos`. Повторно проверяет все пять скачанных комплектов, создаёт ZIP и `SHA256SUMS.txt`, проверяет целостность архивов и сохраняет артефакт `release-packages`.
 5. **release** — GitHub-сценарий только для тегов `v*`: после успешного `package` создаёт **черновик** релиза через `gh` из проверенных архивов. Текст [RELEASE_NOTES.md](RELEASE_NOTES.md) добавляется перед автоматически сформированным списком изменений; перед следующим релизом обновите этот файл. На зеркале Gitea релизы не публикуются. Старые релизы и архивы не удаляются.
+
+Задача **Nix flake** на GitHub выполняет `nix flake check` и `nix build .#bydlo`: она ловит устаревший
+`nix/deps.json` после изменения `Directory.Packages.props` (см. [LINUX.md](LINUX.md#разработка-на-nixos)).
+Приложение и движки в ней не запускаются; в список обязательных проверок она не входит.
 
 Дополнительная задача **windows-parity** на GitHub повторяет упаковку обоих Windows RID
 на Windows через lessmsi и сравнивает имена и SHA-256 всех файлов движков с Linux-комплектом.
@@ -243,11 +275,80 @@ OpenVPN/OpenSSL кешируется отдельно. Точный ключ в�
 ### Проверка обновлений в приложении
 
 «Настройки → О приложении»: проверка новых версий BYDLO через GitHub Releases
-(не чаще раза в сутки при запуске, можно выключить) с уведомлением и ссылкой на релиз,
+(при включённом автообновлении — не чаще раза в сутки при запуске) с уведомлением и ссылкой на релиз,
 кнопка «Проверить сейчас» показывает и доступные обновления движков по их upstream.
 Установка движков идёт только из закреплённых версий с проверкой SHA-256 через
 `EngineInstaller`; неизвестные версии не ставятся автоматически. В Mock-режиме и при
 `BYDLO_SAFE_DEV=1` проверки отключены; модульные тесты используют фейковый HTTP.
+
+Флажок «Автоматически обновлять BYDLO» отдельно включает проверку и загрузку пакета
+Velopack, затем установку **при обычном выходе**, после успешной остановки всех
+подключений. По умолчанию выключен, в том числе при миграции старой настройки проверки
+версий. Выключение блокирует проверку, отменяет текущую загрузку и запрещает применение
+уже скачанного пакета. Закрытие в трей не является выходом. После неудачной очистки
+сессии установка откладывается. Профили, подписки, настройки и хранилище секретов
+находятся в прежнем пользовательском каталоге данных; упаковщик его не переносит.
+Старые обычные ZIP и режим `portable.txt` не обновляются автоматически: сначала
+установите нативный пакет. Каталог данных внутри заменяемого каталога приложения также
+блокирует автообновление. Кнопка «Проверить сейчас» остаётся ручной проверкой с уведомлением.
+
+Velopack использует стабильные GitHub Releases и отдельный канал для каждого RID;
+черновики и prerelease не устанавливаются. SDK проверяет SHA-256 пакета из feed по HTTPS.
+Аттестации готовых пакетов и feeds выпускаются CI и могут проверяться через
+`gh attestation verify <файл> --repo endercodezz/BYDLO`.
+Автоматическая проверка Sigstore-attestation клиентом остаётся отдельным этапом
+дорожной карты и здесь не заявляется.
+
+### Нативные пакеты и подпись (#215)
+
+`scripts/package-native.ps1` использует закреплённые Velopack SDK/CLI **1.2.161**.
+Он запускается на целевой ОС после `verify-engine-bundle.ps1` и проверяет содержимое
+полученного `.nupkg` повторно, не запуская движки. CLI установлен только в `.tmp/tools`.
+На Linux нужен `squashfs-tools`: AppImage внутри `.nupkg` извлекается через `unsquashfs`
+по смещению SquashFS, без запуска `AppImage --appimage-extract`.
+Устанавливаемый ID `BydloDesktop` отделён от пользовательского каталога данных `BYDLO`.
+
+| Платформа | Пакет |
+|---|---|
+| Windows x64/ARM64 | `BydloDesktop-<RID>-Setup.exe`, portable ZIP, update `.nupkg` |
+| Linux x64/ARM64 | AppImage с `.desktop` и иконкой, update `.nupkg`; отдельно `.deb` и AppImage без автообновления из `scripts/package-linux.sh` ([LINUX.md](LINUX.md)) |
+| macOS Apple Silicon | `.app` внутри ZIP с Info.plist/иконкой, `.pkg`, update `.nupkg` |
+
+Все `releases.<RID>.json` и `*-full.nupkg` должны находиться в том же GitHub Release,
+что и установщики. Задача `native-packages` создаёт их по тегу или `workflow_dispatch`;
+`package` включает в `SHA256SUMS.txt`, а `release` — в черновик и аттестации.
+Обычные ZIP сохраняются. Нативные пакеты сохраняют исходники и лицензии движков.
+Права исполнения восстанавливаются до упаковки. Windows-движки исключены из переподписи.
+На macOS исходные суммы проверяются **до подписи**, затем после подписи Mach-O
+пересчитывается `ENGINES-SHA256SUMS.txt`; lock-файлы архивов upstream не меняются.
+
+Для тега `v0.4.1` по решению сопровождающего подпись Windows/macOS временно пропускается;
+пакеты не подписаны сертификатом издателя, macOS не проходит notarization. Для следующих
+тегов подпись обязательна: отсутствие credentials останавливает упаковку.
+Для репетиции без подписи запустите `CI` через `workflow_dispatch` с `skip_signing=true`.
+Ручной запуск проверяет упаковку, не создаёт тег/релиз и не подтверждает работу сети.
+Проверки комплектности, SHA-256 и attestations релиза сохраняются.
+
+GitHub Secrets для Windows: существующие `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`,
+`AZURE_SUBSCRIPTION_ID`, `AZURE_TRUSTED_SIGNING_ENDPOINT`,
+`AZURE_TRUSTED_SIGNING_ACCOUNT`, `AZURE_TRUSTED_SIGNING_PROFILE` и OIDC-доверие
+для репозитория. Velopack подписывает также свои Update/Setup-бинарники через Azure.
+
+GitHub Secrets для macOS:
+
+- `MACOS_SIGNING_CERTIFICATE_BASE64`: base64 PKCS#12 с приватными ключами Developer ID
+  Application и Developer ID Installer; `MACOS_SIGNING_CERTIFICATE_PASSWORD` — пароль.
+- `MACOS_APP_IDENTITY`, `MACOS_INSTALLER_IDENTITY`: имена соответствующих идентичностей.
+- `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`: Apple ID, команда и пароль приложения
+  для notarytool. Требуется платная Apple Developer Program.
+
+CI импортирует сертификаты во временную keychain внутри checkout и удаляет её после
+задачи. Velopack выполняет hardened runtime, notarization и stapling `.app` и `.pkg`.
+Приватные ключи в репозиторий не добавляются. При реализации #215 список Secrets
+репозитория был пуст: доступ к сертификатам и реальная нотариальная проверка не заявляются.
+
+Безопасная локальная проверка UI: после `scripts/env.*` выполните
+`dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/auto-update-ui ru --mock --verify-auto-updates`.
 
 ## Повышение прав в Windows
 
@@ -281,6 +382,29 @@ broker. Реальное подтверждение UAC и подключени�
 ## Известные ограничения
 
 - Сборки для macOS не подписаны и не нотаризованы — Gatekeeper покажет предупреждение.
-- Сборки для Windows подписываются в CI релиза через Azure Trusted Signing с меткой времени (см. [CODE-SIGNING.md](CODE-SIGNING.md)); неподписанные dev-сборки показывают «неизвестного издателя».
+- Windows-пакеты v0.4.1 выпускаются без подписи и показывают «неизвестного издателя»; для следующих выпусков предусмотрена Azure Trusted Signing (см. [CODE-SIGNING.md](CODE-SIGNING.md)).
 - Встроенный OpenVPN для Linux собирается на Ubuntu 24.04; совместимость со старыми версиями glibc не заявляется.
-- Android не входит в v0.4.0 и остаётся в планах (см. [ROADMAP.md](ROADMAP.md)).
+- Android не входит в v0.4.1 и остаётся в планах (см. [ROADMAP.md](ROADMAP.md)).
+
+### Проверка происхождения релиза
+
+Новые релизы после внедрения #216 получают GitHub artifact attestations для каждого ZIP
+и `SHA256SUMS.txt`. Проверяйте скачанный файл **до распаковки и запуска**:
+
+```bash
+gh attestation verify BYDLO-linux-x64.zip --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
+gh attestation verify SHA256SUMS.txt --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
+```
+
+Замените `vX.Y.Z` на выбранный тег и имя архива на свою платформу. Нужны актуальная
+GitHub CLI и доступ к GitHub. Успешная проверка подтверждает digest файла, репозиторий,
+workflow и тег; одна лишь сумма из неподписанного списка происхождение не подтверждает.
+Дополнительно на Linux: `sha256sum -c SHA256SUMS.txt --ignore-missing`.
+Старые релизы и локальные сборки attestations не имеют: ошибка проверки не должна
+игнорироваться для релиза, который заявляет их наличие. Это проверка происхождения,
+а не проверка работоспособности приложения и не замена системной подписи macOS/Windows.
+
+В job `release` разрешения `id-token: write` и `attestations: write` выдаются только
+для релизного задания GitHub. Неуспешная аттестация блокирует создание черновика.
+Приватный ключ в Secrets не нужен: используется OIDC и Sigstore.
+См. [документацию GitHub](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).

@@ -45,7 +45,7 @@ internal sealed class WindowsProxyRecovery(IWindowsProxySettings settings, strin
                 // Publish a complete durable journal before the first registry mutation.
                 using (var stream = new FileStream(Journal + ".tmp", FileMode.Create, FileAccess.Write, FileShare.None))
                 {
-                    JsonSerializer.Serialize(stream, new ProxyJournal(1, changes));
+                    JsonSerializer.Serialize(stream, new ProxyJournal(1, changes), PlatformJsonContext.Default.WindowsProxyJournal);
                     stream.Flush(flushToDisk: true);
                 }
                 File.Move(Journal + ".tmp", Journal, overwrite: true);
@@ -86,7 +86,7 @@ internal sealed class WindowsProxyRecovery(IWindowsProxySettings settings, strin
         ProxyJournal? journal;
         using (var stream = File.OpenRead(Journal))
         {
-            journal = JsonSerializer.Deserialize<ProxyJournal>(stream);
+            journal = JsonSerializer.Deserialize(stream, PlatformJsonContext.Default.WindowsProxyJournal);
         }
         if (journal is not { Version: 1, Changes.Length: 3 } ||
             journal.Changes.Any(c => c is null) ||
@@ -133,6 +133,6 @@ internal sealed class WindowsProxyRecovery(IWindowsProxySettings settings, strin
     private void Release() { _lease?.Dispose(); _lease = null; }
     public void Dispose() { lock (_gate) { Release(); } }
 
-    private sealed record ProxyJournal(int Version, Change[] Changes);
-    private sealed record Change(string Name, WindowsProxyValue? Previous, WindowsProxyValue? Applied);
+    internal sealed record ProxyJournal(int Version, Change[] Changes);
+    internal sealed record Change(string Name, WindowsProxyValue? Previous, WindowsProxyValue? Applied);
 }

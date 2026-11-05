@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Shipped trimmed (app) and Native AOT (helper); see docs/BUILD.md. -->
+    <IsAotCompatible>true</IsAotCompatible>
     <RootNamespace>Bydlo.Engines</RootNamespace>
     <AssemblyName>Bydlo.Engines</AssemblyName>
   </PropertyGroup>
@@ -13,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\..\engines\engines.lock.json" LogicalName="engines.lock.json" />
+    <EmbeddedResource Include="..\..\engines\bydlo-zapret-list.txt" LogicalName="bydlo-zapret-list.txt" />
     <InternalsVisibleTo Include="Bydlo.Tests" />
   </ItemGroup>
 </Project>

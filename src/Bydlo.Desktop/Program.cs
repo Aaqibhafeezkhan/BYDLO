@@ -10,6 +10,12 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (!NetworkSafetyGuard.IsLocked && !Bydlo.Core.Models.AppSettings.IsMockForced(args,
+                Environment.GetEnvironmentVariable("BYDLO_MOCK")))
+        {
+            // Pending updates are applied only after settings opt-in and graceful shutdown.
+            Velopack.VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
+        }
         var earlyPaths = Bydlo.Platform.AppPathsFactory.Create(args);
         CrashReporter.Install(earlyPaths.LogsDirectory, LogRedactor.Shared);
         // Do this before claiming the single-instance mutex or forwarding activation.
@@ -22,7 +28,7 @@ internal static class Program
 
         var dataDirectory = earlyPaths.DataDirectory;
         using var activation = OperatingSystem.IsWindows() ? new WindowsActivationBroker(
-            dataDirectory, Bydlo.App.App.PendingActivations.Enqueue) : null;
+            dataDirectory, Bydlo.App.App.EnqueueActivation) : null;
         if (activation is { IsPrimary: false })
         {
             try
@@ -42,7 +48,7 @@ internal static class Program
             UnixActivationBroker? unixActivation = null;
             try
             {
-                unixActivation = new UnixActivationBroker(dataDirectory, Bydlo.App.App.PendingActivations.Enqueue);
+                unixActivation = new UnixActivationBroker(dataDirectory, Bydlo.App.App.EnqueueActivation);
                 if (!unixActivation.IsPrimary)
                 {
                     unixActivation.Forward(args);
@@ -81,6 +87,10 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<Bydlo.App.App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions
+            {
+                CompositionMode = [Win32CompositionMode.RedirectionSurface],
+            })
             .WithInterFont()
             .With(new FontManagerOptions { DefaultFamilyName = "fonts:Inter#Inter" })
             .LogToTrace();

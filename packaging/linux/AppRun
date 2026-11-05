@@ -1,0 +1,22 @@
+#!/bin/sh
+# AppImage entry point. The runtime exports APPIMAGE (the .AppImage file itself),
+# which BYDLO registers for autostart instead of the transient mount path.
+HERE="$(dirname "$(readlink -f "$0")")"
+
+# .NET aborts at startup without ICU. Minimal systems (and NixOS appimage-run) may lack it:
+# fall back to invariant globalization instead of crashing. UI strings come from BYDLO's own JSON.
+if [ -z "${DOTNET_SYSTEM_GLOBALIZATION_INVARIANT:-}" ]; then
+    found=
+    for dir in $(printf '%s' "${LD_LIBRARY_PATH:-}" | tr ':' ' ') /usr/lib64 /usr/lib /lib64 /lib \
+        /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /lib/x86_64-linux-gnu /lib/aarch64-linux-gnu; do
+        for lib in "$dir"/libicuuc.so.[0-9]*; do
+            [ -e "$lib" ] && found=1 && break 2
+        done
+    done
+    if [ -z "$found" ]; then
+        # Named cultures (ru-RU, en-US) then resolve to invariant data instead of throwing.
+        export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY=0
+    fi
+fi
+
+exec "$HERE/usr/lib/bydlo/BYDLO" "$@"

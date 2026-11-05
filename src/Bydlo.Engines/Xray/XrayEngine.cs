@@ -36,11 +36,22 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
     private readonly XrayConfigBuilder _builder = new();
     private GroupMonitor? _groupMonitor;
     private GrpcChannel? _statsChannel;
+    private HttpMessageHandler? _statsHandler;
     private CancellationTokenSource? _trafficCts;
+    private Task? _trafficTask;
     private int _statsPort;
     public Guid? SelectedGroupProfileId => _groupMonitor?.Selected;
     private string? _configPath;
     private readonly List<string> _copiedAssets = [];
+
+    /// <summary>Handler factory for isolated tests (issue #347). Production creates a loopback SocketsHttpHandler.</summary>
+    internal Func<HttpMessageHandler>? StatsHandlerFactoryForTests { get; set; }
+
+    internal HttpMessageHandler? StatsHandlerForTests => _statsHandler;
+
+    internal GrpcChannel? StatsChannelForTests => _statsChannel;
+
+    internal Task? TrafficTaskForTests => _trafficTask;
 
     public override EngineDescriptor Descriptor => Info;
 
@@ -142,10 +153,7 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
     protected override async Task OnStoppingAsync()
     {
         if (_groupMonitor is { } monitor) { await monitor.DisposeAsync().ConfigureAwait(false); _groupMonitor = null; }
-        _trafficCts?.Cancel();
-        _trafficCts = null;
-        _statsChannel?.Dispose();
-        _statsChannel = null;
+        await StopStatsAsync().ConfigureAwait(false);
         if (_configPath is not null)
         {
             SecureFile.DeleteQuietly(_configPath);
@@ -158,23 +166,91 @@ public sealed class XrayEngine(IProcessRunner runner, LogRedactor redactor, Engi
         _copiedAssets.Clear();
     }
 
+    /// <summary>Stops the traffic poll loop and releases the stats channel (issue #347). Idempotent.</summary>
+    private async Task StopStatsAsync()
+    {
+        var cts = _trafficCts;
+        _trafficCts = null;
+        var task = _trafficTask;
+        _trafficTask = null;
+        var channel = _statsChannel;
+        _statsChannel = null;
+        var handler = _statsHandler;
+        _statsHandler = null;
+
+        if (cts is not null)
+        {
+            try
+            {
+                await cts.CancelAsync().ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                try { cts.Cancel(); } catch { }
+            }
+        }
+        if (task is not null)
+        {
+            try
+            {
+                await task.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception)
+            {
+            }
+        }
+        if (cts is not null)
+        {
+            try { cts.Dispose(); } catch { }
+        }
+        if (channel is not null)
+        {
+            // Owns the handler via DisposeHttpClient=true, so this releases the sockets handler too.
+            try { channel.Dispose(); } catch { }
+        }
+        else if (handler is not null)
+        {
+            // Channel creation failed halfway: release the orphaned handler directly.
+            try { handler.Dispose(); } catch { }
+        }
+    }
+
     protected override bool IsReadyLine(string line) => line.Contains("started", StringComparison.OrdinalIgnoreCase) && line.Contains("Xray", StringComparison.OrdinalIgnoreCase);
 
     protected override Task OnStartedAsync(EngineStartRequest request, CancellationToken ct)
     {
         // StatsService shares the loopback gRPC channel (see #211); it never goes through a proxy.
-        _statsChannel = GrpcChannel.ForAddress($"http://127.0.0.1:{_statsPort}", new GrpcChannelOptions
+        // The channel takes ownership of the handler (issue #347): DisposeHttpClient=true so
+        // channel.Dispose() deterministically releases the handler's sockets.
+        var handler = StatsHandlerFactoryForTests?.Invoke()
+            ?? new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false };
+        GrpcChannel channel;
+        try
         {
-            HttpHandler = new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false },
-            MaxReceiveMessageSize = 1024 * 1024,
-        });
+            channel = GrpcChannel.ForAddress($"http://127.0.0.1:{_statsPort}", new GrpcChannelOptions
+            {
+                HttpHandler = handler,
+                DisposeHttpClient = true,
+                MaxReceiveMessageSize = 1024 * 1024,
+            });
+        }
+        catch
+        {
+            handler.Dispose();
+            throw;
+        }
+        _statsHandler = handler;
+        _statsChannel = channel;
         if (request.Group is { } group && request.GroupMembers is { } members)
         {
             _groupMonitor = new GroupMonitor(group, members, new XrayGroupController(_statsChannel, members), false);
             _groupMonitor.Start();
         }
         _trafficCts = new CancellationTokenSource();
-        _ = ReadTrafficAsync(request, _trafficCts.Token);
+        _trafficTask = ReadTrafficAsync(request, _trafficCts.Token);
         return Task.CompletedTask;
     }
 

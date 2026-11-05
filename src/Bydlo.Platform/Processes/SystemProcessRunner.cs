@@ -63,6 +63,29 @@ public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProce
         }
     }
 
+    /// <summary>
+    /// Records a newly started process. If the journal write fails, the process would
+    /// otherwise run untracked (no crash-recovery entry), so kill it and fail closed
+    /// instead of leaking an engine the journal cannot find later (issue #343).
+    /// </summary>
+    internal static void RecordOrCleanup(Process process, ProcessJournal? journal, JournalEntry entry)
+    {
+        try
+        {
+            journal?.Record(entry);
+        }
+        catch
+        {
+            try { process.Kill(entireProcessTree: true); }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+            {
+                // Already exited or not killable: the Record exception below is the
+                // one the caller must see, so never mask it with cleanup noise.
+            }
+            throw;
+        }
+    }
+
     private static ProcessStartInfo CreateStartInfo(ProcessSpec spec)
     {
         var psi = new ProcessStartInfo(spec.FileName)
@@ -119,7 +142,7 @@ public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProce
             process.Exited += (_, _) => RaiseExited();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
-            journal?.Record(new JournalEntry(spec.DisplayName, Id, Path.GetFileName(spec.FileName), StartedAt,
+            RecordOrCleanup(process, journal, new JournalEntry(spec.DisplayName, Id, Path.GetFileName(spec.FileName), StartedAt,
                 GracefulTermination: spec.GracefulTermination, WindowsExitEventName: spec.WindowsExitEventName));
             if (process.HasExited)
             {
@@ -179,7 +202,17 @@ public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProce
         {
             if (Interlocked.Exchange(ref _exitRaised, 1) == 0)
             {
-                journal?.Remove(Id);
+                try
+                {
+                    journal?.Remove(Id);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // A void process-exit callback must not throw. The stale entry stays
+                    // in the journal and the next FindOrphans fails closed on the same
+                    // I/O error instead of silently dropping it (issue #343).
+                    Debug.Fail($"Process journal cleanup failed: {ex.Message}");
+                }
                 Exited?.Invoke(this, SafeExitCode());
             }
         }

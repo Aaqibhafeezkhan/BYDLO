@@ -17,11 +17,53 @@ public sealed partial class ConnectionsViewModel
     [RelayCommand]
     private async Task ConnectChain(ChainItem item)
     {
+        // ConnectionManager.ConnectChainAsync validates before stopping the live
+        // session (issue #266). Always switch, even when another profile or chain
+        // is active; staying on the old session while showing the new selection
+        // is the bug reported in issue #333.
+        var alreadyActive = Shell.Home.IsConnected
+            && Shell.Primary.Chain?.Id == item.Id;
+        var previousProfile = Shell.SelectedProfile;
+        var previousChain = Shell.SelectedChain;
+        var previousUseGroup = Shell.Home.UseGroup;
+        Shell.Home.UseGroup = false;
+        Shell.SelectedProfile = null;
         Shell.SelectedChain = item;
         Shell.Navigate("home");
-        if (!Shell.Home.IsConnected)
+        if (alreadyActive)
         {
-            await Shell.Home.ToggleConnectionCommand.ExecuteAsync(null);
+            return;
+        }
+        bool connected;
+        try
+        {
+            connected = await Shell.Guard(async () =>
+            {
+                var chain = Services.Profiles.Chains.FirstOrDefault(c => c.Id == item.Id)
+                    ?? throw new EngineException("One of the chain servers no longer exists.", localizationKey: "error.chain.unknown");
+                var hops = await ResolveChainAsync(chain);
+                foreach (var w in Services.Connections.PreviewChainConflicts(hops.Select(h => h.Profile).ToList(), Services.EffectiveSettings).Where(i => i.Severity == ConflictSeverity.Warning))
+                {
+                    Shell.ShowToast(w.Message);
+                }
+
+                await Services.Connections.ConnectChainAsync(chain, hops, Services.EffectiveSettings);
+            });
+        }
+        catch
+        {
+            // A failed switch must not leave the new chain selected
+            // while another session is active (issue #333).
+            Shell.SelectedProfile = previousProfile;
+            Shell.SelectedChain = previousChain;
+            Shell.Home.UseGroup = previousUseGroup;
+            throw;
+        }
+        if (!connected)
+        {
+            Shell.SelectedProfile = previousProfile;
+            Shell.SelectedChain = previousChain;
+            Shell.Home.UseGroup = previousUseGroup;
         }
     }
 

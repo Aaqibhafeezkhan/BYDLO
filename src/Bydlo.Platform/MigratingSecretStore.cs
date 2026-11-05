@@ -58,7 +58,7 @@ internal sealed class MigratingSecretStore(ISystemSecretBackend system, ISecretS
                 }
                 return value is null ? ProfileSecrets.Empty : new ProfileSecrets
                 {
-                    Values = new(JsonSerializer.Deserialize<Dictionary<string, string>>(value) ?? [], StringComparer.OrdinalIgnoreCase),
+                    Values = new(JsonSerializer.Deserialize(value, PlatformJsonContext.Default.DictionaryStringString) ?? [], StringComparer.OrdinalIgnoreCase),
                 };
             }
             catch (SystemSecretUnavailableException)
@@ -129,7 +129,7 @@ internal sealed class MigratingSecretStore(ISystemSecretBackend system, ISecretS
     }
     private async Task WriteVerifiedAsync(string id, ProfileSecrets secrets, CancellationToken ct)
     {
-        var value = JsonSerializer.Serialize(secrets.Values);
+        var value = JsonSerializer.Serialize(secrets.Values, PlatformJsonContext.Default.DictionaryStringString);
         await system.WriteAsync(id, value, ct).ConfigureAwait(false);
         if (!string.Equals(value, await system.ReadAsync(id, ct).ConfigureAwait(false), StringComparison.Ordinal))
         {

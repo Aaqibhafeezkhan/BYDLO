@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using Bydlo.App.ViewModels;
+using Bydlo.Core.Models;
 
 internal static class ConnectSwitchVerification
 {
@@ -28,8 +29,18 @@ internal static class ConnectSwitchVerification
         Require(shell.Home.IsConnected, "Reordering the active server keeps the session");
         Require(shell.Primary.Profile?.Id == second.Id, "Active session is still the second server");
 
-        Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+        // A failed switch must not leave the new server selected (issue #332 review).
+        shell.Services.Settings.MockScenario = MockScenario.FailOnConnect;
+        Wait(shell.Connections.ConnectToCommand.ExecuteAsync(first));
         Pump();
+        Require(shell.SelectedProfile?.Id == second.Id, "Failed switch restores the previous selection");
+        shell.Services.Settings.MockScenario = MockScenario.Success;
+
+        if (shell.Home.IsConnected)
+        {
+            Wait(shell.Home.ToggleConnectionCommand.ExecuteAsync(null));
+            Pump();
+        }
         Require(!shell.Home.IsConnected, "Cleanup disconnects");
         Console.WriteLine("Connect-switch verification passed: the list power button moves the live session (issue #141).");
     }

@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bydlo.Core\Bydlo.Core.csproj" />
+    <ProjectReference Include="..\..\src\Bydlo.App\Bydlo.App.csproj" />
     <ProjectReference Include="..\..\src\Bydlo.Engines\Bydlo.Engines.csproj" />
     <ProjectReference Include="..\..\src\Bydlo.Helper\Bydlo.Helper.csproj" />
     <ProjectReference Include="..\..\src\Bydlo.Platform\Bydlo.Platform.csproj" />
@@ -26,6 +27,7 @@
     <Compile Include="..\..\src\Bydlo.Desktop\ElevationHandoff.cs" Link="Desktop\ElevationHandoff.cs" />
     <Compile Include="..\..\src\Bydlo.Desktop\WindowsActivationBroker.cs" Link="Desktop\WindowsActivationBroker.cs" />
     <Compile Include="..\..\src\Bydlo.Desktop\UnixActivationBroker.cs" Link="Desktop\UnixActivationBroker.cs" />
+    <Compile Include="..\..\src\Bydlo.Desktop\DesktopJsonContext.cs" Link="Desktop\DesktopJsonContext.cs" />
     <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

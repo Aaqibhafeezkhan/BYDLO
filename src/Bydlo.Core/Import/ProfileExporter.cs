@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Bydlo.Core.Models;
 using Bydlo.Core.Import.Parsers;
+using Bydlo.Core.Serialization;
 
 namespace Bydlo.Core.Import;
 
@@ -80,6 +81,11 @@ public static class ProfileExporter
                     Keys.PinnedPeerCertSha256, Keys.VerifyPeerCertByName,
                     Keys.RealityShortId, Keys.RealitySpiderX, Keys.Path, Keys.HostHeader, Keys.ServiceName,
                     Keys.Flow, Keys.XhttpMode, Keys.HeaderType, Keys.Seed, Keys.XhttpExtra);
+                // Headers live in secrets (issue #338); reassemble them only for explicit export.
+                if (XhttpSecretHeaders.Merge(p.Option(Keys.XhttpExtra), secrets[Keys.XhttpHeaders]) is { } fullExtra)
+                {
+                    query[Keys.XhttpExtra] = fullExtra;
+                }
                 if (p.Protocol == ProtocolKind.Vless) { query["encryption"] = p.Option(Keys.Encryption) ?? "none"; }
                 if (p.Option(Keys.AllowInsecure) == "true") { query["allowInsecure"] = "1"; }
                 break;
@@ -132,7 +138,7 @@ public static class ProfileExporter
         {
             if (p.Option(key) is { } value) { fields[field] = value; }
         }
-        return "vmess://" + Base64(JsonSerializer.Serialize(fields));
+        return "vmess://" + Base64(JsonSerializer.Serialize(fields, BydloJson.Core.Info<Dictionary<string, string>>()));
     }
 
     private static string Escape(string value) => Uri.EscapeDataString(value);

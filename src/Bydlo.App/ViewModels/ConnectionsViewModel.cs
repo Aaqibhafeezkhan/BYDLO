@@ -122,15 +122,17 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     public Task AddImportedAsync(ImportResult result) => AddAsync(result, null);
 
-    public async Task ImportExternalSubscriptionAsync(string url)
+    public async Task ImportExternalSubscriptionAsync(string url, string? userAgent = null)
     {
-        var preview = await Services.Subscriptions.FetchPreviewAsync(url);
+        userAgent = userAgent?.Trim();
+        if (string.IsNullOrEmpty(userAgent)) { userAgent = null; }
+        var preview = await Services.Subscriptions.FetchPreviewAsync(url, userAgent);
         if (preview.Import.IsEmpty)
         {
             throw new InvalidOperationException(L["import.none"]);
         }
 
-        var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, preview.Import.Profiles, preview.Metadata);
+        var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, preview.Import.Profiles, preview.Metadata, userAgent: userAgent);
         Shell.ReloadProfiles();
         Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, preview.Import.Profiles.Count));
         OnShown();
@@ -267,12 +269,16 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
     [RelayCommand]
     private async Task ConnectTo(ProfileItem item)
     {
-        // MainViewModel.Primary is a snapshot refreshed on the UI thread, so ToggleConnection
-        // could misread it mid-switch. Disconnect and connect explicitly instead (issue #141).
+        // ConnectionManager.ConnectAsync validates the replacement engine before
+        // stopping the live session (issue #266). Disconnecting here first would
+        // drop a working session when the new profile is incompatible (issue #332).
         var alreadyActive = Shell.Home.IsConnected
             && Shell.Primary.Chain is null
             && Shell.Primary.Group is null
             && Shell.Primary.Profile?.Id == item.Id;
+        var previousProfile = Shell.SelectedProfile;
+        var previousChain = Shell.SelectedChain;
+        var previousUseGroup = Shell.Home.UseGroup;
         Shell.Home.UseGroup = false;
         Shell.SelectedProfile = item;
         Shell.SelectedChain = null;
@@ -281,12 +287,30 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         {
             return;
         }
-        await Shell.Guard(() => Services.Connections.DisconnectAsync());
         foreach (var w in Services.Connections.PreviewConflicts(item.Profile, Services.EffectiveSettings).Where(i => i.Severity == ConflictSeverity.Warning))
         {
             Shell.ShowToast(w.Message);
         }
-        await Shell.Guard(() => Services.Connections.ConnectAsync(item.Profile, Services.EffectiveSettings));
+        bool connected;
+        try
+        {
+            connected = await Shell.Guard(() => Services.Connections.ConnectAsync(item.Profile, Services.EffectiveSettings));
+        }
+        catch
+        {
+            // An unexpected failure must not leave the new profile selected
+            // while another session is active (issue #332 review).
+            Shell.SelectedProfile = previousProfile;
+            Shell.SelectedChain = previousChain;
+            Shell.Home.UseGroup = previousUseGroup;
+            throw;
+        }
+        if (!connected)
+        {
+            Shell.SelectedProfile = previousProfile;
+            Shell.SelectedChain = previousChain;
+            Shell.Home.UseGroup = previousUseGroup;
+        }
     }
 
     [RelayCommand]

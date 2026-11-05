@@ -11,7 +11,7 @@ public sealed record JournalEntry(string DisplayName, int Pid, string ImageName,
 /// Persists PIDs of engine processes so that, after a BYDLO crash, orphaned engines can be found and stopped
 /// on the next start (crash recovery). Only processes whose image name and start time match are touched.
 /// </summary>
-public sealed class ProcessJournal(string filePath)
+public class ProcessJournal(string filePath)
 {
     private readonly Lock _gate = new();
 
@@ -49,7 +49,7 @@ public sealed class ProcessJournal(string filePath)
     }
 
     /// <summary>Returns journal entries whose process is still alive and matches the recorded image.</summary>
-    public IReadOnlyList<JournalEntry> FindOrphans()
+    public virtual IReadOnlyList<JournalEntry> FindOrphans()
     {
         var alive = new List<JournalEntry>();
         foreach (var e in Entries())
@@ -88,7 +88,7 @@ public sealed class ProcessJournal(string filePath)
     }
 
     /// <summary>Kills orphaned engines left after a crash.</summary>
-    public int KillOrphans(string? displayName = null)
+    public virtual int KillOrphans(string? displayName = null)
     {
         NetworkSafetyGuard.EnsureAllowed("clean up orphaned network engines");
         var killed = 0;
@@ -144,28 +144,103 @@ public sealed class ProcessJournal(string filePath)
     {
         try
         {
-            return File.Exists(filePath)
-                ? JsonSerializer.Deserialize<List<JournalEntry>>(File.ReadAllText(filePath)) ?? []
-                : [];
+            if (!File.Exists(filePath))
+            {
+                return [];
+            }
+
+            var list = JsonSerializer.Deserialize(File.ReadAllText(filePath), PlatformJsonContext.Default.ListJournalEntry);
+            if (list is null)
+            {
+                SaveCorruptCopy();
+                return [];
+            }
+
+            return list;
         }
         catch (JsonException)
         {
+            // A crash mid-write (or external edit) can leave truncated JSON behind.
+            // The content is unrecoverable, so keep the broken file under a unique
+            // name for diagnosis (issue #343) instead of silently dropping it.
+            SaveCorruptCopy();
             return [];
+        }
+        catch (FileNotFoundException)
+        {
+            // Removed between the Exists check and the read: no snapshot to lose.
+            return [];
+        }
+        // Fail closed on real I/O errors (locked file, permissions, disk): returning
+        // an empty list here would let a subsequent Record() overwrite and lose the
+        // still-valid snapshot, hiding retained processes (issue #343 review).
+    }
+
+    private void SaveCorruptCopy()
+    {
+        try
+        {
+            if (!File.Exists(filePath))
+            {
+                return;
+            }
+
+            var stamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            var candidate = $"{filePath}.corrupt-{stamp}-{Guid.NewGuid().ToString("N")[..8]}.json";
+            File.Copy(filePath, candidate, overwrite: false);
         }
         catch (IOException)
         {
-            return [];
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
     }
 
     private void WriteUnsafe(List<JournalEntry> list)
     {
+        var tmp = filePath + ".tmp." + Guid.NewGuid().ToString("N");
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-            File.WriteAllText(filePath, JsonSerializer.Serialize(list));
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            // Write to a temp file in the same directory, then atomically replace the
+            // journal (issue #343). A crash or failure mid-write never truncates the
+            // previous snapshot, so retained-guard recovery keeps working.
+            var payload = JsonSerializer.Serialize(list, PlatformJsonContext.Default.ListJournalEntry);
+            using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+                fs.Write(bytes, 0, bytes.Length);
+                fs.Flush(flushToDisk: true);
+            }
+
+            File.Move(tmp, filePath, overwrite: true);
+        }
+        catch
+        {
+            // Fail closed: a caller that believes the PID was recorded would leave an
+            // untracked process behind. SystemProcessRunner kills a newly started
+            // process when recording fails instead of leaking it (issue #343 review).
+            DeleteTempQuietly(tmp);
+            throw;
+        }
+    }
+
+    private static void DeleteTempQuietly(string tmp)
+    {
+        try
+        {
+            File.Delete(tmp);
         }
         catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
         {
         }
     }

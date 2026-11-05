@@ -81,6 +81,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     private ImportResult? _pending;
     private string? _pendingUrl;
     private SubscriptionMetadata? _pendingMetadata;
+    private string? _pendingUserAgent;
     private List<ImportedProfile>? _previewOriginalOrder;
     private AddServerStep _previousStep;
     private CancellationTokenSource? _preparation;
@@ -102,6 +103,9 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
     [ObservableProperty] private string _input = "";
     // Matches the localized Auto / Profile / Subscription choices in the link form.
     [ObservableProperty] private int _importTypeIndex;
+    // Per-subscription User-Agent override (issue #350). Empty means the default BYDLO/x.y.
+    // Entered before the first preview so panels that gate on User-Agent can be fetched.
+    [ObservableProperty] private string _userAgent = "";
     [ObservableProperty] private string? _errorKey;
     [ObservableProperty] private string _summary = "";
     [ObservableProperty]
@@ -196,9 +200,10 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pending = null;
         _pendingUrl = null;
         _pendingMetadata = null;
+        _pendingUserAgent = null;
         _pendingName = null;
         _previewOriginalOrder = null;
-        Input = Identifier = Password = Configuration = ServerName = Host = Sni = Summary = SubscriptionDetails = "";
+        Input = UserAgent = Identifier = Password = Configuration = ServerName = Host = Sni = Summary = SubscriptionDetails = "";
         ErrorKey = null;
         SkippedCount = 0;
         Protocol = ProtocolKind.Vless;
@@ -255,6 +260,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pending = null;
         _pendingUrl = null;
         _pendingMetadata = null;
+        _pendingUserAgent = null;
         _pendingName = null;
         _previewOriginalOrder = null;
         _previewLatencies.Clear();
@@ -296,11 +302,12 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
             : ProfileImporter.LooksLikeSubscriptionUrl(text, allowRoot: true);
         if (subscription)
         {
+            if (!TryNormalizeUserAgent(out var userAgent)) { ErrorKey = "wizard.error.input"; return; }
             try
             {
-                var downloaded = await _subscriptions.FetchPreviewAsync(text.Trim(), ct: _preparation?.Token ?? Services.ShutdownToken);
+                var downloaded = await _subscriptions.FetchPreviewAsync(text.Trim(), userAgent, ct: _preparation?.Token ?? Services.ShutdownToken);
                 if (downloaded.Import.IsEmpty) { ErrorKey = "wizard.error.subscription"; return; }
-                ShowPreview(downloaded.Import, text.Trim(), downloaded.Metadata);
+                ShowPreview(downloaded.Import, text.Trim(), downloaded.Metadata, userAgent: userAgent);
             }
             catch (OperationCanceledException) when (_preparation?.IsCancellationRequested == true) { }
             catch (Exception) { ErrorKey = "wizard.error.subscription"; }
@@ -308,7 +315,15 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         else { ShowPreview(Services.Importer.ImportText(text)); }
     }
 
-    private void ShowPreview(ImportResult result, string? url = null, SubscriptionMetadata? metadata = null, string? name = null)
+    private bool TryNormalizeUserAgent(out string? userAgent)
+    {
+        userAgent = UserAgent?.Trim();
+        if (string.IsNullOrEmpty(userAgent)) { userAgent = null; return true; }
+        if (userAgent.Length > 256 || userAgent.Any(char.IsControl)) { userAgent = null; return false; }
+        return true;
+    }
+
+    private void ShowPreview(ImportResult result, string? url = null, SubscriptionMetadata? metadata = null, string? name = null, string? userAgent = null)
     {
         if (_preparation?.IsCancellationRequested == true) { return; }
         if (result.IsEmpty)
@@ -320,6 +335,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pending = result;
         _pendingUrl = url;
         _pendingMetadata = metadata;
+        _pendingUserAgent = url is null ? null : userAgent;
         _pendingName = name;
         _previousStep = Step;
         _previewLatencies.Clear();
@@ -441,6 +457,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
         _pending = null;
         _pendingUrl = null;
         _pendingMetadata = null;
+        _pendingUserAgent = null;
         _pendingName = null;
         PreviewItems.Clear();
         if (IsPreview) { Step = _previousStep; }
@@ -590,7 +607,7 @@ public sealed partial class AddServerWizardViewModel : PageViewModel
                 var mode = selected.Count < pending.Profiles.Count
                     ? SubscriptionMode.SelectedOnly
                     : SubscriptionMode.FollowAll;
-                await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? _pendingMetadata?.Title ?? new Uri(url).Host, url, selected, _pendingMetadata, mode);
+                await Services.Profiles.AddSubscriptionWithProfilesAsync(_pendingName ?? _pendingMetadata?.Title ?? new Uri(url).Host, url, selected, _pendingMetadata, mode, _pendingUserAgent);
             }
             else { await Services.Profiles.AddAsync(selected); }
             Shell.ReloadProfiles();

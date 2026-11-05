@@ -15,6 +15,7 @@ internal static class HelperServer
     private static readonly HelperLeasePool Leases = new();
     private static readonly HelperBuild Build = HelperManagement.GetBuild(EngineLock.BundleVersion);
     private static readonly string[] SystemToolDirectories = ["/usr/sbin", "/sbin", "/usr/bin", "/bin"];
+    private static readonly List<HelperSession> PendingCleanups = [];
     public static async Task RunAsync(CancellationToken ct)
     {
         NetworkSafetyGuard.EnsureAllowed("serve privileged requests");
@@ -62,44 +63,79 @@ internal static class HelperServer
 
     private static async Task ServeAsync(Stream pipe, EngineRegistry registry, string root, CancellationToken ct)
     {
+        await RetryPendingCleanupsAsync().ConfigureAwait(false);
         await using var stream = pipe;
-        await using var session = new HelperSession(kind => registry.Create(kind, new AppSettings()), root, Leases);
+        var session = new HelperSession(kind => registry.Create(kind, new AppSettings()), root, Leases);
         try
         {
-            while (!ct.IsCancellationRequested)
+            try
             {
-                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                deadline.CancelAfter(TimeSpan.FromSeconds(90)); // Abandoned leases never run indefinitely.
-                var request = await HelperProtocol.ReadAsync<HelperRequest>(pipe, deadline.Token).ConfigureAwait(false);
-                if (request.Version != HelperProtocol.Version ||
-                    (request.Operation is HelperOperation.Check or HelperOperation.Start or HelperOperation.Reconnect && request.ExpectedBuild != Build))
+                while (!ct.IsCancellationRequested)
                 {
-                    await HelperProtocol.WriteAsync(pipe, new HelperReply
+                    using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    deadline.CancelAfter(TimeSpan.FromSeconds(90)); // Abandoned leases never run indefinitely.
+                    var request = await HelperProtocol.ReadAsync<HelperRequest>(pipe, deadline.Token).ConfigureAwait(false);
+                    if (request.Version != HelperProtocol.Version ||
+                        (request.Operation is HelperOperation.Check or HelperOperation.Start or HelperOperation.Reconnect && request.ExpectedBuild != Build))
                     {
-                        Build = Build, State = EngineState.Failed, Error = HelperProtocol.Outdated,
-                    }, deadline.Token).ConfigureAwait(false);
-                    continue;
-                }
-                try
-                {
-                    var reply = await session.DispatchAsync(request, deadline.Token).ConfigureAwait(false);
-                    await HelperProtocol.WriteAsync(pipe, reply with { Build = Build }, deadline.Token).ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    // Never serialize exceptions: they may contain credentials, configs or privileged paths.
-                    await HelperProtocol.WriteAsync(pipe, new HelperReply { Build = Build, State = EngineState.Failed, Error = "helper.error" }, deadline.Token).ConfigureAwait(false);
-                    // Keep the authenticated lease available for cleanup retries.
+                        await HelperProtocol.WriteAsync(pipe, new HelperReply
+                        {
+                            Build = Build, State = EngineState.Failed, Error = HelperProtocol.Outdated,
+                        }, deadline.Token).ConfigureAwait(false);
+                        continue;
+                    }
+                    try
+                    {
+                        var reply = await session.DispatchAsync(request, deadline.Token).ConfigureAwait(false);
+                        await HelperProtocol.WriteAsync(pipe, reply with { Build = Build }, deadline.Token).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        // Never serialize exceptions: they may contain credentials, configs or privileged paths.
+                        await HelperProtocol.WriteAsync(pipe, new HelperReply { Build = Build, State = EngineState.Failed, Error = "helper.error" }, deadline.Token).ConfigureAwait(false);
+                        // Keep the authenticated lease available for cleanup retries.
+                    }
                 }
             }
+            catch (Exception ex) when (ex is IOException or OperationCanceledException or System.Text.Json.JsonException) { }
         }
-        catch (Exception ex) when (ex is IOException or OperationCanceledException or System.Text.Json.JsonException) { }
+        finally
+        {
+            // A failed cleanup stays retryable: keep the session so the next
+            // connection can retry Dispose instead of leaking the lease.
+            try { await session.DisposeAsync().ConfigureAwait(false); }
+            catch (Exception)
+            {
+                Console.Error.WriteLine("A helper session failed to finish cleanup.");
+                lock (PendingCleanups) { PendingCleanups.Add(session); }
+            }
+        }
+    }
+
+    private static async Task RetryPendingCleanupsAsync()
+    {
+        List<HelperSession> pending;
+        lock (PendingCleanups)
+        {
+            if (PendingCleanups.Count == 0) { return; }
+            pending = [.. PendingCleanups];
+            PendingCleanups.Clear();
+        }
+        foreach (var session in pending)
+        {
+            try { await session.DisposeAsync().ConfigureAwait(false); }
+            catch (Exception)
+            {
+                Console.Error.WriteLine("A helper session failed to finish cleanup.");
+                lock (PendingCleanups) { PendingCleanups.Add(session); }
+            }
+        }
     }
 
     public static void VerifyBundle()
     {
         var root = HelperPaths.InstallDirectory;
-        var hashes = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(root, "bundle.sha256.json")))
+        var hashes = System.Text.Json.JsonSerializer.Deserialize(File.ReadAllText(Path.Combine(root, "bundle.sha256.json")), HelperJsonContext.Default.DictionaryStringString)
             ?? throw new InvalidDataException("Missing bundle hashes.");
         HelperBundleIntegrity.Verify(root, hashes);
     }

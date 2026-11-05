@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Shipped trimmed (app) and Native AOT (helper); see docs/BUILD.md. -->
+    <IsAotCompatible>true</IsAotCompatible>
     <RootNamespace>Bydlo.Core</RootNamespace>
     <AssemblyName>Bydlo.Core</AssemblyName>
   </PropertyGroup>

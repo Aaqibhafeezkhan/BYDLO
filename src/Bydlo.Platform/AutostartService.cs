@@ -7,7 +7,7 @@ namespace Bydlo.Platform;
 public sealed class AutostartService(PlatformInfo? platform = null, string? executable = null, IWindowsRegistrationStore? registrations = null)
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private readonly string? _executable = executable ?? Environment.ProcessPath;
+    private readonly string? _executable = executable ?? LauncherPath.Current;
     private readonly PlatformInfo _platform = platform ?? PlatformInfo.Current;
 
     public bool IsSupported => (_platform.Os is OsFamily.Windows or OsFamily.Linux or OsFamily.MacOS) &&

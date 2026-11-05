@@ -106,9 +106,9 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
     public async Task ConnectGroupAsync(ServerGroup group, IReadOnlyList<ChainHop> members, AppSettings settings, CancellationToken ct = default)
     {
-        group = JsonSerializer.Deserialize<ServerGroup>(JsonSerializer.Serialize(group))!;
-        members = JsonSerializer.Deserialize<List<ChainHop>>(JsonSerializer.Serialize(members))!;
-        settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        group = Serialization.BydloJson.DeepClone(group);
+        members = Serialization.BydloJson.DeepClone(members.ToList());
+        settings = Serialization.BydloJson.DeepClone(settings);
         Config.ServerGroupSupport.Validate(group, members, group.Engine);
         var profiles = members.Select(m => m.Profile).ToList();
         if (group.SubscriptionId is { } subscription && profiles.Any(p => p.SubscriptionId != subscription)
@@ -217,7 +217,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     /// <summary>Connects the primary tunnel. Disconnects a previous primary first.</summary>
     public async Task ConnectAsync(Profile profile, AppSettings settings, CancellationToken ct = default)
     {
-        settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        settings = Serialization.BydloJson.DeepClone(settings);
         var blocking = PreviewConflicts(profile, settings).Where(i => i.Severity == ConflictSeverity.Blocking).ToList();
         if (blocking.Count > 0)
         {
@@ -248,7 +248,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
     /// <summary>Connects a relay chain (entry first, exit last). Disconnects a previous primary first.</summary>
     public async Task ConnectChainAsync(ProxyChain chain, IReadOnlyList<ChainHop> hops, AppSettings settings, CancellationToken ct = default)
     {
-        settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        settings = Serialization.BydloJson.DeepClone(settings);
         if (hops.Count != chain.ProfileIds.Count)
         {
             throw new EngineException("Chain hops do not match the saved chain.", localizationKey: "error.chain.unknown");

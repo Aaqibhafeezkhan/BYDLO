@@ -12,7 +12,7 @@ BYDLO не изобретает протоколы заново: он управ
 AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-discord-youtube) и
 [tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) от Flowseal — через один понятный интерфейс.
 
-> **BYDLO v0.4.0** — режим TUN для профилей Xray, статистика Xray и диагностический отчёт. [Скачать BYDLO](https://github.com/endercodezz/BYDLO/releases) · [Что нового](docs/RELEASE_NOTES.md#bydlo-v040).
+> **BYDLO v0.4.1** — исправления стабильности и защиты данных, нативные пакеты и необязательное автообновление. [Скачать BYDLO](https://github.com/endercodezz/BYDLO/releases) · [Что нового](docs/RELEASE_NOTES.md#bydlo-v041).
 > Статусы и ограничения платформ описаны в [матрице совместимости](docs/COMPATIBILITY.md), а порядок ручной проверки — в [руководстве](docs/TESTING.md).
 
 ## Возможности
@@ -78,6 +78,17 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 
 Подробно по протоколам и платформам: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
+Linux: flake для NixOS (`nix run github:endercodezz/BYDLO`), `.deb`, AppImage и PKGBUILD для Arch —
+см. [docs/LINUX.md](docs/LINUX.md).
+
+Нативные пакеты: Windows Setup, Linux AppImage, macOS `.app`/`.pkg`; упаковка и необходимые
+секреты подписи описаны в [BUILD.md](docs/BUILD.md#нативные-пакеты-и-подпись-215).
+В v0.4.1 подпись Windows/macOS временно пропущена: возможны предупреждения SmartScreen,
+UAC и Gatekeeper. Для проверки файлов доступны SHA-256 и GitHub attestations.
+В пакетной версии можно включить «Автоматически обновлять BYDLO»: проверка и загрузка
+при запуске, установка при выходе с сохранением настроек, профилей и подписок.
+По умолчанию выключено. Для старых ZIP сначала установите нативный пакет.
+
 ## Что входит в полный релиз
 
 Распаковывайте весь архив, сохраняя папку `engines` рядом с BYDLO. В комплект входят sing-box,
@@ -99,7 +110,7 @@ TgWsProxy работает внутри BYDLO. Повышение прав по�
 
 Для сборки нужны Git и .NET SDK 10.0.100 или новее в линейке 10.0 (см. `global.json`),
 а также PowerShell или bash. Установите зависимости, клонируйте репозиторий и перейдите в его каталог.
-На Linux нужны системные зависимости Avalonia (X11 и fontconfig).
+На Linux нужны системные зависимости Avalonia (X11 и fontconfig); на NixOS выполните `nix develop`.
 
 **PowerShell — обычный пользовательский запуск:**
 
@@ -149,6 +160,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 - [Пользовательские темы](docs/THEMES.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Сборка](docs/BUILD.md)
+- [Установка на Linux: NixOS, .deb, AppImage, Arch](docs/LINUX.md)
 - [Совместимость протоколов и платформ](docs/COMPATIBILITY.md)
 - [Редактирование профилей и учётные данные OpenVPN](docs/PROFILE_EDITOR.md)
 - [Руководство по ручному тестированию](docs/TESTING.md)
@@ -201,3 +213,16 @@ BYDLO распространяется по [GNU General Public License v3.0 и�
 Сторонние компоненты сохраняют свои лицензии — см. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Используйте BYDLO в соответствии с законодательством вашей страны. Это клиент для сетей и серверов, которыми вы вправе пользоваться.
+
+### Проверка скачанного релиза
+
+Новые релизы после #216 имеют GitHub artifact attestations. До распаковки проверьте архив
+(замените платформу и `vX.Y.Z` на выбранный тег):
+
+```bash
+gh attestation verify BYDLO-linux-x64.zip --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
+```
+
+Проверка связывает файл с репозиторием, workflow и тегом. Обычный `SHA256SUMS.txt` сам
+по себе не защищает от подмены архива вместе с суммами. Проверка списка сумм и ограничения
+для старых релизов описаны в [BUILD.md](docs/BUILD.md#проверка-происхождения-релиза).

@@ -2,17 +2,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Bydlo.Core.Models;
 using Bydlo.Core.Security;
+using Bydlo.Core.Serialization;
 
 namespace Bydlo.Core.Storage;
 
 internal static class JsonDefaults
 {
-    public static readonly JsonSerializerOptions Options = new()
-    {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() },
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
+    /// <summary>Indented, string enums, nulls omitted; source-generated (see <see cref="CoreStoreJsonContext"/>).</summary>
+    public static readonly JsonSerializerOptions Options = CoreStoreJsonContext.Default.Options;
 
     /// <summary>Writes atomically (temp file + fsync + move) so a crash never leaves a half-written file.</summary>
     public static async Task WriteAtomicAsync<T>(string path, T value, CancellationToken ct)
@@ -21,7 +18,7 @@ internal static class JsonDefaults
         var tmp = path + ".tmp";
         await using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            await JsonSerializer.SerializeAsync(fs, value, Options, ct).ConfigureAwait(false);
+            await JsonSerializer.SerializeAsync(fs, value, Options.Info<T>(), ct).ConfigureAwait(false);
             await fs.FlushAsync(ct).ConfigureAwait(false);
             fs.Flush(flushToDisk: true);
         }
@@ -40,7 +37,7 @@ internal static class JsonDefaults
         try
         {
             await using var fs = File.OpenRead(path);
-            var value = await JsonSerializer.DeserializeAsync<T>(fs, Options, ct).ConfigureAwait(false);
+            var value = await JsonSerializer.DeserializeAsync(fs, Options.Info<T>(), ct).ConfigureAwait(false);
             BackupLastGood(path);
             return value;
         }
@@ -99,7 +96,7 @@ internal static class JsonDefaults
         try
         {
             using var fs = File.OpenRead(backup);
-            restored = JsonSerializer.Deserialize<T>(fs, Options);
+            restored = JsonSerializer.Deserialize(fs, Options.Info<T>());
             return restored is not null;
         }
         catch (JsonException)
@@ -129,7 +126,7 @@ internal static class JsonDefaults
         {
             await using (var fs = File.OpenRead(path))
             {
-                value = await JsonSerializer.DeserializeAsync<T>(fs, Options, ct).ConfigureAwait(false);
+                value = await JsonSerializer.DeserializeAsync(fs, Options.Info<T>(), ct).ConfigureAwait(false);
             }
         }
         catch (JsonException)
@@ -308,6 +305,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         _doc.Subscriptions ??= [];
         _doc.Chains ??= [];
         _doc.PendingSecretDeletes ??= [];
+        await MigrateXhttpSecretHeadersAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<Profile>> AddAsync(IEnumerable<ImportedProfile> imported, Guid? subscriptionId = null, CancellationToken ct = default)
@@ -327,6 +325,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
                 {
                     item.Profile.SubscriptionId = subscriptionId ?? item.Profile.SubscriptionId;
                     written.Add(item.Profile.Id.ToString());
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(item.Profile, item.Secrets);
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     added.Add(item.Profile);
                 }
@@ -366,12 +365,29 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions], Chains = [.. _doc.Chains] };
             next.Profiles[index] = profile;
             var id = profile.Id.ToString();
-            var previous = updatedSecrets is null ? null : await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+            ProfileSecrets? previous = null;
+            ProfileSecrets? toSave = updatedSecrets;
+            if (updatedSecrets is not null)
+            {
+                previous = await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+            }
+            else if (profile.Options.TryGetValue(Bydlo.Core.Models.Keys.XhttpExtra, out var raw) &&
+                Bydlo.Core.Import.Parsers.XhttpSecretHeaders.TryExtractHeaders(raw, out _, out var splitHeaders) &&
+                splitHeaders is not null)
+            {
+                // Without accompanying secrets, headers edited into options would
+                // persist as plaintext (issue #338): move them first, touching the
+                // secret store only when headers are actually present.
+                var current = await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+                previous = new ProfileSecrets { Values = new Dictionary<string, string>(current.Values, StringComparer.OrdinalIgnoreCase) };
+                toSave = current;
+            }
             try
             {
-                if (updatedSecrets is not null)
+                if (toSave is not null)
                 {
-                    await secrets.SaveAsync(id, updatedSecrets, ct).ConfigureAwait(false);
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(profile, toSave);
+                    await secrets.SaveAsync(id, toSave, ct).ConfigureAwait(false);
                 }
                 await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
                 _doc = next;
@@ -425,8 +441,13 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
     }
 
     /// <summary>Saves a previewed subscription and its credentials together, without downloading it again.</summary>
-    public async Task<Subscription> AddSubscriptionWithProfilesAsync(string name, string url, IReadOnlyList<ImportedProfile> profiles, Bydlo.Core.Import.SubscriptionMetadata? metadata = null, SubscriptionMode mode = SubscriptionMode.FollowAll, CancellationToken ct = default)
+    public async Task<Subscription> AddSubscriptionWithProfilesAsync(string name, string url, IReadOnlyList<ImportedProfile> profiles, Bydlo.Core.Import.SubscriptionMetadata? metadata = null, SubscriptionMode mode = SubscriptionMode.FollowAll, string? userAgent = null, CancellationToken ct = default)
     {
+        userAgent = userAgent?.Trim();
+        if (userAgent?.Any(char.IsControl) == true)
+        { throw new ArgumentException("User-Agent must not contain control characters.", nameof(userAgent)); }
+        if (userAgent?.Length > 256)
+        { throw new ArgumentException("User-Agent is too long (max 256 characters).", nameof(userAgent)); }
         var sub = new Subscription
         {
             Name = name,
@@ -439,6 +460,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             UpdateIntervalHours = metadata?.UpdateIntervalHours,
             SupportUrl = metadata?.SupportUrl,
             Announce = metadata?.Announce,
+            UserAgent = string.IsNullOrEmpty(userAgent) ? null : userAgent,
             Mode = mode,
             SourceOptions = [],
         };
@@ -457,6 +479,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
                 foreach (var item in profiles)
                 {
                     written.Add(item.Profile.Id.ToString());
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(item.Profile, item.Secrets);
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     item.Profile.SubscriptionId = sub.Id;
                     sub.SourceOptions!.Add(item.Profile.Id, new(item.Profile.Options, StringComparer.OrdinalIgnoreCase));

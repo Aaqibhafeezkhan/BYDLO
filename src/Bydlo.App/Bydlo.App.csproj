@@ -3,13 +3,18 @@
     <RootNamespace>Bydlo.App</RootNamespace>
     <AssemblyName>Bydlo.App</AssemblyName>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- The desktop app ships trimmed; see docs/BUILD.md. -->
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
     <InternalsVisibleTo Include="Bydlo.Screenshots" />
+    <InternalsVisibleTo Include="Bydlo.Tests" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
+    <PackageReference Include="Velopack" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="CommunityToolkit.Mvvm" />

@@ -74,6 +74,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _subscriptionAutoUpdate = s.SubscriptionAutoUpdate;
         _subscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         _checkForUpdates = s.CheckForUpdates;
+        _autoUpdateApp = s.AutoUpdateApp;
         _runElevatedOnStartup = s.RunElevatedOnStartup;
     }
 
@@ -109,6 +110,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         SubscriptionAutoUpdate = s.SubscriptionAutoUpdate;
         SubscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         CheckForUpdates = s.CheckForUpdates;
+        AutoUpdateApp = s.AutoUpdateApp;
         OnPropertyChanged(nameof(LanSysProxyConflict));
         RefreshCustomThemes();
     }
@@ -185,6 +187,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("Microsoft Visual C++ runtime", "Microsoft", "Microsoft runtime license", "https://www.microsoft.com", "", "about.vcruntime"),
         new("OpenVPN", "OpenVPN Inc. & community", "GPL-2.0", "https://github.com/OpenVPN/openvpn", "OpenVPN tunnels"),
         new("Avalonia UI", "AvaloniaUI OÜ", "MIT", "https://github.com/AvaloniaUI/Avalonia", "Cross-platform UI framework"),
+        new("Velopack", "Velopack contributors", "MIT", "https://github.com/velopack/velopack", "", "about.velopack"),
         new("CommunityToolkit.Mvvm", ".NET Foundation", "MIT", "https://github.com/CommunityToolkit/dotnet", "MVVM helpers"),
         new("ZXing.Net", "Michael Jahn", "Apache-2.0", "https://github.com/micjahn/ZXing.Net", "QR code decoding"),
         new("gRPC for .NET", "The gRPC Authors", "Apache-2.0", "https://github.com/grpc/grpc-dotnet", "Xray group control API"),
@@ -299,7 +302,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public bool CanRegisterAssociations => !NetworkSafetyGuard.IsLocked &&
         (OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) &&
-        Environment.ProcessPath is { } path && !Path.GetFileNameWithoutExtension(path).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
+        Bydlo.Platform.LauncherPath.Current is { } path && !Path.GetFileNameWithoutExtension(path).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
 
     partial void OnSuggestClipboardLinksChanged(bool value)
     {
@@ -334,7 +337,7 @@ public sealed partial class SettingsViewModel : PageViewModel
                 try
                 {
                     if (OperatingSystem.IsWindows()) { Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!); }
-                    else { await new Bydlo.Platform.UnixImportAssociations(Environment.ProcessPath!).RegisterAsync(); }
+                    else { await new Bydlo.Platform.UnixImportAssociations(Bydlo.Platform.LauncherPath.Current!).RegisterAsync(); }
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -361,7 +364,7 @@ public sealed partial class SettingsViewModel : PageViewModel
                 try
                 {
                     if (OperatingSystem.IsWindows()) { Bydlo.Platform.WindowsImportAssociations.Unregister(Environment.ProcessPath!); }
-                    else { await new Bydlo.Platform.UnixImportAssociations(Environment.ProcessPath!).UnregisterAsync(); }
+                    else { await new Bydlo.Platform.UnixImportAssociations(Bydlo.Platform.LauncherPath.Current!).UnregisterAsync(); }
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or TimeoutException)
                 {
