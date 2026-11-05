@@ -71,16 +71,10 @@ public sealed class BackupExportTests
     [Fact]
     public async Task Remote_existing_target_is_never_opened_for_writing()
     {
-        var writeOpened = false;
-        Task<Stream> OpenRead() => Task.FromResult<Stream>(new MemoryStream("old-backup"u8.ToArray()));
-        Task<Stream> OpenWrite()
-        {
-            writeOpened = true;
-            return Task.FromResult<Stream>(new MemoryStream());
-        }
+        static Task<Stream> OpenRead() => Task.FromResult<Stream>(new MemoryStream("old-backup"u8.ToArray()));
 
+        // The probe reports existing, so callers must not open the write stream at all.
         Assert.False(await BackupExport.IsRemoteTargetMissingAsync(OpenRead));
-        Assert.False(writeOpened);
     }
 
     [Fact]
