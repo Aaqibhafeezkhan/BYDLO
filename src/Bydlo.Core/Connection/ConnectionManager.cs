@@ -35,6 +35,10 @@ public sealed record SessionSnapshot(
     public bool CleanupPending { get; init; }
     public bool HoldsResources => CleanupPending || Status is not (ConnectionStatus.Disconnected or ConnectionStatus.Error);
 
+    /// <summary>Kill Switch flag captured when the engine was started (issue #380:
+    /// TUN binds a TCP port only through the retained LocalProxy backend).</summary>
+    public bool KillSwitch { get; init; }
+
     /// <summary>Active relay chain, if the session carries chained traffic (issue #75).</summary>
     public ProxyChain? Chain { get; init; }
     public ServerGroup? Group { get; init; }
@@ -405,7 +409,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         StartToolAsync(ZapretKey, EngineKind.Zapret, settings, _conflicts.CheckZapret(settings, IsActive(PrimaryKey)), ct);
 
     public Task StartTgWsProxyAsync(AppSettings settings, CancellationToken ct = default) =>
-        StartToolAsync(TgWsProxyKey, EngineKind.TgWsProxy, settings, _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey), ActivePrimaryEngine()), ct);
+        StartToolAsync(TgWsProxyKey, EngineKind.TgWsProxy, settings, _conflicts.CheckTgWsProxy(settings, Primary), ct);
 
     /// <summary>Start once and return the credentials of the actual running session.</summary>
     public async Task<(TgWsProxySettings Settings, string Secret)> EnsureTgWsProxyAsync(AppSettings settings, CancellationToken ct = default)
@@ -416,7 +420,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             if (TgWsProxy.Status != ConnectionStatus.Connected || TgWsProxy.CleanupPending)
             {
                 await StartToolUnsafeAsync(TgWsProxyKey, EngineKind.TgWsProxy, CloneSettings(settings),
-                    _conflicts.CheckTgWsProxy(settings, IsActive(PrimaryKey), ActivePrimaryEngine()), ct).ConfigureAwait(false);
+                    _conflicts.CheckTgWsProxy(settings, Primary), ct).ConfigureAwait(false);
             }
 
             var session = _sessions[TgWsProxyKey];
@@ -510,8 +514,6 @@ public sealed partial class ConnectionManager : IAsyncDisposable
         var snapshot = Snapshot(key);
         return snapshot.CleanupPending || snapshot.Status is ConnectionStatus.Connected or ConnectionStatus.Connecting or ConnectionStatus.Reconnecting;
     }
-
-    private EngineKind? ActivePrimaryEngine() => IsActive(PrimaryKey) ? Primary.Engine : null;
 
     private async Task StartSessionUnsafeAsync(Session session, CancellationToken ct)
     {
@@ -817,7 +819,7 @@ public sealed partial class ConnectionManager : IAsyncDisposable
                 ConnectedSince, Error, LastTraffic, Mode, LocalProxyPort)
             {
                 ErrorLocalizationKey = ErrorLocalizationKey, ErrorLocalizationArguments = ErrorLocalizationArguments, CleanupPending = CleanupPending, Chain = Chain,
-                Group = Group, SelectedGroupProfile = selected,
+                Group = Group, SelectedGroupProfile = selected, KillSwitch = Settings.KillSwitch,
             };
         }
     }

@@ -110,12 +110,20 @@ public sealed class ConflictPortsByEngineTests
         Assert.DoesNotContain(issues, i => i.Severity == ConflictSeverity.Blocking);
     }
 
+    private static SessionSnapshot ActivePrimary(
+        EngineKind engine, ConnectionMode mode = ConnectionMode.LocalProxy, bool killSwitch = false, int port = 2080) => new(
+        ConnectionManager.PrimaryKey, ConnectionStatus.Connected, Vless(), engine, false, null, null, null, mode, port)
+    { KillSwitch = killSwitch };
+
+    private static SessionSnapshot NoPrimary() => new(
+        ConnectionManager.PrimaryKey, ConnectionStatus.Disconnected, null, null, false, null, null, null);
+
     [Fact]
     public void Tg_check_with_singbox_primary_ignores_adjacent_http_port()
     {
         var detector = new ConflictDetector(new FakePorts());
         var settings = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2081 } };
-        var issues = detector.CheckTgWsProxy(settings, primaryConnected: true, EngineKind.SingBox);
+        var issues = detector.CheckTgWsProxy(settings, ActivePrimary(EngineKind.SingBox));
         Assert.DoesNotContain(issues, i => i.Code == "port.tg-clash");
     }
 
@@ -124,7 +132,7 @@ public sealed class ConflictPortsByEngineTests
     {
         var detector = new ConflictDetector(new FakePorts());
         var settings = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2081 } };
-        var issues = detector.CheckTgWsProxy(settings, primaryConnected: true, EngineKind.Xray);
+        var issues = detector.CheckTgWsProxy(settings, ActivePrimary(EngineKind.Xray));
         Assert.Contains(issues, i => i.Code == "port.tg-clash");
     }
 
@@ -133,8 +141,60 @@ public sealed class ConflictPortsByEngineTests
     {
         var detector = new ConflictDetector(new FakePorts());
         var settings = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2080 } };
-        var issues = detector.CheckTgWsProxy(settings, primaryConnected: true, EngineKind.SingBox);
+        var issues = detector.CheckTgWsProxy(settings, ActivePrimary(EngineKind.SingBox));
         Assert.Contains(issues, i => i.Code == "port.tg-clash");
+    }
+
+    [Fact]
+    public void Tg_check_ignores_active_singbox_tun_without_kill_switch()
+    {
+        // Plain TUN owns no TCP port, so neither 2080 nor the Xray-style 2081 clashes (issue #380).
+        var detector = new ConflictDetector(new FakePorts());
+        var direct = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2080 } };
+        Assert.DoesNotContain(detector.CheckTgWsProxy(direct, ActivePrimary(EngineKind.SingBox, ConnectionMode.Tun, killSwitch: false)),
+            i => i.Code == "port.tg-clash");
+        var adjacent = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2081 } };
+        Assert.DoesNotContain(detector.CheckTgWsProxy(adjacent, ActivePrimary(EngineKind.Xray, ConnectionMode.Tun, killSwitch: false)),
+            i => i.Code == "port.tg-clash");
+    }
+
+    [Fact]
+    public void Tg_check_reports_clash_for_tun_with_kill_switch_backend()
+    {
+        // TUN + Kill Switch runs the backend in LocalProxy mode: the port is really owned (issue #380).
+        var detector = new ConflictDetector(new FakePorts());
+        var settings = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2080 } };
+        var issues = detector.CheckTgWsProxy(settings, ActivePrimary(EngineKind.SingBox, ConnectionMode.Tun, killSwitch: true));
+        Assert.Contains(issues, i => i.Code == "port.tg-clash");
+    }
+
+    [Fact]
+    public void Tun_without_kill_switch_ignores_busy_local_proxy_port()
+    {
+        var manager = Manager(RegistryWithSingBoxAndXray(), new FakePorts(2080));
+        var settings = new AppSettings { LocalProxyPort = 2080, Mode = ConnectionMode.Tun, KillSwitch = false };
+        var issues = manager.PreviewConflicts(Vless(EngineKind.SingBox), settings);
+        Assert.DoesNotContain(issues, i => i.Code == "port.local-proxy");
+        Assert.DoesNotContain(issues, i => i.Severity == ConflictSeverity.Blocking);
+    }
+
+    [Fact]
+    public void Tun_with_kill_switch_still_blocks_busy_local_proxy_port()
+    {
+        var manager = Manager(RegistryWithSingBoxAndXray(), new FakePorts(2080));
+        var settings = new AppSettings { LocalProxyPort = 2080, Mode = ConnectionMode.Tun, KillSwitch = true };
+        var issues = manager.PreviewConflicts(Vless(EngineKind.SingBox), settings);
+        Assert.Contains(issues, i => i.Code == "port.local-proxy" && i.Severity == ConflictSeverity.Blocking);
+    }
+
+    [Fact]
+    public void Tun_without_kill_switch_ignores_busy_xray_http_port()
+    {
+        var manager = Manager(RegistryWithSingBoxAndXray(), new FakePorts(2081));
+        var settings = new AppSettings { LocalProxyPort = 2080, Mode = ConnectionMode.Tun, KillSwitch = false };
+        var issues = manager.PreviewConflicts(Vless(EngineKind.Xray), settings);
+        Assert.DoesNotContain(issues, i => i.Code == "port.local-proxy-http");
+        Assert.DoesNotContain(issues, i => i.Severity == ConflictSeverity.Blocking);
     }
 
     [Fact]
