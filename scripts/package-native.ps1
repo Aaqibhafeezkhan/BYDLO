@@ -79,6 +79,27 @@ if ($package.Count -ne 1) { throw 'Expected one full update package' }
 $verification = Join-Path $env:BYDLO_ROOT ('.tmp/native-verify-' + [Guid]::NewGuid().ToString('N'))
 [IO.Compression.ZipFile]::ExtractToDirectory($package[0].FullName,$verification)
 $packagedRoot = Join-Path $verification 'lib/app'
+if ($IsLinux) {
+    # Linux update packages contain an AppImage, not loose application files.
+    # Locate its validated SquashFS superblock and extract with a read-only tool.
+    # Never execute AppImage's --appimage-extract entry point.
+    $image = Join-Path $packagedRoot 'BydloDesktop.AppImage'
+    $bytes = [IO.File]::ReadAllBytes($image)
+    $offset = -1
+    for ($i = [Array]::IndexOf($bytes,[byte]0x68); $i -ge 0 -and $i + 96 -le $bytes.Length; $i = [Array]::IndexOf($bytes,[byte]0x68,$i + 1)) {
+        if ($bytes[$i+1] -eq 0x73 -and $bytes[$i+2] -eq 0x71 -and $bytes[$i+3] -eq 0x73 -and
+            [BitConverter]::ToUInt16($bytes,$i+28) -eq 4 -and [BitConverter]::ToUInt16($bytes,$i+30) -eq 0) {
+            $used = [BitConverter]::ToUInt64($bytes,$i+40)
+            if ($used -ge 96 -and $used -le ($bytes.Length - $i)) { $offset = $i; break }
+        }
+    }
+    if ($offset -lt 0) { throw 'Missing valid AppImage SquashFS superblock' }
+    $bytes = $null
+    if (!(Get-Command unsquashfs -ErrorAction SilentlyContinue)) { throw 'Install squashfs-tools for read-only AppImage inspection' }
+    $packagedRoot = Join-Path $verification 'appdir'
+    & unsquashfs -no-progress -d $packagedRoot -o $offset $image
+    if ($LASTEXITCODE -ne 0) { throw 'Read-only AppImage extraction failed' }
+}
 $packagedPayload = if ($IsLinux) { Join-Path $packagedRoot 'usr/bin' } elseif ($IsMacOS) { Join-Path $packagedRoot 'Contents/MacOS' } else { $packagedRoot }
 & (Join-Path $PSScriptRoot 'verify-engine-bundle.ps1') -Rid $Rid -PublishDirectory $packagedPayload
 if ($IsLinux) {

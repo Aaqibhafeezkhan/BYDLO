@@ -544,6 +544,16 @@ jobs:
           source scripts/env.sh
           dotnet publish src/Bydlo.Desktop/Bydlo.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/native-smoke
       - name: Inspect package with synthetic engine headers (never execute payload)
+        if: ${{ !startsWith(matrix.rid, 'linux-') }}
+        shell: pwsh
+        run: ./scripts/test-native-package.ps1 -Rid '${{ matrix.rid }}' -ApplicationPublishDirectory artifacts/native-smoke
+      - name: Install read-only SquashFS inspector
+        if: startsWith(matrix.rid, 'linux-')
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends squashfs-tools
+      - name: Inspect Linux package with synthetic engine headers (never execute payload)
+        if: startsWith(matrix.rid, 'linux-')
         shell: pwsh
         run: ./scripts/test-native-package.ps1 -Rid '${{ matrix.rid }}' -ApplicationPublishDirectory artifacts/native-smoke
 
@@ -628,6 +638,11 @@ jobs:
         shell: bash
         run: |
           find native-payload -type f \( -name BYDLO -o -name Bydlo.Helper -o -name nfqws -o -name tpws -o -name sing-box -o -name xray -o -name bydlo-amneziawg -o -name openvpn \) -exec chmod 755 {} +
+      - name: Install read-only SquashFS inspector
+        if: startsWith(matrix.rid, 'linux-')
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends squashfs-tools
       - name: Build and inspect native packages (never execute engines)
         shell: pwsh
         env:

@@ -299,6 +299,8 @@ Velopack использует стабильные GitHub Releases и отдел
 `scripts/package-native.ps1` использует закреплённые Velopack SDK/CLI **1.2.161**.
 Он запускается на целевой ОС после `verify-engine-bundle.ps1` и проверяет содержимое
 полученного `.nupkg` повторно, не запуская движки. CLI установлен только в `.tmp/tools`.
+На Linux нужен `squashfs-tools`: AppImage внутри `.nupkg` извлекается через `unsquashfs`
+по смещению SquashFS, без запуска `AppImage --appimage-extract`.
 Устанавливаемый ID `BydloDesktop` отделён от пользовательского каталога данных `BYDLO`.
 
 | Платформа | Пакет |
