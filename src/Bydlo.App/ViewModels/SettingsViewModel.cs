@@ -302,7 +302,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public bool CanRegisterAssociations => !NetworkSafetyGuard.IsLocked &&
         (OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) &&
-        Environment.ProcessPath is { } path && !Path.GetFileNameWithoutExtension(path).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
+        Bydlo.Platform.LauncherPath.Current is { } path && !Path.GetFileNameWithoutExtension(path).Equals("dotnet", StringComparison.OrdinalIgnoreCase);
 
     partial void OnSuggestClipboardLinksChanged(bool value)
     {
@@ -337,7 +337,7 @@ public sealed partial class SettingsViewModel : PageViewModel
                 try
                 {
                     if (OperatingSystem.IsWindows()) { Bydlo.Platform.WindowsImportAssociations.Register(Environment.ProcessPath!); }
-                    else { await new Bydlo.Platform.UnixImportAssociations(Environment.ProcessPath!).RegisterAsync(); }
+                    else { await new Bydlo.Platform.UnixImportAssociations(Bydlo.Platform.LauncherPath.Current!).RegisterAsync(); }
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -364,7 +364,7 @@ public sealed partial class SettingsViewModel : PageViewModel
                 try
                 {
                     if (OperatingSystem.IsWindows()) { Bydlo.Platform.WindowsImportAssociations.Unregister(Environment.ProcessPath!); }
-                    else { await new Bydlo.Platform.UnixImportAssociations(Environment.ProcessPath!).UnregisterAsync(); }
+                    else { await new Bydlo.Platform.UnixImportAssociations(Bydlo.Platform.LauncherPath.Current!).UnregisterAsync(); }
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or TimeoutException)
                 {

@@ -78,6 +78,9 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 
 Подробно по протоколам и платформам: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
+Linux: flake для NixOS (`nix run github:endercodezz/BYDLO`), `.deb`, AppImage и PKGBUILD для Arch —
+см. [docs/LINUX.md](docs/LINUX.md).
+
 Нативные пакеты: Windows Setup, Linux AppImage, macOS `.app`/`.pkg`; упаковка и необходимые
 секреты подписи описаны в [BUILD.md](docs/BUILD.md#нативные-пакеты-и-подпись-215).
 В пакетной версии можно включить «Автоматически обновлять BYDLO»: проверка и загрузка
@@ -105,7 +108,7 @@ TgWsProxy работает внутри BYDLO. Повышение прав по�
 
 Для сборки нужны Git и .NET SDK 10.0.100 или новее в линейке 10.0 (см. `global.json`),
 а также PowerShell или bash. Установите зависимости, клонируйте репозиторий и перейдите в его каталог.
-На Linux нужны системные зависимости Avalonia (X11 и fontconfig).
+На Linux нужны системные зависимости Avalonia (X11 и fontconfig); на NixOS выполните `nix develop`.
 
 **PowerShell — обычный пользовательский запуск:**
 
@@ -155,6 +158,7 @@ dotnet run --project src/Bydlo.Desktop -c Release --no-build
 - [Пользовательские темы](docs/THEMES.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Сборка](docs/BUILD.md)
+- [Установка на Linux: NixOS, .deb, AppImage, Arch](docs/LINUX.md)
 - [Совместимость протоколов и платформ](docs/COMPATIBILITY.md)
 - [Редактирование профилей и учётные данные OpenVPN](docs/PROFILE_EDITOR.md)
 - [Руководство по ручному тестированию](docs/TESTING.md)
