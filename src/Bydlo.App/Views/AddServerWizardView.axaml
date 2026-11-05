@@ -89,6 +89,8 @@
             </ComboBox>
             <TextBlock Classes="faint" Text="{l:T wizard.import.hint}" TextWrapping="Wrap" />
             <TextBox Text="{Binding Input}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" MaxHeight="200" Watermark="{l:T wizard.input}" AutomationProperties.Name="{l:T wizard.link}" />
+            <TextBox Text="{Binding UserAgent}" Watermark="{l:T subs.useragent}" AutomationProperties.Name="{l:T subs.useragent}" />
+            <TextBlock Classes="faint" Text="{l:T subs.useragent.hint}" TextWrapping="Wrap" />
             <Button Classes="ghost" Content="{l:T import.clipboard}" Command="{Binding PasteCommand}" HorizontalAlignment="Left" />
             <TextBlock Classes="faint" Text="{l:T wizard.fetch.hint}" TextWrapping="Wrap" />
           </StackPanel>

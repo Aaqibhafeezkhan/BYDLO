@@ -122,15 +122,17 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
 
     public Task AddImportedAsync(ImportResult result) => AddAsync(result, null);
 
-    public async Task ImportExternalSubscriptionAsync(string url)
+    public async Task ImportExternalSubscriptionAsync(string url, string? userAgent = null)
     {
-        var preview = await Services.Subscriptions.FetchPreviewAsync(url);
+        userAgent = userAgent?.Trim();
+        if (string.IsNullOrEmpty(userAgent)) { userAgent = null; }
+        var preview = await Services.Subscriptions.FetchPreviewAsync(url, userAgent);
         if (preview.Import.IsEmpty)
         {
             throw new InvalidOperationException(L["import.none"]);
         }
 
-        var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, preview.Import.Profiles, preview.Metadata);
+        var sub = await Services.Profiles.AddSubscriptionWithProfilesAsync(new Uri(url).Host, url, preview.Import.Profiles, preview.Metadata, userAgent: userAgent);
         Shell.ReloadProfiles();
         Shell.ShowToast(Loc.T("import.sub.updated", sub.Name, preview.Import.Profiles.Count));
         OnShown();
