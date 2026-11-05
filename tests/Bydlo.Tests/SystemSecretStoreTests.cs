@@ -132,7 +132,7 @@ public sealed class SystemSecretStoreTests
         var subscription = new Subscription { Name = "Test subscription" };
         var data = new BackupData
         {
-            Profiles = [new(new Profile { Name = "Test", Protocol = ProtocolKind.Vless, Host = "example.test", Port = 443, SubscriptionId = subscription.Id }, Credentials)],
+            Profiles = [new(new Profile { Name = "Test", Protocol = ProtocolKind.Trojan, Host = "example.test", Port = 443, SubscriptionId = subscription.Id }, Credentials)],
             Subscriptions = [new(subscription, "https://example.test/private-token")],
             ToolSecrets = new ProfileSecrets { Values = { ["secret"] = "fake-tool-secret", ["localproxy-password"] = "fake-lan-password" } },
         };

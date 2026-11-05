@@ -27,7 +27,7 @@ public sealed partial class ProfileStore
                 {
                     throw new Security.SecretAccessException(secretId, ex);
                 }
-                if (BackupArchive.IsMandatory(profile.Protocol) && loaded.Values.Count == 0)
+                if (!BackupArchive.HasRequiredSecrets(profile.Protocol, loaded))
                 {
                     throw new Security.SecretAccessException(secretId);
                 }
@@ -104,7 +104,20 @@ public sealed partial class ProfileStore
                 .Concat(obsolete).Except(writes.Keys, StringComparer.Ordinal).ToList();
             var original = new Dictionary<string, ProfileSecrets>();
             foreach (var id in writes.Keys)
-            { original.Add(id, await secrets.LoadAsync(id, ct).ConfigureAwait(false)); }
+            {
+                ProfileSecrets current;
+                try
+                {
+                    current = await secrets.LoadAsync(id, ct).ConfigureAwait(false);
+                }
+                catch (Security.SecretAccessException)
+                {
+                    // The current value is already unreadable: there is nothing to roll
+                    // back to, so restore proceeds with the backup's valid secrets.
+                    current = ProfileSecrets.Empty;
+                }
+                original.Add(id, current);
+            }
             var attempted = new List<string>();
             try
             {

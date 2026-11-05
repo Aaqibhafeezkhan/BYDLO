@@ -50,17 +50,62 @@ public sealed class BackupSecretFailureTests
     }
 
     [Fact]
-    public async Task Raw_json_config_without_secrets_exports_ok()
+    public async Task Raw_json_config_with_embedded_document_exports_ok()
     {
         var profiles = NewStore(new InMemorySecretStore());
         var raw = new Profile { Name = "raw", Protocol = ProtocolKind.SingBoxConfig };
-        await profiles.AddAsync([new ImportedProfile(raw, new ProfileSecrets())]);
+        await profiles.AddAsync([new ImportedProfile(raw, new ProfileSecrets { Values = { [Keys.RawConfig] = """{"outbounds":[]}""" } })]);
 
         var snapshot = await profiles.CaptureBackupAsync(new AppSettings());
         Assert.Single(snapshot.Profiles);
-        Assert.False(BackupArchive.IsMandatory(ProtocolKind.SingBoxConfig));
-        Assert.False(BackupArchive.IsMandatory(ProtocolKind.XrayConfig));
-        Assert.True(BackupArchive.IsMandatory(ProtocolKind.Vless));
+        Assert.Equal([Keys.RawConfig], BackupArchive.RequiredSecretKeys(ProtocolKind.SingBoxConfig));
+        Assert.Equal([Keys.RawConfig], BackupArchive.RequiredSecretKeys(ProtocolKind.XrayConfig));
+        Assert.Equal([Keys.Uuid], BackupArchive.RequiredSecretKeys(ProtocolKind.Vless));
+        Assert.Empty(BackupArchive.RequiredSecretKeys(ProtocolKind.Http));
+        Assert.Empty(BackupArchive.RequiredSecretKeys(ProtocolKind.Socks5));
+    }
+
+    [Fact]
+    public async Task Unauthenticated_http_proxy_without_secrets_exports_and_restores()
+    {
+        var profiles = NewStore(new InMemorySecretStore());
+        var proxy = new Profile { Name = "plain", Protocol = ProtocolKind.Http, Host = "proxy.test", Port = 8080 };
+        await profiles.AddAsync([new ImportedProfile(proxy, new ProfileSecrets())]);
+
+        var snapshot = await profiles.CaptureBackupAsync(new AppSettings());
+        var single = Assert.Single(snapshot.Profiles);
+        Assert.Equal(ProtocolKind.Http, single.Profile.Protocol);
+
+        // The exported backup must also validate and restore (existing backups
+        // with credential-free proxies keep working, issue #344 review).
+        var restored = BackupArchive.Decrypt(BackupArchive.Encrypt(snapshot, "a long backup password"), "a long backup password");
+        var target = NewStore(new InMemorySecretStore());
+        await target.RestoreBackupAsync(restored, BackupImportMode.Replace);
+        Assert.Single(target.Profiles);
+        Assert.Equal(ProtocolKind.Http, target.Profiles[0].Protocol);
+    }
+
+    [Fact]
+    public async Task Vless_with_unrelated_secret_key_but_no_uuid_aborts_export()
+    {
+        var profiles = NewStore(new InMemorySecretStore());
+        var profile = new Profile { Name = "VLESS", Protocol = ProtocolKind.Vless, Host = "example.test", Port = 443 };
+        await profiles.AddAsync([new ImportedProfile(profile, new ProfileSecrets { Values = { [Keys.Password] = "not-a-uuid" } })]);
+
+        // Count > 0 alone is not enough: the required UUID key is missing (issue #344 review).
+        var error = await Assert.ThrowsAsync<SecretAccessException>(() => profiles.CaptureBackupAsync(new AppSettings()));
+        Assert.Equal("backup.secret.failed", error.LocalizationKey);
+    }
+
+    [Fact]
+    public async Task WireGuard_without_raw_config_aborts_export()
+    {
+        var profiles = NewStore(new InMemorySecretStore());
+        var profile = new Profile { Name = "WG", Protocol = ProtocolKind.WireGuard, Host = "wg.test", Port = 51820 };
+        await profiles.AddAsync([new ImportedProfile(profile, new ProfileSecrets())]);
+
+        // Raw configs carry their document inline; losing Keys.RawConfig must abort (issue #344 review).
+        await Assert.ThrowsAsync<SecretAccessException>(() => profiles.CaptureBackupAsync(new AppSettings()));
     }
 
     [Fact]

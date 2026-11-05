@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Bydlo.Core.Models;
+using Bydlo.Core.Import.Parsers;
 using Bydlo.Core.Serialization;
 using Bydlo.Core.Storage;
 
@@ -129,9 +130,34 @@ public static class BackupArchive
 
     internal static T Clone<T>(T value) => JsonSerializer.Deserialize(JsonSerializer.SerializeToUtf8Bytes(value, JsonDefaults.Options.Info<T>()), JsonDefaults.Options.Info<T>())!;
 
-    /// <summary>Raw JSON configs (issue #344) carry their document inline; every other protocol needs stored credentials.</summary>
-    public static bool IsMandatory(ProtocolKind protocol) =>
-        protocol is not ProtocolKind.SingBoxConfig and not ProtocolKind.XrayConfig;
+    /// <summary>
+    /// Secret keys a profile of this protocol must carry (issue #344). An empty list means
+    /// the protocol allows credential-free profiles (plain HTTP/SOCKS5, Hysteria2 without
+    /// auth): an empty secret bag exports and restores normally instead of aborting.
+    /// </summary>
+    public static IReadOnlyList<string> RequiredSecretKeys(ProtocolKind protocol) => protocol switch
+    {
+        ProtocolKind.Vless or ProtocolKind.Vmess => [Keys.Uuid],
+        ProtocolKind.Trojan or ProtocolKind.Shadowsocks or ProtocolKind.AnyTls => [Keys.Password],
+        ProtocolKind.ShadowTls => [Keys.Password, SingBoxUriParser.ShadowPassword],
+        ProtocolKind.Naive => [Keys.Username, Keys.Password],
+        ProtocolKind.Tuic => [Keys.Uuid, Keys.Password],
+        ProtocolKind.WireGuard or ProtocolKind.AmneziaWG or ProtocolKind.OpenVpn
+            or ProtocolKind.SingBoxConfig or ProtocolKind.XrayConfig => [Keys.RawConfig],
+        // Ssh accepts either a password or a private key (checked in HasRequiredSecrets).
+        // Hysteria2/Http/Socks5 allow credential-free profiles.
+        _ => [],
+    };
+
+    /// <summary>True when every secret key the protocol requires is present and non-empty.</summary>
+    public static bool HasRequiredSecrets(ProtocolKind protocol, ProfileSecrets secrets)
+    {
+        if (protocol == ProtocolKind.Ssh)
+        {
+            return secrets[Keys.Password] is not null || secrets[SingBoxUriParser.PrivateKey] is not null;
+        }
+        return RequiredSecretKeys(protocol).All(key => secrets[key] is not null);
+    }
 
     internal static void Validate(BackupData data)
     {
@@ -176,7 +202,7 @@ public static class BackupArchive
                 p.Options is null || p.Name is null || p.Host is null || !Enum.IsDefined(p.Protocol) ||
                 p.Port is < 0 or > 65535 || (p.SubscriptionId is { } id && !ids.Contains(id)))
             { throw new InvalidDataException("Invalid profile."); }
-            if (IsMandatory(p.Protocol) && item.Secrets.Values.Count == 0)
+            if (!HasRequiredSecrets(p.Protocol, item.Secrets))
             { throw new InvalidDataException($"Invalid profile '{p.Id}': credentials are missing."); }
         }
         var chainIds = new HashSet<Guid>();
