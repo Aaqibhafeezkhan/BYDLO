@@ -597,7 +597,9 @@ jobs:
         with:
           name: release-packages
           path: dist
+      - name: Extract release notes for this tag
+        run: bash scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/RELEASE_NOTES.md .tmp/release-notes.md
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/*.zip dist/SHA256SUMS.txt --draft --generate-notes --notes-file docs/RELEASE_NOTES.md --repo "${GITHUB_REPOSITORY}"
+        run: gh release create "${GITHUB_REF_NAME}" dist/*.zip dist/SHA256SUMS.txt --draft --generate-notes --notes-file .tmp/release-notes.md --repo "${GITHUB_REPOSITORY}"
