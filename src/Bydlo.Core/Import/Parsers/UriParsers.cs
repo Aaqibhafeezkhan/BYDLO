@@ -60,7 +60,9 @@ public sealed class VlessParser : IProfileParser
             throw new ImportException("VLESS REALITY link has no public key (pbk).");
         }
 
-        return new ImportedProfile(p, new ProfileSecrets { Values = { [Keys.Uuid] = uuid } });
+        var secrets = new ProfileSecrets { Values = { [Keys.Uuid] = uuid } };
+        XhttpSecretHeaders.Split(p, secrets);
+        return new ImportedProfile(p, secrets);
     }
 }
 
@@ -148,7 +150,9 @@ public sealed class TrojanParser : IProfileParser
         var p = new Profile { Protocol = ProtocolKind.Trojan, Host = Host(uri), Port = Port(uri, 443) };
         p.Name = Fragment(uri, $"Trojan {p.Host}");
         StreamOptions.Apply(Query(uri), p, defaultSecurity: "tls");
-        return new ImportedProfile(p, new ProfileSecrets { Values = { [Keys.Password] = password } });
+        var secrets = new ProfileSecrets { Values = { [Keys.Password] = password } };
+        XhttpSecretHeaders.Split(p, secrets);
+        return new ImportedProfile(p, secrets);
     }
 }
 

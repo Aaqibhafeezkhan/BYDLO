@@ -116,6 +116,7 @@ public sealed partial class ProfileStore
                     ct.ThrowIfCancellationRequested();
                     var profile = item.Profile;
                     staged.Add(profile.Id);
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(profile, item.Secrets);
                     await secrets.SaveAsync(profile.Id.ToString(), item.Secrets, ct).ConfigureAwait(false);
                     next.Profiles.Add(CopySubscriptionProfile(profile, subscriptionId, profile.Options));
                 }

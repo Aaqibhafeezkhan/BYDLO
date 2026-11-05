@@ -305,6 +305,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         _doc.Subscriptions ??= [];
         _doc.Chains ??= [];
         _doc.PendingSecretDeletes ??= [];
+        await MigrateXhttpSecretHeadersAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<Profile>> AddAsync(IEnumerable<ImportedProfile> imported, Guid? subscriptionId = null, CancellationToken ct = default)
@@ -324,6 +325,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
                 {
                     item.Profile.SubscriptionId = subscriptionId ?? item.Profile.SubscriptionId;
                     written.Add(item.Profile.Id.ToString());
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(item.Profile, item.Secrets);
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     added.Add(item.Profile);
                 }
@@ -368,6 +370,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             {
                 if (updatedSecrets is not null)
                 {
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(profile, updatedSecrets);
                     await secrets.SaveAsync(id, updatedSecrets, ct).ConfigureAwait(false);
                 }
                 await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
@@ -454,6 +457,7 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
                 foreach (var item in profiles)
                 {
                     written.Add(item.Profile.Id.ToString());
+                    Bydlo.Core.Import.Parsers.XhttpSecretHeaders.Split(item.Profile, item.Secrets);
                     await secrets.SaveAsync(written[^1], item.Secrets, ct).ConfigureAwait(false);
                     item.Profile.SubscriptionId = sub.Id;
                     sub.SourceOptions!.Add(item.Profile.Id, new(item.Profile.Options, StringComparer.OrdinalIgnoreCase));

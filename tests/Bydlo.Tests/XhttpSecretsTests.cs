@@ -1,0 +1,192 @@
+using System.Text.Json.Nodes;
+using Bydlo.Core.Backup;
+using Bydlo.Core.Config;
+using Bydlo.Core.Import;
+using Bydlo.Core.Models;
+using Bydlo.Core.Security;
+using Bydlo.Core.Storage;
+
+namespace Bydlo.Tests;
+
+/// <summary>Issue 338: XHTTP transport credentials must live in the secret store, never in profiles.json.</summary>
+public sealed class XhttpSecretsTests
+{
+    private const string Token = "audit-synthetic-bearer";
+    private const string Cookie = "audit-synthetic-cookie";
+
+    private static string Link(string extraJson) =>
+        "vless://11111111-2222-3333-4444-555555555555@example.test:443?type=xhttp&path=%2Fx&mode=auto&extra="
+        + Uri.EscapeDataString(extraJson) + "#X";
+
+    private static string ExtraWithSecrets() =>
+        "{\"xPaddingBytes\":\"100-1000\",\"headers\":{\"Authorization\":\"Bearer " + Token + "\",\"Cookie\":\"" + Cookie + "\"}}";
+
+    private static ImportedProfile Import(string text)
+    {
+        var r = new ProfileImporter().ImportText(text);
+        Assert.Empty(r.Errors);
+        return Assert.Single(r.Profiles);
+    }
+
+    private static JsonObject Xray(ImportedProfile p, AppSettings? s = null) =>
+        new XrayConfigBuilder().Build(p.Profile, p.Secrets, new BuildContext(s ?? new AppSettings()));
+
+    private static string OptionsText(Profile profile) =>
+        string.Join("\n", profile.Options.Select(kv => kv.Key + "=" + kv.Value));
+
+    [Fact]
+    public void Import_moves_bearer_headers_to_secrets()
+    {
+        var p = Import(Link(ExtraWithSecrets()));
+
+        Assert.DoesNotContain(Token, OptionsText(p.Profile), StringComparison.Ordinal);
+        Assert.DoesNotContain(Cookie, OptionsText(p.Profile), StringComparison.Ordinal);
+        Assert.NotNull(p.Secrets[Keys.XhttpHeaders]);
+        Assert.Contains(Token, p.Secrets[Keys.XhttpHeaders]!, StringComparison.Ordinal);
+        Assert.Contains(Cookie, p.Secrets[Keys.XhttpHeaders]!, StringComparison.Ordinal);
+        // Tuning fields stay in options.
+        Assert.Contains("xPaddingBytes", p.Profile.Option(Keys.XhttpExtra)!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Stored_profiles_json_never_contains_the_token()
+    {
+        var p = Import(Link(ExtraWithSecrets()));
+        var dir = TestDirs.New("xhttp-secrets-store");
+        var store = new ProfileStore(Path.Combine(dir, "profiles.json"), new InMemorySecretStore());
+        await store.AddAsync([p]);
+
+        var raw = File.ReadAllText(Path.Combine(dir, "profiles.json"));
+        Assert.DoesNotContain(Token, raw, StringComparison.Ordinal);
+        Assert.DoesNotContain(Cookie, raw, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Xray_config_reassembles_secret_headers()
+    {
+        var p = Import(Link(ExtraWithSecrets()));
+        var extra = Xray(p)["outbounds"]![0]!["streamSettings"]!["xhttpSettings"]!["extra"]!;
+        Assert.Equal("Bearer " + Token, (string?)extra["headers"]!["Authorization"]);
+        Assert.Equal(Cookie, (string?)extra["headers"]!["Cookie"]);
+        Assert.Equal("100-1000", (string?)extra["xPaddingBytes"]);
+    }
+
+    [Fact]
+    public void Export_link_roundtrips_headers_through_secrets()
+    {
+        var p = Import(Link(ExtraWithSecrets()));
+        var exported = ProfileExporter.ExportLink(p.Profile, p.Secrets);
+        Assert.Contains("extra=", exported, StringComparison.Ordinal);
+        var second = Import(exported);
+        Assert.DoesNotContain(Token, OptionsText(second.Profile), StringComparison.Ordinal);
+        Assert.NotNull(second.Secrets[Keys.XhttpHeaders]);
+        Assert.Contains(Token, second.Secrets[Keys.XhttpHeaders]!, StringComparison.Ordinal);
+        var extra = Xray(second)["outbounds"]![0]!["streamSettings"]!["xhttpSettings"]!["extra"]!;
+        Assert.Equal("Bearer " + Token, (string?)extra["headers"]!["Authorization"]);
+    }
+
+    [Fact]
+    public void Public_extra_without_headers_stays_in_options()
+    {
+        var p = Import(Link("{\"xPaddingBytes\":\"100-1000\",\"noGRPCHeader\":true}"));
+        Assert.Null(p.Secrets[Keys.XhttpHeaders]);
+        Assert.Contains("xPaddingBytes", p.Profile.Option(Keys.XhttpExtra)!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Load_migrates_old_options_and_baselines_to_secrets()
+    {
+        var dir = TestDirs.New("xhttp-migrate");
+        var path = Path.Combine(dir, "profiles.json");
+        var profile = new Profile
+        {
+            Name = "old",
+            Protocol = ProtocolKind.Vless,
+            Host = "example.test",
+            Port = 443,
+            Options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [Keys.Transport] = "xhttp",
+                [Keys.XhttpExtra] = ExtraWithSecrets(),
+            },
+        };
+        var sub = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            Name = "sub",
+            SourceOptions = new Dictionary<Guid, Dictionary<string, string>>
+            {
+                [profile.Id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [Keys.Transport] = "xhttp",
+                    [Keys.XhttpExtra] = ExtraWithSecrets(),
+                },
+            },
+        };
+        await JsonDefaults.WriteAtomicAsync(path,
+            new ProfileDocument { Version = 1, Profiles = [profile], Subscriptions = [sub], Chains = [] },
+            CancellationToken.None);
+        Assert.Contains(Token, await File.ReadAllTextAsync(path), StringComparison.Ordinal);
+        var secrets = new InMemorySecretStore();
+
+        var store = new ProfileStore(path, secrets);
+        await store.LoadAsync();
+
+        var migrated = Assert.Single(store.Profiles);
+        Assert.DoesNotContain(Token, OptionsText(migrated), StringComparison.Ordinal);
+        var migratedSecrets = await secrets.LoadAsync(profile.Id.ToString());
+        Assert.NotNull(migratedSecrets[Keys.XhttpHeaders]);
+        Assert.Contains(Token, migratedSecrets[Keys.XhttpHeaders]!, StringComparison.Ordinal);
+        var baseline = Assert.Single(Assert.Single(store.Subscriptions).SourceOptions!.Values);
+        Assert.DoesNotContain(Token, string.Join("\n", baseline.Select(kv => kv.Key + "=" + kv.Value)), StringComparison.Ordinal);
+        var raw = await File.ReadAllTextAsync(path);
+        Assert.DoesNotContain(Token, raw, StringComparison.Ordinal);
+        Assert.DoesNotContain(Cookie, raw, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Restore_splits_old_backup_before_persisting()
+    {
+        var dir = TestDirs.New("xhttp-restore");
+        var store = new ProfileStore(Path.Combine(dir, "profiles.json"), new InMemorySecretStore());
+        await store.LoadAsync();
+        var profile = new Profile
+        {
+            Name = "old",
+            Protocol = ProtocolKind.Vless,
+            Host = "example.test",
+            Port = 443,
+            Options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [Keys.Transport] = "xhttp",
+                [Keys.XhttpExtra] = ExtraWithSecrets(),
+            },
+        };
+        var subId = Guid.NewGuid();
+        profile.SubscriptionId = subId;
+        var data = new BackupData
+        {
+            Settings = new AppSettings(),
+            Profiles = [new ImportedProfile(profile, new ProfileSecrets { Values = { [Keys.Uuid] = "11111111-2222-3333-4444-555555555555" } })],
+            Subscriptions = [new BackupSubscription(
+                new Subscription { Id = subId, Name = "sub", SourceOptions = new Dictionary<Guid, Dictionary<string, string>>
+                {
+                    [profile.Id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        [Keys.Transport] = "xhttp",
+                        [Keys.XhttpExtra] = ExtraWithSecrets(),
+                    },
+                } }, "https://example.test/sub")],
+        };
+
+        await store.RestoreBackupAsync(data, BackupImportMode.Replace);
+
+        var saved = Assert.Single(store.Profiles);
+        Assert.DoesNotContain(Token, OptionsText(saved), StringComparison.Ordinal);
+        var savedSecrets = await store.Secrets.LoadAsync(saved.Id.ToString());
+        Assert.NotNull(savedSecrets[Keys.XhttpHeaders]);
+        Assert.Contains(Token, savedSecrets[Keys.XhttpHeaders]!, StringComparison.Ordinal);
+        var raw = await File.ReadAllTextAsync(Path.Combine(dir, "profiles.json"));
+        Assert.DoesNotContain(Token, raw, StringComparison.Ordinal);
+    }
+}

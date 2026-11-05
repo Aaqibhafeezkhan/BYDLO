@@ -93,6 +93,9 @@ public static class Keys
     public const string ObfsPassword = "obfs-password";
     public const string RawConfig = "config";
 
+    /// <summary>XHTTP transport headers (e.g. Authorization bearer, Cookie) as a JSON object. Never in profile Options (issue #338).</summary>
+    public const string XhttpHeaders = "xhttp-headers";
+
     /// <summary>Cloudflare WARP account id from in-app registration (issue #85).</summary>
     public const string WarpAccountId = "warp-account-id";
 
