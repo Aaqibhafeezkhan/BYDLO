@@ -2,7 +2,7 @@ syntax = "proto3";
 package xray.app.router.command;
 option csharp_namespace = "Bydlo.Engines.Groups.Rpc";
 // Wire-compatible subset of XTLS/Xray-core app/router/command/command.proto (MPL-2.0).
-// Source: https://github.com/XTLS/Xray-core/blob/v26.10.21/app/router/command/command.proto
+// Source: https://github.com/XTLS/Xray-core/blob/v26.10.31/app/router/command/command.proto
 // This file is subject to the Mozilla Public License, v. 2.0: https://mozilla.org/MPL/2.0/
 message PrincipleTargetInfo { repeated string tag = 1; }
 message OverrideInfo { string target = 2; }

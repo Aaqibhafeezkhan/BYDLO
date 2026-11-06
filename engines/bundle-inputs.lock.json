@@ -24,8 +24,8 @@
     "url": "https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz"
   },
   "xray-source": {
-    "sha256": "44ef4874529a03848c90f1fdcfb763350fbc5f1de741ec90e0024d651df25650",
-    "url": "https://codeload.github.com/XTLS/Xray-core/tar.gz/refs/tags/v26.10.21"
+    "sha256": "be44f95d497ad4ba6e9d1dcfbbd71e8e51f812aff077d4c15c9947eff5e3046a",
+    "url": "https://codeload.github.com/XTLS/Xray-core/tar.gz/refs/tags/v26.10.31"
   },
   "dco-source": {
     "sha256": "9b86879f27f23a9cce3ff137c22f3147ddc0824e05e495f128e0e5318b39b3e3",
