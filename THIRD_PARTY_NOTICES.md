@@ -42,7 +42,9 @@ Windows MSI используется только как источник фай
 Ядро [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) v1.11.4 (MIT) перенесено на C# в
 `src/Bydlo.Engines/TgWsProxy` и работает внутри BYDLO: протокол MTProto obfuscated2, Fake TLS, пул WebSocket,
 резервные пути через Cloudflare и прямой TCP, закодированный список доменов Cloudflare. Python-код в репозиторий не
-копируется. Лицензия оригинала:
+копируется. Дополнительно перенесена защита Fake TLS от повторного ClientHello из
+[upstream-коммита dbc8b781](https://github.com/Flowseal/tg-ws-proxy/commit/dbc8b7811a1b39f5fd99f3994a8cdfc58e899916)
+после v1.11.4; базовая версия upstream остаётся 1.11.4. Лицензия оригинала:
 
 ```text
 MIT License
