@@ -81,13 +81,27 @@ AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-d
 Linux: flake для NixOS (`nix run github:endercodezz/BYDLO`), `.deb`, AppImage и PKGBUILD для Arch —
 см. [docs/LINUX.md](docs/LINUX.md).
 
-Нативные пакеты: Windows Setup, Linux AppImage, macOS `.app`/`.pkg`; упаковка и необходимые
+Нативные пакеты: Windows Setup/Portable, Linux AppImage/`.deb`, macOS `Setup.pkg`; упаковка и необходимые
 секреты подписи описаны в [BUILD.md](docs/BUILD.md#нативные-пакеты-и-подпись-215).
 В v0.4.1 подпись Windows/macOS временно пропущена: возможны предупреждения SmartScreen,
 UAC и Gatekeeper. Для проверки файлов доступны SHA-256 и GitHub attestations.
 В пакетной версии можно включить «Автоматически обновлять BYDLO»: проверка и загрузка
 при запуске, установка при выходе с сохранением настроек, профилей и подписок.
 По умолчанию выключено. Для старых ZIP сначала установите нативный пакет.
+
+В следующих релизах после v0.4.1 остаётся девять пользовательских файлов:
+
+- Windows x64: [Setup.exe](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-win-x64-Setup.exe), [Portable.zip](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-win-x64-Portable.zip).
+- Windows ARM64: [Setup.exe](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-win-arm64-Setup.exe), [Portable.zip](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-win-arm64-Portable.zip).
+- Linux x64: [AppImage](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-linux-x64.AppImage), [`.deb` amd64 в релизе](https://github.com/endercodezz/BYDLO/releases/latest).
+- Linux ARM64: [AppImage](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-linux-arm64.AppImage), [`.deb` arm64 в релизе](https://github.com/endercodezz/BYDLO/releases/latest).
+- macOS Apple Silicon: [Setup.pkg](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-osx-arm64-Setup.pkg).
+
+У `.deb` версия входит в имя файла: `bydlo_<версия>_amd64.deb` / `_arm64.deb`.
+Точные ссылки на все девять пакетов добавляются в описание каждого нового релиза.
+`*-full.nupkg` и `releases.<RID>.json` — служебные файлы автообновления, вручную их скачивать не нужно.
+`SHA256SUMS.txt` проверяется в одной папке со скачанными пакетами.
+Старые релизы и ссылки на их ZIP остаются доступны.
 
 ## Что входит в полный релиз
 
@@ -220,7 +234,7 @@ BYDLO распространяется по [GNU General Public License v3.0 и�
 (замените платформу и `vX.Y.Z` на выбранный тег):
 
 ```bash
-gh attestation verify BYDLO-linux-x64.zip --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
+gh attestation verify BydloDesktop-linux-x64.AppImage --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
 ```
 
 Проверка связывает файл с репозиторием, workflow и тегом. Обычный `SHA256SUMS.txt` сам
