@@ -19,11 +19,12 @@ public sealed class OrphansRescanTests
             var services = await AppServices.CreateAsync([], new FakePrivileges(false));
             try
             {
+                // Keep the real safety lock active; only simulate the termination step.
+                services.ReplaceJournalForTests(new DeadEntryJournal(Path.Combine(dir, "dead-journal.json")));
                 // Dead PID: no such process, so FindOrphans must drop it.
                 services.Journal.Record(new JournalEntry("dead-engine", int.MaxValue, "dead-image", DateTimeOffset.Now));
                 Assert.Single(services.Journal.Entries());
 
-                NetworkSafetyGuard.OverrideForTests(false);
                 var killed = services.CleanupOrphans();
 
                 Assert.Equal(0, killed);
@@ -104,6 +105,16 @@ public sealed class OrphansRescanTests
         {
             NetworkSafetyGuard.OverrideForTests(null);
             Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", previousDataDir);
+        }
+    }
+
+    private sealed class DeadEntryJournal(string filePath) : ProcessJournal(filePath)
+    {
+        public override int KillOrphans(string? displayName = null)
+        {
+            Assert.True(NetworkSafetyGuard.IsLocked);
+            // CleanupOrphans performs the real read-only rescan after this fake termination step.
+            return 0;
         }
     }
 
