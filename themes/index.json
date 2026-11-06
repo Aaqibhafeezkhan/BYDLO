@@ -58,5 +58,20 @@
       "Primary": "#C38155",
       "Text": "#EDE0CA"
     }
+  },
+  {
+    "id": "purple-2",
+    "name": "Purple 2",
+    "author": "endercodezz",
+    "description": "Тёмная тема в духе Tokyo Night с оранжевым акцентом на фоне #1E1F29.",
+    "base": "dark",
+    "url": "https://raw.githubusercontent.com/endercodezz/BYDLO/main/themes/purple-2.json",
+    "preview": {
+      "Bg": "#1E1F29",
+      "Sidebar": "#191A23",
+      "Surface": "#262836",
+      "Primary": "#FF7A00",
+      "Text": "#C0CAF5"
+    }
   }
 ]
