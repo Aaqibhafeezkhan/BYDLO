@@ -36,16 +36,26 @@ public abstract class FileSecretStoreBase(string directory) : ISecretStore
             return ProfileSecrets.Empty;
         }
 
+        byte[] cipher;
         try
         {
-            var plain = Unprotect(await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false));
+            cipher = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new SecretAccessException(id, ex);
+        }
+
+        try
+        {
+            var plain = Unprotect(cipher);
             var values = JsonSerializer.Deserialize(plain, PlatformJsonContext.Default.DictionaryStringString) ?? [];
             CryptographicOperations.ZeroMemory(plain);
             return new ProfileSecrets { Values = new(values, StringComparer.OrdinalIgnoreCase) };
         }
-        catch (CryptographicException)
+        catch (Exception ex) when (ex is CryptographicException or JsonException)
         {
-            return ProfileSecrets.Empty;
+            throw new SecretAccessException(id, ex);
         }
     }
 

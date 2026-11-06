@@ -130,7 +130,7 @@ public interface IEngine : IAsyncDisposable
     Task StopAsync(CancellationToken ct = default);
 }
 
-public sealed class EngineException(string message, Exception? inner = null, string? localizationKey = null,
+public class EngineException(string message, Exception? inner = null, string? localizationKey = null,
     string[]? localizationArguments = null) : Exception(message, inner)
 {
     public string? LocalizationKey { get; } = localizationKey;

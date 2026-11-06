@@ -235,8 +235,8 @@ public sealed class BackupTests
         var path = Path.Combine(TestDirs.New("backup-partial-rollback"), "profiles.json");
         var secrets = new FailingSecretStore();
         var store = new ProfileStore(path, secrets);
-        var first = new Profile { Name = "First" };
-        var second = new Profile { Name = "Second" };
+        var first = new Profile { Name = "First", Protocol = ProtocolKind.Trojan, Host = "first.test", Port = 443 };
+        var second = new Profile { Name = "Second", Protocol = ProtocolKind.Trojan, Host = "second.test", Port = 443 };
         ProfileSecrets Password(string value) => new() { Values = { [Keys.Password] = value } };
         await store.AddAsync([new(first, Password("old-first")), new(second, Password("old-second"))]);
         var archive = new BackupData { Profiles = [new(first, Password("new-first")), new(second, Password("new-second"))] };
