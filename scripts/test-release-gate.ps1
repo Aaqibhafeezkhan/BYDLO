@@ -19,6 +19,21 @@ if ((Block 'desktop') -notmatch 'needs: \[test, helper\]' -or
     (Block 'macos') -notmatch 'dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj' -or
     (Block 'unix-activation') -notmatch 'FullyQualifiedName~UnixActivationBrokerTests' -or
     $release -notmatch 'needs: package') { throw 'Required test chain disconnected' }
+# The smoke matrix must keep all five RIDs: a silently dropped RID would ship untested.
+# Anchored to uncommented inline matrix entries, so a commented-out RID no longer passes.
+$smoke = Block 'native-package-smoke'
+$smokeRids = @([regex]::Matches($smoke, "(?m)^\s*-\s*\{\s*rid:\s*([^\s,}]+)") | ForEach-Object { $_.Groups[1].Value })
+$expectedRids = @('win-x64','win-arm64','linux-x64','linux-arm64','osx-arm64')
+if ($smokeRids.Count -ne $expectedRids.Count) { throw "Smoke matrix must list exactly five RIDs, found $($smokeRids.Count)" }
+foreach ($rid in $expectedRids) {
+    if ($rid -notin $smokeRids) { throw "Missing smoke RID: $rid" }
+}
+# native-packages is the transitive signing gate (issue 336): evaluate its actual condition too.
+$nativePackages = Block 'native-packages'
+$nativeNeeds = [regex]::Match($nativePackages, '(?m)^    needs: \[([^\]]+)\]').Groups[1].Value.Split(',').Trim()
+foreach ($job in @('desktop','macos','sign-windows','signing-policy')) {
+    if ($job -notin $nativeNeeds) { throw "Missing native-packages dependency: $job" }
+}
 function Evaluate([string]$block, [hashtable]$results, [bool]$unsigned = $false,
     [string]$event = 'push', [string]$ref = 'refs/tags/v9.0.0',
     [string]$server = 'https://github.com', [bool]$cancelled = $false) {
@@ -73,4 +88,23 @@ Require (!(Evaluate $release @{package = 'success'} -cancelled $true))
 foreach ($status in @('failure','cancelled','skipped')) {
     Require (!(Evaluate $release @{package = $status}))
 }
+$nativeResults = @{}
+foreach ($job in $nativeNeeds) { $nativeResults[$job] = 'success' }
+Require (Evaluate $nativePackages $nativeResults)
+$nativeResults['sign-windows'] = 'skipped'
+Require (Evaluate $nativePackages $nativeResults -unsigned $true) # Permitted unsigned exception.
+Require (!(Evaluate $nativePackages $nativeResults)) # Forbidden skip without the exception.
+$nativeResults['sign-windows'] = 'success'
+foreach ($job in @('desktop','macos')) {
+    foreach ($status in @('failure','cancelled','skipped')) {
+        $nativeResults[$job] = $status
+        Require (!(Evaluate $nativePackages $nativeResults))
+        Require (!(Evaluate $nativePackages $nativeResults -unsigned $true))
+    }
+    $nativeResults[$job] = 'success'
+}
+Require (Evaluate $nativePackages $nativeResults -unsigned $true -event workflow_dispatch -ref refs/heads/developer)
+Require (!(Evaluate $nativePackages $nativeResults -event pull_request -ref refs/pull/1/merge))
+Require (!(Evaluate $nativePackages $nativeResults -server https://gitea.example))
+Require (!(Evaluate $nativePackages $nativeResults -cancelled $true))
 Write-Host "Release gate regression passed ($script:checks checks)."
