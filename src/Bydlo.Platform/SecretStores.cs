@@ -31,15 +31,16 @@ public abstract class FileSecretStoreBase(string directory) : ISecretStore
     public async Task<ProfileSecrets> LoadAsync(string id, CancellationToken ct = default)
     {
         var path = PathFor(id);
-        if (!File.Exists(path))
-        {
-            return ProfileSecrets.Empty;
-        }
-
         byte[] cipher;
         try
         {
+            // Read directly instead of probing with File.Exists: Exists returns false
+            // both for a missing file and for an inaccessible path (issue #417).
             cipher = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return ProfileSecrets.Empty;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
