@@ -9,6 +9,18 @@ public static class ProxyPorts
 
     public static bool NeedsAdjacentHttpPort(EngineKind kind) => kind == EngineKind.Xray;
 
+    /// <summary>
+    /// Whether the primary tunnel binds a TCP listener on <c>LocalProxyPort</c> (issues #353, #380).
+    /// LocalProxy mode always binds; TUN binds only through the retained LocalProxy backend
+    /// (TUN + Kill Switch, see <c>RetainedTunEngine</c>). Plain TUN carries traffic in a TUN
+    /// inbound (<c>SingBoxConfigBuilder.BuildInbound</c>) and owns no TCP port.
+    /// </summary>
+    public static bool BindsLocalTcpPort(AppSettings settings) =>
+        BindsLocalTcpPort(settings.Mode, settings.KillSwitch);
+
+    public static bool BindsLocalTcpPort(ConnectionMode mode, bool killSwitch) =>
+        mode == ConnectionMode.LocalProxy || (mode == ConnectionMode.Tun && killSwitch);
+
     public static int HttpPort(int localProxyPort, EngineKind kind) =>
         NeedsAdjacentHttpPort(kind) ? checked(localProxyPort + 1) : localProxyPort;
 

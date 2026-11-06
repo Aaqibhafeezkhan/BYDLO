@@ -14,7 +14,7 @@ public sealed record ConflictIssue(ConflictSeverity Severity, string Code, strin
 /// <summary>Detects conflicts between the primary tunnel and tools before anything is started.</summary>
 public sealed class ConflictDetector(IPortChecker ports)
 {
-    public IReadOnlyList<ConflictIssue> CheckPrimary(Profile profile, AppSettings settings, bool zapretRunning, bool tgRunning)
+    public IReadOnlyList<ConflictIssue> CheckPrimary(Profile profile, AppSettings settings, bool zapretRunning, bool tgRunning, EngineKind? engine = null)
     {
         var issues = new List<ConflictIssue>();
         if (settings.MockMode)
@@ -22,8 +22,11 @@ public sealed class ConflictDetector(IPortChecker ports)
             return issues;
         }
 
-        var usesLocalInbound = profile.Protocol is not (ProtocolKind.OpenVpn or ProtocolKind.AmneziaWG)
-            && !(profile.Protocol == ProtocolKind.WireGuard && profile.PreferredEngine == EngineKind.WireGuard);
+        var bindsLocalTcp = ProxyPorts.BindsLocalTcpPort(settings);
+        var usesLocalInbound = bindsLocalTcp && (engine is not null
+            ? engine is EngineKind.SingBox or EngineKind.Xray
+            : profile.Protocol is not (ProtocolKind.OpenVpn or ProtocolKind.AmneziaWG)
+                && !(profile.Protocol == ProtocolKind.WireGuard && profile.PreferredEngine == EngineKind.WireGuard));
 
         if (usesLocalInbound && ports.IsTcpPortInUse(settings.LocalProxyPort))
         {
@@ -31,7 +34,7 @@ public sealed class ConflictDetector(IPortChecker ports)
                 $"Local proxy port {settings.LocalProxyPort} is already in use. Change it in Settings → Advanced."));
         }
 
-        if (usesLocalInbound && Bydlo.Core.Config.XrayConfigBuilder.Supported.Contains(profile.Protocol))
+        if (usesLocalInbound && engine is not null && ProxyPorts.NeedsAdjacentHttpPort(engine.Value))
         {
             var httpPort = settings.LocalProxyPort + 1;
             if (httpPort is < 1 or > 65535)
@@ -52,7 +55,7 @@ public sealed class ConflictDetector(IPortChecker ports)
             }
         }
 
-        if (tgRunning && settings.LocalProxyPort == settings.TgWsProxy.Port)
+        if (tgRunning && bindsLocalTcp && settings.LocalProxyPort == settings.TgWsProxy.Port)
         {
             issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash",
                 $"TgWsProxy already listens on port {settings.TgWsProxy.Port}."));
@@ -91,7 +94,7 @@ public sealed class ConflictDetector(IPortChecker ports)
         return issues;
     }
 
-    public IReadOnlyList<ConflictIssue> CheckTgWsProxy(AppSettings settings, bool primaryConnected)
+    public IReadOnlyList<ConflictIssue> CheckTgWsProxy(AppSettings settings, SessionSnapshot primary)
     {
         var issues = new List<ConflictIssue>();
         if (settings.MockMode)
@@ -110,12 +113,16 @@ public sealed class ConflictDetector(IPortChecker ports)
                 $"Port {port} is already in use by another program. Pick another port for TgWsProxy."));
         }
 
-        if (primaryConnected && settings.LocalProxyPort == port)
+        // The active tunnel owns LocalProxyPort only when it binds a TCP listener:
+        // plain TUN carries traffic in a TUN inbound and clashes with nothing (issue #380).
+        var primaryBindsTcp = primary.HoldsResources && ProxyPorts.BindsLocalTcpPort(primary.Mode, primary.KillSwitch);
+        if (primaryBindsTcp && settings.LocalProxyPort == port)
         {
             issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash", $"Port {port} is used by the active tunnel."));
         }
 
-        if (primaryConnected && settings.LocalProxyPort + 1 == port)
+        if (primaryBindsTcp && primary.Engine is not null && ProxyPorts.NeedsAdjacentHttpPort(primary.Engine.Value)
+            && settings.LocalProxyPort + 1 == port)
         {
             issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash", $"Port {port} is used by the active tunnel (Xray HTTP)."));
         }
