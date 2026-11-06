@@ -255,7 +255,9 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
         var active = Primary;
         var ownPort = active.LocalProxyPort;
-        if (ownPort == 0 || ownPort != settings.LocalProxyPort)
+        if (active.Engine is not { } engine ||
+            !ProxyPorts.BindsLocalTcpPort(active.Mode, active.KillSwitch, engine) ||
+            ownPort == 0 || ownPort != settings.LocalProxyPort)
         {
             return [.. issues];
         }
