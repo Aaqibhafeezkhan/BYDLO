@@ -272,4 +272,17 @@ public sealed class ConflictPortsByEngineTests
         var issues = manager.PreviewChainConflicts(hops, settings, EngineKind.Xray);
         Assert.Contains(issues, i => i.Code == "port.local-proxy-http");
     }
+
+    [Fact]
+    public void Forced_xray_by_transport_overrides_singbox_preference_for_http_port()
+    {
+        // Actual adapter wins over preference: xhttp needs Xray, so busy 2081 must block
+        // even when the profile prefers sing-box (issue #353 engine/ports consistency).
+        var profile = Vless(EngineKind.SingBox);
+        profile.Options[Keys.Transport] = "xhttp";
+        var manager = Manager(RegistryWithSingBoxAndXray(), new FakePorts(2081));
+        var settings = new AppSettings { LocalProxyPort = 2080 };
+        var issues = manager.PreviewConflicts(profile, settings);
+        Assert.Contains(issues, i => i.Code == "port.local-proxy-http" && i.Severity == ConflictSeverity.Blocking);
+    }
 }
