@@ -255,7 +255,8 @@ public sealed partial class ConnectionManager : IAsyncDisposable
 
         var active = Primary;
         var ownPort = active.LocalProxyPort;
-        if (ownPort == 0 || ownPort != settings.LocalProxyPort)
+        // TUN sessions open no local proxy listener, so the configured port is not owned by the active session (issue #414).
+        if (active.Mode != ConnectionMode.LocalProxy || ownPort == 0 || ownPort != settings.LocalProxyPort)
         {
             return [.. issues];
         }

@@ -84,6 +84,20 @@ public sealed class BestServerPortConflictTests
         Assert.Equal("first", lastPublished.Profile?.Name);
     }
 
+    [Fact]
+    public async Task Tun_session_does_not_own_local_proxy_port()
+    {
+        var (manager, ports) = Create();
+        await using var _ = manager;
+        var tunSettings = new AppSettings { Mode = ConnectionMode.Tun, LocalProxyPort = 2080, AutoReconnect = false, KillSwitch = false };
+        await manager.ConnectAsync(Profile("tun"), tunSettings);
+        Assert.Equal(ConnectionStatus.Connected, manager.Primary.Status);
+        ports.Busy.Add(2080);
+        var localSettings = new AppSettings { Mode = ConnectionMode.LocalProxy, LocalProxyPort = 2080, AutoReconnect = false };
+        var issues = manager.PreviewConflicts(Profile("local"), localSettings);
+        Assert.Contains(issues, i => i.Code == "port.local-proxy" && i.Severity == ConflictSeverity.Blocking);
+    }
+
     private sealed class ReconnectableFakeEngine(IProcessRunner runner, EngineKind kind)
         : ProcessEngineBase(runner, new LogRedactor())
     {
