@@ -14,7 +14,7 @@ namespace Bydlo.Tests;
 /// The native TgWsProxy port, end to end over in-memory pipes. No socket is opened: the proxy talks to
 /// <see cref="FakeTgNetwork"/>, and both the Telegram client and the Telegram server are simulated here.
 /// </summary>
-public class TgWsProxyTests
+public partial class TgWsProxyTests
 {
     private static readonly byte[] Secret = Convert.FromHexString("0123456789abcdef0123456789abcdef");
 
