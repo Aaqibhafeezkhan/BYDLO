@@ -40,7 +40,8 @@ if (!$VerifyOnly) {
     $lines = foreach ($name in ($expected | Sort-Object -CaseSensitive)) {
         (Get-FileHash -LiteralPath (Join-Path $outputPath $name) -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $name
     }
-    [IO.File]::WriteAllLines((Join-Path $outputPath 'SHA256SUMS.txt'), [string[]]$lines, [Text.UTF8Encoding]::new($false))
+    # Deterministic LF for stock `sha256sum -c` on every OS; UTF-8 without BOM.
+    [IO.File]::WriteAllText((Join-Path $outputPath 'SHA256SUMS.txt'), (($lines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 }
 $actual = @(Get-ChildItem -LiteralPath $outputPath -Force)
 if ($actual.Count -ne $expected.Count + 1) { throw 'Unexpected release asset count' }

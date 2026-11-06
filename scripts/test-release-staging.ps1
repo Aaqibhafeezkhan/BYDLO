@@ -36,7 +36,30 @@ $stage = Join-Path $fixture 'staging'
 $download = Join-Path $fixture 'download'
 Copy-Item $stage $download -Recurse
 & "$PSScriptRoot/stage-release.ps1" -InputDirectory $download -OutputDirectory $download -Version $version -VerifyOnly
+function AssertDeterministicManifest([string]$directory) {
+    $bytes = [IO.File]::ReadAllBytes((Join-Path $directory 'SHA256SUMS.txt'))
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191) { throw 'SHA256SUMS must not have BOM' }
+    if ($bytes -contains 13) { throw 'SHA256SUMS must use LF only' }
+    $script:checks++
+}
 $script:checks = 2
+AssertDeterministicManifest $stage
+AssertDeterministicManifest $download
+# The issue repro is the stock `sha256sum -c` on a flat download folder.
+# PowerShell VerifyOnly already bans slashes via regex; also exercise the exact
+# GNU command on synthetic bytes when available (Linux CI always has it).
+$sha256sum = Get-Command sha256sum -ErrorAction SilentlyContinue
+if ($sha256sum) {
+    Push-Location -LiteralPath $stage
+    try { & sha256sum -c SHA256SUMS.txt } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw 'GNU sha256sum failed on staged flat set' }
+    Push-Location -LiteralPath $download
+    try { & sha256sum -c SHA256SUMS.txt } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw 'GNU sha256sum failed on downloaded flat set' }
+    $script:checks += 2
+} else {
+    Write-Host 'sha256sum not available; skipped GNU verification.'
+}
 function Reject([scriptblock]$action, [string]$message) {
     try { & $action } catch {
         if ($_.Exception.Message -notlike "*$message*") { throw "Unexpected failure: $_" }
