@@ -98,6 +98,29 @@ public sealed class BestServerPortConflictTests
         Assert.Contains(issues, i => i.Code == "port.local-proxy" && i.Severity == ConflictSeverity.Blocking);
     }
 
+    [Theory]
+    [InlineData(EngineKind.SingBox)]
+    [InlineData(EngineKind.Xray)]
+    public async Task Tun_kill_switch_backend_owns_local_proxy_ports(EngineKind kind)
+    {
+        var (manager, ports) = Create(kind);
+        await using var _ = manager;
+        var tunSettings = new AppSettings
+        {
+            Mode = ConnectionMode.Tun, LocalProxyPort = 2080, AutoReconnect = false, KillSwitch = true,
+        };
+        await manager.ConnectAsync(Profile("tun"), tunSettings);
+        Assert.Equal(ConnectionStatus.Connected, manager.Primary.Status);
+
+        ports.Busy.Add(2080);
+        if (kind == EngineKind.Xray) { ports.Busy.Add(2081); }
+        var localSettings = new AppSettings { Mode = ConnectionMode.LocalProxy, LocalProxyPort = 2080, AutoReconnect = false };
+        var issues = manager.PreviewConflicts(Profile("local"), localSettings);
+
+        Assert.DoesNotContain(issues, i => i.Code == "port.local-proxy");
+        Assert.DoesNotContain(issues, i => i.Code == "port.local-proxy-http");
+    }
+
     private sealed class ReconnectableFakeEngine(IProcessRunner runner, EngineKind kind)
         : ProcessEngineBase(runner, new LogRedactor())
     {
