@@ -37,6 +37,31 @@ public sealed class BackupSecretFailureTests
     }
 
     [Fact]
+    public async Task Corrupt_trojan_password_aborts_export_instead_of_null_password_backup()
+    {
+        // Exact scenario from issue #344: a Trojan profile with a password whose
+        // stored secret becomes undecryptable (CryptographicException on Unprotect).
+        // Export must abort with SecretAccessException so no archive with a null
+        // password is produced and the UI can report the localized reason.
+        var dir = TestDirs.New("backup-secret-trojan-corrupt");
+        var store = new DpapiSecretStore(dir, new ThrowingProtection());
+        var profiles = NewStore(store);
+        var profile = new Profile { Name = "Trojan", Protocol = ProtocolKind.Trojan, Host = "example.test", Port = 443 };
+        await profiles.AddAsync([new ImportedProfile(profile, new ProfileSecrets { Values = { [Keys.Password] = "trojan-password" } })]);
+
+        Assert.Equal([Keys.Password], BackupArchive.RequiredSecretKeys(new Profile { Protocol = ProtocolKind.Trojan }));
+
+        var fileError = await Assert.ThrowsAsync<SecretAccessException>(() => store.LoadAsync(profile.Id.ToString()));
+        Assert.Equal("backup.secret.failed", fileError.LocalizationKey);
+        Assert.IsType<CryptographicException>(fileError.InnerException);
+
+        var exportError = await Assert.ThrowsAsync<SecretAccessException>(() => profiles.CaptureBackupAsync(new AppSettings()));
+        Assert.Equal("backup.secret.failed", exportError.LocalizationKey);
+        Assert.Contains(profile.Id.ToString(), exportError.Message, StringComparison.Ordinal);
+        Assert.Equal([profile.Id.ToString()], exportError.LocalizationArguments);
+    }
+
+    [Fact]
     public async Task Missing_mandatory_secret_aborts_export()
     {
         var profiles = NewStore(new InMemorySecretStore());
