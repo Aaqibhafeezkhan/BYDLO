@@ -118,6 +118,61 @@ public sealed class ConflictPortsByEngineTests
     private static SessionSnapshot NoPrimary() => new(
         ConnectionManager.PrimaryKey, ConnectionStatus.Disconnected, null, null, false, null, null, null);
 
+    [Theory]
+    [InlineData(EngineKind.SingBox, 2080, true)]
+    [InlineData(EngineKind.SingBox, 2081, false)]
+    [InlineData(EngineKind.SingBox, 3080, false)]
+    [InlineData(EngineKind.Xray, 2080, true)]
+    [InlineData(EngineKind.Xray, 2081, true)]
+    [InlineData(EngineKind.Xray, 3080, false)]
+    [InlineData(EngineKind.Xray, 3081, false)]
+    public void Tg_check_uses_active_port_when_settings_change(EngineKind engine, int tgPort, bool clashes)
+    {
+        var detector = new ConflictDetector(new FakePorts());
+        var settings = new AppSettings { LocalProxyPort = 3080, TgWsProxy = new TgWsProxySettings { Port = tgPort } };
+        var issues = detector.CheckTgWsProxy(settings, ActivePrimary(engine, port: 2080));
+        Assert.Equal(clashes, issues.Any(i => i.Code == "port.tg-clash"));
+    }
+
+    [Theory]
+    [InlineData(EngineKind.SingBox, true)]
+    [InlineData(EngineKind.Xray, true)]
+    [InlineData(EngineKind.OpenVpn, false)]
+    [InlineData(EngineKind.AmneziaWG, false)]
+    [InlineData(EngineKind.WireGuard, false)]
+    public void Both_directions_check_ports_only_for_proxy_adapters(EngineKind engine, bool clashes)
+    {
+        var detector = new ConflictDetector(new FakePorts());
+        var settings = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2080 } };
+        Assert.Equal(clashes, detector.CheckPrimary(Vless(), settings, false, true, engine).Any(i => i.Code == "port.tg-clash"));
+        Assert.Equal(clashes, detector.CheckTgWsProxy(settings, ActivePrimary(engine)).Any(i => i.Code == "port.tg-clash"));
+    }
+
+    [Theory]
+    [InlineData(ProtocolKind.OpenVpn, null)]
+    [InlineData(ProtocolKind.AmneziaWG, null)]
+    [InlineData(ProtocolKind.WireGuard, EngineKind.WireGuard)]
+    public void Unknown_engine_fallback_does_not_assign_native_tunnel_a_proxy_port(ProtocolKind protocol, EngineKind? preferred)
+    {
+        var detector = new ConflictDetector(new FakePorts(2080));
+        var settings = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2080 } };
+        var profile = new Profile { Protocol = protocol, PreferredEngine = preferred };
+        Assert.DoesNotContain(detector.CheckPrimary(profile, settings, false, true), i => i.Code.StartsWith("port.", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(EngineKind.SingBox, ConnectionMode.Tun, false, 2080, false)]
+    [InlineData(EngineKind.SingBox, ConnectionMode.Tun, true, 2080, true)]
+    [InlineData(EngineKind.Xray, ConnectionMode.Tun, true, 2081, true)]
+    [InlineData(EngineKind.OpenVpn, ConnectionMode.Tun, true, 2080, false)]
+    public void Tg_check_uses_captured_mode_and_kill_switch(EngineKind engine, ConnectionMode mode, bool killSwitch, int tgPort, bool clashes)
+    {
+        var detector = new ConflictDetector(new FakePorts());
+        var settings = new AppSettings { Mode = ConnectionMode.LocalProxy, KillSwitch = !killSwitch, LocalProxyPort = 3080,
+            TgWsProxy = new TgWsProxySettings { Port = tgPort } };
+        Assert.Equal(clashes, detector.CheckTgWsProxy(settings, ActivePrimary(engine, mode, killSwitch)).Any(i => i.Code == "port.tg-clash"));
+    }
+
     [Fact]
     public void Tg_check_with_singbox_primary_ignores_adjacent_http_port()
     {

@@ -22,11 +22,11 @@ public sealed class ConflictDetector(IPortChecker ports)
             return issues;
         }
 
-        var bindsLocalTcp = ProxyPorts.BindsLocalTcpPort(settings);
-        var usesLocalInbound = bindsLocalTcp && (engine is not null
-            ? engine is EngineKind.SingBox or EngineKind.Xray
-            : profile.Protocol is not (ProtocolKind.OpenVpn or ProtocolKind.AmneziaWG)
-                && !(profile.Protocol == ProtocolKind.WireGuard && profile.PreferredEngine == EngineKind.WireGuard));
+        var usesLocalInbound = engine is not null
+            ? ProxyPorts.BindsLocalTcpPort(settings.Mode, settings.KillSwitch, engine)
+            : ProxyPorts.BindsLocalTcpPort(settings)
+                && profile.Protocol is not (ProtocolKind.OpenVpn or ProtocolKind.AmneziaWG)
+                && !(profile.Protocol == ProtocolKind.WireGuard && profile.PreferredEngine == EngineKind.WireGuard);
 
         if (usesLocalInbound && ports.IsTcpPortInUse(settings.LocalProxyPort))
         {
@@ -55,7 +55,7 @@ public sealed class ConflictDetector(IPortChecker ports)
             }
         }
 
-        if (tgRunning && bindsLocalTcp && settings.LocalProxyPort == settings.TgWsProxy.Port)
+        if (tgRunning && usesLocalInbound && settings.LocalProxyPort == settings.TgWsProxy.Port)
         {
             issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash",
                 $"TgWsProxy already listens on port {settings.TgWsProxy.Port}."));
@@ -115,14 +115,14 @@ public sealed class ConflictDetector(IPortChecker ports)
 
         // The active tunnel owns LocalProxyPort only when it binds a TCP listener:
         // plain TUN carries traffic in a TUN inbound and clashes with nothing (issue #380).
-        var primaryBindsTcp = primary.HoldsResources && ProxyPorts.BindsLocalTcpPort(primary.Mode, primary.KillSwitch);
-        if (primaryBindsTcp && settings.LocalProxyPort == port)
+        var primaryBindsTcp = primary.HoldsResources && ProxyPorts.BindsLocalTcpPort(primary.Mode, primary.KillSwitch, primary.Engine);
+        if (primaryBindsTcp && primary.LocalProxyPort == port)
         {
             issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash", $"Port {port} is used by the active tunnel."));
         }
 
         if (primaryBindsTcp && primary.Engine is not null && ProxyPorts.NeedsAdjacentHttpPort(primary.Engine.Value)
-            && settings.LocalProxyPort + 1 == port)
+            && primary.LocalProxyPort + 1 == port)
         {
             issues.Add(new(ConflictSeverity.Blocking, "port.tg-clash", $"Port {port} is used by the active tunnel (Xray HTTP)."));
         }
