@@ -311,13 +311,36 @@ Velopack использует стабильные GitHub Releases и отдел
 | Платформа | Пакет |
 |---|---|
 | Windows x64/ARM64 | `BydloDesktop-<RID>-Setup.exe`, portable ZIP, update `.nupkg` |
-| Linux x64/ARM64 | AppImage с `.desktop` и иконкой, update `.nupkg`; отдельно `.deb` и AppImage без автообновления из `scripts/package-linux.sh` ([LINUX.md](LINUX.md)) |
-| macOS Apple Silicon | `.app` внутри ZIP с Info.plist/иконкой, `.pkg`, update `.nupkg` |
+| Linux x64/ARM64 | AppImage Velopack с `.desktop` и иконкой, update `.nupkg`; отдельно `.deb` из `scripts/package-linux.sh` ([LINUX.md](LINUX.md)) |
+| macOS Apple Silicon | `BydloDesktop-osx-arm64-Setup.pkg`, update `.nupkg` |
 
 Все `releases.<RID>.json` и `*-full.nupkg` должны находиться в том же GitHub Release,
 что и установщики. Задача `native-packages` создаёт их по тегу или `workflow_dispatch`;
 `package` включает в `SHA256SUMS.txt`, а `release` — в черновик и аттестации.
-Обычные ZIP сохраняются. Нативные пакеты сохраняют исходники и лицензии движков.
+Начиная со следующего выпуска после v0.4.1 публикуются ровно девять пользовательских
+пакетов, пять полных update `.nupkg`, пять RID feeds и `SHA256SUMS.txt`: 20 assets
+плюс два автоматически добавляемых GitHub архива исходников. Старые ZIP каталогов
+`BYDLO-<RID>.zip`, macOS Portable.zip и вторая семья `BYDLO-<версия>-<arch>.AppImage`
+больше не публикуются; существующие релизы и их URL остаются доступны.
+Нативные пакеты сохраняют исходники, лицензии, lock-файлы и `ENGINES-SHA256SUMS.txt` движков.
+
+`scripts/stage-release.ps1` выбирает точные имена для версии и всех пяти RID,
+отклоняет дубликаты до слияния каталогов и проверяет feeds по размеру и SHA-256 полных
+пакетов. Суммы считаются после упаковки и подписи в отдельном плоском `release-staging/`.
+После скачивания CI повторно проверяет комплект и аттестует все окончательные файлы,
+включая суммы. `gh release create` получает только этот каталог. Update-файлы остаются
+в публичном GitHub Release без срока хранения. Будущие подписанные метаданные (#411)
+потребуют явного изменения allowlist; SHA-256 feed сам по себе не доказывает его подлинность.
+
+Промежуточные Actions artifacts (`BYDLO-*`, `native-*`, `helper-*`, `managed-*`)
+и отчёты тестов хранятся 7 дней, готовый `release-packages` — 14 дней. Это входы CI,
+а не альтернативные загрузки для пользователя; отчёты тестов не входят в релиз.
+Обязательный gate `package` требует успешные desktop, Windows parity, macOS suite,
+macOS IPC (`unix-activation`), cross-build AmneziaWG для macOS, Nix flake,
+всю матрицу native smoke и native packages, а также
+успешную signing policy. Единственный допустимый skip — `sign-windows` при явном
+разрешении unsigned. Ошибка, отмена или иной skip блокируют draft release; ручная
+репетиция проверяет пакет, но не публикует релиз. Имена существующих checks сохранены.
 Права исполнения восстанавливаются до упаковки. Windows-движки исключены из переподписи.
 На macOS исходные суммы проверяются **до подписи**, затем после подписи Mach-O
 пересчитывается `ENGINES-SHA256SUMS.txt`; lock-файлы архивов upstream не меняются.
@@ -388,11 +411,11 @@ broker. Реальное подтверждение UAC и подключени�
 
 ### Проверка происхождения релиза
 
-Новые релизы после внедрения #216 получают GitHub artifact attestations для каждого ZIP
-и `SHA256SUMS.txt`. Проверяйте скачанный файл **до распаковки и запуска**:
+Новые релизы получают GitHub artifact attestations для каждого окончательного пакета,
+feed и `SHA256SUMS.txt`. Проверяйте скачанный файл **до распаковки и запуска**:
 
 ```bash
-gh attestation verify BYDLO-linux-x64.zip --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
+gh attestation verify BydloDesktop-linux-x64.AppImage --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
 gh attestation verify SHA256SUMS.txt --repo endercodezz/BYDLO --signer-workflow endercodezz/BYDLO/.github/workflows/ci.yml --source-ref refs/tags/vX.Y.Z --deny-self-hosted-runners
 ```
 

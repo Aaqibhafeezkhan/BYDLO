@@ -22,8 +22,28 @@ if (!(Test-Path -LiteralPath $vpk)) {
 }
 $main = if ($IsWindows) { 'BYDLO.exe' } else { 'BYDLO' }
 $icon = Join-Path $env:BYDLO_ROOT 'src/Bydlo.App/Assets/bydlo-256.png'
+$packDir = $payload
+if ($IsLinux) {
+    # Supply our launcher explicitly: the default Velopack launcher does not have
+    # the ICU fallback used by the previous AppImage. Velopack accepts *.AppDir.
+    $packDir = Join-Path $env:BYDLO_ROOT ('.tmp/native-' + [Guid]::NewGuid().ToString('N') + '.AppDir')
+    $bin = Join-Path $packDir 'usr/bin'
+    New-Item -ItemType Directory -Force $bin | Out-Null
+    Copy-Item (Join-Path $payload '*') $bin -Recurse
+    $launcher = [IO.File]::ReadAllText((Join-Path $env:BYDLO_ROOT 'packaging/linux/AppRun')).Replace('usr/lib/bydlo/BYDLO','usr/bin/BYDLO')
+    [IO.File]::WriteAllText((Join-Path $packDir 'AppRun'), $launcher.Replace("`r",''))
+    $desktop = [IO.File]::ReadAllText((Join-Path $env:BYDLO_ROOT 'packaging/linux/bydlo.desktop')).Replace('Exec=bydlo','Exec=BYDLO').Replace('Icon=bydlo','Icon=BydloDesktop')
+    [IO.File]::WriteAllText((Join-Path $packDir 'BydloDesktop.desktop'), $desktop.Replace("`r",''))
+    Copy-Item $icon (Join-Path $packDir 'BydloDesktop.png')
+    Copy-Item $icon (Join-Path $packDir '.DirIcon')
+    $iconDir = Join-Path $packDir 'usr/share/icons/hicolor/256x256/apps'
+    New-Item -ItemType Directory -Force $iconDir | Out-Null
+    Copy-Item $icon (Join-Path $iconDir 'BydloDesktop.png')
+    & chmod 755 (Join-Path $packDir 'AppRun')
+    if ($LASTEXITCODE -ne 0) { throw 'AppRun chmod failed' }
+}
 $arguments = @('--skip-updates','--yes','pack','--packId','BydloDesktop','--packTitle','BYDLO',
-    '--packAuthors','BYDLO contributors','--packVersion',"$version",'--packDir',$payload,
+    '--packAuthors','BYDLO contributors','--packVersion',"$version",'--packDir',$packDir,
     '--mainExe',$main,'--runtime',$Rid,'--channel',$Rid,'--outputDir',$output,
     '--delta','None','--noDefaultExclude','--exclude','^$')
 if ($IsWindows) {
@@ -105,6 +125,14 @@ $packagedPayload = if ($IsLinux) { Join-Path $packagedRoot 'usr/bin' } elseif ($
 if ($IsLinux) {
     if (!(Test-Path (Join-Path $packagedRoot 'BydloDesktop.desktop')) -or !(Test-Path (Join-Path $packagedRoot 'BydloDesktop.png'))) {
         throw 'Missing Linux desktop entry or icon'
+    }
+    $desktop = [IO.File]::ReadAllText((Join-Path $packagedRoot 'BydloDesktop.desktop'))
+    if ($desktop -notmatch '(?m)^Exec=BYDLO\r?$' -or $desktop -notmatch '(?m)^Icon=BydloDesktop\r?$') { throw 'Invalid Linux desktop entry' }
+    $launcher = [IO.File]::ReadAllText((Join-Path $packagedRoot 'AppRun'))
+    if (!$launcher.Contains('usr/bin/BYDLO') -or !$launcher.Contains('DOTNET_SYSTEM_GLOBALIZATION_INVARIANT')) { throw 'Invalid AppImage launcher' }
+    foreach ($relative in @('AppRun','usr/bin/BYDLO','usr/bin/helper/Bydlo.Helper','usr/bin/UpdateNix')) {
+        $mode = [IO.File]::GetUnixFileMode((Join-Path $packagedRoot $relative))
+        if (($mode -band [IO.UnixFileMode]::UserExecute) -eq 0) { throw "Missing executable permission: $relative" }
     }
 }
 if ($IsMacOS -and !(Test-Path (Join-Path $packagedRoot 'Contents/Info.plist'))) { throw 'Missing Info.plist' }
