@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Bydlo.Tests;
 
 /// <summary>Issue 336: draft release must run after a successful package even with an allowed sign skip.</summary>
@@ -40,5 +42,25 @@ public sealed class ReleaseWorkflowTests
         Assert.Contains("needs.windows-parity.result == 'success'", ci, StringComparison.Ordinal);
         Assert.Contains("needs.macos.result == 'success'", ci, StringComparison.Ordinal);
         Assert.Contains("needs.sign-windows.result == 'success'", ci, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Issue 437: an unsigned release is a per-tag decision. A wildcard or a branch-wide
+    /// switch would silently ship unsigned packages for every future release.
+    /// </summary>
+    [Fact]
+    public void Unsigned_release_exception_stays_an_explicit_tag_list()
+    {
+        var ci = ReadCi();
+        var start = ci.IndexOf("UNSIGNED:", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var line = ci.Substring(start, ci.IndexOf('\n', start) - start);
+        Assert.DoesNotContain("refs/tags/v*", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("startsWith(github.ref", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("refs/heads/", line, StringComparison.Ordinal);
+        Assert.Contains("github.event_name == 'workflow_dispatch' && inputs.skip_signing", line, StringComparison.Ordinal);
+        var tags = Regex.Matches(line, @"refs/tags/([^']+)").Select(m => m.Groups[1].Value).ToArray();
+        Assert.NotEmpty(tags);
+        Assert.All(tags, tag => Assert.Matches(@"^v\d+\.\d+\.\d+$", tag));
     }
 }
