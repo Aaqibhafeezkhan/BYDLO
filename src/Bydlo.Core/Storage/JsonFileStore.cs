@@ -428,9 +428,20 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
         try
         {
             ThrowIfNewerVersion();
-            _doc.Subscriptions.Add(sub);
-            await secrets.SaveAsync(SubscriptionSecretId(sub.Id), new ProfileSecrets { Values = { ["url"] = url } }, ct).ConfigureAwait(false);
-            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+            var secretId = SubscriptionSecretId(sub.Id);
+            // Detached snapshot: publish only after the atomic write succeeds (issue #399).
+            var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = [.. _doc.Subscriptions, sub], Chains = [.. _doc.Chains] };
+            try
+            {
+                await secrets.SaveAsync(secretId, new ProfileSecrets { Values = { ["url"] = url } }, ct).ConfigureAwait(false);
+                await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+                _doc = next;
+            }
+            catch
+            {
+                await secrets.DeleteAsync(secretId, CancellationToken.None).ConfigureAwait(false);
+                throw;
+            }
         }
         finally
         {
@@ -511,8 +522,12 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             ThrowIfNewerVersion();
             var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
                 ?? throw new InvalidDataException("Subscription not found.");
-            sub.Name = name.Trim();
-            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+            // Detached snapshot: publish only after the atomic write succeeds (issue #399).
+            var renamed = CopySubscription(sub);
+            renamed.Name = name.Trim();
+            var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = _doc.Subscriptions.Select(item => item.Id == subscriptionId ? renamed : item).ToList(), Chains = [.. _doc.Chains] };
+            await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+            _doc = next;
         }
         finally
         {
@@ -533,14 +548,36 @@ public sealed partial class ProfileStore(string path, ISecretStore secrets, Time
             ThrowIfNewerVersion();
             var sub = _doc.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId)
                 ?? throw new InvalidDataException("Subscription not found.");
-            sub.UserAgent = string.IsNullOrEmpty(userAgent) ? null : userAgent;
-            await JsonDefaults.WriteAtomicAsync(path, _doc, ct).ConfigureAwait(false);
+            // Detached snapshot: publish only after the atomic write succeeds (issue #399).
+            var updated = CopySubscription(sub);
+            updated.UserAgent = string.IsNullOrEmpty(userAgent) ? null : userAgent;
+            var next = new ProfileDocument { Version = _doc.Version, PendingSecretDeletes = [.. _doc.PendingSecretDeletes], Profiles = [.. _doc.Profiles], Subscriptions = _doc.Subscriptions.Select(item => item.Id == subscriptionId ? updated : item).ToList(), Chains = [.. _doc.Chains] };
+            await JsonDefaults.WriteAtomicAsync(path, next, ct).ConfigureAwait(false);
+            _doc = next;
         }
         finally
         {
             _gate.Release();
         }
     }
+
+    private static Subscription CopySubscription(Subscription source) => new()
+    {
+        Id = source.Id,
+        Name = source.Name,
+        LastUpdated = source.LastUpdated,
+        Upload = source.Upload,
+        Download = source.Download,
+        Total = source.Total,
+        Expires = source.Expires,
+        Title = source.Title,
+        UpdateIntervalHours = source.UpdateIntervalHours,
+        SupportUrl = source.SupportUrl,
+        Announce = source.Announce,
+        UserAgent = source.UserAgent,
+        Mode = source.Mode,
+        SourceOptions = source.SourceOptions,
+    };
 
     public async Task SetSubscriptionModeAsync(Guid subscriptionId, SubscriptionMode mode, CancellationToken ct = default)
     {
