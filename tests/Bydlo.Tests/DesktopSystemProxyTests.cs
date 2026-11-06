@@ -133,6 +133,45 @@ public sealed class DesktopSystemProxyTests
         Assert.Empty(runner.Started);
     }
 
+    [Fact]
+    public async Task Concurrent_test_override_cannot_unlock_setup_or_recovery()
+    {
+        Assert.True(NetworkSafetyGuard.IsLocked);
+        var directory = TestDirs.New("desktop-proxy-concurrent-safety");
+        var journal = Path.Combine(directory, "system-proxy.json");
+        await File.WriteAllTextAsync(journal, "unread journal");
+        var runner = new FakeProcessRunner();
+        var proxy = new JournaledSystemProxyService(runner, DesktopProxyKind.Kde6, directory);
+        var overrideSet = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseOverride = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var otherTest = Task.Run(async () =>
+        {
+            NetworkSafetyGuard.OverrideForTests(false);
+            try
+            {
+                overrideSet.SetResult();
+                // Even this async flow cannot turn off BYDLO_SAFE_DEV=1.
+                Assert.True(NetworkSafetyGuard.IsLocked);
+                await releaseOverride.Task;
+            }
+            finally { NetworkSafetyGuard.OverrideForTests(null); }
+        });
+        try
+        {
+            await overrideSet.Task;
+            await Assert.ThrowsAsync<NetworkSafetyException>(() => proxy.SetAsync("127.0.0.1", 2080));
+            await Assert.ThrowsAsync<NetworkSafetyException>(() => proxy.ClearAsync());
+            Assert.Equal("unread journal", await File.ReadAllTextAsync(journal));
+            Assert.Empty(runner.Completed);
+            Assert.Empty(runner.Started);
+        }
+        finally
+        {
+            releaseOverride.SetResult();
+            await otherTest;
+        }
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
