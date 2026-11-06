@@ -1,9 +1,8 @@
 name: Auto-merge
 
-# Turns on GitHub's native auto-merge for pull requests from trusted maintainers into the default branch or
-# the `developer` integration branch (see CLAUDE.md, Git), and for Dependabot into `developer` only.
-# Both branches share one ruleset.
-# GitHub then merges only after every rule of that ruleset passes, required CI checks included;
+# Turns on GitHub's native auto-merge for pull requests from trusted maintainers and Dependabot into
+# the `developer` integration branch only. Release PRs into main are merged manually by endercodezz.
+# GitHub then merges only after every applicable rule passes, required CI checks included;
 # the merge is made as github-actions[bot], which is not a ruleset bypass actor. GitHub neither closes linked
 # issues nor deletes the head branch for such merges; post-merge-cleanup.yml does both. Every other pull
 # request stays manual.
@@ -27,23 +26,22 @@ jobs:
     name: Enable auto-merge
     # GitHub only (the Gitea mirror also reads .github/workflows); same-repository branches only, so fork
     # PRs stay manual. Only trusted accounts can trigger this job for eligible PRs.
-    # Numeric account IDs: 156020274 endercodezz, 330476880 pifagor4ikh, 49699333 dependabot[bot].
+    # Numeric account IDs: 156020274 endercodezz, 330476880 pifagor4ikh,
+    # 233434312 timrogoz5-afk, 49699333 dependabot[bot].
     if: >-
       github.server_url == 'https://github.com'
       && github.event.pull_request.head.repo.full_name == github.repository
       && !github.event.pull_request.draft
       && github.event.pull_request.auto_merge == null
       && github.event.pull_request.state == 'open'
+      && github.event.pull_request.base.ref == 'developer'
       && (github.event.action != 'edited' || github.event.changes.base != null)
       && (
-        ((github.event.pull_request.base.ref == github.event.repository.default_branch
-          || github.event.pull_request.base.ref == 'developer')
-          && github.event.action != 'synchronize'
-          && contains(fromJSON('[156020274, 330476880]'), github.event.pull_request.user.id)
-          && contains(fromJSON('[156020274, 330476880]'), github.event.sender.id))
-        || (github.event.pull_request.base.ref == 'developer'
-          && github.event.pull_request.user.id == 49699333
-          && contains(fromJSON('[156020274, 330476880, 49699333]'), github.event.sender.id))
+        (github.event.action != 'synchronize'
+          && contains(fromJSON('[156020274, 330476880, 233434312]'), github.event.pull_request.user.id)
+          && contains(fromJSON('[156020274, 330476880, 233434312]'), github.event.sender.id))
+        || (github.event.pull_request.user.id == 49699333
+          && contains(fromJSON('[156020274, 330476880, 233434312, 49699333]'), github.event.sender.id))
       )
     runs-on: ubuntu-latest
     timeout-minutes: 5
