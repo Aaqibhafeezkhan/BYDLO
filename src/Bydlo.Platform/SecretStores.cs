@@ -21,11 +21,18 @@ public abstract class FileSecretStoreBase(string directory) : ISecretStore
     {
         System.IO.Directory.CreateDirectory(Directory);
         var plain = JsonSerializer.SerializeToUtf8Bytes(secrets.Values, PlatformJsonContext.Default.DictionaryStringString);
-        var path = PathFor(id);
-        var tmp = path + ".tmp";
-        await File.WriteAllBytesAsync(tmp, Protect(plain), ct).ConfigureAwait(false);
-        CryptographicOperations.ZeroMemory(plain);
-        File.Move(tmp, path, overwrite: true);
+        try
+        {
+            var path = PathFor(id);
+            var tmp = path + ".tmp";
+            await File.WriteAllBytesAsync(tmp, Protect(plain), ct).ConfigureAwait(false);
+            File.Move(tmp, path, overwrite: true);
+        }
+        finally
+        {
+            // Store-owned serialized plaintext: clear on success, error and cancellation.
+            CryptographicOperations.ZeroMemory(plain);
+        }
     }
 
     public async Task<ProfileSecrets> LoadAsync(string id, CancellationToken ct = default)
@@ -48,10 +55,18 @@ public abstract class FileSecretStoreBase(string directory) : ISecretStore
 
         try
         {
+            // Ownership: Unprotect hands the plaintext buffer to this method on success;
+            // this method clears it after deserialization, on every path below.
             var plain = Unprotect(cipher);
-            var values = JsonSerializer.Deserialize(plain, PlatformJsonContext.Default.DictionaryStringString) ?? [];
-            CryptographicOperations.ZeroMemory(plain);
-            return new ProfileSecrets { Values = new(values, StringComparer.OrdinalIgnoreCase) };
+            try
+            {
+                var values = JsonSerializer.Deserialize(plain, PlatformJsonContext.Default.DictionaryStringString) ?? [];
+                return new ProfileSecrets { Values = new(values, StringComparer.OrdinalIgnoreCase) };
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(plain);
+            }
         }
         catch (Exception ex) when (ex is CryptographicException or JsonException)
         {
@@ -116,10 +131,20 @@ public sealed class AesFileSecretStore(string directory) : FileSecretStoreBase(d
             throw new CryptographicException("Secret file is truncated.");
         }
 
+        // Owned here until a successful return hands it to the caller.
         var plain = new byte[cipher.Length - NonceSize - TagSize];
-        using var aes = new AesGcm(Key(), TagSize);
-        aes.Decrypt(cipher.AsSpan(0, NonceSize), cipher.AsSpan(NonceSize + TagSize), cipher.AsSpan(NonceSize, TagSize), plain);
-        return plain;
+        try
+        {
+            using var aes = new AesGcm(Key(), TagSize);
+            aes.Decrypt(cipher.AsSpan(0, NonceSize), cipher.AsSpan(NonceSize + TagSize), cipher.AsSpan(NonceSize, TagSize), plain);
+            return plain;
+        }
+        catch
+        {
+            // Authentication (or key) failure: never return a partially decrypted buffer.
+            CryptographicOperations.ZeroMemory(plain);
+            throw;
+        }
     }
 
     private byte[] Key()
