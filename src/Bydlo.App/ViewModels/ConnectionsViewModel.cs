@@ -195,23 +195,33 @@ public sealed partial class ConnectionsViewModel(MainViewModel shell) : PageView
         {
             return;
         }
-        await Shell.Guard(async () =>
+        var ok = await Shell.Guard(async () =>
         {
             await Services.Profiles.RenameSubscriptionAsync(row.Id, name);
             OnShown();
             Shell.ShowToast(L["toast.saved"]);
         });
+        if (!ok)
+        {
+            // The store keeps memory == disk on a failed write (issue #399):
+            // revert the edited text so the row matches the persisted snapshot.
+            row.Name = row.Snapshot.Name;
+        }
     }
 
     [RelayCommand]
     private async Task SaveSubscriptionUserAgent(SubscriptionRow row)
     {
-        await Shell.Guard(async () =>
+        var ok = await Shell.Guard(async () =>
         {
             await Services.Profiles.SetSubscriptionUserAgentAsync(row.Id, row.UserAgent);
             OnShown();
             Shell.ShowToast(L["toast.saved"]);
         });
+        if (!ok)
+        {
+            row.UserAgent = row.Snapshot.UserAgent ?? "";
+        }
     }
 
     [RelayCommand]
