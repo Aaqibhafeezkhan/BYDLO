@@ -69,15 +69,44 @@ public class AutomaticAppUpdaterTests
     }
 
     [Fact]
-    public async Task Failed_check_is_throttled_and_never_installs()
+    public async Task Failed_check_is_rate_limited_hourly_and_never_installs()
     {
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
         var backend = new FakeBackend { Download = () => throw new IOException("offline") };
-        var policy = new AutomaticAppUpdater(() => backend);
+        var policy = new AutomaticAppUpdater(() => backend, clock);
         var settings = new AppSettings { AutoUpdateApp = true };
         await Assert.ThrowsAsync<IOException>(() => policy.DownloadIfDueAsync(settings, false));
+        Assert.Null(settings.LastAutomaticUpdateCheck);
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
+        Assert.Equal(1, backend.Downloads);
+        clock.Now = clock.Now.AddHours(1);
+        await Assert.ThrowsAsync<IOException>(() => policy.DownloadIfDueAsync(settings, false));
+        Assert.Equal(2, backend.Downloads);
         policy.ApplyOnExit(settings, false);
         Assert.Equal(0, backend.Applied);
+    }
+
+    [Fact]
+    public async Task Release_published_after_empty_check_is_picked_up_on_next_run()
+    {
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var backend = new FakeBackend { Download = () => Task.FromResult(false) };
+        var policy = new AutomaticAppUpdater(() => backend, clock);
+        var settings = new AppSettings { AutoUpdateApp = true };
+        Assert.False(await policy.DownloadIfDueAsync(settings, false));
+        Assert.Null(settings.LastAutomaticUpdateCheck);
+        Assert.False(await policy.DownloadIfDueAsync(settings, false));
+        Assert.Equal(1, backend.Downloads);
+        clock.Now = clock.Now.AddHours(1);
+        backend.Download = () => Task.FromResult(true);
+        Assert.True(await policy.DownloadIfDueAsync(settings, false));
+        Assert.Equal(2, backend.Downloads);
+    }
+
+    private sealed class FakeClock(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+        public override DateTimeOffset GetUtcNow() => Now;
     }
 
     [Fact]
