@@ -1,0 +1,84 @@
+name: Close linked issues on PR creation
+
+# GitHub applies closing keywords only when a pull request merges into the default branch, and
+# auto-merge merges as github-actions[bot], which skips them entirely. post-merge-cleanup.yml covers
+# the merge case; this workflow closes linked issues as soon as a pull request targets the `developer`
+# integration branch, so the tracker reflects work in flight (issue #449).
+#
+# pull_request_target runs this file from the default branch, so a fork cannot change it. The job never
+# checks out or runs pull request code and never interpolates pull request text into a shell: only
+# structured GitHub fields are read, and the parser is fetched from the default branch through the API.
+# Every step is idempotent, so overlapping runs need no concurrency group (a shared group would silently
+# drop queued runs, as in post-merge-cleanup.yml).
+on:
+  pull_request_target:
+    types: [opened, edited, reopened]
+
+permissions: {}
+
+jobs:
+  close:
+    # The event check is the cheap gate; the API re-read below repeats it so a stale or replayed event
+    # can never close issues for a pull request that was retargeted or closed in the meantime.
+    if: >-
+      github.server_url == 'https://github.com'
+      && github.event.pull_request.base.ref == 'developer'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Close issues linked from the pull request body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo 'Expected a numeric pull request number.' >&2; exit 1; }
+
+          # Re-read the live state: the event payload may be stale or replayed.
+          pr=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")
+          if ! jq -e '.state == "open" and .base.ref == "developer"' <<< "$pr" >/dev/null; then
+            echo "PR #$PR_NUMBER is not an open pull request into developer; nothing to close."
+            exit 0
+          fi
+
+          # Only the current author counts, and only with real repository rights. author_association
+          # alone is not enough: it is derived from the event and does not prove write access.
+          author=$(jq -r '.user.login' <<< "$pr")
+          [[ "$author" =~ ^[A-Za-z0-9._-]+$ ]] || { echo 'Unexpected author login.' >&2; exit 1; }
+          permission=$(gh api "repos/$GH_REPO/collaborators/$author/permission" --jq .permission 2>/dev/null || echo none)
+          case "$permission" in
+            admin|maintain|write) ;;
+            *) echo "Author $author has no write access; nothing to close."; exit 0 ;;
+          esac
+
+          # Load the parser from the default branch, never from the pull request base ref.
+          default_branch=$(gh api "repos/$GH_REPO" --jq .default_branch)
+          parser="$RUNNER_TEMP/closing-references.sh"
+          gh api "repos/$GH_REPO/contents/.github/scripts/closing-references.sh?ref=$default_branch" \
+            --jq .content | base64 -d > "$parser"
+
+          body=$(jq -r '.body // ""' <<< "$pr")
+          numbers=$(printf '%s' "$body" | bash "$parser" "$GH_REPO")
+          [[ -n "$numbers" ]] || { echo 'No closing references in the body.'; exit 0; }
+
+          while IFS= read -r issue; do
+            [[ -n "$issue" ]] || continue
+            data=$(gh api "repos/$GH_REPO/issues/$issue")
+            # Skip pull requests, already closed issues and anything outside this repository.
+            if ! jq -e '.state == "open" and (.pull_request | not)' <<< "$data" >/dev/null; then
+              echo "Skipping #$issue: not an open issue."
+              continue
+            fi
+
+            gh api --method PATCH "repos/$GH_REPO/issues/$issue" \
+              -f state=closed -f state_reason=completed --silent
+            comment=$(printf 'Задача закрыта автоматически: pull request #%s нацелен на ветку `developer`.\n\nЕсли работа ещё не завершена, переоткройте задачу — workflow закрытые задачи повторно не трогает.' "$PR_NUMBER")
+            gh api --method POST "repos/$GH_REPO/issues/$issue/comments" -f body="$comment" --silent
+            echo "Closed issue #$issue (PR #$PR_NUMBER)."
+          done <<< "$numbers"
