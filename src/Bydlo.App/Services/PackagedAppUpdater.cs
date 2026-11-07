@@ -12,13 +12,14 @@ internal sealed class PackagedAppUpdater(string dataDirectory) : IAppUpdateBacke
     public bool IsInstalled => !File.Exists(Path.Combine(AppContext.BaseDirectory, "portable.txt")) &&
         AutomaticAppUpdater.HasSeparateDataDirectory(AppContext.BaseDirectory, dataDirectory) && _manager.IsInstalled;
 
-    public async Task<bool> DownloadLatestAsync(CancellationToken ct)
+    public async Task<bool> DownloadLatestAsync(IProgress<int>? progress, CancellationToken ct)
     {
         NetworkSafetyGuard.EnsureAllowed("download application update");
         var update = await _manager.CheckForUpdatesAsync().WaitAsync(ct).ConfigureAwait(false);
         if (update is not null)
         {
-            await _manager.DownloadUpdatesAsync(update, cancelToken: ct).ConfigureAwait(false);
+            Action<int>? report = progress is null ? null : progress.Report;
+            await _manager.DownloadUpdatesAsync(update, report, ct).ConfigureAwait(false);
         }
         return _manager.UpdatePendingRestart is not null;
     }
