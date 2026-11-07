@@ -81,6 +81,74 @@ public class AutomaticAppUpdaterTests
     }
 
     [Fact]
+    public async Task Cancelled_download_does_not_consume_the_daily_window()
+    {
+        var backend = new FakeBackend { Download = () => throw new OperationCanceledException() };
+        var policy = new AutomaticAppUpdater(() => backend);
+        var settings = new AppSettings { AutoUpdateApp = true };
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => policy.DownloadIfDueAsync(settings, false));
+        Assert.Null(settings.LastAutomaticUpdateCheck);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => policy.DownloadIfDueAsync(settings, false));
+        Assert.Equal(2, backend.Downloads);
+        policy.ApplyOnExit(settings, false);
+        Assert.Equal(0, backend.Applied);
+    }
+
+    [Fact]
+    public async Task Empty_check_still_respects_the_daily_window()
+    {
+        var backend = new FakeBackend { Download = () => Task.FromResult(false) };
+        var policy = new AutomaticAppUpdater(() => backend);
+        var settings = new AppSettings { AutoUpdateApp = true };
+        Assert.False(await policy.DownloadIfDueAsync(settings, false));
+        Assert.NotNull(settings.LastAutomaticUpdateCheck);
+        Assert.False(await policy.DownloadIfDueAsync(settings, false));
+        Assert.Equal(1, backend.Downloads);
+    }
+
+    [Fact]
+    public async Task Manual_download_ignores_the_daily_window()
+    {
+        var backend = new FakeBackend();
+        var policy = new AutomaticAppUpdater(() => backend);
+        var settings = new AppSettings { AutoUpdateApp = true };
+        Assert.True(await policy.DownloadIfDueAsync(settings, false));
+        Assert.False(await policy.DownloadIfDueAsync(settings, false));
+        Assert.Equal(1, backend.Downloads);
+        Assert.True(await policy.DownloadNowAsync(settings, false));
+        Assert.Equal(2, backend.Downloads);
+    }
+
+    [Fact]
+    public async Task Manual_download_keeps_the_opt_in_and_blocked_guards()
+    {
+        var backend = new FakeBackend();
+        var policy = new AutomaticAppUpdater(() => backend);
+        Assert.False(await policy.DownloadNowAsync(new AppSettings { AutoUpdateApp = false }, false));
+        Assert.False(await policy.DownloadNowAsync(new AppSettings { AutoUpdateApp = true }, blocked: true));
+        Assert.Equal(0, backend.Downloads);
+    }
+
+    [Fact]
+    public async Task Progress_is_forwarded_to_the_backend()
+    {
+        var backend = new FakeBackend();
+        var policy = new AutomaticAppUpdater(() => backend);
+        var settings = new AppSettings { AutoUpdateApp = true };
+        var progress = new Progress<int>();
+        Assert.True(await policy.DownloadIfDueAsync(settings, false, progress));
+        Assert.Same(progress, backend.Progress);
+    }
+
+    [Fact]
+    public void Availability_reflects_the_backend()
+    {
+        Assert.True(new AutomaticAppUpdater(() => new FakeBackend()).IsAvailable());
+        Assert.False(new AutomaticAppUpdater(() => new FakeBackend { IsInstalled = false }).IsAvailable());
+        Assert.False(new AutomaticAppUpdater(() => throw new InvalidOperationException("No I/O allowed")).IsAvailable());
+    }
+
+    [Fact]
     public async Task Unpackaged_build_never_downloads_or_applies()
     {
         var backend = new FakeBackend { IsInstalled = false };
@@ -98,8 +166,16 @@ public class AutomaticAppUpdaterTests
         public bool IsInstalled { get; set; } = true;
         public int Downloads { get; private set; }
         public int Applied { get; private set; }
+        public IProgress<int>? Progress { get; private set; }
         public Func<Task<bool>> Download { get; set; } = () => Task.FromResult(true);
-        public Task<bool> DownloadLatestAsync(CancellationToken ct) { Downloads++; return Download(); }
+
+        public Task<bool> DownloadLatestAsync(IProgress<int>? progress, CancellationToken ct)
+        {
+            Downloads++;
+            Progress = progress;
+            return Download();
+        }
+
         public void ApplyOnExit() => Applied++;
     }
 }
