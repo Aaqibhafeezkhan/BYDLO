@@ -393,7 +393,7 @@ public sealed partial class SingBoxConfigBuilder
         {
             servers.AddNode(new JsonObject
             {
-                ["type"] = "fakeip", ["tag"] = "fakeip", ["inet4_range"] = "198.18.0.0/15", ["inet6_range"] = "fc00::/18",
+                ["type"] = "fakeip", ["tag"] = "fakeip", ["inet4_range"] = "198.18.0.0/15", ["inet6_range"] = "2001:2::/48",
             });
             if (routing.FakeIpExceptions.Count > 0)
             {
