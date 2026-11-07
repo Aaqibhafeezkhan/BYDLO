@@ -12,7 +12,7 @@ BYDLO не изобретает протоколы заново: он управ
 AmneziaWG, OpenVPN), а также [Zapret](https://github.com/Flowseal/zapret-discord-youtube) и
 [tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) от Flowseal — через один понятный интерфейс.
 
-> **BYDLO v0.4.1** — исправления стабильности и защиты данных, нативные пакеты и необязательное автообновление. [Скачать BYDLO](https://github.com/endercodezz/BYDLO/releases) · [Что нового](docs/RELEASE_NOTES.md#bydlo-v041).
+> **BYDLO v0.4.2** — исправления портов, TgWsProxy, WireGuard и хранилища секретов, один набор пакетов на платформу. [Скачать BYDLO](https://github.com/endercodezz/BYDLO/releases) · [Что нового](docs/RELEASE_NOTES.md#bydlo-v042).
 > Статусы и ограничения платформ описаны в [матрице совместимости](docs/COMPATIBILITY.md), а порядок ручной проверки — в [руководстве](docs/TESTING.md).
 
 ## Возможности
@@ -83,13 +83,13 @@ Linux: flake для NixOS (`nix run github:endercodezz/BYDLO`), `.deb`, AppImage
 
 Нативные пакеты: Windows Setup/Portable, Linux AppImage/`.deb`, macOS `Setup.pkg`; упаковка и необходимые
 секреты подписи описаны в [BUILD.md](docs/BUILD.md#нативные-пакеты-и-подпись-215).
-В v0.4.1 подпись Windows/macOS временно пропущена: возможны предупреждения SmartScreen,
+В v0.4.2 подпись Windows/macOS временно пропущена: возможны предупреждения SmartScreen,
 UAC и Gatekeeper. Для проверки файлов доступны SHA-256 и GitHub attestations.
 В пакетной версии можно включить «Автоматически обновлять BYDLO»: проверка и загрузка
 при запуске, установка при выходе с сохранением настроек, профилей и подписок.
 По умолчанию выключено. Для старых ZIP сначала установите нативный пакет.
 
-В следующих релизах после v0.4.1 остаётся девять пользовательских файлов:
+Начиная с v0.4.2 публикуются девять пользовательских файлов:
 
 - Windows x64: [Setup.exe](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-win-x64-Setup.exe), [Portable.zip](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-win-x64-Portable.zip).
 - Windows ARM64: [Setup.exe](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-win-arm64-Setup.exe), [Portable.zip](https://github.com/endercodezz/BYDLO/releases/latest/download/BydloDesktop-win-arm64-Portable.zip).

@@ -15,9 +15,13 @@ foreach ($job in @($required) + 'sign-windows') {
     if ($job -notin $needs) { throw "Missing package dependency: $job" }
 }
 # Preserve the build/test chains and macOS suite, not just artifact availability.
+# The macOS job runs the whole isolated suite (issue 407), so the broker tests are
+# covered without a narrowing filter; a filter would silently drop them again.
+$unixActivation = Block 'unix-activation'
 if ((Block 'desktop') -notmatch 'needs: \[test, helper\]' -or
     (Block 'macos') -notmatch 'dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj' -or
-    (Block 'unix-activation') -notmatch 'FullyQualifiedName~UnixActivationBrokerTests' -or
+    $unixActivation -notmatch 'dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj' -or
+    $unixActivation -match '--filter' -or
     $release -notmatch 'needs: package') { throw 'Required test chain disconnected' }
 # The smoke matrix must keep all five RIDs: a silently dropped RID would ship untested.
 # Anchored to uncommented inline matrix entries, so a commented-out RID no longer passes.
