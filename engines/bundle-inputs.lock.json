@@ -32,8 +32,8 @@
     "url": "https://codeload.github.com/OpenVPN/ovpn-dco-win/tar.gz/refs/tags/2.8.14"
   },
   "sing-box-source": {
-    "sha256": "9a8e3712a5f611ad95f1d16874bbdcdffbd3b8eed16dae2d71ce7042a33c3386",
-    "url": "https://codeload.github.com/SagerNet/sing-box/tar.gz/refs/tags/v1.14.3"
+    "sha256": "0958ccd23b1ea9a141d715d15478b1e040fd04bcca19d8ff5529636b1b753e18",
+    "url": "https://codeload.github.com/SagerNet/sing-box/tar.gz/refs/tags/v1.14.4"
   },
   "libcap-ng-source": {
     "sha256": "399040138e0ca62fa2bcabd63da9af4431a246ef7a654561a0ca3cb00010a539",
