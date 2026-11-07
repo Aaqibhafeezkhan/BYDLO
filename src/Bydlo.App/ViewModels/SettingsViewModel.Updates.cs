@@ -1,3 +1,4 @@
+using System.Globalization;
 using Bydlo.App.Services;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Security;
@@ -6,7 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Bydlo.App.ViewModels;
 
-/// <summary>BYDLO and engine update checks via GitHub Releases (issue #19).</summary>
+/// <summary>BYDLO and engine update checks via GitHub Releases (issue #19, visibility in #456).</summary>
 public sealed partial class SettingsViewModel
 {
     [ObservableProperty]
@@ -19,6 +20,7 @@ public sealed partial class SettingsViewModel
         Services.Settings.AutoUpdateApp = value;
         Services.Settings.CheckForUpdates = value;
         if (!value) { _automaticUpdateCheck?.Cancel(); }
+        OnPropertyChanged(nameof(CanDownloadUpdate));
         Persist();
     }
 
@@ -29,19 +31,62 @@ public sealed partial class SettingsViewModel
     private bool _isCheckingUpdates;
 
     [ObservableProperty]
+    private bool _isDownloadingUpdate;
+
+    [ObservableProperty]
+    private int _updateProgress;
+
+    [ObservableProperty]
     private string _updateStatus = "";
+
+    /// <summary>Secondary line: last check time, live progress or why updates are unavailable.</summary>
+    [ObservableProperty]
+    private string _updateDetail = "";
+
+    /// <summary>False for archives, portable layouts and Mock Mode; the opt-in switch must say so.</summary>
+    [ObservableProperty]
+    private bool _isAutoUpdateAvailable = true;
 
     [ObservableProperty]
     private string? _updateUrl;
 
     public bool HasUpdateUrl => UpdateUrl is not null;
 
+    public bool CanDownloadUpdate => IsAutoUpdateAvailable && AutoUpdateApp && !IsDownloadingUpdate && !IsCheckingUpdates;
+
     partial void OnUpdateUrlChanged(string? value) => OnPropertyChanged(nameof(HasUpdateUrl));
+
+    partial void OnIsDownloadingUpdateChanged(bool value) => OnPropertyChanged(nameof(CanDownloadUpdate));
+
+    partial void OnIsCheckingUpdatesChanged(bool value) => OnPropertyChanged(nameof(CanDownloadUpdate));
+
+    partial void OnIsAutoUpdateAvailableChanged(bool value) => OnPropertyChanged(nameof(CanDownloadUpdate));
 
     partial void OnCheckForUpdatesChanged(bool value)
     {
         Services.Settings.CheckForUpdates = value;
         Persist();
+    }
+
+    /// <summary>Refreshes availability and the last-check line; safe to call on every startup.</summary>
+    public void RefreshUpdateState()
+    {
+        IsAutoUpdateAvailable = !Services.IsMock && !NetworkSafetyGuard.IsLocked &&
+            Services.AutomaticUpdates.IsAvailable();
+        RefreshUpdateDetail();
+    }
+
+    private void RefreshUpdateDetail()
+    {
+        if (!IsAutoUpdateAvailable)
+        {
+            UpdateDetail = L["settings.update.detail.unavailable"];
+            return;
+        }
+        var last = Services.Settings.LastAutomaticUpdateCheck ?? Services.Settings.LastUpdateCheck;
+        UpdateDetail = last is { } value
+            ? Loc.T("settings.update.detail.checked", value.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture))
+            : L["settings.update.detail.never"];
     }
 
     [RelayCommand]
@@ -88,6 +133,57 @@ public sealed partial class SettingsViewModel
             finally
             {
                 IsCheckingUpdates = false;
+                RefreshUpdateDetail();
+            }
+        });
+    }
+
+    /// <summary>Explicit download: bypasses the daily window so the user never waits a day for a release.</summary>
+    [RelayCommand]
+    private async Task DownloadUpdate()
+    {
+        if (IsDownloadingUpdate || IsCheckingUpdates)
+        {
+            return;
+        }
+        await Shell.Guard(async () =>
+        {
+            if (Services.IsMock || NetworkSafetyGuard.IsLocked)
+            {
+                throw new InvalidOperationException(L["settings.update.locked"]);
+            }
+            if (!IsAutoUpdateAvailable)
+            {
+                throw new InvalidOperationException(L["settings.update.detail.unavailable"]);
+            }
+            IsDownloadingUpdate = true;
+            UpdateProgress = 0;
+            UpdateStatus = L["settings.update.downloading"];
+            UpdateDetail = Loc.T("settings.update.detail.progress", 0);
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Services.ShutdownToken);
+            _automaticUpdateCheck = cancellation;
+            try
+            {
+                var progress = new Progress<int>(value =>
+                {
+                    UpdateProgress = value;
+                    UpdateDetail = Loc.T("settings.update.detail.progress", value);
+                });
+                var ready = await Services.AutomaticUpdates.DownloadNowAsync(
+                    Services.Settings, false, progress, cancellation.Token);
+                UpdateStatus = ready ? L["settings.update.ready"] : L["settings.update.uptodate"];
+                await Services.SaveSettingsAsync();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+            {
+                UpdateStatus = L["settings.update.error"];
+            }
+            finally
+            {
+                _automaticUpdateCheck = null;
+                IsDownloadingUpdate = false;
+                UpdateProgress = 0;
+                RefreshUpdateDetail();
             }
         });
     }
@@ -120,6 +216,7 @@ public sealed partial class SettingsViewModel
     /// <summary>Scheduled check: at most once per 24 hours, only when enabled and allowed.</summary>
     public async Task CheckForUpdatesIfDueAsync()
     {
+        RefreshUpdateState();
         if (!Services.Settings.AutoUpdateApp || Services.IsMock || NetworkSafetyGuard.IsLocked || IsCheckingUpdates)
         {
             return;
@@ -129,8 +226,13 @@ public sealed partial class SettingsViewModel
         _automaticUpdateCheck = automaticCancellation;
         try
         {
+            var progress = new Progress<int>(value =>
+            {
+                UpdateProgress = value;
+                UpdateDetail = Loc.T("settings.update.detail.progress", value);
+            });
             if (await Services.AutomaticUpdates.DownloadIfDueAsync(Services.Settings,
-                    Services.IsMock || NetworkSafetyGuard.IsLocked, automaticCancellation.Token))
+                    Services.IsMock || NetworkSafetyGuard.IsLocked, progress, automaticCancellation.Token))
             {
                 UpdateStatus = L["settings.update.ready"];
             }
@@ -155,6 +257,7 @@ public sealed partial class SettingsViewModel
         {
             _automaticUpdateCheck = null;
             IsCheckingUpdates = false;
+            RefreshUpdateDetail();
         }
     }
 }
