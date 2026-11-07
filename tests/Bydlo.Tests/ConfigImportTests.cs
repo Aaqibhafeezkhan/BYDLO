@@ -175,6 +175,20 @@ public sealed class ConfigImportTests
         Assert.Empty(result.Profiles);
     }
 
+    [Theory]
+    [InlineData("selector")]
+    [InlineData("urltest")]
+    public void Rejects_duplicate_group_members_rejected_by_sing_box_1_14_4(string type)
+    {
+        var result = new ProfileImporter().ImportText($$"""
+            {"outbounds":[
+                {"type":"{{type}}","tag":"proxy","outbounds":["remote","remote"]},
+                {"type":"trojan","tag":"remote","server":"proxy.invalid","server_port":443,"password":"hidden"}]}
+            """);
+        Assert.Empty(result.Profiles);
+        Assert.Equal("import.json.unsafe", Assert.Single(result.Errors));
+    }
+
     [Fact]
     public void Preserves_valid_selector_members_and_custom_route_targets()
     {
