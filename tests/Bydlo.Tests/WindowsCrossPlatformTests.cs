@@ -141,7 +141,7 @@ public sealed class WindowsCrossPlatformTests
         await store.SaveAsync("profile", new() { Values = { [Keys.Password] = "secret" } });
         Assert.Equal("secret", (await store.LoadAsync("profile"))[Keys.Password]);
         protection.Corrupted = true;
-        Assert.Null((await store.LoadAsync("profile"))[Keys.Password]);
+        await Assert.ThrowsAsync<Bydlo.Core.Security.SecretAccessException>(() => store.LoadAsync("profile"));
         await store.DeleteAsync("profile");
         Assert.Empty(Directory.GetFiles(directory));
     }

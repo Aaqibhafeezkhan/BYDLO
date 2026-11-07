@@ -1,7 +1,8 @@
 # Установка на Linux: NixOS, Debian/Ubuntu, AppImage, Arch
 
 Все варианты ставят одно и то же приложение. Пакеты релиза (`.deb`, AppImage, `bydlo-bin`)
-собираются из проверенного комплекта `BYDLO-linux-<arch>.zip` и содержат встроенные движки.
+собираются из проверенного publish-каталога и содержат встроенные движки.
+`bydlo-bin` извлекает опубликованный `.deb` без установки через dpkg.
 Пакет Nix собирается из исходников и берёт часть движков из nixpkgs (см. ниже).
 Реальная работа туннелей во всех вариантах проверяется сопровождающим вручную;
 права root для TUN, Zapret и AmneziaWG нужны так же, как в [матрице совместимости](COMPATIBILITY.md).
@@ -92,18 +93,43 @@ X11, fontconfig, ICU и OpenSSL; libsecret и libnotify рекомендуютс
 ## AppImage
 
 ```bash
-chmod +x BYDLO-<версия>-x86_64.AppImage
-./BYDLO-<версия>-x86_64.AppImage
+chmod +x BydloDesktop-linux-x64.AppImage
+./BydloDesktop-linux-x64.AppImage
 ```
 
-Нужен FUSE (`fusermount3`). На NixOS включите `programs.appimage = { enable = true; binfmt = true; };`
+Для ARM64 выберите `BydloDesktop-linux-arm64.AppImage`. Нужны доступный `/dev/fuse`
+и подходящий `fusermount` в `PATH`; конкретная настройка FUSE зависит от дистрибутива.
+На NixOS включите `programs.appimage = { enable = true; binfmt = true; };`
 или запускайте через `appimage-run`; для NixOS всё же удобнее flake. Если в системе нет ICU,
 AppImage запускается в инвариантном режиме глобализации (форматы дат и чисел как в invariant culture,
 строки интерфейса не меняются). Автозапуск регистрирует сам файл `.AppImage`, а не временную точку монтирования:
 не перемещайте файл после включения автозапуска.
 
-Этот AppImage не обновляется автоматически. Вариант с автообновлением — AppImage `BydloDesktop`
-от Velopack (см. [BUILD.md](BUILD.md#нативные-пакеты-и-подпись-215)).
+В AppImage Velopack доступно автообновление с явным включением в настройках
+(см. [BUILD.md](BUILD.md#нативные-пакеты-и-подпись-215)). Начиная с v0.4.2 это
+единственная публикуемая семья AppImage. Прежние
+`BYDLO-<версия>-x86_64.AppImage` / `-aarch64.AppImage` остаются в старых релизах.
+
+Различия проверены по исходникам Velopack 1.2.161 и чтением контейнеров, без запуска:
+
+- Прежний упаковщик использовал type2-runtime `20251108` и SquashFS zstd;
+  Velopack использует свои закреплённые vendor runtimes и по умолчанию SquashFS gzip.
+  Это разные runtime, поэтому одинаковое поведение FUSE по расширению не предполагается.
+  В [vendor runtime x64](https://github.com/velopack/velopack/blob/1.2.161/vendor/appimagekit-runtime-x86_64)
+  присутствует встроенная libfuse и поиск `fusermount`; зависимость от одной лишь
+  системной `libfuse.so.2` не заявляется. Фактический запуск x64/ARM64 проверяется вручную в #402.
+- Приложение находится в `usr/bin`, вместо прежнего `usr/lib/bydlo`; сохраняется наш
+  `AppRun` с ICU fallback. Desktop entry запускает `BYDLO`, использует иконку
+  `BydloDesktop` и `StartupWMClass=BYDLO`. Автозапуск использует `APPIMAGE` — путь
+  к самому файлу. AppImage не устанавливает ярлык в системное меню автоматически.
+- CI извлекает SquashFS через `unsquashfs`, проверяет launcher, `.desktop`, иконку,
+  права исполнения AppRun, приложения, helper и UpdateNix, а также комплект движков.
+  AppImage, установщики и движки при проверке не исполняются. X11, fontconfig,
+  OpenSSL и остальные внешние зависимости приложения по-прежнему нужны.
+
+Построение AppImage описано в исходниках
+[Velopack AppImageTool](https://github.com/velopack/velopack/blob/1.2.161/src/vpk/Velopack.Packaging.Unix/AppImageTool.cs)
+и [LinuxPackCommandRunner](https://github.com/velopack/velopack/blob/1.2.161/src/vpk/Velopack.Packaging.Unix/Commands/LinuxPackCommandRunner.cs).
 
 ## Arch Linux (AUR)
 
@@ -111,7 +137,7 @@ AppImage запускается в инвариантном режиме гло�
 
 | Пакет | Источник |
 |---|---|
-| `bydlo-bin` | Готовый комплект `BYDLO-linux-<arch>.zip` из релиза GitHub (x86_64, aarch64) |
+| `bydlo-bin` | `.deb` из релиза GitHub (amd64 для x86_64, arm64 для aarch64), только чтение архива |
 | `bydlo` | Исходники тега `v<pkgver>` (архив с SHA-256), сборка как в CI |
 | `bydlo-git` | Последний коммит ветки по умолчанию, версия из `git describe` |
 
@@ -160,5 +186,7 @@ bash scripts/package-linux.sh linux-arm64 artifacts/linux-arm64 artifacts/linux-
 Нужны `dpkg-deb` и `mksquashfs` (`squashfs-tools`). Скрипт не запускает ни приложение, ни движки:
 AppImage собирается как закреплённый type2-runtime `20251108` (SHA-256 в скрипте, подпись проверена ключом
 `570C77ACEA40C0F1B758902CBF96CCA56490F695`) и образ SquashFS. Для упаковки готового релиза другой версии
-задайте `BYDLO_VERSION`. В CI задача `package` собирает оба формата для x64 и ARM64 и добавляет их в релиз,
-`SHA256SUMS.txt` и attestations.
+задайте `BYDLO_VERSION`. В CI задача `package` вызывает этот скрипт **только с `deb`**
+для x64 и ARM64. AppImage для релиза создаёт только Velopack; локальный старый упаковщик
+остаётся доступен для воспроизведения прежних пакетов. Суммы и attestations покрывают
+окончательные плоские assets релиза, а не вложенные CI-каталоги.

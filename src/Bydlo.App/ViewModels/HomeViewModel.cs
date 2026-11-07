@@ -281,7 +281,7 @@ public sealed partial class HomeViewModel : PageViewModel
                 var chain = Services.Profiles.Chains.FirstOrDefault(c => c.Id == chainItem.Id)
                     ?? throw new EngineException("One of the chain servers no longer exists.", localizationKey: "error.chain.unknown");
                 var hops = await Shell.Connections.ResolveChainAsync(chain);
-                foreach (var w in Services.Connections.PreviewChainConflicts(hops.Select(h => h.Profile).ToList(), Services.EffectiveSettings).Where(i => i.Severity == ConflictSeverity.Warning))
+                foreach (var w in Services.Connections.PreviewChainConflicts(hops.Select(h => h.Profile).ToList(), Services.EffectiveSettings, chain.PreferredEngine).Where(i => i.Severity == ConflictSeverity.Warning))
                 {
                     Shell.ShowToast(w.Message);
                 }

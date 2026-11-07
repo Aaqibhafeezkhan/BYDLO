@@ -44,7 +44,7 @@ jobs:
       - id: policy
         env:
           # Explicit release exceptions; future tags still require signing.
-          UNSIGNED: ${{ github.ref == 'refs/tags/v0.3.1' || github.ref == 'refs/tags/v0.4.0' || github.ref == 'refs/tags/v0.4.1' || (github.event_name == 'workflow_dispatch' && inputs.skip_signing) }}
+          UNSIGNED: ${{ github.ref == 'refs/tags/v0.3.1' || github.ref == 'refs/tags/v0.4.0' || github.ref == 'refs/tags/v0.4.1' || github.ref == 'refs/tags/v0.4.2' || (github.event_name == 'workflow_dispatch' && inputs.skip_signing) }}
         run: |
           echo "unsigned=$UNSIGNED" >> "$GITHUB_OUTPUT"
           echo "Unsigned packaging: $UNSIGNED" >> "$GITHUB_STEP_SUMMARY"
@@ -89,6 +89,7 @@ jobs:
         if: github.server_url == 'https://github.com'
         with:
           name: amnezia-macos-arm64
+          retention-days: 7
           path: artifacts/amnezia-macos/
 
   test:
@@ -118,6 +119,17 @@ jobs:
         if: github.server_url == 'https://github.com'
         shell: pwsh
         run: ./scripts/test-windows-cross-build.ps1
+      - name: Release staging and gate regressions (synthetic files only)
+        shell: pwsh
+        run: |
+          ./scripts/test-release-staging.ps1
+          ./scripts/test-release-gate.ps1
+      - name: Arch binary package regression (synthetic .deb, never install)
+        if: runner.os == 'Linux' && github.server_url == 'https://github.com'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libarchive-tools
+          bash scripts/test-arch-package.sh
       - name: Build
         run: |
           source scripts/env.sh
@@ -219,6 +231,7 @@ jobs:
         if: always() && github.server_url == 'https://github.com'
         with:
           name: test-results-${{ matrix.os }}
+          retention-days: 7
           path: TestResults
 
   # The flake must keep building: nix/deps.json pins every NuGet package and goes stale when
@@ -282,6 +295,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: helper-${{ matrix.rid }}
+          retention-days: 7
           path: artifacts/helper
           if-no-files-found: error
 
@@ -395,6 +409,7 @@ jobs:
         if: github.server_url == 'https://github.com'
         with:
           name: ${{ matrix.managedOnly && 'managed-osx-arm64' || format('BYDLO-{0}', matrix.rid) }}
+          retention-days: 7
           path: publish/BYDLO-${{ matrix.rid }}
 
   windows-parity:
@@ -493,11 +508,13 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BYDLO-win-x64
+          retention-days: 7
           path: dist/BYDLO-win-x64
           overwrite: true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BYDLO-win-arm64
+          retention-days: 7
           path: dist/BYDLO-win-arm64
           overwrite: true
 
@@ -552,6 +569,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BYDLO-osx-arm64
+          retention-days: 7
           path: publish/BYDLO-osx-arm64
 
   native-package-smoke:
@@ -689,6 +707,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: native-${{ matrix.rid }}
+          retention-days: 7
           path: |
             native-output/*.exe
             native-output/*.zip
@@ -709,9 +728,14 @@ jobs:
       && needs.windows-parity.result == 'success'
       && needs.macos.result == 'success'
       && needs.native-packages.result == 'success'
+      && needs.native-package-smoke.result == 'success'
+      && needs.unix-activation.result == 'success'
+      && needs.amnezia-macos.result == 'success'
+      && needs.nix.result == 'success'
+      && needs.signing-policy.result == 'success'
       && (needs.sign-windows.result == 'success'
           || (needs.signing-policy.outputs.unsigned == 'true' && needs.sign-windows.result == 'skipped'))
-    needs: [desktop, windows-parity, sign-windows, macos, native-packages, signing-policy]
+    needs: [desktop, windows-parity, sign-windows, macos, native-packages, native-package-smoke, unix-activation, amnezia-macos, nix, signing-policy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -737,48 +761,25 @@ jobs:
         with:
           path: dist/native
           pattern: native-*
-          merge-multiple: true
-      - name: Build .deb and AppImage from the verified Linux bundles (never execute payloads)
+          merge-multiple: false
+      - name: Build .deb from verified Linux bundles (never execute payloads)
         run: |
-          sudo apt-get update -q && sudo apt-get install -yq squashfs-tools
           for rid in linux-x64 linux-arm64; do
-            bash scripts/package-linux.sh "$rid" "dist/BYDLO-$rid" dist/linux deb appimage
+            bash scripts/package-linux.sh "$rid" "dist/BYDLO-$rid" dist/linux deb
           done
-          ls -l dist/linux
-      - name: Package and checksum
+      - name: Stage the approved flat release set and checksum final bytes
+        shell: pwsh
         run: |
-          cd dist
-          for rid in win-x64 win-arm64 linux-x64 linux-arm64 osx-arm64; do
-            test -d "BYDLO-$rid" || exit 1
-          done
-          for d in BYDLO-*; do
-            case "$d" in
-              *linux-*|*osx-*) find "$d" -type f \( -name BYDLO -o -name Bydlo.Helper -o -name nfqws -o -name tpws -o -name sing-box -o -name xray -o -name bydlo-amneziawg -o -name openvpn \) -exec chmod 755 {} + ;;
-            esac
-            (cd "$d" && zip -qr "../$d.zip" .)
-          done
-          sha256sum *.zip native/* linux/* > SHA256SUMS.txt
-          sha256sum -c SHA256SUMS.txt
-          for archive in *.zip; do
-            unzip -tq "$archive"
-            case "$archive" in
-              *linux-*|*osx-*)
-                for entry in BYDLO helper/Bydlo.Helper; do
-                  unzip -Z -l "$archive" "$entry" | awk '$1 ~ /^-rwx/ { executable=1 } END { exit !executable }'
-                done
-                ;;
-            esac
-          done
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version | Where-Object { $_ }
+          ./scripts/stage-release.ps1 -InputDirectory dist -OutputDirectory release-staging -Version $version
+      - name: Verify checksums as a flat downloaded release
+        run: cd release-staging && sha256sum -c SHA256SUMS.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-packages
-          path: |
-            dist/*.zip
-            dist/SHA256SUMS.txt
-            dist/native/*
-            dist/linux/*
+          path: release-staging/*
+          retention-days: 14
           if-no-files-found: error
-
   release:
     name: Draft release
     # Releases are published on GitHub only; the Gitea mirror just builds.
@@ -802,20 +803,36 @@ jobs:
         with:
           name: release-packages
           path: dist
-      - name: Attest native packages and update feeds
-        uses: actions/attest-build-provenance@8beda2b7ed98355c0e97c0a63bec38ae472e66c4 # v4
-        with:
-          subject-path: dist/native/*
+      - name: Verify downloaded release set before attestation and upload
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version | Where-Object { $_ }
+          ./scripts/stage-release.ps1 -InputDirectory dist -OutputDirectory dist -Version $version -VerifyOnly
       - name: Extract release notes for this tag
         run: bash scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/RELEASE_NOTES.md .tmp/release-notes.md
-      - name: Attest release archives and checksums
+      - name: Link the nine user packages in release notes
+        shell: pwsh
+        env:
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $base = "https://github.com/$env:RELEASE_REPOSITORY/releases/download/$env:RELEASE_TAG"
+          $version = $env:RELEASE_TAG.Substring(1)
+          $notes = @('', '## Скачать', '')
+          foreach ($arch in @('x64', 'arm64')) {
+            $notes += "- Windows ${arch}: [Setup.exe]($base/BydloDesktop-win-$arch-Setup.exe), [Portable.zip]($base/BydloDesktop-win-$arch-Portable.zip)."
+            $debArch = if ($arch -eq 'x64') { 'amd64' } else { 'arm64' }
+            $notes += "- Linux ${arch}: [AppImage]($base/BydloDesktop-linux-$arch.AppImage), [.deb]($base/bydlo_${version}_${debArch}.deb)."
+          }
+          $notes += '- macOS Apple Silicon: [Setup.pkg](' + $base + '/BydloDesktop-osx-arm64-Setup.pkg).'
+          $notes += @('', '`*-full.nupkg` и `releases.<RID>.json` — служебные файлы полного обновления; скачивать вручную не нужно.',
+            ('Для проверки скачайте [SHA256SUMS.txt](' + $base + '/SHA256SUMS.txt); проверяйте суммы в одной папке с пакетами.'))
+          Add-Content .tmp/release-notes.md ($notes -join "`n")
+      - name: Attest every final release asset including checksums
         uses: actions/attest-build-provenance@8beda2b7ed98355c0e97c0a63bec38ae472e66c4 # v4
         with:
-          subject-path: |
-            dist/*.zip
-            dist/linux/*
-            dist/SHA256SUMS.txt
+          subject-path: dist/*
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/*.zip dist/SHA256SUMS.txt dist/native/* dist/linux/* --draft --generate-notes --notes-file .tmp/release-notes.md --repo "${GITHUB_REPOSITORY}"
+        run: gh release create "${GITHUB_REF_NAME}" dist/* --draft --generate-notes --notes-file .tmp/release-notes.md --repo "${GITHUB_REPOSITORY}"

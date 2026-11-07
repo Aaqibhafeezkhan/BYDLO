@@ -2,7 +2,7 @@
 # Prebuilt BYDLO from the official GitHub release (self-contained, with pinned engines).
 # Update: bump pkgver, then `updpkgsums` and `makepkg --printsrcinfo > .SRCINFO`.
 pkgname=bydlo-bin
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc='Bypass Your Digital Limitations Online — one app for every protocol'
 arch=('x86_64' 'aarch64')
@@ -18,26 +18,23 @@ provides=('bydlo')
 conflicts=('bydlo' 'bydlo-git')
 # The single-file .NET bundle must not be stripped: that corrupts the embedded payload.
 options=('!strip' '!debug')
-_assets="https://raw.githubusercontent.com/endercodezz/BYDLO/v${pkgver}"
-source=("bydlo-256-${pkgver}.png::${_assets}/src/Bydlo.App/Assets/bydlo-256.png")
-source_x86_64=("BYDLO-${pkgver}-linux-x64.zip::${url}/releases/download/v${pkgver}/BYDLO-linux-x64.zip")
-source_aarch64=("BYDLO-${pkgver}-linux-arm64.zip::${url}/releases/download/v${pkgver}/BYDLO-linux-arm64.zip")
-noextract=("BYDLO-${pkgver}-linux-x64.zip" "BYDLO-${pkgver}-linux-arm64.zip")
-sha256sums=('b20861df8526b6995be98dcb23f89a8a6f9fc41789b50c77a2b2a805927f87f8')
-sha256sums_x86_64=('f70c7099fd9ec4f409d47c21727d8dece19333a6c562efe06fbd6867581a16af')
-sha256sums_aarch64=('da57bb56adace6c2edd0ca097f604a65d3d67cb84c412bd46ea46cbcab592a46')
+# The .deb is only read as an archive; no dpkg install or maintainer script runs.
+source_x86_64=("${url}/releases/download/v${pkgver}/bydlo_${pkgver}_amd64.deb")
+source_aarch64=("${url}/releases/download/v${pkgver}/bydlo_${pkgver}_arm64.deb")
+noextract=("bydlo_${pkgver}_amd64.deb" "bydlo_${pkgver}_arm64.deb")
+sha256sums_x86_64=('c23b88e8663bf2ede79d5da810f9f8fc578d9aab5b016bede396d9c076dadb15')
+sha256sums_aarch64=('50648f695eccc050c3a00666f775ffd49cd97f131156cf69e6aa0585643a6f6f')
 
 prepare() {
-  local rid=linux-x64
-  [[ $CARCH == aarch64 ]] && rid=linux-arm64
-  rm -rf bydlo
-  mkdir bydlo
-  bsdtar -xf "BYDLO-${pkgver}-${rid}.zip" -C bydlo
+  local deb_arch=amd64
+  [[ $CARCH == aarch64 ]] && deb_arch=arm64
+  mkdir -p bydlo
+  bsdtar -xf "bydlo_${pkgver}_${deb_arch}.deb" data.tar.xz
+  bsdtar -xf data.tar.xz -C bydlo
 }
-
 package() {
   install -dm755 "$pkgdir/opt/bydlo"
-  cp -a bydlo/. "$pkgdir/opt/bydlo/"
+  cp -a bydlo/opt/bydlo/. "$pkgdir/opt/bydlo/"
   find "$pkgdir/opt/bydlo" -type f \( -name BYDLO -o -name Bydlo.Helper -o -name nfqws -o -name tpws -o -name sing-box \
     -o -name xray -o -name bydlo-amneziawg -o -name openvpn \) -exec chmod 755 {} +
 
@@ -64,7 +61,7 @@ Categories=Network;Utility;
 StartupWMClass=BYDLO
 EOF
   chmod 644 "$pkgdir/usr/share/applications/bydlo.desktop"
-  install -Dm644 "bydlo-256-${pkgver}.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/bydlo.png"
-  install -Dm644 bydlo/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-  install -Dm644 bydlo/THIRD_PARTY_NOTICES.md "$pkgdir/usr/share/licenses/$pkgname/THIRD_PARTY_NOTICES.md"
+  install -Dm644 "bydlo/usr/share/icons/hicolor/256x256/apps/bydlo.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/bydlo.png"
+  install -Dm644 bydlo/opt/bydlo/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 bydlo/opt/bydlo/THIRD_PARTY_NOTICES.md "$pkgdir/usr/share/licenses/$pkgname/THIRD_PARTY_NOTICES.md"
 }

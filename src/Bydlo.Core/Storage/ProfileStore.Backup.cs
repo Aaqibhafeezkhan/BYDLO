@@ -16,9 +16,40 @@ public sealed partial class ProfileStore
             data.Settings.EnginePaths.Clear();
             data.Settings.Zapret.InstallPath = null;
             foreach (var profile in _doc.Profiles)
-            { data.Profiles.Add(new(BackupArchive.Clone(profile), await secrets.LoadAsync(profile.Id.ToString(), ct).ConfigureAwait(false))); }
+            {
+                var secretId = profile.Id.ToString();
+                ProfileSecrets loaded;
+                try
+                {
+                    loaded = await secrets.LoadAsync(secretId, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    throw new Security.SecretAccessException(secretId, ex);
+                }
+                if (!BackupArchive.HasRequiredSecrets(profile, loaded))
+                {
+                    throw new Security.SecretAccessException(secretId);
+                }
+                data.Profiles.Add(new(BackupArchive.Clone(profile), loaded));
+            }
             foreach (var sub in _doc.Subscriptions)
-            { data.Subscriptions.Add(new(BackupArchive.Clone(sub), await GetSubscriptionUrlAsync(sub.Id, ct).ConfigureAwait(false) ?? "")); }
+            {
+                string? url;
+                try
+                {
+                    url = await GetSubscriptionUrlAsync(sub.Id, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    throw new Security.SecretAccessException($"subscription:{sub.Id}", ex);
+                }
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    throw new Security.SecretAccessException($"subscription:{sub.Id}");
+                }
+                data.Subscriptions.Add(new(BackupArchive.Clone(sub), url));
+            }
             foreach (var chain in _doc.Chains)
             { data.Chains.Add(BackupArchive.Clone(chain)); }
             return data;
@@ -90,7 +121,12 @@ public sealed partial class ProfileStore
                 .Concat(obsolete).Except(writes.Keys, StringComparer.Ordinal).ToList();
             var original = new Dictionary<string, ProfileSecrets>();
             foreach (var id in writes.Keys)
-            { original.Add(id, await secrets.LoadAsync(id, ct).ConfigureAwait(false)); }
+            {
+                // Fail closed: an unreadable existing secret cannot be snapshotted for
+                // rollback. Proceeding would let a later write failure roll back to
+                // Empty and DeleteAsync the still-recoverable original file (issue #344).
+                original.Add(id, await secrets.LoadAsync(id, ct).ConfigureAwait(false));
+            }
             var attempted = new List<string>();
             try
             {

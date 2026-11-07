@@ -27,6 +27,7 @@ public sealed class TgWsProxyServer : IAsyncDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly TgWsProxyContext _context;
     private readonly WsPool _pool;
+    private readonly FakeTlsReplayCache _replayCache;
     private readonly ConcurrentDictionary<Task, byte> _clients = new();
     private readonly ConcurrentDictionary<string, (int Failures, DateTimeOffset RetryAfter, bool Connecting)> _tcpBackoff = new();
     private readonly List<Task> _background = [];
@@ -36,7 +37,14 @@ public sealed class TgWsProxyServer : IAsyncDisposable
     private int _disposed;
 
     public TgWsProxyServer(TgWsProxyOptions options, ITgNetwork network, Action<TgLogLevel, string> log, TimeProvider? time = null)
+        : this(options, network, log, time, FakeTlsReplayCache.Shared)
     {
+    }
+
+    internal TgWsProxyServer(TgWsProxyOptions options, ITgNetwork network, Action<TgLogLevel, string> log,
+        TimeProvider? time, FakeTlsReplayCache replayCache)
+    {
+        _replayCache = replayCache;
         _context = new TgWsProxyContext(options, network, time ?? TimeProvider.System, log, _stop.Token);
         _context.CfDomains.Update(options.CfProxyDomains.Count > 0 ? options.CfProxyDomains : CfProxyDomains.Defaults);
         _pool = new WsPool(_context);
@@ -183,8 +191,7 @@ public sealed class TgWsProxyServer : IAsyncDisposable
 
             _context.Log(TgLogLevel.Info, $"[{label}] DC{dc}{mediaTag} -> WS pool hit");
             Stats.Ws();
-            await ws.SendAsync(relayInit, ct).ConfigureAwait(false);
-            await BridgeWebSocketAsync(stream, ws, route, crypto, new MsgSplitter(handshake.ProtoTag), ct).ConfigureAwait(false);
+            await BridgeWebSocketAsync(stream, ws, relayInit, route, crypto, new MsgSplitter(handshake.ProtoTag), ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -228,9 +235,10 @@ public sealed class TgWsProxyServer : IAsyncDisposable
             await client.ReadExactlyAsync(hello.AsMemory(5), timeout.Token).ConfigureAwait(false);
 
             var verified = FakeTls.VerifyClientHello(hello, Options.Secret, _context.Time.GetUtcNow());
-            if (verified is null)
+            var replayed = verified is not null && !_replayCache.FirstSeen(verified.ClientRandom);
+            if (verified is null || replayed)
             {
-                _context.Log(TgLogLevel.Debug, $"[{label}] Fake TLS verify failed (size={hello.Length}) -> masking");
+                _context.Log(TgLogLevel.Debug, $"[{label}] Fake TLS {(replayed ? "hello replayed" : "verify failed")} (size={hello.Length}) -> masking");
                 await ProxyToMaskingDomainAsync(client, hello, masking, label, ct).ConfigureAwait(false);
                 return null;
             }
@@ -300,8 +308,7 @@ public sealed class TgWsProxyServer : IAsyncDisposable
             }
 
             Stats.CfProxy();
-            await ws.SendAsync(relayInit, ct).ConfigureAwait(false);
-            await BridgeWebSocketAsync(client, ws, route, crypto, splitter, ct).ConfigureAwait(false);
+            await BridgeWebSocketAsync(client, ws, relayInit, route, crypto, splitter, ct).ConfigureAwait(false);
             return true;
         }
 
@@ -319,42 +326,50 @@ public sealed class TgWsProxyServer : IAsyncDisposable
         }
 
         _tcpBackoff[ip] = state with { Connecting = true };
-        Stream remote;
+        Stream? remote = null;
         try
         {
-            _context.Log(TgLogLevel.Info, $"[{route.Label}] TCP fallback to {ip}:443");
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(10));
-            remote = await _context.Network.ConnectAsync(ip, 443, timeout.Token).ConfigureAwait(false);
-            await remote.WriteAsync(relayInit, timeout.Token).ConfigureAwait(false);
-            await remote.FlushAsync(timeout.Token).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
-        {
-            var failures = state.Failures + 1;
-            var delay = TcpBackoffInitial * Math.Pow(2, Math.Min(failures - 1, 7));
-            if (delay > TcpBackoffMax)
+            try
             {
-                delay = TcpBackoffMax;
+                _context.Log(TgLogLevel.Info, $"[{route.Label}] TCP fallback to {ip}:443");
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeout.CancelAfter(TimeSpan.FromSeconds(10));
+                remote = await _context.Network.ConnectAsync(ip, 443, timeout.Token).ConfigureAwait(false);
+                await remote.WriteAsync(relayInit, timeout.Token).ConfigureAwait(false);
+                await remote.FlushAsync(timeout.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                var failures = state.Failures + 1;
+                var delay = TcpBackoffInitial * Math.Pow(2, Math.Min(failures - 1, 7));
+                if (delay > TcpBackoffMax)
+                {
+                    delay = TcpBackoffMax;
+                }
+
+                _tcpBackoff[ip] = (failures, _context.Time.GetUtcNow() + delay, false);
+                _context.Log(TgLogLevel.Warning, $"[{route.Label}] TCP fallback to {ip}:443 failed: {ex.Message}; retry in {delay.TotalSeconds:0}s");
+                return false;
             }
 
-            _tcpBackoff[ip] = (failures, _context.Time.GetUtcNow() + delay, false);
-            _context.Log(TgLogLevel.Warning, $"[{route.Label}] TCP fallback to {ip}:443 failed: {ex.Message}; retry in {delay.TotalSeconds:0}s");
-            return false;
-        }
-
-        _tcpBackoff.TryRemove(ip, out _);
-        Stats.TcpFallback();
-        await using (remote.ConfigureAwait(false))
-        {
+            _tcpBackoff.TryRemove(ip, out _);
+            Stats.TcpFallback();
             await BridgeTcpAsync(client, remote, route, crypto, ct).ConfigureAwait(false);
-        }
 
-        return true;
+            return true;
+        }
+        finally
+        {
+            // Connect may succeed before WriteAsync/FlushAsync fails or is cancelled (#401).
+            if (remote is not null)
+            {
+                await remote.DisposeAsync().ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>Client TCP ⇄ Telegram WebSocket with re-encryption; one frame per MTProto packet upstream.</summary>
-    private async Task BridgeWebSocketAsync(Stream client, RawWebSocket ws, Route route, MtProtoCrypto crypto, MsgSplitter splitter, CancellationToken ct)
+    private async Task BridgeWebSocketAsync(Stream client, RawWebSocket ws, byte[] relayInit, Route route, MtProtoCrypto crypto, MsgSplitter splitter, CancellationToken ct)
     {
         using var session = CancellationTokenSource.CreateLinkedTokenSource(ct);
         long up = 0, down = 0, upPackets = 0, downPackets = 0;
@@ -434,9 +449,12 @@ public sealed class TgWsProxyServer : IAsyncDisposable
             }
         }
 
-        var tasks = new[] { Task.Run(ClientToWs, CancellationToken.None), Task.Run(WsToClient, CancellationToken.None) };
+        Task[] tasks = [];
         try
         {
+            // Ownership starts before the first write, including failure/cancellation of relayInit (#401).
+            await ws.SendAsync(relayInit, ct).ConfigureAwait(false);
+            tasks = [Task.Run(ClientToWs, CancellationToken.None), Task.Run(WsToClient, CancellationToken.None)];
             await Task.WhenAny(tasks).ConfigureAwait(false);
         }
         finally

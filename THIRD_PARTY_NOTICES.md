@@ -17,7 +17,7 @@ BYDLO не линкуется с ними. Исключение — перене
 | WinDivert | basil00 | LGPL-3.0 или GPL-2.0 | https://github.com/basil00/WinDivert | Драйвер перехвата пакетов, используемый `winws.exe` (входит в релиз Flowseal). |
 | Cygwin 3.4.10 / Newlib | Cygwin contributors / Red Hat и другие | LGPL-3.0-or-later с Cygwin Linking Exception; дополнительные permissive notices Newlib | https://cygwin.com/licensing.html | Неизменённый cygwin1.dll из Flowseal; динамическая библиотека winws. |
 | sing-box | SagerNet / nekohasekai | GPL-3.0-or-later (с дополнительными условиями об использовании названия) | https://github.com/SagerNet/sing-box | Основной движок для VLESS/VMess/Trojan/Shadowsocks/Hysteria 2/TUIC/SOCKS/HTTP/WireGuard; конфигурацию генерирует BYDLO. |
-| Xray-core | Project X (XTLS) | MPL-2.0 | https://github.com/XTLS/Xray-core | Движок для транспорта XHTTP и альтернативный движок для протоколов семейства V2Ray. |
+| Xray-core 26.10.31 | Project X (XTLS) | MPL-2.0 | https://github.com/XTLS/Xray-core | Движок для транспорта XHTTP и альтернативный движок для протоколов семейства V2Ray. |
 | Cronet / cronet-go | The Chromium Authors, SagerNet и участники | BSD-3-Clause (Chromium), GPL-3.0-or-later (Go-обвязка) | https://github.com/SagerNet/cronet-go/tree/0d28acc44093df24b2526dea3d6ffefd6b0a54f0 | Неизменённая libcronet из архива sing-box. Текст Chromium BSD включён в `engines/licenses/Chromium.txt`; закреплённый Chromium/NaiveProxy: https://github.com/SagerNet/naiveproxy/tree/72a06c9fca0e2d228588c7f3074bf7efff3ff686. |
 | Xray GeoIP / GeoSite | Project X, V2Ray и авторы исходных списков | GPL-3.0; MIT для GeoSite и унаследованных частей | https://github.com/XTLS/Xray-rules-dat | Неизменённые geoip.dat/geosite.dat внутри закреплённого архива Xray; дополнительные тексты лицензий находятся в `engines/licenses/Xray-rules-*.txt`. |
 | WireGuard for Windows / wireguard-tools | Jason A. Donenfeld, WireGuard LLC | MIT / GPL-2.0 | https://www.wireguard.com | Официальный клиент для нативных туннелей WireGuard (устанавливает пользователь). |
@@ -42,7 +42,9 @@ Windows MSI используется только как источник фай
 Ядро [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) v1.11.4 (MIT) перенесено на C# в
 `src/Bydlo.Engines/TgWsProxy` и работает внутри BYDLO: протокол MTProto obfuscated2, Fake TLS, пул WebSocket,
 резервные пути через Cloudflare и прямой TCP, закодированный список доменов Cloudflare. Python-код в репозиторий не
-копируется. Лицензия оригинала:
+копируется. Дополнительно перенесена защита Fake TLS от повторного ClientHello из
+[upstream-коммита dbc8b781](https://github.com/Flowseal/tg-ws-proxy/commit/dbc8b7811a1b39f5fd99f3994a8cdfc58e899916)
+после v1.11.4; базовая версия upstream остаётся 1.11.4. Лицензия оригинала:
 
 ```text
 MIT License
@@ -188,12 +190,13 @@ SOFTWARE.
 
 ## API групп Xray
 
-`src/Bydlo.Engines/Groups/Protos/` содержит сокращённые wire-совместимые схемы Xray-core v26.10.21,
-адаптированные для клиента BYDLO: RoutingService и ObservatoryService. Исходники Project X (XTLS), MPL-2.0:
-[router/command/command.proto](https://github.com/XTLS/Xray-core/blob/v26.10.21/app/router/command/command.proto),
-[observatory/command/command.proto](https://github.com/XTLS/Xray-core/blob/v26.10.21/app/observatory/command/command.proto),
-[observatory/config.proto](https://github.com/XTLS/Xray-core/blob/v26.10.21/app/observatory/config.proto).
-Схемы остаются под MPL-2.0; текст лицензии: [Xray-core LICENSE](https://github.com/XTLS/Xray-core/blob/v26.10.21/LICENSE).
+`src/Bydlo.Engines/Groups/Protos/` содержит сокращённые wire-совместимые схемы, сверенные с Xray-core v26.10.31,
+адаптированные для клиента BYDLO: StatsService, RoutingService и ObservatoryService. Исходники Project X (XTLS), MPL-2.0:
+[stats/command/command.proto](https://github.com/XTLS/Xray-core/blob/v26.10.31/app/stats/command/command.proto),
+[router/command/command.proto](https://github.com/XTLS/Xray-core/blob/v26.10.31/app/router/command/command.proto),
+[observatory/command/command.proto](https://github.com/XTLS/Xray-core/blob/v26.10.31/app/observatory/command/command.proto),
+[observatory/config.proto](https://github.com/XTLS/Xray-core/blob/v26.10.31/app/observatory/config.proto).
+Схемы остаются под MPL-2.0; текст лицензии: [Xray-core LICENSE](https://github.com/XTLS/Xray-core/blob/v26.10.31/LICENSE).
 Для клиента используются [gRPC for .NET](https://github.com/grpc/grpc-dotnet) (The gRPC Authors, Apache-2.0),
 [Protocol Buffers](https://github.com/protocolbuffers/protobuf) (Google LLC, BSD-3-Clause);
 Grpc.Tools (The gRPC Authors, Apache-2.0) используется только при сборке.

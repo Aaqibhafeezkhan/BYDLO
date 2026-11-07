@@ -10,9 +10,18 @@ public interface ISecretStore
 
     Task SaveAsync(string id, ProfileSecrets secrets, CancellationToken ct = default);
 
+    /// <exception cref="SecretAccessException">The secret cannot be read, decrypted or parsed. Only a confirmed absence (missing file or directory) loads as empty (issues #344, #417).</exception>
     Task<ProfileSecrets> LoadAsync(string id, CancellationToken ct = default);
 
     Task DeleteAsync(string id, CancellationToken ct = default);
+}
+
+/// <summary>Stored credentials exist but cannot be decrypted, read or parsed (issue #344).</summary>
+public sealed class SecretAccessException(string secretId, Exception? inner = null)
+    : Engines.EngineException($"Backup secret '{secretId}' is missing or unreadable.", inner,
+        localizationKey: "backup.secret.failed", localizationArguments: [secretId])
+{
+    public string SecretId { get; } = secretId;
 }
 
 /// <summary>Non-persistent store for tests and Mock Mode previews.</summary>

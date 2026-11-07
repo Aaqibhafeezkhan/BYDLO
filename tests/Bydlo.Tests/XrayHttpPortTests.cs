@@ -14,7 +14,7 @@ public sealed class XrayHttpPortTests
     {
         var detector = new ConflictDetector(new FakePorts(2081));
         var profile = new Profile { Protocol = ProtocolKind.Trojan, Host = "h.invalid", Port = 443 };
-        var issues = detector.CheckPrimary(profile, new AppSettings { LocalProxyPort = 2080 }, false, false);
+        var issues = detector.CheckPrimary(profile, new AppSettings { LocalProxyPort = 2080 }, false, false, EngineKind.Xray);
         Assert.Contains(issues, i => i.Code == "port.local-proxy-http");
     }
 
@@ -23,7 +23,7 @@ public sealed class XrayHttpPortTests
     {
         var detector = new ConflictDetector(new FakePorts(2081));
         var profile = new Profile { Protocol = ProtocolKind.Hysteria2, Host = "h.invalid", Port = 443 };
-        var issues = detector.CheckPrimary(profile, new AppSettings { LocalProxyPort = 2080 }, false, false);
+        var issues = detector.CheckPrimary(profile, new AppSettings { LocalProxyPort = 2080 }, false, false, EngineKind.SingBox);
         Assert.DoesNotContain(issues, i => i.Code == "port.local-proxy-http");
         Assert.DoesNotContain(issues, i => i.Severity == ConflictSeverity.Blocking);
     }
@@ -33,7 +33,7 @@ public sealed class XrayHttpPortTests
     {
         var detector = new ConflictDetector(new FakePorts());
         var profile = new Profile { Protocol = ProtocolKind.Trojan, Host = "h.invalid", Port = 443 };
-        var issues = detector.CheckPrimary(profile, new AppSettings { LocalProxyPort = 65535 }, false, false);
+        var issues = detector.CheckPrimary(profile, new AppSettings { LocalProxyPort = 65535 }, false, false, EngineKind.Xray);
         Assert.Contains(issues, i => i.Severity == ConflictSeverity.Blocking);
     }
 
@@ -43,7 +43,7 @@ public sealed class XrayHttpPortTests
         var detector = new ConflictDetector(new FakePorts());
         var profile = new Profile { Protocol = ProtocolKind.Trojan, Host = "h.invalid", Port = 443 };
         var settings = new AppSettings { LocalProxyPort = 2080, TgWsProxy = new TgWsProxySettings { Port = 2081 } };
-        var issues = detector.CheckPrimary(profile, settings, false, tgRunning: true);
+        var issues = detector.CheckPrimary(profile, settings, false, tgRunning: true, EngineKind.Xray);
         Assert.Contains(issues, i => i.Code == "port.tg-clash");
     }
 

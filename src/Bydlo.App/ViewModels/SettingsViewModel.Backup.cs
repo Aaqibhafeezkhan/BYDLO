@@ -2,6 +2,7 @@ using System.Text;
 using Avalonia.Platform.Storage;
 using Bydlo.Core.Backup;
 using Bydlo.Core.Connection;
+using Bydlo.Core.Engines;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -90,6 +91,10 @@ public sealed partial class SettingsViewModel
                 await BackupExport.WriteRemoteAsync(() => file.OpenWriteAsync(), encrypted);
             }
             Shell.ShowToast(L["backup.exported"]);
+        }
+        catch (EngineException ex) when (ex.LocalizationKey == "backup.secret.failed")
+        {
+            Shell.ShowToast(ex.Message, isError: true, localizationKey: ex.LocalizationKey, localizationArguments: ex.LocalizationArguments);
         }
         catch (Exception) { Shell.ShowToast(L["backup.error"], isError: true); }
         finally { BackupBusy = false; BackupPassword = BackupPasswordConfirmation = ""; }

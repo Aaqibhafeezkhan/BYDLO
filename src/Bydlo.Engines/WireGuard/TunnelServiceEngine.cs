@@ -121,6 +121,10 @@ public sealed class TunnelServiceEngine : IEngine
 
         ChainGuards.ThrowIfChained(EngineKind.WireGuard, request);
         Set(EngineState.Starting);
+        // Becomes true once the tunnel command has been attempted. A failure before that point
+        // changed nothing on the system, but afterwards the outcome is uncertain (the command may
+        // have partially applied before throwing or being cancelled), so teardown must run first.
+        var startAttempted = false;
         try
         {
             var availability = await CheckAvailabilityAsync(request.Settings, ct).ConfigureAwait(false);
@@ -140,6 +144,7 @@ public sealed class TunnelServiceEngine : IEngine
             _configPath = Path.Combine(request.WorkDirectory, InterfaceName + ".conf");
             await SecureFile.WriteAsync(_configPath, raw, ct).ConfigureAwait(false);
 
+            startAttempted = true;
             var (code, output) = await _runner.RunToCompletionAsync(new ProcessSpec
             {
                 FileName = _exe,
@@ -156,7 +161,29 @@ public sealed class TunnelServiceEngine : IEngine
         }
         catch (Exception ex)
         {
-            Cleanup();
+            if (!startAttempted)
+            {
+                Cleanup();
+                Set(EngineState.Failed, ex.Message);
+                throw ex as EngineException ?? new EngineException(ex.Message, ex);
+            }
+
+            // The tunnel command was attempted but its outcome is unknown: it may have changed
+            // the system before failing. Tear down (down / uninstall) before deleting the
+            // configuration. When teardown fails, keep the context so StopAsync/DisposeAsync
+            // can retry it instead of losing the tunnel.
+            try
+            {
+                await RunTeardownAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception cleanupError)
+            {
+                var combined = new AggregateException(ex, cleanupError);
+                Set(EngineState.Failed, _redactor.Redact(combined.Message));
+                throw new EngineException(_redactor.Redact(combined.Message), combined,
+                    localizationKey: "error.engine.cleanup");
+            }
+
             Set(EngineState.Failed, ex.Message);
             throw ex as EngineException ?? new EngineException(ex.Message, ex);
         }
@@ -195,18 +222,7 @@ public sealed class TunnelServiceEngine : IEngine
         Set(EngineState.Stopping);
         try
         {
-            var (code, output) = await _runner.RunToCompletionAsync(new ProcessSpec
-            {
-                FileName = _exe,
-                Arguments = IsWindows ? ["/uninstalltunnelservice", InterfaceName] : ["down", _configPath],
-                DisplayName = Descriptor.DisplayName,
-            }, TimeSpan.FromSeconds(30), ct).ConfigureAwait(false);
-            EmitOutput(output);
-            if (code != 0)
-            {
-                throw new EngineException($"{Descriptor.DisplayName} failed to bring the tunnel down (code {code}).",
-                    localizationKey: "error.engine.cleanup");
-            }
+            await RunTeardownAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -214,8 +230,25 @@ public sealed class TunnelServiceEngine : IEngine
             throw;
         }
 
-        Cleanup();
         Set(EngineState.Stopped);
+    }
+
+    private async Task RunTeardownAsync(CancellationToken ct)
+    {
+        var (code, output) = await _runner.RunToCompletionAsync(new ProcessSpec
+        {
+            FileName = _exe!,
+            Arguments = IsWindows ? ["/uninstalltunnelservice", InterfaceName] : ["down", _configPath!],
+            DisplayName = Descriptor.DisplayName,
+        }, TimeSpan.FromSeconds(30), ct).ConfigureAwait(false);
+        EmitOutput(output);
+        if (code != 0)
+        {
+            throw new EngineException($"{Descriptor.DisplayName} failed to bring the tunnel down (code {code}).",
+                localizationKey: "error.engine.cleanup");
+        }
+
+        Cleanup();
     }
 
     public async ValueTask DisposeAsync()
