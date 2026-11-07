@@ -24,6 +24,7 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
     private IAppUpdateBackend? _backend;
     private bool _ready;
     private bool _busy;
+    private DateTimeOffset? _lastEmptyCheck;
 
     /// <summary>
     /// Whether this copy can update itself at all. Archives, portable layouts and unpackaged builds
@@ -42,13 +43,15 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
         }
     }
 
-    /// <summary>Scheduled download: at most once per 24 hours.</summary>
+    /// <summary>Scheduled download: at most once per 24 hours after a successful download.</summary>
     public async Task<bool> DownloadIfDueAsync(AppSettings settings, bool blocked,
         IProgress<int>? progress = null, CancellationToken ct = default)
     {
         if (!settings.AutoUpdateApp || blocked || _busy) { return false; }
         var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
         if (settings.LastAutomaticUpdateCheck is { } last && now - last < TimeSpan.FromHours(24)) { return false; }
+        // An empty check only rate-limits re-polling of the feed; a release published soon after is picked up within the hour.
+        if (_lastEmptyCheck is { } empty && now - empty < TimeSpan.FromHours(1)) { return false; }
         return await DownloadAsync(settings, progress, ct).ConfigureAwait(false);
     }
 
@@ -68,19 +71,19 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
             ct.ThrowIfCancellationRequested();
             var backend = _backend ??= createBackend();
             if (!backend.IsInstalled) { return false; }
-            settings.LastAutomaticUpdateCheck = (timeProvider ?? TimeProvider.System).GetUtcNow();
+            var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
             bool downloaded;
-            try
+            try { downloaded = await backend.DownloadLatestAsync(progress, ct).ConfigureAwait(false); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                downloaded = await backend.DownloadLatestAsync(progress, ct).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // Closing the window mid-download must not consume the daily window (issue #456):
-                // the user saw nothing happening, quit after 27 seconds and waited a day.
-                settings.LastAutomaticUpdateCheck = null;
+                // A failed check is rate-limited like an empty one, so an offline feed is not re-polled on every call.
+                _lastEmptyCheck = now;
                 throw;
             }
+            // Cancellation records nothing: closing the window mid-download must not consume any window (issue #456).
+            // Only a successful download starts the 24h lock.
+            if (downloaded) { settings.LastAutomaticUpdateCheck = now; }
+            else { _lastEmptyCheck = now; }
             _ready = downloaded && settings.AutoUpdateApp && !ct.IsCancellationRequested;
             return _ready;
         }
