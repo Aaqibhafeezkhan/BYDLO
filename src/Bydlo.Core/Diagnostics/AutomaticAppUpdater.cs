@@ -35,8 +35,9 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
         {
             return (_backend ??= createBackend()).IsInstalled;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        catch (Exception)
         {
+            // A capability probe must never break the settings page; any failure means "cannot update".
             return false;
         }
     }

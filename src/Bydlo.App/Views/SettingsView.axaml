@@ -175,7 +175,7 @@
                   <TextBlock Classes="faint" Text="{l:T settings.update.auto.unavailable}" TextWrapping="Wrap" IsVisible="{Binding !IsAutoUpdateAvailable}" />
                 </StackPanel>
                 <ToggleSwitch x:Name="AutoUpdateToggle" Grid.Column="1" AutomationProperties.Name="{l:T settings.update.auto}"
-                              IsChecked="{Binding AutoUpdateApp}" IsEnabled="{Binding IsAutoUpdateAvailable}" />
+                              IsChecked="{Binding AutoUpdateApp}" />
               </Grid>
               <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{Binding UpdateDetail}" TextWrapping="Wrap" />
