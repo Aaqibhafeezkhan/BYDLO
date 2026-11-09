@@ -622,6 +622,14 @@
 
   "about.text": "Free and open-source launcher for VPNs, proxies and open-internet tools. BYDLO is a front-end: the real work is done by the projects below. Huge thanks to their authors.",
   "about.credits": "Built on",
+  "about.licenses": "BYDLO: GPL-3.0-or-later. Original third-party licenses and notices are included beside the application: LICENSE, THIRD_PARTY_NOTICES.md, licenses/ and engines/licenses/.",
+  "about.singbox": "Proxy engine; its license also includes name-use terms. Original text and source are included in the release.",
+  "about.skia": "Graphics and text rendering; native component notices are included in licenses/.",
+  "about.angle": "Graphics backend on Windows, via Avalonia",
+  "about.microcom": "Native interop, via Avalonia",
+  "about.dbus": "D-Bus support on Linux, via Avalonia",
+  "about.yaml": "YAML configuration import",
+  "about.dotnet": "Runtime and platform libraries; original third-party notices are included in licenses/.",
 
   "orphans.text": "Engines from a previous session are still running.",
   "orphans.stop": "Stop them",

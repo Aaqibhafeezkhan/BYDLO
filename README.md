@@ -2,7 +2,7 @@
 
 <h1 align="center">BYDLO</h1>
 <p align="center"><b>B</b>ypass <b>Y</b>our <b>D</b>igital <b>L</b>imitations <b>O</b>nline<br>
-<i>One app. Every protocol. Zero bullshit.</i></p>
+<i>Одно приложение. Все протоколы.</i></p>
 
 <p align="center"><img src="docs/images/home-connected-9d4048d89cff.png" width="880" alt="Главный экран BYDLO в Mock-режиме"></p>
 
