@@ -9,7 +9,12 @@ public sealed record WireGuardConfig(
     IReadOnlyList<IReadOnlyDictionary<string, string>> Peers)
 {
     /// <summary>AmneziaWG obfuscation keys. Their presence marks a config as AmneziaWG.</summary>
-    public static readonly string[] AmneziaKeys = ["Jc", "Jmin", "Jmax", "S1", "S2", "S3", "S4", "H1", "H2", "H3", "H4", "I1", "I2", "I3", "I4", "I5"];
+    public static readonly string[] AmneziaKeys =
+    [
+        "Jc", "Jmin", "Jmax", "S1", "S2", "S3", "S4", "H1", "H2", "H3", "H4", "I1", "I2", "I3", "I4", "I5",
+        "HeaderProtectionKey", "ContentPaddingAddition", "RekeyAfterTime", "RekeyTimeout", "RejectAfterTime",
+        "KeepaliveTimeout", "MaxHandshakeAttempts", "RandomTrailers", "DisableCookies",
+    ];
 
     public bool IsAmnezia => AmneziaKeys.Any(Interface.ContainsKey);
 
@@ -104,10 +109,15 @@ public sealed class WireGuardConfParser : IProfileParser
         Opt("keepalive", peer, "PersistentKeepalive");
         foreach (var k in WireGuardConfig.AmneziaKeys)
         {
-            Opt("awg." + k, cfg.Interface, k);
+            // Header protection material belongs only in the secret store, never in public options.
+            if (k != "HeaderProtectionKey") { Opt("awg." + k, cfg.Interface, k); }
         }
 
         var secrets = new ProfileSecrets { Values = { ["privateKey"] = privateKey, [Keys.RawConfig] = input.Replace("\r\n", "\n") } };
+        if (cfg.Interface.TryGetValue("HeaderProtectionKey", out var headerKey))
+        {
+            secrets.Values["headerProtectionKey"] = headerKey;
+        }
         if (peer.TryGetValue("PresharedKey", out var psk))
         {
             secrets.Values["presharedKey"] = psk;

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Globalization;
 using System.Text;
 using Bydlo.Core.Import.Parsers;
 
@@ -22,7 +23,29 @@ public sealed record AmneziaConfig(string Uapi, string[] Addresses, string[] Dns
         if (iface.TryGetValue("ListenPort", out var listen)) { text.AppendLine("listen_port=" + Number(listen, 0, 65535)); }
         foreach (var key in WireGuardConfig.AmneziaKeys)
         {
-            if (iface.TryGetValue(key, out var value)) { text.AppendLine(key.ToLowerInvariant() + "=" + value); }
+            if (!iface.TryGetValue(key, out var value)) { continue; }
+            var name = key switch
+            {
+                "HeaderProtectionKey" => "header_protection_key",
+                "ContentPaddingAddition" => "content_padding_addition",
+                "RekeyAfterTime" => "rekey_after_time",
+                "RekeyTimeout" => "rekey_timeout",
+                "RejectAfterTime" => "reject_after_time",
+                "KeepaliveTimeout" => "keepalive_timeout",
+                "MaxHandshakeAttempts" => "max_handshake_attempts",
+                "RandomTrailers" => "random_trailers",
+                "DisableCookies" => "disable_cookies",
+                _ => key.ToLowerInvariant(),
+            };
+            value = key switch
+            {
+                "HeaderProtectionKey" => HeaderKey(value, iface),
+                "ContentPaddingAddition" or "RekeyAfterTime" or "RekeyTimeout" or "RejectAfterTime" or
+                    "KeepaliveTimeout" or "MaxHandshakeAttempts" => Range(value),
+                "RandomTrailers" or "DisableCookies" => Boolean(value),
+                _ => value,
+            };
+            text.AppendLine(name + "=" + value);
         }
         text.AppendLine("replace_peers=true");
         var endpoints = new List<string>();
@@ -68,6 +91,37 @@ public sealed record AmneziaConfig(string Uapi, string[] Addresses, string[] Dns
         var bytes = Convert.FromBase64String(value);
         return bytes.Length == 32 ? Convert.ToHexStringLower(bytes) : throw new FormatException("Invalid AmneziaWG key length.");
     }
+
+    private static string HeaderKey(string value, IReadOnlyDictionary<string, string> iface)
+    {
+        var hex = Key(value);
+        // The pinned Go backend requires nonce space in every packet type when protection is enabled.
+        if (hex.Any(c => c != '0'))
+        {
+            foreach (var key in new[] { "S1", "S2", "S3", "S4" })
+            {
+                if (!iface.TryGetValue(key, out var padding)) { throw new FormatException("Header protection requires S1-S4 of at least 12."); }
+                _ = Number(padding, 12, ushort.MaxValue);
+            }
+        }
+        return hex;
+    }
+
+    private static string Range(string value)
+    {
+        var parts = value.Split('-');
+        if (parts.Length is < 1 or > 2 || !uint.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var low) ||
+            (parts.Length == 2 && (!uint.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var high) || high < low)))
+        { throw new FormatException("Invalid AmneziaWG unsigned range."); }
+        return value;
+    }
+
+    private static string Boolean(string value) => value.ToLowerInvariant() switch
+    {
+        "true" or "t" or "on" or "1" => "true",
+        "false" or "f" or "off" or "0" => "false",
+        _ => throw new FormatException("Invalid AmneziaWG boolean option."),
+    };
 
     private static int Number(string value, int min, int max) =>
         int.TryParse(value, out var number) && number >= min && number <= max ? number : throw new FormatException("Invalid AmneziaWG numeric option.");

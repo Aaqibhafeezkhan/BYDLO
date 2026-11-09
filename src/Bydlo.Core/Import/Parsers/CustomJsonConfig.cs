@@ -115,6 +115,12 @@ internal static class CustomJsonConfig
                     {
                         throw new FormatException();
                     }
+                    // sing-box 1.14.4 removed the unimplemented `direct` rule action; routing uses `outbound`.
+                    if (singBox && rule["action"] is JsonValue actionValue &&
+                        actionValue.TryGetValue<string>(out var action) && action == "direct")
+                    {
+                        throw new FormatException();
+                    }
                     CheckReference(rule, singBox ? "outbound" : "outboundTag", tags);
                 }
             }

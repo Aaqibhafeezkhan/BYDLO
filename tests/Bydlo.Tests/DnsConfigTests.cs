@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json.Nodes;
 using Bydlo.Core.Config;
 using Bydlo.Core.Engines;
@@ -76,6 +77,22 @@ public sealed class DnsConfigTests
         Assert.Equal("exception.invalid", (string?)rules[2]!["domain_suffix"]![0]);
         Assert.Equal("fakeip", (string?)rules[3]!["server"]);
         Assert.Equal(new[] { "A", "AAAA" }, rules[3]!["query_type"]!.AsArray().Select(node => (string?)node));
+    }
+
+    [Fact]
+    public void Fake_ip_ranges_do_not_overlap_private_networks()
+    {
+        var settings = new AppSettings { Mode = ConnectionMode.Tun, Routing = { FakeIp = true } };
+        var fakeIp = SingBox(settings)["servers"]!.AsArray().Single(server => (string?)server?["type"] == "fakeip")!;
+        Assert.Equal("198.18.0.0/15", (string?)fakeIp["inet4_range"]);
+        var inet6 = IPNetwork.Parse((string)fakeIp["inet6_range"]!);
+        var overlaps = SingBoxConfigBuilder.PrivateNetworkRanges
+            .Where(cidr => Overlaps(inet6, IPNetwork.Parse(cidr)))
+            .ToArray();
+        Assert.Empty(overlaps);
+        // Documented IPv6 coverage of sing-box ip_is_private (loopback, link-local, ULA); the built-in list is not in this repo.
+        var ipIsPrivateV6 = new[] { "::1/128", "fe80::/10", "fc00::/7" };
+        Assert.DoesNotContain(ipIsPrivateV6, cidr => Overlaps(inet6, IPNetwork.Parse(cidr)));
     }
 
     [Fact]
@@ -191,6 +208,10 @@ public sealed class DnsConfigTests
         Assert.Equal("routing.dns.xray", Assert.Throws<EngineException>(() => Xray(settings)).LocalizationKey);
         Assert.Empty(runner.Started);
     }
+
+    // CIDR blocks are either nested or disjoint, so two networks overlap iff one contains the other's base address.
+    private static bool Overlaps(IPNetwork left, IPNetwork right) =>
+        left.Contains(right.BaseAddress) || right.Contains(left.BaseAddress);
 
     private static JsonObject Xray(AppSettings settings) =>
         new XrayConfigBuilder().Build(Server, ProfileSecrets.Empty, new BuildContext(settings));

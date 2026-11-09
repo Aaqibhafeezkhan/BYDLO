@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Bydlo.Core.Config;
+using Bydlo.Core.Engines;
 using Bydlo.Core.Import;
 using Bydlo.Core.Models;
 
@@ -187,6 +188,60 @@ public sealed class ConfigImportTests
             """);
         Assert.Empty(result.Profiles);
         Assert.Equal("import.json.unsafe", Assert.Single(result.Errors));
+    }
+
+    private const string DirectRuleActionConfig = """
+        {"outbounds":[{"type":"trojan","tag":"remote","server":"proxy.invalid","server_port":443,"password":"hidden"}],
+         "route":{"rules":[{"domain_suffix":["example.invalid"],"action":"direct"}]}}
+        """;
+
+    [Fact]
+    public void Rejects_removed_direct_rule_action_in_custom_sing_box_json()
+    {
+        var result = new ProfileImporter().ImportText(DirectRuleActionConfig);
+        Assert.Empty(result.Profiles);
+        Assert.Equal("import.json.unsafe", Assert.Single(result.Errors));
+    }
+
+    [Fact]
+    public void Rejects_removed_direct_rule_action_in_previously_saved_config()
+    {
+        var secrets = new ProfileSecrets { Values = { [Keys.RawConfig] = DirectRuleActionConfig } };
+        var profile = new Profile { Name = "saved", Protocol = ProtocolKind.SingBoxConfig };
+        var error = Assert.Throws<EngineException>(() =>
+            new SingBoxConfigBuilder().Build(profile, secrets, new BuildContext(new AppSettings())));
+        Assert.Equal("import.json.unsafe", error.LocalizationKey);
+    }
+
+    [Fact]
+    public void Accepts_direct_outbound_and_outbound_routing()
+    {
+        var result = new ProfileImporter().ImportText("""
+            {"outbounds":[
+                {"type":"trojan","tag":"remote","server":"proxy.invalid","server_port":443,"password":"hidden"},
+                {"type":"direct","tag":"direct"}],
+             "route":{"final":"remote","rules":[{"domain_suffix":["example.invalid"],"outbound":"direct"}]}}
+            """);
+        var imported = Assert.Single(result.Profiles);
+        var config = new SingBoxConfigBuilder().Build(imported.Profile, imported.Secrets, new BuildContext(new AppSettings()));
+        Assert.Contains(config["outbounds"]!.AsArray(), outbound => (string?)outbound!["type"] == "direct");
+        Assert.Contains(config["route"]!["rules"]!.AsArray(),
+            rule => (string?)rule!["outbound"] == "direct" && (string?)rule["action"] is null);
+    }
+
+    [Theory]
+    [InlineData("sniff")]
+    [InlineData("hijack-dns")]
+    [InlineData("reject")]
+    public void Accepts_supported_rule_actions(string action)
+    {
+        var result = new ProfileImporter().ImportText($$$"""
+            {"outbounds":[{"type":"trojan","tag":"remote","server":"proxy.invalid","server_port":443,"password":"hidden"}],
+             "route":{"rules":[{"action":"{{{action}}}"}]}}
+            """);
+        var imported = Assert.Single(result.Profiles);
+        var config = new SingBoxConfigBuilder().Build(imported.Profile, imported.Secrets, new BuildContext(new AppSettings()));
+        Assert.Contains(config["route"]!["rules"]!.AsArray(), rule => (string?)rule!["action"] == action);
     }
 
     [Fact]
