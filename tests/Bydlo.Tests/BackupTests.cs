@@ -154,7 +154,8 @@ public sealed class BackupTests
         var oldId = data.Profiles[0].Profile.Id;
         var next = Data();
         secrets.SavesUntilFailure = 1;
-        await Assert.ThrowsAsync<IOException>(() => store.RestoreBackupAsync(next, BackupImportMode.Replace));
+        using var session = BackupArchive.OpenImport(BackupArchive.Encrypt(next, Password), Password);
+        await Assert.ThrowsAsync<IOException>(() => store.RestoreBackupAsync(session.Materialize(), BackupImportMode.Replace));
         Assert.Equal(oldId, Assert.Single(store.Profiles).Id);
         Assert.Equal("very-private-uuid", (await secrets.LoadAsync(oldId.ToString()))[Keys.Uuid]);
         Assert.Empty((await secrets.LoadAsync(next.Profiles[0].Profile.Id.ToString())).Values);
@@ -176,7 +177,8 @@ public sealed class BackupTests
         var next = Data();
         // Force failure after incoming credentials were saved, before obsolete credentials are deleted.
         Directory.CreateDirectory(path + ".tmp");
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => store.RestoreBackupAsync(next, BackupImportMode.Replace));
+        using var session = BackupArchive.OpenImport(BackupArchive.Encrypt(next, Password), Password);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => store.RestoreBackupAsync(session.Materialize(), BackupImportMode.Replace));
         await store.LoadAsync();
         Assert.Equal(first.Profiles[0].Profile.Id, Assert.Single(store.Profiles).Id);
         Assert.Equal("very-private-uuid", (await store.Secrets.LoadAsync(first.Profiles[0].Profile.Id.ToString()))[Keys.Uuid]);

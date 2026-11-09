@@ -21,6 +21,9 @@ public abstract class PageViewModel(MainViewModel shell) : ViewModelBase
     public virtual void OnShown()
     {
     }
+
+    /// <summary>Called before navigating away from the page.</summary>
+    public virtual void OnHidden() { }
 }
 
 public sealed partial class ProfileItem(Profile profile) : ObservableObject
