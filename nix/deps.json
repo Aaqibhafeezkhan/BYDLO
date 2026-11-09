@@ -76,8 +76,8 @@
   },
   {
     "pname": "CommunityToolkit.Mvvm",
-    "version": "8.4.0",
-    "hash": "sha256-a0D550q+ffreU9Z+kQPdzJYPNaj1UjgyPofLzUg02ZI="
+    "version": "8.4.2",
+    "hash": "sha256-jLS1vo6V+fHsJs80HYT77oJE6IEC68fIgkLpYODjWAU="
   },
   {
     "pname": "Google.Protobuf",
@@ -171,8 +171,8 @@
   },
   {
     "pname": "System.Security.Cryptography.ProtectedData",
-    "version": "10.0.0",
-    "hash": "sha256-hoR1lVXVEUXfItNzJ23/SRybLBqaf4ZYzJBjlWgHpSM="
+    "version": "10.0.14",
+    "hash": "sha256-atoYZG7zRdPkPiXqUpc9XLqYz5ED3xTfChj+toX6fzU="
   },
   {
     "pname": "Tmds.DBus.Protocol",
@@ -191,7 +191,7 @@
   },
   {
     "pname": "ZXing.Net",
-    "version": "0.16.10",
-    "hash": "sha256-0nrORhl/5ouXYHlDqua3bEykp6XtKARLD0umHTOnA1A="
+    "version": "0.16.11",
+    "hash": "sha256-fTkjTWaOVYs9N00YEW7VcCHXwN9IKAHx4dtPHbkxTsM="
   }
 ]
