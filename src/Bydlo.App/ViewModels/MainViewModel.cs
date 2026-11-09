@@ -325,6 +325,8 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public bool IsElevated => Services.Privileges.IsElevated;
 
+    partial void OnCurrentNavChanging(NavItem value) => CurrentNav?.Page.OnHidden();
+
     partial void OnCurrentNavChanged(NavItem value)
     {
         UpdateNavigationSelection();

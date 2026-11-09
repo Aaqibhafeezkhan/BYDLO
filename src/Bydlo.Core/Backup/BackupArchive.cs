@@ -27,10 +27,12 @@ public sealed record BackupPreview(int AddedProfiles, int ReplacedProfiles, int 
 public static class BackupArchive
 {
     // Fixed parameters prevent an untrusted file from choosing excessive KDF work.
-    private static ReadOnlySpan<byte> Header => "BYDLOBK\x01"u8;
-    private const int Iterations = 600_000;
+    internal static ReadOnlySpan<byte> Header => "BYDLOBK\x01"u8;
+    internal const int Iterations = 600_000;
     public const int MaximumFileSize = 32 * 1024 * 1024;
-    private const int Overhead = 8 + 16 + 12 + 16;
+    internal const int Overhead = 8 + 16 + 12 + 16;
+
+    public static BackupImportSession OpenImport(byte[] file, string password) => BackupImportSession.Open(file, password);
 
     public static byte[] Encrypt(BackupData data, string password)
     {
@@ -128,7 +130,12 @@ public static class BackupArchive
     private static List<string> Union(List<string> current, List<string> incoming) =>
         [.. current.Concat(incoming).Distinct(StringComparer.OrdinalIgnoreCase)];
 
-    internal static T Clone<T>(T value) => JsonSerializer.Deserialize(JsonSerializer.SerializeToUtf8Bytes(value, JsonDefaults.Options.Info<T>()), JsonDefaults.Options.Info<T>())!;
+    internal static T Clone<T>(T value)
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(value, JsonDefaults.Options.Info<T>());
+        try { return JsonSerializer.Deserialize(bytes, JsonDefaults.Options.Info<T>())!; }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
+    }
 
     /// <summary>
     /// Secret keys a profile must carry (issue #344). An empty list means the protocol
