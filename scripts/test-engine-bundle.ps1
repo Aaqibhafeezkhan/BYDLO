@@ -38,6 +38,10 @@ function Mutate([string]$Path, [byte[]]$Bytes, [string]$Expected) {
     } finally { [IO.File]::WriteAllBytes($Path, $original); Hash-Bundle }
 }
 try {
+    New-Item -ItemType Directory -Force $bundle | Out-Null
+    Copy-Item (Join-Path $repo 'LICENSE'), (Join-Path $repo 'THIRD_PARTY_NOTICES.md') $bundle
+    Copy-Item (Join-Path $repo 'licenses') $bundle -Recurse
+    Copy-Item (Join-Path $repo 'licenses/Velopack.txt') (Join-Path $bundle 'LICENSE-Velopack.txt')
     # Minimal little-endian ARM64 Mach-O header (never executable code).
     $thin = [byte[]]::new(32)
     [BitConverter]::GetBytes([uint32]4277009103).CopyTo($thin, 0)

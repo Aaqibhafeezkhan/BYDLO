@@ -1,0 +1,157 @@
+{
+  "formatVersion": 1,
+  "files": [
+    {
+      "component": "Avalonia",
+      "version": "11.3.22",
+      "license": "MIT",
+      "file": "Avalonia.txt",
+      "source": "https://github.com/AvaloniaUI/Avalonia/blob/627ae9ef921621e27e7aa58df2796fbadb50af88/licence.md",
+      "sha256": "213814d306090074d234d760239ff0f67eb9b8d20eefb4d5631bb39dbe0b769b"
+    },
+    {
+      "component": "Avalonia.BuildServices",
+      "version": "11.3.2",
+      "license": "MIT",
+      "file": "Avalonia.BuildServices.txt",
+      "source": "https://github.com/AvaloniaUI/Avalonia.BuildServices/blob/777f975b0a0cecf0311273711d56697212c558c0/LICENSE",
+      "sha256": "94162c40c663bd96ec1b870e6aba6ef0a43f44c9eb500807e7965e7078f6dc47"
+    },
+    {
+      "component": "YamlDotNet",
+      "version": "18.1.0",
+      "license": "MIT",
+      "file": "YamlDotNet.txt",
+      "source": "https://github.com/aaubry/YamlDotNet/blob/748334a8fa7c227740018b284b71ad95cc6b7fc7/LICENSE.txt",
+      "sha256": "daea8b7f1b2bab48ea12ad50b0ce91634669d99d7dd0cb64aed8dffeeef69ed3"
+    },
+    {
+      "component": "Google.Protobuf",
+      "version": "3.36.2",
+      "license": "BSD-3-Clause",
+      "file": "Protobuf.txt",
+      "source": "https://github.com/protocolbuffers/protobuf/blob/2c74169b34066ceb8ddb6b882fcb3fb32d737a55/LICENSE",
+      "sha256": "6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d"
+    },
+    {
+      "component": "gRPC for .NET",
+      "version": "2.85.0",
+      "license": "Apache-2.0",
+      "file": "gRPC.txt",
+      "source": "https://github.com/grpc/grpc-dotnet/blob/a7767e28a2c2f4e89a17e9efb95f75e8a82637d0/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "component": "Tmds.DBus.Protocol",
+      "version": "0.21.3",
+      "license": "MIT",
+      "file": "Tmds.DBus.txt",
+      "source": "https://github.com/tmds/Tmds.DBus/blob/8cb04f66c330b64244e996ff68f685f27f7381a0/COPYING",
+      "sha256": "aca3b49277abcc7886ccb2f115603a9f5b15fc3f96019a10c00f2974098b210c"
+    },
+    {
+      "component": "ZXing.Net",
+      "version": "0.16.11",
+      "license": "Apache-2.0",
+      "file": "ZXing.Net.txt",
+      "source": "https://github.com/micjahn/ZXing.Net/blob/fd58f3c4a5d80ccf45ef1237899a65b0ba5b83a0/COPYING",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "component": "MicroCom.Runtime",
+      "version": "0.11.0",
+      "license": "MIT",
+      "file": "MicroCom.txt",
+      "source": "https://github.com/kekekeks/MicroCom/blob/4b8a38f773c109bad558ee3713d9f16d80776e42/LICENSE",
+      "sha256": "6ee769c9ac4dac9abb16b98b1341e9528ff9f4ab685481410d3376d14148f3a9"
+    },
+    {
+      "component": "Inter",
+      "version": "3.019 (Avalonia.Fonts.Inter 11.3.22)",
+      "license": "OFL-1.1",
+      "file": "Inter.txt",
+      "source": "https://github.com/rsms/inter/blob/v3.19/LICENSE.txt",
+      "sha256": "4d7d9c95e7d7f2f0ebf76d5e0b344826b74e903a34028ee18ab54bb639e45906"
+    },
+    {
+      "component": "Material Design Icons",
+      "version": "Icons.axaml geometries",
+      "license": "Apache-2.0 (icons)",
+      "file": "MaterialDesignIcons.txt",
+      "source": "https://github.com/Templarian/MaterialDesign/blob/6d3df9c74210eb961f2c209e2a458e6bc908dfe3/LICENSE",
+      "sha256": "3bae6305bcaa6d10219b999f65c342034c2d40b1c0e8567fa08605e73ccba829"
+    },
+    {
+      "component": ".NET",
+      "version": "10.0.14",
+      "license": "MIT",
+      "file": "DotNet.txt",
+      "source": "https://github.com/dotnet/runtime/blob/v10.0.14/LICENSE.TXT",
+      "sha256": "cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310"
+    },
+    {
+      "component": "System.Security.Cryptography.ProtectedData",
+      "version": "10.0.14",
+      "license": "MIT and third-party notices",
+      "file": "DotNet-THIRD-PARTY-NOTICES.txt",
+      "source": "https://www.nuget.org/packages/System.Security.Cryptography.ProtectedData/10.0.14#THIRD-PARTY-NOTICES.TXT",
+      "sha256": "6d15e10a101c6bfff2ab4429ed061bf76c456fc4b23ad6b03e0d0f8377148a21"
+    },
+    {
+      "component": "Microsoft.Extensions.Logging.Abstractions",
+      "version": "8.0.1",
+      "license": "MIT and third-party notices",
+      "file": "DotNet-Extensions-THIRD-PARTY-NOTICES.txt",
+      "source": "https://www.nuget.org/packages/Microsoft.Extensions.Logging.Abstractions/8.0.1#THIRD-PARTY-NOTICES.TXT",
+      "sha256": "19c19dcac9f3ee6302cfbc6745bb8e79f08efc4c933eb8dc5509bf14b88347ec"
+    },
+    {
+      "component": "CommunityToolkit.Mvvm",
+      "version": "8.4.2",
+      "license": "MIT",
+      "file": "CommunityToolkit.Mvvm.txt",
+      "source": "https://www.nuget.org/packages/CommunityToolkit.Mvvm/8.4.2#License.md",
+      "sha256": "651997ef19dbb9ecb8dd660dbc86444a65af21f18cfe08daa69bf201cd5cfdfc"
+    },
+    {
+      "component": "CommunityToolkit.Mvvm",
+      "version": "8.4.2",
+      "license": "Third-party notices",
+      "file": "CommunityToolkit-THIRD-PARTY-NOTICES.txt",
+      "source": "https://www.nuget.org/packages/CommunityToolkit.Mvvm/8.4.2#ThirdPartyNotices.txt",
+      "sha256": "7774f8b0ab66bfb47ec154ce24a2d6d574febc44a74d940b8a037d1c56756163"
+    },
+    {
+      "component": "SkiaSharp",
+      "version": "2.88.9",
+      "license": "MIT",
+      "file": "SkiaSharp-HarfBuzzSharp.txt",
+      "source": "https://www.nuget.org/packages/SkiaSharp/2.88.9#LICENSE.txt",
+      "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938"
+    },
+    {
+      "component": "SkiaSharp.NativeAssets.Win32",
+      "version": "2.88.9",
+      "license": "Third-party notices",
+      "file": "SkiaSharp-HarfBuzzSharp-THIRD-PARTY-NOTICES.txt",
+      "source": "https://www.nuget.org/packages/SkiaSharp.NativeAssets.Win32/2.88.9#THIRD-PARTY-NOTICES.txt",
+      "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5"
+    },
+    {
+      "component": "Avalonia.Angle.Windows.Natives",
+      "version": "2.1.25547.20250602",
+      "license": "BSD-3-Clause",
+      "file": "ANGLE.txt",
+      "source": "https://www.nuget.org/packages/Avalonia.Angle.Windows.Natives/2.1.25547.20250602#LICENSE",
+      "sha256": "54aff7276217df9f6b5181613999d208c9e40d2b1d51bf55217837e6871a4a63"
+    },
+    {
+      "component": "Velopack",
+      "version": "1.2.161",
+      "license": "MIT",
+      "file": "Velopack.txt",
+      "source": "https://github.com/velopack/velopack/blob/92d6a1c91716729d449034df5c50307dcce39493/LICENSE",
+      "sha256": "91845db83551c877ebbb1118e0fb92e4e527290d23b995c55dcd438b3293943f"
+    }
+  ]
+}

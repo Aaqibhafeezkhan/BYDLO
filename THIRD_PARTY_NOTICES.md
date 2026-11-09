@@ -106,19 +106,36 @@ SOFTWARE.
 
 | Компонент | Лицензия | Исходники |
 |---|---|---|
-| Avalonia UI (Avalonia, Avalonia.Desktop, Avalonia.Themes.Fluent, Avalonia.Fonts.Inter, Avalonia.Skia, Avalonia.Headless) | MIT | https://github.com/AvaloniaUI/Avalonia |
-| SkiaSharp / HarfBuzzSharp (через Avalonia) | MIT | https://github.com/mono/SkiaSharp |
-| CommunityToolkit.Mvvm | MIT | https://github.com/CommunityToolkit/dotnet |
-| YamlDotNet | MIT | https://github.com/aaubry/YamlDotNet |
-| ZXing.Net | Apache-2.0 | https://github.com/micjahn/ZXing.Net |
-| System.Security.Cryptography.ProtectedData | MIT | https://github.com/dotnet/runtime |
-| xUnit, Microsoft.NET.Test.Sdk (только тесты) | Apache-2.0 / MIT | https://github.com/xunit/xunit |
+| Avalonia UI 11.3.22 (Avalonia, Desktop, Themes.Fluent, Fonts.Inter, Skia, FreeDesktop, Native, Win32, X11, Remote.Protocol) | MIT для кода; Inter отдельно под OFL-1.1 | https://github.com/AvaloniaUI/Avalonia/tree/627ae9ef921621e27e7aa58df2796fbadb50af88 |
+| SkiaSharp 2.88.9 / HarfBuzzSharp 8.3.1.1 и NativeAssets (через Avalonia) | MIT для обвязок; оригинальные лицензии встроенных компонентов в [notices](licenses/SkiaSharp-HarfBuzzSharp-THIRD-PARTY-NOTICES.txt) | https://github.com/mono/SkiaSharp |
+| ANGLE (Avalonia.Angle.Windows.Natives 2.1.25547.20250602) | BSD-3-Clause | https://github.com/google/angle |
+| MicroCom.Runtime 0.11.0 | MIT | https://github.com/kekekeks/MicroCom |
+| Tmds.DBus.Protocol 0.21.3 | MIT | https://github.com/tmds/Tmds.DBus/tree/8cb04f66c330b64244e996ff68f685f27f7381a0 |
+| CommunityToolkit.Mvvm 8.4.2 | MIT и оригинальные [дополнительные уведомления](licenses/CommunityToolkit-THIRD-PARTY-NOTICES.txt) | https://github.com/CommunityToolkit/dotnet |
+| YamlDotNet 18.1.0 | MIT | https://github.com/aaubry/YamlDotNet/tree/748334a8fa7c227740018b284b71ad95cc6b7fc7 |
+| ZXing.Net 0.16.11 | Apache-2.0 | https://github.com/micjahn/ZXing.Net/tree/v0.16.11.0 |
+| Grpc.Net.Client / Grpc.Net.Common / Grpc.Core.Api 2.85.0 | Apache-2.0 | https://github.com/grpc/grpc-dotnet |
+| Google.Protobuf 3.36.2 | BSD-3-Clause | https://github.com/protocolbuffers/protobuf/tree/2c74169b34066ceb8ddb6b882fcb3fb32d737a55 |
+| .NET 10.0.14, System.Security.Cryptography.ProtectedData / System.ServiceProcess.ServiceController 10.0.14 | MIT и оригинальные [сторонние уведомления](licenses/DotNet-THIRD-PARTY-NOTICES.txt) | https://github.com/dotnet/runtime/tree/v10.0.14 |
+| Microsoft.Extensions.Logging.Abstractions / DependencyInjection.Abstractions 8.0.1 (через Velopack) | MIT и оригинальные [сторонние уведомления](licenses/DotNet-Extensions-THIRD-PARTY-NOTICES.txt) | https://github.com/dotnet/runtime |
+
+Тексты включены в [`licenses/`](licenses/README.md); точные источники и SHA-256 находятся
+в [`licenses/manifest.json`](licenses/manifest.json). `dotnet publish` копирует этот каталог,
+`LICENSE` и `THIRD_PARTY_NOTICES.md` рядом с приложением для всех RID, в том числе при single-file publish.
+Проверка релизного комплекта отклоняет отсутствующие или изменённые уведомления до упаковки
+и после извлечения update-пакета. Оригинальные notices сохранены целиком: они могут перечислять
+компоненты для других платформ или удалённые trimming, что не означает использование всех этих компонентов BYDLO.
+
+Только разработка и тесты: Avalonia.BuildServices 11.3.2, Avalonia.Diagnostics/Headless 11.3.22,
+Grpc.Tools 2.85.0, xUnit 2.9.3 / xunit.runner.visualstudio 3.1.5 (Apache-2.0),
+Microsoft.NET.Test.Sdk 17.14.1 и coverlet.collector 6.0.4 (MIT). Они не поставляются как библиотеки
+Release-приложения. Лицензии инструментов сохраняются в соответствующих NuGet-пакетах.
 
 ## Ресурсы
 
 | Ресурс | Лицензия | Исходники |
 |---|---|---|
-| Шрифт Inter (через Avalonia.Fonts.Inter) | SIL Open Font License 1.1 | https://github.com/rsms/inter |
+| Шрифт Inter 3.019 (через Avalonia.Fonts.Inter 11.3.22) | SIL Open Font License 1.1, оригинал в [licenses/Inter.txt](licenses/Inter.txt) | https://github.com/rsms/inter/tree/v3.19 |
 | Material Design Icons (геометрия иконок в `src/Bydlo.App/Themes/Icons.axaml`) | Apache-2.0 | https://github.com/Templarian/MaterialDesign |
 | Тестовые файлы `tests/Bydlo.Tests/Fixtures/general*.bat.txt` (стратегии Flowseal без изменений) | MIT, © 2016-2026 bol-van, © 2024-2026 Flowseal | https://github.com/Flowseal/zapret-discord-youtube |
 | Списки подписок [igareck/vpn-configs-for-russia](https://github.com/igareck/vpn-configs-for-russia) (скачиваются приложением с зеркал автора, в проект не копируются) | GPL-3.0 | https://github.com/igareck/vpn-configs-for-russia |
@@ -135,7 +152,7 @@ SOFTWARE.
 - LGPL-3.0: https://www.gnu.org/licenses/lgpl-3.0.html
 - OFL-1.1: https://openfontlicense.org
 
-Полный комплект содержит этот файл, `LICENSE`, `engines/licenses/`, `engines/sources/`, lock-файлы
+Полный комплект содержит этот файл, `LICENSE`, `licenses/`, `engines/licenses/`, `engines/sources/`, lock-файлы
 и `ENGINES-SHA256SUMS.txt`. Сохраняйте их при переупаковке и распространении; не ограничивайтесь
 исполняемым файлом BYDLO. Команды сборки, состав исходников и порядок обновления описаны
 в [docs/BUILD.md](docs/BUILD.md#обновление-встроенных-компонентов). CI на GitHub создаёт комплект

@@ -16,6 +16,10 @@ Environment.SetEnvironmentVariable("BYDLO_SAFE_DEV", "1");
 var output = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(".tmp", "screenshots"));
 var lang = args.Length > 1 ? args[1] : "en";
 Directory.CreateDirectory(output);
+if (args.Contains("--verify-licenses", StringComparer.Ordinal))
+{
+    Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
+}
 if (args.Contains("--verify-overhaul", StringComparer.Ordinal) || args.Contains("--verify-settings-navigation", StringComparer.Ordinal))
 {
     Environment.SetEnvironmentVariable("BYDLO_DATA_DIR", Path.Combine(output, "appdata"));
@@ -79,6 +83,11 @@ if (args.Contains("--verify-wizard", StringComparer.Ordinal))
     return;
 }
 var shell = new MainViewModel(services);
+if (args.Contains("--verify-licenses", StringComparer.Ordinal))
+{
+    LicenseVerification.Run(shell, output);
+    return;
+}
 if (args.Contains("--verify-auto-updates", StringComparer.Ordinal))
 {
     AutomaticUpdateVerification.Run(shell, output);

@@ -30,6 +30,10 @@ try {
     $inputs = Get-Content (Join-Path $env:BYDLO_ROOT 'engines/bundle-inputs.lock.json') -Raw | ConvertFrom-Json -AsHashtable
     foreach ($rid in @('win-x64','win-arm64')) {
         $bundle = Join-Path $fixture $rid
+        New-Item -ItemType Directory -Force $bundle | Out-Null
+        Copy-Item (Join-Path $env:BYDLO_ROOT 'LICENSE'), (Join-Path $env:BYDLO_ROOT 'THIRD_PARTY_NOTICES.md') $bundle
+        Copy-Item (Join-Path $env:BYDLO_ROOT 'licenses') $bundle -Recurse
+        Copy-Item (Join-Path $env:BYDLO_ROOT 'licenses/Velopack.txt') (Join-Path $bundle 'LICENSE-Velopack.txt')
         $platform = $rid.Replace('win-', 'windows-')
         # Minimal PE header, never executable code.
         $pe = [byte[]]::new(128)

@@ -166,6 +166,7 @@
             </StackPanel>
           </StackPanel>
           <TextBlock Classes="muted" Text="{l:T about.text}" TextWrapping="Wrap" />
+          <TextBlock x:Name="LicenseNotices" Classes="faint" Text="{l:T about.licenses}" TextWrapping="Wrap" />
           <Border Classes="tile">
             <StackPanel Spacing="8">
               <Grid ColumnDefinitions="*,Auto">

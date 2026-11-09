@@ -1,7 +1,7 @@
 # CLAUDE.md — BYDLO project rules
 
 BYDLO — **B**ypass **Y**our **D**igital **L**imitations **O**nline.
-*One app. Every protocol. Zero bullshit.*
+*One app. Every protocol.*
 
 This file is the **single** instruction file for coding agents working on this repository.
 Never create `AGENTS.md` or any other parallel instruction file.
