@@ -118,8 +118,8 @@ public sealed class AmneziaNetwork(IProcessRunner runner, OsFamily os, string di
                 }
                 else
                 {
-                    await RunAsync(new ProcessSpec { FileName = "resolvectl", Arguments = ["dns", InterfaceName, .. servers] }, ct).ConfigureAwait(false);
-                    await RunAsync(new ProcessSpec { FileName = "resolvectl", Arguments = ["domain", InterfaceName, "~."] }, ct).ConfigureAwait(false);
+                    await RunAsync(new ProcessSpec { FileName = "resolvectl", Arguments = ["dns", InterfaceName, .. servers], DisplayName = "amnezia-network" }, ct).ConfigureAwait(false);
+                    await RunAsync(new ProcessSpec { FileName = "resolvectl", Arguments = ["domain", InterfaceName, "~."], DisplayName = "amnezia-network" }, ct).ConfigureAwait(false);
                 }
             }
         }

@@ -146,7 +146,19 @@ internal static class HelperServer
             LockId(kind) is { } id ? BundledExecutable(id) : null;
     }
 
-    private sealed class VerifiedHelperRunner(IProcessRunner inner) : IProcessRunner
+    // Pure resolution policy shared with isolated tests. Execution stays guarded in VerifiedHelperRunner.
+    internal static ProcessSpec? ResolveUnixSystemTool(ProcessSpec spec, Func<string, bool> fileExists)
+    {
+        if (spec.DisplayName is not ("amnezia-network" or "Zapret firewall")) { return null; }
+        var name = Path.GetFileName(spec.FileName);
+        if (name is not ("ip" or "resolvectl" or "ifconfig" or "route" or "scutil" or "networksetup" or "pfctl" or "nft"))
+        { throw new UnauthorizedAccessException("Unapproved system tool."); }
+        var absolute = SystemToolDirectories.Select(dir => Path.Combine(dir, name)).FirstOrDefault(fileExists)
+            ?? throw new FileNotFoundException("Required system tool is missing.");
+        return spec with { FileName = absolute };
+    }
+
+    internal sealed class VerifiedHelperRunner(IProcessRunner inner) : IProcessRunner
     {
         public IManagedProcess Start(ProcessSpec spec) { Verify(spec); return inner.Start(spec); }
         public Task<(int ExitCode, string Output)> RunToCompletionAsync(ProcessSpec spec, TimeSpan timeout, CancellationToken ct = default)
@@ -158,14 +170,9 @@ internal static class HelperServer
                 spec = spec with { FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe") };
                 NetworkSafetyGuard.EnsureAllowed("configure the BYDLO tunnel");
             }
-            else if (!OperatingSystem.IsWindows() && spec.DisplayName is "amnezia-network" or "Zapret firewall")
+            else if (!OperatingSystem.IsWindows() && ResolveUnixSystemTool(spec, File.Exists) is { } systemTool)
             {
-                var name = Path.GetFileName(spec.FileName);
-                if (name is not ("ip" or "resolvectl" or "ifconfig" or "route" or "scutil" or "networksetup" or "pfctl" or "nft"))
-                { throw new UnauthorizedAccessException("Unapproved system tool."); }
-                var absolute = SystemToolDirectories.Select(dir => Path.Combine(dir, name)).FirstOrDefault(File.Exists)
-                    ?? throw new FileNotFoundException("Required system tool is missing.");
-                spec = spec with { FileName = absolute };
+                spec = systemTool;
                 NetworkSafetyGuard.EnsureAllowed("configure BYDLO network resources");
             }
             else { Verify(spec); }
