@@ -298,6 +298,41 @@ public class BundledEngineTests
         Assert.False(File.Exists(Path.Combine(directory, "profile.ovpn")));
     }
 
+    [Fact]
+    public async Task Openvpn_passes_paths_with_spaces_and_quotes_as_separate_arguments()
+    {
+        // Windows forbids '"' in file names, so the quote case only runs on Unix.
+        var name = OperatingSystem.IsWindows() ? "openvpn spaced work dir" : "openvpn spaced \"quoted\" work dir";
+        var work = Path.Combine(TestDirs.New("openvpn-arguments"), name);
+        Directory.CreateDirectory(work);
+        var runner = new FakeProcessRunner { StartupOutput = { "Initialization Sequence Completed" } };
+        await using var engine = new OpenVpnEngine(runner, new LogRedactor(),
+            new FakeLocator(new(OsFamily.Linux, CpuArch.X64)), new FakePrivileges(true));
+        var source = new Bydlo.Core.Import.ManualProfileDraft
+        {
+            Protocol = ProtocolKind.OpenVpn,
+            Configuration = "client\ndev tun\nremote server.example 1194\nauth-user-pass",
+            Identifier = "private-user",
+            Password = "private-password",
+        }.Build();
+        await engine.StartAsync(new() { Profile = source.Profile, Secrets = source.Secrets, Settings = new(), WorkDirectory = work });
+        var spec = Assert.Single(runner.Started);
+        var arguments = spec.Arguments.ToList();
+        var configIndex = arguments.IndexOf("--config");
+        var authIndex = arguments.IndexOf("--auth-user-pass");
+        Assert.True(configIndex >= 0);
+        Assert.True(authIndex >= 0);
+        // Each path stays one list item exactly as written: no shell quoting, no joining.
+        Assert.Equal(Path.Combine(work, "profile.ovpn"), arguments[configIndex + 1]);
+        Assert.Equal(Path.Combine(work, "auth.txt"), arguments[authIndex + 1]);
+        Assert.Equal(work, spec.WorkingDirectory);
+        Assert.All(arguments, argument => Assert.False(argument.Length > 1 && argument[0] == '"' && argument[^1] == '"'));
+        Assert.Equal("private-user\nprivate-password\n", await File.ReadAllTextAsync(arguments[authIndex + 1]));
+        await engine.StopAsync();
+        Assert.False(File.Exists(arguments[configIndex + 1]));
+        Assert.False(File.Exists(arguments[authIndex + 1]));
+    }
+
     [Theory]
     [InlineData("", "password")]
     [InlineData("user", "password\ninjected")]

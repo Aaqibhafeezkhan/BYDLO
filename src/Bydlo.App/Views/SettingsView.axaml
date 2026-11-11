@@ -4,6 +4,7 @@
              xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:m="using:Bydlo.Core.Models"
+             xmlns:gh="using:Bydlo.Core.Diagnostics"
              xmlns:l="using:Bydlo.App.Services"
              x:Class="Bydlo.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
@@ -33,6 +34,7 @@
               <WrapPanel x:Name="CategoryButtons" Orientation="Vertical" ItemWidth="169">
               <Button Classes="quiet" Content="{l:T settings.appearance}" Tag="AppearanceSection" Click="ScrollToSection" />
               <Button Classes="quiet" Content="{l:T settings.section.import}" Tag="ImportSection" Click="ScrollToSection" />
+              <Button Classes="quiet" Content="{l:T settings.section.github}" Tag="GitHubSection" Click="ScrollToSection" />
               <Button Classes="quiet" Content="{l:T settings.desktop}" Tag="DesktopSection" Click="ScrollToSection" />
               <Button Classes="quiet" Content="{l:T settings.connection}" Tag="ConnectionSection" Click="ScrollToSection" />
               <Button Classes="quiet" Content="{l:T settings.section.advanced}" Tag="AdvancedSection" Click="ScrollToSection" />
@@ -44,6 +46,7 @@
                       AutomationProperties.Name="{l:T settings.section.jump}" SelectedIndex="0" SelectionChanged="OnCategorySelected">
               <ComboBoxItem Tag="AppearanceSection" Content="{l:T settings.appearance}" />
               <ComboBoxItem Tag="ImportSection" Content="{l:T settings.section.import}" />
+              <ComboBoxItem Tag="GitHubSection" Content="{l:T settings.section.github}" />
               <ComboBoxItem Tag="DesktopSection" Content="{l:T settings.desktop}" />
               <ComboBoxItem Tag="ConnectionSection" Content="{l:T settings.connection}" />
               <ComboBoxItem Tag="AdvancedSection" Content="{l:T settings.section.advanced}" />
@@ -83,6 +86,44 @@
             <TextBlock Text="{l:T subs.interval}" />
             <NumericUpDown Value="{Binding SubscriptionUpdateIntervalHours}" Minimum="1" Maximum="168" FormatString="0" Width="140" HorizontalAlignment="Left" />
           </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Three independent GitHub consents from the first-run screen (issue #438). -->
+      <Border x:Name="GitHubSection" Classes="panel">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h2" Text="{l:T settings.consent.title}" />
+          <TextBlock Classes="faint" Text="{l:T settings.consent.hint}" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T settings.consent.updates}" FontWeight="Medium" TextWrapping="Wrap" />
+              <TextBlock Classes="faint" Text="{l:T settings.consent.updates.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.consent.updates}" IsChecked="{Binding ConsentAutomaticUpdates}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T settings.consent.notifications}" FontWeight="Medium" TextWrapping="Wrap" />
+              <TextBlock Classes="faint" Text="{l:T settings.consent.notifications.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.consent.notifications}" IsChecked="{Binding ConsentNotifications}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Margin="0,0,18,0">
+              <TextBlock Text="{l:T settings.consent.themes}" FontWeight="Medium" TextWrapping="Wrap" />
+              <TextBlock Classes="faint" Text="{l:T settings.consent.themes.hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{l:T settings.consent.themes}" IsChecked="{Binding ConsentThemes}" />
+          </Grid>
+          <TextBlock Classes="caps" Text="{l:T settings.consent.sources}" />
+          <WrapPanel>
+            <Button Classes="text-action" Content="{l:T onboarding.consent.source.releases}" Margin="0,0,14,0"
+                    Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static gh:GitHubSources.Releases}" />
+            <Button Classes="text-action" Content="{l:T onboarding.consent.source.notice}" Margin="0,0,14,0"
+                    Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static gh:GitHubSources.Notice}" />
+            <Button Classes="text-action" Content="{l:T onboarding.consent.source.themes}"
+                    Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static gh:GitHubSources.ThemeGallery}" />
+          </WrapPanel>
         </StackPanel>
       </Border>
 
@@ -176,7 +217,7 @@
                   <TextBlock Classes="faint" Text="{l:T settings.update.auto.unavailable}" TextWrapping="Wrap" IsVisible="{Binding !IsAutoUpdateAvailable}" />
                 </StackPanel>
                 <ToggleSwitch x:Name="AutoUpdateToggle" Grid.Column="1" AutomationProperties.Name="{l:T settings.update.auto}"
-                              IsChecked="{Binding AutoUpdateApp}" />
+                              IsChecked="{Binding AutoUpdateApp}" IsEnabled="{Binding ConsentAutomaticUpdates}" />
               </Grid>
               <TextBlock x:Name="UpdateGuidance" Text="{Binding UpdateGuidanceText}" TextWrapping="Wrap"
                          IsVisible="{Binding HasUpdateGuidance}" />
@@ -184,7 +225,7 @@
               <TextBlock Classes="faint" Text="{Binding UpdateDetail}" TextWrapping="Wrap" />
               <ProgressBar IsVisible="{Binding IsDownloadingUpdate}" Minimum="0" Maximum="100" Value="{Binding UpdateProgress}" />
               <WrapPanel>
-                <Button Classes="ghost" Content="{l:T settings.update.check}" Command="{Binding CheckUpdatesCommand}" Margin="0,0,8,0" IsEnabled="{Binding !IsCheckingUpdates}" />
+                <Button Classes="ghost" Content="{l:T settings.update.check}" Command="{Binding CheckUpdatesCommand}" Margin="0,0,8,0" IsEnabled="{Binding CanCheckUpdates}" />
                 <Button Classes="primary" Content="{l:T settings.update.download}" Command="{Binding DownloadUpdateCommand}" Margin="0,0,8,0"
                         IsEnabled="{Binding CanDownloadUpdate}" IsVisible="{Binding SupportsAutomaticUpdates}" />
                 <Button Classes="ghost" Content="{l:T settings.update.open}" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding UpdateUrl}" IsVisible="{Binding HasUpdateUrl}" />

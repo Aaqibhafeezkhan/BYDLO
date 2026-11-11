@@ -44,6 +44,12 @@ internal static class AutomaticUpdateVerification
             // Mock Mode keeps the switch but explains why the built-in updater cannot run here.
             if (view.FindControl<TextBlock>("UpdateGuidance")!.Text != Loc.Instance["settings.update.auto.unavailable"])
             { throw new InvalidOperationException("Mock Mode must explain why automatic updates are unavailable"); }
+            // Issue #438: without the GitHub update consent the opt-in cannot be switched on.
+            shell.Settings.ConsentAutomaticUpdates = false;
+            Pump();
+            if (toggle.IsEffectivelyEnabled) { throw new InvalidOperationException("Update opt-in must wait for the GitHub consent"); }
+            shell.Settings.ConsentAutomaticUpdates = true;
+            Pump();
             shell.Settings.AutoUpdateApp = false;
             toggle.Focus();
             window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);

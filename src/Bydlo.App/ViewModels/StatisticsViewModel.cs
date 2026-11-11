@@ -11,6 +11,8 @@ namespace Bydlo.App.ViewModels;
 
 public sealed partial class StatisticsViewModel : PageViewModel
 {
+    private const int MaxLogLines = 500;
+
     public StatisticsViewModel(MainViewModel shell)
         : base(shell)
     {
@@ -20,7 +22,7 @@ public sealed partial class StatisticsViewModel : PageViewModel
             Log.Add(e.ToString());
         }
 
-        Services.Log.EntryAdded += (_, e) => Dispatcher.UIThread.Post(() => AddLog(e));
+        Services.Log.EntriesAdded += (_, batch) => Dispatcher.UIThread.Post(() => AddLogs(batch));
     }
 
     public ObservableCollection<string> Log { get; } = [];
@@ -58,10 +60,17 @@ public sealed partial class StatisticsViewModel : PageViewModel
         }
     }
 
-    private void AddLog(LogEntry e)
+    private void AddLogs(IReadOnlyList<LogEntry> batch)
     {
-        Log.Add(e.ToString());
-        while (Log.Count > 500)
+        // Only the tail can survive the cap; adding the rest would churn the list for nothing.
+        var start = Math.Max(0, batch.Count - MaxLogLines);
+        for (var i = start; i < batch.Count; i++)
+        {
+            Log.Add(batch[i].ToString());
+        }
+
+        var excess = Log.Count - MaxLogLines;
+        for (var i = 0; i < excess; i++)
         {
             Log.RemoveAt(0);
         }

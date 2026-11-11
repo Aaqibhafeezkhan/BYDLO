@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/amnezia-vpn/amneziawg-go/v3 v3.1.20260828
-	golang.org/x/sys v0.49.0
+	golang.org/x/sys v0.50.0
 )
 
 require (

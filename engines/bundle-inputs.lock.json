@@ -1,11 +1,11 @@
 {
   "openvpn-windows-x64": {
-    "url": "https://build.openvpn.net/downloads/releases/OpenVPN-2.7.8-I002-amd64.msi",
-    "sha256": "33104dd02c48cba172612882b1af6276422b1b4340d4c9c84dd2afb4b356fe9f"
+    "url": "https://build.openvpn.net/downloads/releases/OpenVPN-2.7.9-I001-amd64.msi",
+    "sha256": "47abc38a15c217b848fe099332a8523500fcbf2ebf8a1eaa7d5648c6e75079aa"
   },
   "openvpn-windows-arm64": {
-    "url": "https://build.openvpn.net/downloads/releases/OpenVPN-2.7.8-I002-arm64.msi",
-    "sha256": "abbbc6337d5770639154c9baa8673640a005a0ec829856c2565fd5d84481f12f"
+    "url": "https://build.openvpn.net/downloads/releases/OpenVPN-2.7.9-I001-arm64.msi",
+    "sha256": "41cd8dc2131bf5621eeb238ade5bbf2dc7c91c4ab6009d74b034c41819e35898"
   },
   "lessmsi": {
     "url": "https://github.com/activescott/lessmsi/releases/download/v2.12.9/lessmsi-v2.12.9.zip",
@@ -16,8 +16,8 @@
     "sha256": "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51"
   },
   "openvpn-source": {
-    "url": "https://github.com/OpenVPN/openvpn/releases/download/v2.7.8/openvpn-2.7.8.tar.gz",
-    "sha256": "c070d1d2440b5a6fca6c2c68645c98cd492116ac36ef4f0946177115532c8e36"
+    "url": "https://github.com/OpenVPN/openvpn/releases/download/v2.7.9/openvpn-2.7.9.tar.gz",
+    "sha256": "c42a6ed892ddfe2d6e3317a5040f19bec5827564affb2fe3f2b3904a94daacb1"
   },
   "openssl-source": {
     "sha256": "a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98",

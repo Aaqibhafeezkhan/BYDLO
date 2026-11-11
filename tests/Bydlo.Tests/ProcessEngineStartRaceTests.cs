@@ -224,6 +224,8 @@ public sealed class ProcessEngineStartRaceTests
 #pragma warning restore CS0067
         public event EventHandler<int>? Exited;
 
+        public void BeginEventDelivery() { }
+
         public Task StopAsync(TimeSpan timeout, CancellationToken ct = default)
         {
             Stopped = true;

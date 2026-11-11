@@ -2,6 +2,7 @@ using System.Globalization;
 using Bydlo.App.Services;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Security;
+using Bydlo.Core.Updates;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -18,7 +19,6 @@ public sealed partial class SettingsViewModel
     partial void OnAutoUpdateAppChanged(bool value)
     {
         Services.Settings.AutoUpdateApp = value;
-        Services.Settings.CheckForUpdates = value;
         // A downloaded package waits while the switch is off and is never applied behind the user's back.
         Services.AutomaticUpdates.SetOptIn(value);
         if (!value) { _automaticUpdateCheck?.Cancel(); }
@@ -42,6 +42,9 @@ public sealed partial class SettingsViewModel
     /// <summary>Result of the last release or engine check; the packaged update state wins when it is further along.</summary>
     private string _updateCheckStatus = "";
 
+    // Why the signed catalog refused the last update (issue #411); shown instead of the generic error.
+    private string? _updateFailureStatus;
+
     /// <summary>
     /// Single status line. The packaged update state is authoritative, so a release notification can never
     /// replace "downloaded, installs on exit" with "new version available" (issue #413).
@@ -51,7 +54,7 @@ public sealed partial class SettingsViewModel
         AppUpdateState.Downloading => L["settings.update.downloading"],
         AppUpdateState.Ready => L["settings.update.ready"],
         AppUpdateState.Deferred => L["settings.update.deferred"],
-        AppUpdateState.Failed => L["settings.update.error"],
+        AppUpdateState.Failed => _updateFailureStatus ?? L["settings.update.error"],
         AppUpdateState.Available when Services.AutomaticUpdates.AvailableVersion is { } version =>
             Loc.T("settings.update.available", version),
         _ => _updateCheckStatus,
@@ -80,13 +83,21 @@ public sealed partial class SettingsViewModel
 
     public bool HasUpdateUrl => UpdateUrl is not null;
 
-    public bool CanDownloadUpdate => IsAutoUpdateAvailable && AutoUpdateApp && !IsDownloadingUpdate && !IsCheckingUpdates;
+    public bool CanDownloadUpdate => IsAutoUpdateAvailable && AutoUpdateApp && ConsentAutomaticUpdates &&
+        !IsDownloadingUpdate && !IsCheckingUpdates;
+
+    /// <summary>A manual check also reads GitHub, so it needs the same consent (issue #438).</summary>
+    public bool CanCheckUpdates => ConsentAutomaticUpdates && !IsCheckingUpdates;
 
     partial void OnUpdateUrlChanged(string? value) => OnPropertyChanged(nameof(HasUpdateUrl));
 
     partial void OnIsDownloadingUpdateChanged(bool value) => OnPropertyChanged(nameof(CanDownloadUpdate));
 
-    partial void OnIsCheckingUpdatesChanged(bool value) => OnPropertyChanged(nameof(CanDownloadUpdate));
+    partial void OnIsCheckingUpdatesChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanDownloadUpdate));
+        OnPropertyChanged(nameof(CanCheckUpdates));
+    }
 
     partial void OnIsAutoUpdateAvailableChanged(bool value) => OnPropertyChanged(nameof(CanDownloadUpdate));
 
@@ -109,14 +120,27 @@ public sealed partial class SettingsViewModel
         OnPropertyChanged(nameof(UpdateStatus));
     }
 
+    private void SetUpdateFailureStatus(string value)
+    {
+        _updateCheckStatus = value;
+        _updateFailureStatus = value;
+        OnPropertyChanged(nameof(UpdateStatus));
+    }
+
     private void SetUpdateCheckStatus(string value)
     {
         _updateCheckStatus = value;
+        _updateFailureStatus = null;
         OnPropertyChanged(nameof(UpdateStatus));
     }
 
     private void RefreshUpdateDetail()
     {
+        if (!ConsentAutomaticUpdates)
+        {
+            UpdateDetail = L["settings.update.detail.consent"];
+            return;
+        }
         if (!IsAutoUpdateAvailable)
         {
             UpdateDetail = "";
@@ -140,6 +164,10 @@ public sealed partial class SettingsViewModel
             if (Services.IsMock || NetworkSafetyGuard.IsLocked)
             {
                 throw new InvalidOperationException(L["settings.update.locked"]);
+            }
+            if (!ConsentAutomaticUpdates)
+            {
+                throw new InvalidOperationException(L["settings.update.detail.consent"]);
             }
             IsCheckingUpdates = true;
             UpdateUrl = null;
@@ -197,6 +225,10 @@ public sealed partial class SettingsViewModel
             {
                 throw new InvalidOperationException(L["settings.update.auto.unavailable"]);
             }
+            if (!ConsentAutomaticUpdates)
+            {
+                throw new InvalidOperationException(L["settings.update.detail.consent"]);
+            }
             IsDownloadingUpdate = true;
             UpdateProgress = 0;
             SetUpdateCheckStatus(L["settings.update.downloading"]);
@@ -214,6 +246,12 @@ public sealed partial class SettingsViewModel
                     Services.Settings, false, progress, cancellation.Token);
                 SetUpdateCheckStatus(ready ? L["settings.update.ready"] : L["settings.update.uptodate"]);
                 await Services.SaveSettingsAsync();
+            }
+            catch (UpdateTrustException ex)
+            {
+                // The signed catalog refused this update: nothing was installed and the working version stays.
+                SetUpdateFailureStatus(L[UpdateTrustMessages.Key(ex.Failure)]);
+                Services.Log.Warn("update", $"Update refused: {ex.Failure}.");
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
             {
@@ -258,7 +296,8 @@ public sealed partial class SettingsViewModel
     public async Task CheckForUpdatesIfDueAsync()
     {
         RefreshUpdateState();
-        if (!Services.Settings.AutoUpdateApp || Services.IsMock || NetworkSafetyGuard.IsLocked || IsCheckingUpdates)
+        if (!ConsentAutomaticUpdates || !Services.Settings.AutoUpdateApp ||
+            Services.IsMock || NetworkSafetyGuard.IsLocked || IsCheckingUpdates)
         {
             return;
         }
@@ -291,6 +330,12 @@ public sealed partial class SettingsViewModel
                 SetUpdateCheckStatus(Loc.T("settings.update.available", release.Tag));
                 Shell.ShowReleaseNotification(release);
             }
+        }
+        catch (UpdateTrustException ex)
+        {
+            // A scheduled download that fails verification must say so instead of looking like a network error.
+            SetUpdateFailureStatus(L[UpdateTrustMessages.Key(ex.Failure)]);
+            Services.Log.Warn("update", $"Update refused: {ex.Failure}.");
         }
         catch (Exception ex)
         {

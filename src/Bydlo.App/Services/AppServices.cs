@@ -57,7 +57,7 @@ public sealed class AppServices
         Subscriptions = new SubscriptionClient(Http, Importer);
         Zapret = new ZapretEngine(Runner, LogRedactor.Shared, Locator, Privileges, ZapretFirewall);
         ZapretUpdater = new ZapretUpdater(Installer, PlatformInfo.Current);
-        AutomaticUpdates = new(() => new PackagedAppUpdater(Paths.DataDirectory))
+        AutomaticUpdates = new(() => new PackagedAppUpdater(Paths.DataDirectory, Http))
         {
             // Package markers decide who owns updates; a writable path alone never enables the built-in updater.
             InstallKind = AppInstallLocator.CreateDefault().Detect(AppContext.BaseDirectory, Environment.ProcessPath),
@@ -155,6 +155,7 @@ public sealed class AppServices
             s.Settings.Language = "auto";
             s.Settings.Theme = ThemePreference.System;
         }
+        s.Settings.MigrateConsents(firstRun);
 
         await s.Profiles.LoadAsync().ConfigureAwait(false);
         if (!s.IsMock && !NetworkSafetyGuard.IsLocked && s.Privileges.IsElevated && s.AmneziaNetwork.HasPendingRecovery)
@@ -252,6 +253,8 @@ public sealed class AppServices
         if (_subscriptionRefreshTask is not null) { await _subscriptionRefreshTask.ConfigureAwait(false); }
         await Connections.StopAllAsync().ConfigureAwait(false);
         await SaveSettingsAsync().ConfigureAwait(false);
+        // The file writer is asynchronous: drain it so the shutdown lines reach bydlo.log.
+        await Log.FlushAsync().ConfigureAwait(false);
         Http.Dispose();
         _shutdownCancellation.Dispose();
     }

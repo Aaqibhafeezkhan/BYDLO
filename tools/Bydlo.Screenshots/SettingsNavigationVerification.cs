@@ -55,7 +55,10 @@ internal static class SettingsNavigationVerification
             var desktop = view.FindControl<Control>("DesktopSection")!;
             scroll.Offset = new Vector(0, desktop.TranslatePoint(default, content)!.Value.Y + 20);
             Pump();
-            Require(picker.SelectedIndex == 2 && categories[2].Classes.Contains("active"), "Manual scrolling updates both indexes");
+            // Look the section up by tag: inserting a section (e.g. GitHub consents, #438) must not break the check.
+            var desktopIndex = Array.FindIndex(categories, b => (string?)b.Tag == "DesktopSection");
+            Require(desktopIndex >= 0 && picker.SelectedIndex == desktopIndex && categories[desktopIndex].Classes.Contains("active"),
+                "Manual scrolling updates both indexes");
             using (var frame = window.CaptureRenderedFrame()) { frame!.Save(Path.Combine(output, $"settings-{language}-{theme}-{width}.png")); }
         }
         window.Close();

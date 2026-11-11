@@ -16,7 +16,12 @@ public sealed partial class MainViewModel
     public string ReleaseNotificationText => ReleaseNotification is { } release
         ? Loc.T("settings.update.available", release.Tag) : "";
 
-    public void ShowReleaseNotification(GitHubRelease release) => ReleaseNotification = release;
+    /// <summary>Release banners are notification content, so they need the notifications consent (issue #438).</summary>
+    public void ShowReleaseNotification(GitHubRelease release)
+    {
+        if (!Services.Settings.ConsentNotifications) { return; }
+        ReleaseNotification = release;
+    }
 
     [RelayCommand]
     private async Task DismissReleaseNotification()

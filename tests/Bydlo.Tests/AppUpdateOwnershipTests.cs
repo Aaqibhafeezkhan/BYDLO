@@ -139,7 +139,7 @@ public sealed class AppUpdateOwnershipTests
         {
             InstallKind = AppInstallKind.Debian,
         };
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
 
         Assert.Equal(AppUpdateOwner.PackageManager, policy.Owner);
         Assert.False(policy.IsAvailable());
@@ -154,7 +154,7 @@ public sealed class AppUpdateOwnershipTests
     {
         var backend = new FakeBackend();
         var policy = Velopack(backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         AppUpdateState? observed = null;
         backend.Download = () => { observed = policy.State; return Task.FromResult(true); };
 
@@ -168,7 +168,7 @@ public sealed class AppUpdateOwnershipTests
     {
         var backend = new FakeBackend();
         var policy = Velopack(backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         Assert.True(await policy.DownloadNowAsync(settings, false));
 
         policy.MarkAvailable("v9.9.9");
@@ -197,7 +197,7 @@ public sealed class AppUpdateOwnershipTests
     {
         var backend = new FakeBackend();
         var policy = Velopack(backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         Assert.True(await policy.DownloadNowAsync(settings, false));
 
         settings.AutoUpdateApp = false;
@@ -220,7 +220,7 @@ public sealed class AppUpdateOwnershipTests
     {
         var backend = new FakeBackend();
         var policy = Velopack(backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         Assert.True(await policy.DownloadNowAsync(settings, false));
 
         policy.Defer();
@@ -235,7 +235,7 @@ public sealed class AppUpdateOwnershipTests
     {
         var backend = new FakeBackend { Download = () => throw new OperationCanceledException() };
         var policy = Velopack(backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         policy.MarkAvailable("v9.9.9");
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => policy.DownloadNowAsync(settings, false));
@@ -250,7 +250,7 @@ public sealed class AppUpdateOwnershipTests
     {
         var backend = new FakeBackend { Download = () => throw new IOException("offline") };
         var policy = Velopack(backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
 
         await Assert.ThrowsAsync<IOException>(() => policy.DownloadNowAsync(settings, false));
 
@@ -264,7 +264,7 @@ public sealed class AppUpdateOwnershipTests
     {
         var backend = new FakeBackend { ApplyError = new IOException("locked") };
         var policy = Velopack(backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         Assert.True(await policy.DownloadNowAsync(settings, false));
 
         Assert.Equal(AppUpdateApplyResult.Failed, policy.ApplyOnExit(settings, false));
