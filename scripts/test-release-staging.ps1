@@ -50,7 +50,8 @@ $stage = Join-Path $fixture 'staging'
 # Issue #411: the published set must carry a signed update catalog built from the final packages.
 $key = [Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve]::CreateFromFriendlyName('nistP256'))
 try { $env:BYDLO_UPDATE_SIGNING_KEY = $key.ExportPkcs8PrivateKeyPem() } finally { $key.Dispose() }
-& "$PSScriptRoot/sign-update-catalog.ps1" -ReleaseDirectory $stage -Version $version
+# A throwaway key is not the compiled-in trust root, so it signs under its own key id.
+& "$PSScriptRoot/sign-update-catalog.ps1" -ReleaseDirectory $stage -Version $version -KeyId 'staging-test'
 $download = Join-Path $fixture 'download'
 Copy-Item $stage $download -Recurse
 & "$PSScriptRoot/stage-release.ps1" -InputDirectory $download -OutputDirectory $download -Version $version -VerifyOnly
