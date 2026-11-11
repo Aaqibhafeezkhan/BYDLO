@@ -248,6 +248,8 @@ public sealed class AppServices
         if (_subscriptionRefreshTask is not null) { await _subscriptionRefreshTask.ConfigureAwait(false); }
         await Connections.StopAllAsync().ConfigureAwait(false);
         await SaveSettingsAsync().ConfigureAwait(false);
+        // The file writer is asynchronous: drain it so the shutdown lines reach bydlo.log.
+        await Log.FlushAsync().ConfigureAwait(false);
         Http.Dispose();
         _shutdownCancellation.Dispose();
     }
