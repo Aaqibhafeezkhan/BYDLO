@@ -139,6 +139,8 @@ public abstract class ProcessEngineBase(IProcessRunner runner, LogRedactor redac
                 }
             };
             process.Exited += (_, code) => OnProcessExited(process, code, Volatile.Read(ref fatal));
+            // Only now may output flow: a ready line printed before Start returned is still queued (issue #468).
+            process.BeginEventDelivery();
 
             var timeout = Task.Delay(ReadyTimeout, ct);
             var finished = await Task.WhenAny(_ready.Task, timeout).ConfigureAwait(false);
