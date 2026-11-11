@@ -22,16 +22,35 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
     }
 
     private IAppUpdateBackend? _backend;
-    private bool _ready;
     private bool _busy;
     private DateTimeOffset? _lastEmptyCheck;
 
     /// <summary>
-    /// Whether this copy can update itself at all. Archives, portable layouts and unpackaged builds
-    /// answer false, and the UI must say so instead of leaving the opt-in switch on (issue #456).
+    /// How this copy was installed (issue #413). Detected once at startup by <see cref="AppInstallLocator"/>;
+    /// tests and the headless UI verification override it.
+    /// </summary>
+    public AppInstallKind InstallKind { get; set; } = AppInstallKind.Unknown;
+
+    /// <summary>Who owns updates for this copy. Only a Velopack install may update itself.</summary>
+    public AppUpdateOwner Owner => AppUpdateOwnership.OwnerOf(InstallKind);
+
+    /// <summary>Single user-visible state shared by the release check and the packaged updater.</summary>
+    public AppUpdateState State { get; private set; }
+
+    /// <summary>Newest version reported by the release check, if any.</summary>
+    public string? AvailableVersion { get; private set; }
+
+    /// <summary>
+    /// Whether this copy can update itself at all. Archives, portable layouts, package-manager installs
+    /// and unpackaged builds answer false, and the UI must say so instead of leaving the opt-in switch on
+    /// (issues #456, #413).
     /// </summary>
     public bool IsAvailable()
     {
+        if (Owner != AppUpdateOwner.Velopack)
+        {
+            return false;
+        }
         try
         {
             return (_backend ??= createBackend()).IsInstalled;
@@ -40,6 +59,47 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
         {
             // A capability probe must never break the settings page; any failure means "cannot update".
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Records a release found by the notification check. A downloaded package keeps its state, so the
+    /// notification never hides a package that is already waiting for the next exit.
+    /// </summary>
+    public void MarkAvailable(string? version)
+    {
+        AvailableVersion = version;
+        if (State is AppUpdateState.Idle or AppUpdateState.Available)
+        {
+            State = version is null ? AppUpdateState.Idle : AppUpdateState.Available;
+        }
+    }
+
+    /// <summary>Reflects the opt-in switch: a downloaded package waits while the switch is off.</summary>
+    public void SetOptIn(bool enabled)
+    {
+        if (enabled)
+        {
+            if (State == AppUpdateState.Deferred)
+            {
+                State = AppUpdateState.Ready;
+            }
+        }
+        else if (State == AppUpdateState.Ready)
+        {
+            State = AppUpdateState.Deferred;
+        }
+    }
+
+    /// <summary>
+    /// Postpones installation without discarding the downloaded package. Used when cleanup failed or the
+    /// exit was aborted, so the package is never applied over a half-stopped session.
+    /// </summary>
+    public void Defer()
+    {
+        if (State == AppUpdateState.Ready)
+        {
+            State = AppUpdateState.Deferred;
         }
     }
 
@@ -69,31 +129,68 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
         try
         {
             ct.ThrowIfCancellationRequested();
+            // A package-manager or portable copy is never written by the built-in updater (issue #413).
+            if (Owner != AppUpdateOwner.Velopack) { return false; }
             var backend = _backend ??= createBackend();
             if (!backend.IsInstalled) { return false; }
             var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+            State = AppUpdateState.Downloading;
             bool downloaded;
             try { downloaded = await backend.DownloadLatestAsync(progress, ct).ConfigureAwait(false); }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (OperationCanceledException)
+            {
+                // Cancellation records nothing: closing the window mid-download must not consume any window (issue #456).
+                State = AvailableVersion is null ? AppUpdateState.Idle : AppUpdateState.Available;
+                throw;
+            }
+            catch (Exception)
             {
                 // A failed check is rate-limited like an empty one, so an offline feed is not re-polled on every call.
                 _lastEmptyCheck = now;
+                State = AppUpdateState.Failed;
                 throw;
             }
-            // Cancellation records nothing: closing the window mid-download must not consume any window (issue #456).
             // Only a successful download starts the 24h lock.
             if (downloaded) { settings.LastAutomaticUpdateCheck = now; }
             else { _lastEmptyCheck = now; }
-            _ready = downloaded && settings.AutoUpdateApp && !ct.IsCancellationRequested;
-            return _ready;
+            if (!downloaded)
+            {
+                State = AvailableVersion is null ? AppUpdateState.Idle : AppUpdateState.Available;
+                return false;
+            }
+            // Turning the opt-in off during the download keeps the package but never applies it.
+            State = settings.AutoUpdateApp && !ct.IsCancellationRequested
+                ? AppUpdateState.Ready
+                : AppUpdateState.Deferred;
+            return State == AppUpdateState.Ready;
         }
         finally { _busy = false; }
     }
 
-    public void ApplyOnExit(AppSettings settings, bool blocked)
+    /// <summary>
+    /// Hands a downloaded package to the installer. Called only on a real exit, after cleanup succeeded;
+    /// hiding the window in the tray never reaches this method.
+    /// </summary>
+    public AppUpdateApplyResult ApplyOnExit(AppSettings settings, bool blocked)
     {
-        if (!settings.AutoUpdateApp || blocked || !_ready || _busy) { return; }
-        _backend!.ApplyOnExit();
-        _ready = false;
+        if (!settings.AutoUpdateApp || blocked || _busy || Owner != AppUpdateOwner.Velopack)
+        {
+            return AppUpdateApplyResult.Nothing;
+        }
+        if (State != AppUpdateState.Ready)
+        {
+            return State == AppUpdateState.Deferred ? AppUpdateApplyResult.Deferred : AppUpdateApplyResult.Nothing;
+        }
+        try
+        {
+            _backend!.ApplyOnExit();
+        }
+        catch (Exception)
+        {
+            State = AppUpdateState.Failed;
+            return AppUpdateApplyResult.Failed;
+        }
+        State = AppUpdateState.Idle;
+        return AppUpdateApplyResult.Applied;
     }
 }

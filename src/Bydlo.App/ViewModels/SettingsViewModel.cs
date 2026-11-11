@@ -111,6 +111,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         SubscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         CheckForUpdates = s.CheckForUpdates;
         AutoUpdateApp = s.AutoUpdateApp;
+        RefreshUpdateState();
         OnPropertyChanged(nameof(LanSysProxyConflict));
         RefreshCustomThemes();
     }

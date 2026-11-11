@@ -6,6 +6,10 @@ namespace Bydlo.Tests;
 
 public class AutomaticAppUpdaterTests
 {
+    /// <summary>Only a Velopack install may update itself (issue #413); the policy is otherwise unchanged.</summary>
+    private static AutomaticAppUpdater Velopack(FakeBackend backend, TimeProvider? clock = null) =>
+        new AutomaticAppUpdater(() => backend, clock) { InstallKind = AppInstallKind.Velopack };
+
     [Fact]
     public void Data_directory_must_be_outside_replaceable_payload_including_exact_path()
     {
@@ -32,7 +36,7 @@ public class AutomaticAppUpdaterTests
     public async Task Applies_only_at_exit_with_current_opt_in_and_preserves_user_data()
     {
         var backend = new FakeBackend();
-        var policy = new AutomaticAppUpdater(() => backend);
+        var policy = Velopack(backend);
         var settings = new AppSettings { AutoUpdateApp = true, LastProfileId = Guid.NewGuid(), SubscriptionAutoUpdate = true };
         var original = settings.LastProfileId;
         Assert.True(await policy.DownloadIfDueAsync(settings, false));
@@ -61,7 +65,7 @@ public class AutomaticAppUpdaterTests
         var backend = new FakeBackend();
         var settings = new AppSettings { AutoUpdateApp = true };
         backend.Download = () => { settings.AutoUpdateApp = false; return Task.FromResult(true); };
-        var policy = new AutomaticAppUpdater(() => backend);
+        var policy = Velopack(backend);
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
         settings.AutoUpdateApp = true;
         policy.ApplyOnExit(settings, false);
@@ -73,7 +77,7 @@ public class AutomaticAppUpdaterTests
     {
         var clock = new FakeClock(DateTimeOffset.UtcNow);
         var backend = new FakeBackend { Download = () => throw new IOException("offline") };
-        var policy = new AutomaticAppUpdater(() => backend, clock);
+        var policy = Velopack(backend, clock);
         var settings = new AppSettings { AutoUpdateApp = true };
         await Assert.ThrowsAsync<IOException>(() => policy.DownloadIfDueAsync(settings, false));
         Assert.Null(settings.LastAutomaticUpdateCheck);
@@ -91,7 +95,7 @@ public class AutomaticAppUpdaterTests
     {
         var clock = new FakeClock(DateTimeOffset.UtcNow);
         var backend = new FakeBackend { Download = () => Task.FromResult(false) };
-        var policy = new AutomaticAppUpdater(() => backend, clock);
+        var policy = Velopack(backend, clock);
         var settings = new AppSettings { AutoUpdateApp = true };
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
         Assert.Null(settings.LastAutomaticUpdateCheck);
@@ -113,7 +117,7 @@ public class AutomaticAppUpdaterTests
     public async Task Cancelled_download_does_not_consume_the_daily_window()
     {
         var backend = new FakeBackend { Download = () => throw new OperationCanceledException() };
-        var policy = new AutomaticAppUpdater(() => backend);
+        var policy = Velopack(backend);
         var settings = new AppSettings { AutoUpdateApp = true };
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => policy.DownloadIfDueAsync(settings, false));
         Assert.Null(settings.LastAutomaticUpdateCheck);
@@ -127,7 +131,7 @@ public class AutomaticAppUpdaterTests
     public async Task Manual_download_ignores_the_daily_window()
     {
         var backend = new FakeBackend();
-        var policy = new AutomaticAppUpdater(() => backend);
+        var policy = Velopack(backend);
         var settings = new AppSettings { AutoUpdateApp = true };
         Assert.True(await policy.DownloadIfDueAsync(settings, false));
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
@@ -140,7 +144,7 @@ public class AutomaticAppUpdaterTests
     public async Task Manual_download_keeps_the_opt_in_and_blocked_guards()
     {
         var backend = new FakeBackend();
-        var policy = new AutomaticAppUpdater(() => backend);
+        var policy = Velopack(backend);
         Assert.False(await policy.DownloadNowAsync(new AppSettings { AutoUpdateApp = false }, false));
         Assert.False(await policy.DownloadNowAsync(new AppSettings { AutoUpdateApp = true }, blocked: true));
         Assert.Equal(0, backend.Downloads);
@@ -150,7 +154,7 @@ public class AutomaticAppUpdaterTests
     public async Task Progress_is_forwarded_to_the_backend()
     {
         var backend = new FakeBackend();
-        var policy = new AutomaticAppUpdater(() => backend);
+        var policy = Velopack(backend);
         var settings = new AppSettings { AutoUpdateApp = true };
         var progress = new Progress<int>();
         Assert.True(await policy.DownloadIfDueAsync(settings, false, progress));
@@ -160,8 +164,8 @@ public class AutomaticAppUpdaterTests
     [Fact]
     public void Availability_reflects_the_backend()
     {
-        Assert.True(new AutomaticAppUpdater(() => new FakeBackend()).IsAvailable());
-        Assert.False(new AutomaticAppUpdater(() => new FakeBackend { IsInstalled = false }).IsAvailable());
+        Assert.True(Velopack(new FakeBackend()).IsAvailable());
+        Assert.False(Velopack(new FakeBackend { IsInstalled = false }).IsAvailable());
         Assert.False(new AutomaticAppUpdater(() => throw new InvalidOperationException("No I/O allowed")).IsAvailable());
     }
 
