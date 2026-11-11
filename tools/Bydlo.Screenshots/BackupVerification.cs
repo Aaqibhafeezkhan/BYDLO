@@ -29,8 +29,9 @@ internal static class BackupVerification
             Profiles = [new(new Profile { Name = "Сервер из резервной копии", Protocol = ProtocolKind.Trojan, Host = "example.invalid", Port = 443 },
                 new ProfileSecrets { Values = { [Keys.Password] = "fake-backup-credential" } })],
         };
-        var decrypted = BackupArchive.Decrypt(BackupArchive.Encrypt(data, "fake backup password"), "fake backup password");
-        shell.Settings.PreviewBackup(decrypted);
+        var encrypted = BackupArchive.Encrypt(data, "fake backup password");
+        var initialSession = BackupArchive.OpenImport(encrypted, "fake backup password");
+        shell.Settings.PreviewBackup(initialSession);
         Require(services.Profiles.Profiles.Count == 1 && shell.Settings.HasBackupPreview, "Preview does not change data");
         var mergeText = shell.Settings.BackupPreviewText;
         shell.Settings.BackupReplace = true;
@@ -57,16 +58,53 @@ internal static class BackupVerification
         Pump();
         using (var frame = window.CaptureRenderedFrame()) { frame!.Save(Path.Combine(output, "backup-preview-narrow.png")); }
         shell.Settings.CancelBackupCommand.Execute(null);
+        RequireDisposed(initialSession);
         Require(!shell.Settings.HasBackupPreview && services.Profiles.Profiles.Count == 1, "Cancel does not change data");
-        shell.Settings.PreviewBackup(decrypted);
+        var replacedSession = BackupArchive.OpenImport(encrypted, "fake backup password");
+        shell.Settings.PreviewBackup(replacedSession);
+        var navigationSession = BackupArchive.OpenImport(encrypted, "fake backup password");
+        shell.Settings.PreviewBackup(navigationSession);
+        RequireDisposed(replacedSession);
+        shell.Navigate("settings");
+        shell.Navigate("home");
+        RequireDisposed(navigationSession);
+        Require(!shell.Settings.HasBackupPreview, "Leaving settings closes preview");
+        var appliedSession = BackupArchive.OpenImport(encrypted, "fake backup password");
+        shell.Settings.PreviewBackup(appliedSession);
         Wait(shell.Settings.ApplyBackupCommand.ExecuteAsync(null));
+        RequireDisposed(appliedSession);
         Require(!shell.Settings.HasBackupPreview, "Successful import closes preview");
         Require(services.Profiles.Profiles.Count == 1 && services.Profiles.Profiles[0].Name == data.Profiles[0].Profile.Name, "Replacement is applied");
         Require(shell.Tools.TgPort == 2443 && shell.Tools.GameFilter == "tcp", "Tools refresh restored settings");
         Require(shell.Routing.DirectDomains == "example.invalid", "Routing refreshes restored settings");
         Require(services.IsMock, "Forced Mock Mode remains active");
+        // Force a document-write failure after secret writes. The old store must survive,
+        // and the failed attempt must release the key rather than retain a retry session.
+        var failedSession = BackupArchive.OpenImport(encrypted, "fake backup password");
+        shell.Settings.PreviewBackup(failedSession);
+        var blockedPath = Path.Combine(services.Paths.DataDirectory, "profiles.json.tmp");
+        Directory.CreateDirectory(blockedPath);
+        try
+        {
+            Wait(shell.Settings.ApplyBackupCommand.ExecuteAsync(null));
+            RequireDisposed(failedSession);
+            Require(!shell.Settings.HasBackupPreview, "Failed apply closes preview");
+            Require(services.Profiles.Profiles.Count == 1, "Failed apply retains profiles");
+        }
+        finally { Directory.Delete(blockedPath); }
+        var shutdownSession = BackupArchive.OpenImport(encrypted, "fake backup password");
+        shell.Settings.PreviewBackup(shutdownSession);
+        Wait(services.ShutdownAsync());
+        RequireDisposed(shutdownSession);
         window.Close();
-        Console.WriteLine("Backup verification passed: masked inputs, preview, mode switch, cancellation, import, page refresh.");
+        Console.WriteLine("Backup verification passed: masked inputs, preview, modes, cancellation, replacement, navigation, import, failed apply, shutdown.");
+    }
+
+    private static void RequireDisposed(BackupImportSession session)
+    {
+        try { _ = session.Materialize(); }
+        catch (ObjectDisposedException) { return; }
+        throw new InvalidOperationException("Backup session was not disposed.");
     }
 
     private static void Wait(Task task)

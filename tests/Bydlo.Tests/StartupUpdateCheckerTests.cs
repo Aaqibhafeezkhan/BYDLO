@@ -20,7 +20,7 @@ public sealed class StartupUpdateCheckerTests
             };
         }));
         var checker = new StartupUpdateChecker(client);
-        var settings = new AppSettings();
+        var settings = new AppSettings { ConsentAutomaticUpdates = true };
         var release = await checker.CheckAsync(settings, "0.1.0", false);
         Assert.Equal("v9.0.0", release?.Tag);
         // Simulate settings persistence across a process restart.
@@ -38,7 +38,7 @@ public sealed class StartupUpdateCheckerTests
     {
         var checker = new StartupUpdateChecker(new GitHubUpdateClient(() =>
             throw new Xunit.Sdk.XunitException("HTTP must not be created")));
-        var settings = new AppSettings { CheckForUpdates = enabled };
+        var settings = new AppSettings { ConsentAutomaticUpdates = enabled };
         Assert.Null(await checker.CheckAsync(settings, "0.1.0", blocked));
         Assert.Null(settings.LastUpdateCheck);
     }
@@ -52,7 +52,7 @@ public sealed class StartupUpdateCheckerTests
             requests++;
             throw new HttpRequestException("Offline");
         })));
-        var settings = new AppSettings();
+        var settings = new AppSettings { ConsentAutomaticUpdates = true };
         Assert.Null(await checker.CheckAsync(settings, "0.1.0", false));
         Assert.NotNull(settings.LastUpdateCheck);
         Assert.Null(await checker.CheckAsync(settings, "0.1.0", false));
@@ -66,7 +66,7 @@ public sealed class StartupUpdateCheckerTests
     [Fact]
     public async Task Acknowledged_release_stays_hidden_until_next_due_check()
     {
-        var settings = new AppSettings { LastUpdateCheck = DateTimeOffset.UtcNow };
+        var settings = new AppSettings { LastUpdateCheck = DateTimeOffset.UtcNow, ConsentAutomaticUpdates = true };
         var checker = new StartupUpdateChecker(new GitHubUpdateClient(() =>
             throw new Xunit.Sdk.XunitException("HTTP must not be created")));
         Assert.Null(await checker.CheckAsync(settings, "0.1.0", false));
@@ -76,7 +76,7 @@ public sealed class StartupUpdateCheckerTests
     public async Task Check_becomes_due_at_exactly_twenty_four_hours()
     {
         var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var settings = new AppSettings { LastUpdateCheck = now };
+        var settings = new AppSettings { LastUpdateCheck = now, ConsentAutomaticUpdates = true };
         var clock = new FixedClock(now.AddHours(24).AddTicks(-1));
         var requests = 0;
         var checker = new StartupUpdateChecker(new GitHubUpdateClient(() => new FakeHandler(() =>

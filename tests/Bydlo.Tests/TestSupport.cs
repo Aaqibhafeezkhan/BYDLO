@@ -78,13 +78,46 @@ public sealed class FakeProcess : IManagedProcess
 
     public event EventHandler<int>? Exited;
 
-    public void Emit(string line) => OutputLine?.Invoke(this, line);
+    private readonly object _gate = new();
+    private List<Action>? _pending = [];
+
+    /// <summary>How many times <see cref="BeginEventDelivery"/> was called.</summary>
+    public int BeginCalls { get; private set; }
+
+    /// <summary>Whether output and exit handlers were attached when delivery began.</summary>
+    public bool SubscribedBeforeDelivery { get; private set; }
+
+    /// <summary>Like a real pipe: events raised before delivery begins are queued, never lost.</summary>
+    public void Emit(string line) => Deliver(() => OutputLine?.Invoke(this, line));
 
     public void Crash(int code = 1)
     {
         HasExited = true;
         ExitCode = code;
-        Exited?.Invoke(this, code);
+        Deliver(() => Exited?.Invoke(this, code));
+    }
+
+    public void BeginEventDelivery()
+    {
+        List<Action>? queued;
+        lock (_gate)
+        {
+            BeginCalls++;
+            queued = _pending;
+            if (queued is null) { return; }
+            SubscribedBeforeDelivery = OutputLine is not null && Exited is not null;
+            _pending = null;
+        }
+        foreach (var raise in queued) { raise(); }
+    }
+
+    private void Deliver(Action raise)
+    {
+        lock (_gate)
+        {
+            if (_pending is not null) { _pending.Add(raise); return; }
+        }
+        raise();
     }
 
     public Task StopAsync(TimeSpan timeout, CancellationToken ct = default)

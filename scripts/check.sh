@@ -8,5 +8,6 @@ source "$root/scripts/env.sh"
 cd "$root"
 
 bash scripts/test-hooks.sh
+bash .github/scripts/test-closing-references.sh
 dotnet build BYDLO.slnx -c Release -warnaserror --nologo -v quiet
 dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --nologo -v quiet --results-directory .tmp/TestResults

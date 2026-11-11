@@ -526,7 +526,8 @@ public sealed partial class ConnectionManager : IAsyncDisposable
             _sessions[session.Key] = session;
         }
 
-        session.Engine.Log += (_, line) => _log.Info(session.Key, line);
+        // IEngine.Log lines are redacted by the engine (helper-hosted secrets are unknown here).
+        session.Engine.Log += (_, line) => _log.WriteRedacted(LogLevel.Info, session.Key, line);
         session.Engine.Traffic += (_, sample) =>
         {
             session.LastTraffic = sample;

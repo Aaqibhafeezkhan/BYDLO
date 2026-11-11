@@ -44,7 +44,7 @@ jobs:
       - id: policy
         env:
           # Explicit release exceptions; future tags still require signing.
-          UNSIGNED: ${{ github.ref == 'refs/tags/v0.3.1' || github.ref == 'refs/tags/v0.4.0' || github.ref == 'refs/tags/v0.4.1' || github.ref == 'refs/tags/v0.4.2' || (github.event_name == 'workflow_dispatch' && inputs.skip_signing) }}
+          UNSIGNED: ${{ github.ref == 'refs/tags/v0.3.1' || github.ref == 'refs/tags/v0.4.0' || github.ref == 'refs/tags/v0.4.1' || github.ref == 'refs/tags/v0.4.2' || github.ref == 'refs/tags/v0.4.3' || (github.event_name == 'workflow_dispatch' && inputs.skip_signing) }}
         run: |
           echo "unsigned=$UNSIGNED" >> "$GITHUB_OUTPUT"
           echo "Unsigned packaging: $UNSIGNED" >> "$GITHUB_STEP_SUMMARY"
@@ -55,7 +55,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - name: Test isolated suite including owner-only local IPC (no engines or network)
@@ -101,7 +101,7 @@ jobs:
         os: ${{ fromJSON(github.server_url == 'https://github.com' && '["ubuntu-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - name: Hook self-test
@@ -111,6 +111,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/test-native-build-cache.ps1
+      - name: Application license self-test (synthetic files, no network)
+        if: github.server_url == 'https://github.com'
+        shell: pwsh
+        run: ./scripts/test-app-licenses.ps1
       - name: Bundle verification self-test (synthetic files, never execute engines)
         if: github.server_url == 'https://github.com'
         shell: pwsh
@@ -147,6 +151,9 @@ jobs:
           source scripts/env.sh
           # Coverage is collected as a CI artifact only, with no threshold gate yet (issue #221).
           dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --collect:"XPlat Code Coverage" --results-directory TestResults
+      - name: Update catalog interop (release script signs, Bydlo.Core verifies; throwaway key)
+        shell: pwsh
+        run: ./scripts/test-update-catalog-interop.ps1
       - name: Verify server groups (headless, mock only, no network)
         run: |
           source scripts/env.sh
@@ -172,6 +179,10 @@ jobs:
         run: |
           source scripts/env.sh
           dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/simple-ui-verification ru --mock --verify-simple-ui
+      - name: Verify license notices and credits (headless, mock only, no network)
+        run: |
+          source scripts/env.sh
+          dotnet run --project tools/Bydlo.Screenshots -c Release -- .tmp/license-verification ru --mock --verify-licenses
       - name: Verify contributors page (headless, mock only, no network)
         run: |
           source scripts/env.sh
@@ -271,7 +282,7 @@ jobs:
       DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: ${{ matrix.container && '1' || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - name: Publish Native AOT helper (never executed)
@@ -311,7 +322,7 @@ jobs:
         include: ${{ fromJSON(github.server_url == 'https://github.com' && '[{"rid":"win-x64","os":"ubuntu-latest"},{"rid":"win-arm64","os":"ubuntu-latest"},{"rid":"linux-x64","os":"ubuntu-24.04"},{"rid":"linux-arm64","os":"ubuntu-24.04-arm"},{"rid":"osx-arm64","os":"ubuntu-24.04","managedOnly":true}]' || '[{"rid":"linux-x64","os":"ubuntu-latest"},{"rid":"win-x64","os":"ubuntu-latest"},{"rid":"win-arm64","os":"ubuntu-latest"}]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - name: Publish
@@ -423,7 +434,7 @@ jobs:
         rid: [win-x64, win-arm64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -525,7 +536,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - name: Run isolated tests
@@ -587,7 +598,7 @@ jobs:
           - { rid: osx-arm64, os: macos-15 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - name: Publish application without engines
@@ -635,7 +646,7 @@ jobs:
       MAC_CERTIFICATE: ${{ secrets.MACOS_SIGNING_CERTIFICATE_BASE64 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -644,7 +655,7 @@ jobs:
           path: native-payload
       - name: Authenticate Azure signing (OIDC)
         if: startsWith(matrix.rid, 'win-') && needs.signing-policy.outputs.unsigned != 'true' && env.AZURE_CLIENT_ID != ''
-        uses: Azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac # v2
+        uses: Azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -774,6 +785,29 @@ jobs:
           ./scripts/stage-release.ps1 -InputDirectory dist -OutputDirectory release-staging -Version $version
       - name: Verify checksums as a flat downloaded release
         run: cd release-staging && sha256sum -c SHA256SUMS.txt
+      - name: Sign the update catalog from the final packages
+        shell: pwsh
+        env:
+          # Issue #411: the key lives only in repository secrets. A missing secret fails the job
+          # instead of publishing a feed that clients cannot authenticate.
+          BYDLO_UPDATE_SIGNING_KEY: ${{ secrets.BYDLO_UPDATE_SIGNING_KEY }}
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version | Where-Object { $_ }
+          if (-not $env:BYDLO_UPDATE_SIGNING_KEY -and '${{ github.event_name }}' -eq 'workflow_dispatch') {
+            # A manual rehearsal publishes nothing: sign with a throwaway key no client trusts. Tags still require the secret.
+            $key = [Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve]::CreateFromFriendlyName('nistP256'))
+            try { $env:BYDLO_UPDATE_SIGNING_KEY = $key.ExportPkcs8PrivateKeyPem() } finally { $key.Dispose() }
+            Write-Host '::warning::BYDLO_UPDATE_SIGNING_KEY is not set; rehearsal catalog signed with a throwaway key.'
+            ./scripts/sign-update-catalog.ps1 -ReleaseDirectory release-staging -Version $version -KeyId 'rehearsal-throwaway'
+          } else {
+            # No -KeyId: sign as UpdateTrustRoots.CurrentKeyId and refuse a secret that does not match it.
+            ./scripts/sign-update-catalog.ps1 -ReleaseDirectory release-staging -Version $version
+          }
+      - name: Verify the published set including the signed catalog
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version | Where-Object { $_ }
+          ./scripts/stage-release.ps1 -InputDirectory release-staging -OutputDirectory release-staging -Version $version -VerifyOnly
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-packages
@@ -826,10 +860,11 @@ jobs:
           }
           $notes += '- macOS Apple Silicon: [Setup.pkg](' + $base + '/BydloDesktop-osx-arm64-Setup.pkg).'
           $notes += @('', '`*-full.nupkg` и `releases.<RID>.json` — служебные файлы полного обновления; скачивать вручную не нужно.',
+            '`releases-catalog.json` — подписанный каталог обновлений; приложение проверяет его подпись до загрузки пакета.',
             ('Для проверки скачайте [SHA256SUMS.txt](' + $base + '/SHA256SUMS.txt); проверяйте суммы в одной папке с пакетами.'))
           Add-Content .tmp/release-notes.md ($notes -join "`n")
       - name: Attest every final release asset including checksums
-        uses: actions/attest-build-provenance@8beda2b7ed98355c0e97c0a63bec38ae472e66c4 # v4
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
           subject-path: dist/*
       - name: Create draft release

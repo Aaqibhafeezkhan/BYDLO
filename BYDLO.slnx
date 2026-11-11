@@ -8,6 +8,7 @@
     <Project Path="src/Bydlo.Helper/Bydlo.Helper.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/Bydlo.BackupBenchmarks/Bydlo.BackupBenchmarks.csproj" />
     <Project Path="tools/Bydlo.BundleEngines/Bydlo.BundleEngines.csproj" />
     <Project Path="tools/Bydlo.Screenshots/Bydlo.Screenshots.csproj" />
   </Folder>

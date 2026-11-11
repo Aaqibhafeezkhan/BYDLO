@@ -69,6 +69,9 @@ public sealed partial class MainViewModel : ViewModelBase
         _isOnboardingVisible = !services.Settings.OnboardingCompleted;
         _onboardingLanguage = services.Settings.Language;
         _onboardingTheme = services.Settings.Theme;
+        _consentAutomaticUpdates = services.Settings.ConsentAutomaticUpdates;
+        _consentNotifications = services.Settings.ConsentNotifications;
+        _consentThemes = services.Settings.ConsentThemes;
         ReloadProfiles();
         ReloadChains();
 
@@ -300,6 +303,19 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public bool OnboardingThemeSystem { get => OnboardingTheme == ThemePreference.System; set { if (value) { OnboardingTheme = ThemePreference.System; } } }
 
+    /// <summary>
+    /// First-run consents (issue #438). All three start unchecked and are written to the settings only
+    /// when the user confirms the screen, so closing it early grants nothing.
+    /// </summary>
+    [ObservableProperty]
+    private bool _consentAutomaticUpdates;
+
+    [ObservableProperty]
+    private bool _consentNotifications;
+
+    [ObservableProperty]
+    private bool _consentThemes;
+
     [ObservableProperty]
     private bool _hasOrphans;
 
@@ -324,6 +340,8 @@ public sealed partial class MainViewModel : ViewModelBase
         !(ToastIsError && CurrentNav.Key == "home" && Home.Error == Toast);
 
     public bool IsElevated => Services.Privileges.IsElevated;
+
+    partial void OnCurrentNavChanging(NavItem value) => CurrentNav?.Page.OnHidden();
 
     partial void OnCurrentNavChanged(NavItem value)
     {
@@ -380,9 +398,25 @@ public sealed partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void FinishOnboarding()
     {
+        // Consents are committed only here: closing the screen before confirming grants nothing (issue #438).
+        Services.Settings.ConsentAutomaticUpdates = ConsentAutomaticUpdates;
+        Services.Settings.ConsentNotifications = ConsentNotifications;
+        Services.Settings.ConsentThemes = ConsentThemes;
+        Services.Settings.ConsentsInitialized = true;
         Services.Settings.OnboardingCompleted = true;
         IsOnboardingVisible = false;
+        Settings.RefreshConsents();
         _ = Services.SaveSettingsAsync();
+    }
+
+    /// <summary>Opens a documented GitHub source from the first-run screen; the URLs are constants.</summary>
+    [RelayCommand]
+    private async Task OpenUrl(string url)
+    {
+        if (Services.TopLevel()?.Launcher is { } launcher)
+        {
+            await launcher.LaunchUriAsync(new Uri(url));
+        }
     }
 
     [RelayCommand]

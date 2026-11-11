@@ -115,6 +115,12 @@ internal static class CustomJsonConfig
                     {
                         throw new FormatException();
                     }
+                    // sing-box 1.14.4 removed the unimplemented `direct` rule action; routing uses `outbound`.
+                    if (singBox && rule["action"] is JsonValue actionValue &&
+                        actionValue.TryGetValue<string>(out var action) && action == "direct")
+                    {
+                        throw new FormatException();
+                    }
                     CheckReference(rule, singBox ? "outbound" : "outboundTag", tags);
                 }
             }
@@ -126,10 +132,19 @@ internal static class CustomJsonConfig
             CheckReference(outbound, "detour", tags);
             if (singBox && (string?)outbound["type"] is "selector" or "urltest")
             {
-                if (outbound["outbounds"] is not JsonArray { Count: > 0 } members ||
-                    members.Any(member => member is not JsonValue scalar || !scalar.TryGetValue<string>(out var tag) || !tags.Contains(tag)))
+                if (outbound["outbounds"] is not JsonArray { Count: > 0 } members)
                 {
                     throw new FormatException();
+                }
+                // sing-box 1.14.4 refuses duplicate member tags in selector and urltest groups.
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var member in members)
+                {
+                    if (member is not JsonValue scalar || !scalar.TryGetValue<string>(out var tag) ||
+                        !tags.Contains(tag) || !seen.Add(tag))
+                    {
+                        throw new FormatException();
+                    }
                 }
                 CheckReference(outbound, "default", tags);
             }

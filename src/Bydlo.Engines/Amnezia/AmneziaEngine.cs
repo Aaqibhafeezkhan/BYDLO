@@ -57,8 +57,11 @@ public sealed class AmneziaEngine(IProcessRunner runner, LogRedactor redactor, E
         // The UAPI representation contains hex keys, unlike the original profile's base64 keys.
         foreach (var line in _config.Uapi.Split('\n'))
         {
-            if (line.StartsWith("private_key=", StringComparison.Ordinal) || line.StartsWith("preshared_key=", StringComparison.Ordinal))
+            if (line.StartsWith("private_key=", StringComparison.Ordinal) || line.StartsWith("preshared_key=", StringComparison.Ordinal)
+                || line.StartsWith("header_protection_key=", StringComparison.Ordinal))
             { Redactor.RegisterSecret(line[(line.IndexOf('=') + 1)..].Trim()); }
+            if (line.StartsWith("header_protection_key=", StringComparison.Ordinal))
+            { Redactor.RegisterSecret(Convert.ToBase64String(Convert.FromHexString(line[(line.IndexOf('=') + 1)..].Trim()))); }
         }
         await ConfigureNetworkAsync(() => network.PrepareAsync(_config.Endpoints, ct)).ConfigureAwait(false);
         _configFile = Path.Combine(request.WorkDirectory, "amnezia.json");

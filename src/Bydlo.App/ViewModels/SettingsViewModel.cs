@@ -75,6 +75,9 @@ public sealed partial class SettingsViewModel : PageViewModel
         _subscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         _checkForUpdates = s.CheckForUpdates;
         _autoUpdateApp = s.AutoUpdateApp;
+        _consentAutomaticUpdates = s.ConsentAutomaticUpdates;
+        _consentNotifications = s.ConsentNotifications;
+        _consentThemes = s.ConsentThemes;
         _runElevatedOnStartup = s.RunElevatedOnStartup;
     }
 
@@ -111,6 +114,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         SubscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         CheckForUpdates = s.CheckForUpdates;
         AutoUpdateApp = s.AutoUpdateApp;
+        RefreshUpdateState();
+        RefreshConsents();
         OnPropertyChanged(nameof(LanSysProxyConflict));
         RefreshCustomThemes();
     }
@@ -173,7 +178,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("vpn-configs-for-russia", "igareck", "GPL-3.0", "https://github.com/igareck/vpn-configs-for-russia", "Public subscription lists (downloaded on demand)"),
         new("Free-v2ray-Configs", "0xRadikal", "MIT", "https://github.com/0xRadikal/Free-v2ray-Configs", "Verified public subscription set (downloaded on demand)"),
         new("v2ray-configs", "MatinGhanbari", "MIT", "https://github.com/MatinGhanbari/v2ray-configs", "Public VLESS list (downloaded on demand)"),
-        new("sing-box", "SagerNet (nekohasekai)", "GPL-3.0-or-later", "https://github.com/SagerNet/sing-box", "Universal proxy platform"),
+        new("sing-box", "SagerNet (nekohasekai)", "GPL-3.0-or-later", "https://github.com/SagerNet/sing-box", "", "about.singbox"),
         new("Xray-core", "Project X (XTLS)", "MPL-2.0", "https://github.com/XTLS/Xray-core", "VLESS / REALITY / XHTTP"),
         new("Cronet / cronet-go", "The Chromium Authors / SagerNet", "BSD-3-Clause / GPL-3.0+", "https://github.com/SagerNet/cronet-go", "", "about.cronet"),
         new("Xray GeoIP / GeoSite", "Project X / V2Ray & contributors", "GPL-3.0 / MIT", "https://github.com/XTLS/Xray-rules-dat", "", "about.geodata"),
@@ -187,8 +192,14 @@ public sealed partial class SettingsViewModel : PageViewModel
         new("Microsoft Visual C++ runtime", "Microsoft", "Microsoft runtime license", "https://www.microsoft.com", "", "about.vcruntime"),
         new("OpenVPN", "OpenVPN Inc. & community", "GPL-2.0", "https://github.com/OpenVPN/openvpn", "OpenVPN tunnels"),
         new("Avalonia UI", "AvaloniaUI OÜ", "MIT", "https://github.com/AvaloniaUI/Avalonia", "Cross-platform UI framework"),
+        new("SkiaSharp / HarfBuzzSharp", "Microsoft / Mono & contributors", "MIT", "https://github.com/mono/SkiaSharp", "", "about.skia"),
+        new("ANGLE", "The ANGLE Project Authors", "BSD-3-Clause", "https://github.com/google/angle", "", "about.angle"),
+        new("MicroCom.Runtime", "MicroCom contributors", "MIT", "https://github.com/kekekeks/MicroCom", "", "about.microcom"),
+        new("Tmds.DBus.Protocol", "Tom Deseyn", "MIT", "https://github.com/tmds/Tmds.DBus", "", "about.dbus"),
         new("Velopack", "Velopack contributors", "MIT", "https://github.com/velopack/velopack", "", "about.velopack"),
         new("CommunityToolkit.Mvvm", ".NET Foundation", "MIT", "https://github.com/CommunityToolkit/dotnet", "MVVM helpers"),
+        new("YamlDotNet", "Antoine Aubry & contributors", "MIT", "https://github.com/aaubry/YamlDotNet", "", "about.yaml"),
+        new(".NET", ".NET Foundation / Microsoft & contributors", "MIT", "https://github.com/dotnet/runtime", "", "about.dotnet"),
         new("ZXing.Net", "Michael Jahn", "Apache-2.0", "https://github.com/micjahn/ZXing.Net", "QR code decoding"),
         new("gRPC for .NET", "The gRPC Authors", "Apache-2.0", "https://github.com/grpc/grpc-dotnet", "Xray group control API"),
         new("Protocol Buffers", "Google LLC", "BSD-3-Clause", "https://github.com/protocolbuffers/protobuf", "Xray group API messages"),
@@ -408,6 +419,8 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         Services.Settings.Language = value;
         Loc.Instance.SetLanguage(value);
+        // The manual update guidance is a resolved string: re-resolve it in the new language.
+        RefreshUpdateState();
         Persist();
     }
 

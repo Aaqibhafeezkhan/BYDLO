@@ -16,37 +16,52 @@ public sealed partial class SettingsViewModel
     [ObservableProperty] private bool _backupReplace;
     [ObservableProperty] private string _backupPreviewText = "";
     [ObservableProperty] private bool _hasBackupPreview;
-    private BackupData? _pendingBackup;
+    private BackupImportSession? _pendingBackup;
+    private CancellationTokenRegistration _backupShutdown;
+    private int _backupGeneration;
+
+    public override void OnHidden()
+    {
+        CancelBackup();
+        BackupPassword = BackupPasswordConfirmation = "";
+    }
 
     partial void OnBackupReplaceChanged(bool value) => UpdateBackupPreview();
 
     private BackupImportMode ImportMode => BackupReplace ? BackupImportMode.Replace : BackupImportMode.Merge;
 
-    public void PreviewBackup(BackupData data)
+    /// <summary>Takes ownership, including when preview setup fails.</summary>
+    public void PreviewBackup(BackupImportSession session)
     {
-        _ = BackupArchive.Preview(data, Services.Profiles, ImportMode);
-        _pendingBackup = data;
-        UpdateBackupPreview();
-        HasBackupPreview = true;
+        CancelBackup();
+        try
+        {
+            Services.ShutdownToken.ThrowIfCancellationRequested();
+            _pendingBackup = session;
+            _backupShutdown = Services.ShutdownToken.Register(session.Dispose);
+            UpdateBackupPreview();
+            HasBackupPreview = true;
+        }
+        catch { CancelBackup(); session.Dispose(); throw; }
     }
 
     private void UpdateBackupPreview()
     {
         if (_pendingBackup is null) { return; }
-        var p = BackupArchive.Preview(_pendingBackup, Services.Profiles, ImportMode);
+        var p = _pendingBackup.Preview(Services.Profiles, ImportMode);
         var text = new StringBuilder();
         text.AppendLine(string.Format(L["backup.preview.profiles"], p.AddedProfiles, p.ReplacedProfiles, p.RemovedProfiles));
         text.AppendLine(string.Format(L["backup.preview.subscriptions"], p.AddedSubscriptions, p.ReplacedSubscriptions, p.RemovedSubscriptions));
         text.AppendLine(L[BackupReplace ? "backup.replace.hint" : "backup.merge.hint"]);
         foreach (var item in _pendingBackup.Profiles)
-        { text.AppendLine($"{L[Services.Profiles.Profiles.Any(p => p.Id == item.Profile.Id) ? "backup.overwrite" : "backup.add"]}: {item.Profile.Name}"); }
+        { text.AppendLine($"{L[Services.Profiles.Profiles.Any(p => p.Id == item.Id) ? "backup.overwrite" : "backup.add"]}: {item.Name}"); }
         foreach (var sub in _pendingBackup.Subscriptions)
-        { text.AppendLine($"{L[Services.Profiles.Subscriptions.Any(s => s.Id == sub.Subscription.Id) ? "backup.overwrite" : "backup.add"]}: {sub.Subscription.Name}"); }
+        { text.AppendLine($"{L[Services.Profiles.Subscriptions.Any(s => s.Id == sub.Id) ? "backup.overwrite" : "backup.add"]}: {sub.Name}"); }
         if (BackupReplace)
         {
-            foreach (var profile in Services.Profiles.Profiles.Where(p => _pendingBackup.Profiles.All(i => i.Profile.Id != p.Id)))
+            foreach (var profile in Services.Profiles.Profiles.Where(p => _pendingBackup.Profiles.All(i => i.Id != p.Id)))
             { text.AppendLine($"{L["backup.remove"]}: {profile.Name}"); }
-            foreach (var sub in Services.Profiles.Subscriptions.Where(s => _pendingBackup.Subscriptions.All(i => i.Subscription.Id != s.Id)))
+            foreach (var sub in Services.Profiles.Subscriptions.Where(s => _pendingBackup.Subscriptions.All(i => i.Id != s.Id)))
             { text.AppendLine($"{L["backup.remove"]}: {sub.Name}"); }
         }
         BackupPreviewText = text.ToString();
@@ -106,6 +121,7 @@ public sealed partial class SettingsViewModel
         if (BackupBusy) { return; }
         BackupBusy = true;
         CancelBackup();
+        var generation = _backupGeneration;
         try
         {
             if (Services.TopLevel()?.StorageProvider is not { } storage) { return; }
@@ -126,7 +142,21 @@ public sealed partial class SettingsViewModel
                 buffer.Write(chunk, 0, count);
             }
             var password = BackupPassword;
-            PreviewBackup(await Task.Run(() => BackupArchive.Decrypt(buffer.ToArray(), password)));
+            var lifetime = Services.ShutdownToken;
+            var opened = await Task.Run(() =>
+            {
+                var session = BackupArchive.OpenImport(buffer.ToArray(), password);
+                // Register on the worker too: shutdown can stop the UI dispatcher before
+                // this await resumes and transfers ownership to the ViewModel.
+                try { return (Session: session, Shutdown: lifetime.Register(session.Dispose)); }
+                catch { session.Dispose(); throw; }
+            });
+            using (opened.Shutdown)
+            {
+                if (generation != _backupGeneration || lifetime.IsCancellationRequested)
+                { opened.Session.Dispose(); return; }
+                PreviewBackup(opened.Session);
+            }
         }
         catch (Exception) { Shell.ShowToast(L["backup.error"], isError: true); }
         finally { BackupBusy = false; BackupPassword = BackupPasswordConfirmation = ""; }
@@ -142,7 +172,7 @@ public sealed partial class SettingsViewModel
         BackupBusy = true;
         try
         {
-            await Services.RestoreBackupAsync(_pendingBackup, ImportMode);
+            await Services.RestoreBackupAsync(_pendingBackup.Materialize(), ImportMode);
             Shell.Tools.ReloadSettings();
             Services.Theme.ApplySaved(Services.Settings, Services.Paths.DataDirectory);
             Bydlo.App.Services.Loc.Instance.SetLanguage(Services.Settings.Language);
@@ -156,12 +186,18 @@ public sealed partial class SettingsViewModel
             Shell.ShowToast(L["backup.imported"]);
         }
         catch (Exception) { Shell.ShowToast(L["backup.error"], isError: true); }
-        finally { BackupBusy = false; }
+        // Failure also closes the session; retry requires reopening the archive. Restore
+        // retains its existing rollback semantics, and no failed preview holds the key.
+        finally { CancelBackup(); BackupBusy = false; }
     }
 
     [RelayCommand]
     private void CancelBackup()
     {
+        _backupGeneration++;
+        _backupShutdown.Dispose();
+        _backupShutdown = default;
+        _pendingBackup?.Dispose();
         _pendingBackup = null;
         HasBackupPreview = false;
         BackupPreviewText = "";

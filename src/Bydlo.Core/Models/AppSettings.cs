@@ -65,6 +65,30 @@ public sealed class AppSettings
     /// </summary>
     public bool OnboardingCompleted { get; set; } = true;
 
+    /// <summary>
+    /// Explicit consent to contact GitHub for BYDLO updates (issue #438). Off until the user ticks it
+    /// on the first-run screen or in Settings; nothing is enabled implicitly.
+    /// </summary>
+    public bool ConsentAutomaticUpdates { get; set; }
+
+    /// <summary>
+    /// Explicit consent to load notification content from GitHub and show desktop notifications
+    /// (issue #438). Independent of <see cref="ConsentAutomaticUpdates"/>.
+    /// </summary>
+    public bool ConsentNotifications { get; set; }
+
+    /// <summary>
+    /// Explicit consent to download and parse the theme gallery from GitHub (issue #438).
+    /// Independent of the other two consents.
+    /// </summary>
+    public bool ConsentThemes { get; set; }
+
+    /// <summary>
+    /// True once the first-run screen or the upgrade migration has decided the three consents
+    /// (issue #438). Without it a revoked consent would be granted again on the next start.
+    /// </summary>
+    public bool ConsentsInitialized { get; set; }
+
     public bool MockMode { get; set; }
 
     /// <summary>Session override without changing the saved user preference.</summary>
@@ -146,6 +170,28 @@ public sealed class AppSettings
             return false;
         }
         Theme = ThemePreference.System;
+        return true;
+    }
+
+    /// <summary>
+    /// Decides the three GitHub consents once (issue #438). A fresh profile keeps all of them off;
+    /// settings written before the consents existed keep the GitHub access the user already had, so
+    /// upgrading does not silently stop update checks. A profile that never confirmed the first-run
+    /// screen grants nothing. Returns true when the consents were decided by this call.
+    /// </summary>
+    public bool MigrateConsents(bool firstRun)
+    {
+        if (ConsentsInitialized)
+        {
+            return false;
+        }
+        ConsentsInitialized = true;
+        if (firstRun || !OnboardingCompleted)
+        {
+            return true;
+        }
+        ConsentAutomaticUpdates = CheckForUpdates;
+        ConsentNotifications = ShowNotifications;
         return true;
     }
 

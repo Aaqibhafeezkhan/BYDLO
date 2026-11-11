@@ -113,6 +113,7 @@ public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProce
     private sealed class SystemManagedProcess(Process process, ProcessSpec spec, ProcessJournal? journal) : IManagedProcess
     {
         private int _exitRaised;
+        private int _deliveryBegun;
 
         public int Id { get; private set; }
 
@@ -137,13 +138,19 @@ public sealed class SystemProcessRunner(ProcessJournal? journal = null) : IProce
         {
             Id = process.Id;
             StartedAt = DateTimeOffset.Now;
+            RecordOrCleanup(process, journal, new JournalEntry(spec.DisplayName, Id, Path.GetFileName(spec.FileName), StartedAt,
+                GracefulTermination: spec.GracefulTermination, WindowsExitEventName: spec.WindowsExitEventName));
+        }
+
+        public void BeginEventDelivery()
+        {
+            if (Interlocked.Exchange(ref _deliveryBegun, 1) != 0) { return; }
+            // Reading starts only after the consumer subscribed; earlier output waits in the pipe (issue #468).
             process.OutputDataReceived += (_, e) => { if (e.Data is not null) { OutputLine?.Invoke(this, e.Data); } };
             process.ErrorDataReceived += (_, e) => { if (e.Data is not null) { OutputLine?.Invoke(this, e.Data); } };
             process.Exited += (_, _) => RaiseExited();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
-            RecordOrCleanup(process, journal, new JournalEntry(spec.DisplayName, Id, Path.GetFileName(spec.FileName), StartedAt,
-                GracefulTermination: spec.GracefulTermination, WindowsExitEventName: spec.WindowsExitEventName));
             if (process.HasExited)
             {
                 RaiseExited();

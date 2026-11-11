@@ -6,6 +6,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $output = [IO.Path]::GetFullPath($PublishDirectory)
+& (Join-Path $PSScriptRoot 'verify-app-licenses.ps1') -PublishDirectory $output
 $lock = Get-Content (Join-Path $repo 'engines/engines.lock.json') -Raw | ConvertFrom-Json -AsHashtable
 $platform = $Rid.Replace('win-', 'windows-').Replace('osx-', 'macos-')
 $expectedArm = $Rid.EndsWith('arm64')
