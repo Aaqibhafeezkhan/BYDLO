@@ -23,6 +23,10 @@ foreach ($rid in $rids) {
         $expected.Add("BydloDesktop-$rid-Setup.pkg")
     }
 }
+# Issue #411: the signed update catalog ships with the packages. Staging produces the base set;
+# verification requires the catalog, so a feed can never become visible without it.
+$required = [Collections.Generic.List[string]]::new($expected)
+if ($VerifyOnly) { $required.Add('releases-catalog.json') }
 $inputPath = (Resolve-Path -LiteralPath $InputDirectory).Path
 $outputPath = [IO.Path]::GetFullPath($OutputDirectory)
 if (!$VerifyOnly) {
@@ -44,9 +48,9 @@ if (!$VerifyOnly) {
     [IO.File]::WriteAllText((Join-Path $outputPath 'SHA256SUMS.txt'), (($lines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 }
 $actual = @(Get-ChildItem -LiteralPath $outputPath -Force)
-if ($actual.Count -ne $expected.Count + 1) { throw 'Unexpected release asset count' }
+if ($actual.Count -ne $required.Count + 1) { throw 'Unexpected release asset count' }
 foreach ($file in $actual) {
-    if ($file.PSIsContainer -or $file.LinkType -or ($file.Name -cne 'SHA256SUMS.txt' -and $file.Name -cnotin $expected)) {
+    if ($file.PSIsContainer -or $file.LinkType -or ($file.Name -cne 'SHA256SUMS.txt' -and $file.Name -cnotin $required)) {
         throw "Unexpected release asset: $($file.Name)"
     }
 }
@@ -68,5 +72,24 @@ foreach ($rid in $rids) {
     $package = Get-Item -LiteralPath (Join-Path $outputPath $name)
     if ($assets[0].Size -ne $package.Length -or
         $assets[0].SHA256 -ine (Get-FileHash -LiteralPath $package.FullName -Algorithm SHA256).Hash) { throw "Feed package integrity mismatch: $rid" }
+}
+if ($VerifyOnly) {
+    # The catalog must describe exactly the packages being published, so a swapped package is caught here too.
+    $catalog = Get-Content -LiteralPath (Join-Path $outputPath 'releases-catalog.json') -Raw | ConvertFrom-Json
+    if (!$catalog.payload -or !$catalog.keyId -or !$catalog.signature) { throw 'Invalid update catalog envelope' }
+    $payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($catalog.payload)) | ConvertFrom-Json
+    if ($payload.schemaVersion -ne 1 -or $payload.version -cne $Version -or $payload.channel -cne 'stable') { throw 'Invalid update catalog payload' }
+    $entries = @($payload.packages)
+    if ($entries.Count -ne $rids.Count) { throw 'Update catalog must cover every RID' }
+    foreach ($rid in $rids) {
+        $entry = @($entries | Where-Object { $_.rid -ceq $rid })
+        if ($entry.Count -ne 1) { throw "Missing update catalog entry: $rid" }
+        $name = "BydloDesktop-$Version-$rid-full.nupkg"
+        $package = Get-Item -LiteralPath (Join-Path $outputPath $name)
+        if ($entry[0].fileName -cne $name -or $entry[0].size -ne $package.Length -or
+            $entry[0].sha256 -ine (Get-FileHash -LiteralPath $package.FullName -Algorithm SHA256).Hash) {
+            throw "Update catalog does not match the package: $rid"
+        }
+    }
 }
 Write-Host "Verified $($actual.Count) flat release assets for all five RIDs."

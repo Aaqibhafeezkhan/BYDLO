@@ -2,6 +2,7 @@ using System.Globalization;
 using Bydlo.App.Services;
 using Bydlo.Core.Diagnostics;
 using Bydlo.Core.Security;
+using Bydlo.Core.Updates;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -174,6 +175,12 @@ public sealed partial class SettingsViewModel
                 UpdateStatus = ready ? L["settings.update.ready"] : L["settings.update.uptodate"];
                 await Services.SaveSettingsAsync();
             }
+            catch (UpdateTrustException ex)
+            {
+                // The signed catalog refused this update: nothing was installed and the working version stays.
+                UpdateStatus = L[UpdateTrustMessages.Key(ex.Failure)];
+                Services.Log.Warn("update", $"Update refused: {ex.Failure}.");
+            }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
             {
                 UpdateStatus = L["settings.update.error"];
@@ -248,6 +255,12 @@ public sealed partial class SettingsViewModel
                 UpdateStatus = Loc.T("settings.update.available", release.Tag);
                 Shell.ShowReleaseNotification(release);
             }
+        }
+        catch (UpdateTrustException ex)
+        {
+            // A scheduled download that fails verification must say so instead of looking like a network error.
+            UpdateStatus = L[UpdateTrustMessages.Key(ex.Failure)];
+            Services.Log.Warn("update", $"Update refused: {ex.Failure}.");
         }
         catch (Exception ex)
         {

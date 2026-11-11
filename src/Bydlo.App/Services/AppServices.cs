@@ -57,7 +57,7 @@ public sealed class AppServices
         Subscriptions = new SubscriptionClient(Http, Importer);
         Zapret = new ZapretEngine(Runner, LogRedactor.Shared, Locator, Privileges, ZapretFirewall);
         ZapretUpdater = new ZapretUpdater(Installer, PlatformInfo.Current);
-        AutomaticUpdates = new(() => new PackagedAppUpdater(Paths.DataDirectory));
+        AutomaticUpdates = new(() => new PackagedAppUpdater(Paths.DataDirectory, Http));
     }
 
     public string[] Args { get; }
