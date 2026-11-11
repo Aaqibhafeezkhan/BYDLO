@@ -66,7 +66,7 @@ public sealed partial class ToolsViewModel : PageViewModel
             RefreshZapret();
             _ = RefreshTgAsync();
         };
-        Services.Log.EntryAdded += (_, e) => Dispatcher.UIThread.Post(() => OnLog(e));
+        Services.Log.EntriesAdded += (_, batch) => Dispatcher.UIThread.Post(() => OnLogs(batch));
     }
 
     public static IReadOnlyList<string> GameFilterModes { get; } = ["disabled", "all", "tcp", "udp"];
@@ -518,23 +518,28 @@ public sealed partial class ToolsViewModel : PageViewModel
         _ => L["status.stopped"],
     };
 
-    private void OnLog(LogEntry e)
+    private void OnLogs(IReadOnlyList<LogEntry> batch)
     {
-        var target = e.Source switch
+        foreach (var e in batch)
         {
-            ConnectionManager.ZapretKey => ZapretLog,
-            ConnectionManager.TgWsProxyKey => TgLog,
-            _ => null,
-        };
-        if (target is null)
-        {
-            return;
+            var target = e.Source switch
+            {
+                ConnectionManager.ZapretKey => ZapretLog,
+                ConnectionManager.TgWsProxyKey => TgLog,
+                _ => null,
+            };
+            target?.Add($"{e.Time:HH:mm:ss}  {e.Message}");
         }
 
-        target.Add($"{e.Time:HH:mm:ss}  {e.Message}");
-        while (target.Count > 300)
+        Trim(ZapretLog);
+        Trim(TgLog);
+    }
+
+    private static void Trim(ObservableCollection<string> log)
+    {
+        while (log.Count > 300)
         {
-            target.RemoveAt(0);
+            log.RemoveAt(0);
         }
     }
 

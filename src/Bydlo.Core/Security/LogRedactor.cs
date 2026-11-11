@@ -13,6 +13,9 @@ public sealed partial class LogRedactor
     private readonly Lock _gate = new();
     private readonly HashSet<string> _known = new(StringComparer.Ordinal);
 
+    // Longest first, rebuilt only when a secret is registered: Redact runs per log line (issue #357).
+    private volatile string[] _sorted = [];
+
     public static LogRedactor Shared { get; } = new();
 
     /// <summary>Registers a literal value that must never appear in logs (min. 4 chars).</summary>
@@ -25,7 +28,7 @@ public sealed partial class LogRedactor
 
         lock (_gate)
         {
-            _known.Add(value);
+            if (_known.Add(value)) { Rebuild(); }
         }
 
         // Credential blobs stored as JSON (e.g. XHTTP headers, raw configs) would
@@ -41,7 +44,7 @@ public sealed partial class LogRedactor
                     {
                         lock (_gate)
                         {
-                            _known.Add(leaf);
+                            if (_known.Add(leaf)) { Rebuild(); }
                         }
                     }
                 }
@@ -98,27 +101,50 @@ public sealed partial class LogRedactor
             return text ?? "";
         }
 
-        string[] known;
-        lock (_gate)
-        {
-            known = [.. _known];
-        }
-
-        foreach (var secret in known.OrderByDescending(s => s.Length))
+        foreach (var secret in _sorted)
         {
             text = text.Replace(secret, Mask, StringComparison.Ordinal);
         }
 
-        text = UriCredentials().Replace(text, m => $"{m.Groups["scheme"].Value}://{Mask}@");
-        // Whole bodies without userinfo (ss/vmess base64 blobs may embed host and port).
-        text = BareSchemeBody().Replace(text, m => $"{m.Groups["scheme"].Value}://{Mask}");
-        text = AuthHeader().Replace(text, m => m.Groups["prefix"].Value + Mask);
-        text = KeyValueSecret().Replace(text, m => $"{m.Groups["key"].Value}{m.Groups["sep"].Value}{Mask}");
-        text = Uuid().Replace(text, Mask);
-        text = WireGuardKey().Replace(text, m => m.Groups["prefix"].Value + Mask);
-        text = TelegramSecret().Replace(text, m => m.Groups["prefix"].Value + Mask);
+        // Each regex is skipped only when the text lacks a literal that every match must contain,
+        // so the result is identical; most engine lines then skip most patterns (issue #357).
+        if (text.Contains("://", StringComparison.Ordinal))
+        {
+            text = UriCredentials().Replace(text, m => $"{m.Groups["scheme"].Value}://{Mask}@");
+            // Whole bodies without userinfo (ss/vmess base64 blobs may embed host and port).
+            text = BareSchemeBody().Replace(text, m => $"{m.Groups["scheme"].Value}://{Mask}");
+        }
+
+        if (text.Contains("authorization", StringComparison.OrdinalIgnoreCase))
+        {
+            text = AuthHeader().Replace(text, m => m.Groups["prefix"].Value + Mask);
+        }
+
+        if (text.AsSpan().IndexOfAny(':', '=') >= 0)
+        {
+            text = KeyValueSecret().Replace(text, m => $"{m.Groups["key"].Value}{m.Groups["sep"].Value}{Mask}");
+        }
+
+        if (text.Contains('-'))
+        {
+            text = Uuid().Replace(text, Mask);
+        }
+
+        if (text.Contains("key", StringComparison.OrdinalIgnoreCase))
+        {
+            text = WireGuardKey().Replace(text, m => m.Groups["prefix"].Value + Mask);
+        }
+
+        if (text.Contains("secret", StringComparison.OrdinalIgnoreCase))
+        {
+            text = TelegramSecret().Replace(text, m => m.Groups["prefix"].Value + Mask);
+        }
+
         return text;
     }
+
+    // Caller holds _gate.
+    private void Rebuild() => _sorted = [.. _known.OrderByDescending(secret => secret.Length)];
 
     // vless://uuid@host, ss://base64@host (base64 may contain '/'), socks5://user:pass@host
     [GeneratedRegex(@"(?<scheme>[a-z][a-z0-9+.\-]{1,15})://[^\s@?]{3,}@", RegexOptions.IgnoreCase)]
