@@ -10,9 +10,23 @@ function Put([string]$relative, [string]$content = 'synthetic bytes') {
     New-Item -ItemType Directory -Force (Split-Path $path -Parent) | Out-Null
     [IO.File]::WriteAllText($path, $content)
 }
+# Issue #411: the catalog is built from the final packages, so the fixture must be a real
+# archive whose nuspec carries the package version.
+function PutPackage([string]$relative, [string]$packageVersion) {
+    $path = Join-Path $inputPath $relative
+    New-Item -ItemType Directory -Force (Split-Path $path -Parent) | Out-Null
+    $archive = [IO.Compression.ZipFile]::Open($path, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $stream = $archive.CreateEntry('BydloDesktop.nuspec').Open()
+        try {
+            $bytes = [Text.Encoding]::UTF8.GetBytes("<package><metadata><id>BydloDesktop</id><version>$packageVersion</version></metadata></package>")
+            $stream.Write($bytes, 0, $bytes.Length)
+        } finally { $stream.Dispose() }
+    } finally { $archive.Dispose() }
+}
 foreach ($rid in $rids) {
     $name = "BydloDesktop-$version-$rid-full.nupkg"
-    Put "native/$rid/$name"
+    PutPackage "native/$rid/$name" $version
     $package = Get-Item (Join-Path $inputPath "native/$rid/$name")
     $feed = @{ Assets = @(@{ PackageId = 'BydloDesktop'; Version = $version; Type = 'Full'; FileName = $name
         Size = $package.Length; SHA256 = (Get-FileHash $package.FullName -Algorithm SHA256).Hash }) }
@@ -33,6 +47,10 @@ Put 'linux/BYDLO-1.2.3-x86_64.AppImage'
 Put 'test-results/test.trx'
 $stage = Join-Path $fixture 'staging'
 & "$PSScriptRoot/stage-release.ps1" -InputDirectory $inputPath -OutputDirectory $stage -Version $version
+# Issue #411: the published set must carry a signed update catalog built from the final packages.
+$key = [Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve]::CreateFromFriendlyName('nistP256'))
+try { $env:BYDLO_UPDATE_SIGNING_KEY = $key.ExportPkcs8PrivateKeyPem() } finally { $key.Dispose() }
+& "$PSScriptRoot/sign-update-catalog.ps1" -ReleaseDirectory $stage -Version $version
 $download = Join-Path $fixture 'download'
 Copy-Item $stage $download -Recurse
 & "$PSScriptRoot/stage-release.ps1" -InputDirectory $download -OutputDirectory $download -Version $version -VerifyOnly
@@ -94,6 +112,19 @@ Reject { Verify } 'Checksum mismatch'
 [IO.File]::WriteAllText((Join-Path $download 'test.trx'), 'report')
 Reject { Verify } 'Unexpected release asset count'
 Remove-Item -LiteralPath (Join-Path $download 'test.trx')
+# Issue #411: a release set without a matching signed catalog must never pass verification.
+$catalogFile = Join-Path $download 'releases-catalog.json'
+$catalogText = [IO.File]::ReadAllText($catalogFile)
+Remove-Item -LiteralPath $catalogFile
+Reject { Verify } 'Unexpected release asset count'
+[IO.File]::WriteAllText($catalogFile, $catalogText)
+$catalog = $catalogText | ConvertFrom-Json
+$catalogPayload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($catalog.payload)) | ConvertFrom-Json
+$catalogPayload.packages[0].sha256 = ('0' * 64)
+$catalog.payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($catalogPayload | ConvertTo-Json -Depth 5 -Compress)))
+[IO.File]::WriteAllText($catalogFile, ($catalog | ConvertTo-Json -Compress))
+Reject { Verify } 'Update catalog does not match the package'
+[IO.File]::WriteAllText($catalogFile, $catalogText)
 # Even an internally consistent checksum manifest cannot make a mismatched feed valid.
 $feedFile = Join-Path $download 'releases.linux-arm64.json'
 $feed = Get-Content $feedFile -Raw | ConvertFrom-Json

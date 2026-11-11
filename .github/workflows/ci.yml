@@ -151,6 +151,9 @@ jobs:
           source scripts/env.sh
           # Coverage is collected as a CI artifact only, with no threshold gate yet (issue #221).
           dotnet test tests/Bydlo.Tests/Bydlo.Tests.csproj -c Release --no-build --logger "trx;LogFileName=results.trx" --collect:"XPlat Code Coverage" --results-directory TestResults
+      - name: Update catalog interop (release script signs, Bydlo.Core verifies; throwaway key)
+        shell: pwsh
+        run: ./scripts/test-update-catalog-interop.ps1
       - name: Verify server groups (headless, mock only, no network)
         run: |
           source scripts/env.sh
@@ -782,6 +785,26 @@ jobs:
           ./scripts/stage-release.ps1 -InputDirectory dist -OutputDirectory release-staging -Version $version
       - name: Verify checksums as a flat downloaded release
         run: cd release-staging && sha256sum -c SHA256SUMS.txt
+      - name: Sign the update catalog from the final packages
+        shell: pwsh
+        env:
+          # Issue #411: the key lives only in repository secrets. A missing secret fails the job
+          # instead of publishing a feed that clients cannot authenticate.
+          BYDLO_UPDATE_SIGNING_KEY: ${{ secrets.BYDLO_UPDATE_SIGNING_KEY }}
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version | Where-Object { $_ }
+          if (-not $env:BYDLO_UPDATE_SIGNING_KEY -and '${{ github.event_name }}' -eq 'workflow_dispatch') {
+            # A manual rehearsal publishes nothing: sign with a throwaway key no client trusts. Tags still require the secret.
+            $key = [Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve]::CreateFromFriendlyName('nistP256'))
+            try { $env:BYDLO_UPDATE_SIGNING_KEY = $key.ExportPkcs8PrivateKeyPem() } finally { $key.Dispose() }
+            Write-Host '::warning::BYDLO_UPDATE_SIGNING_KEY is not set; rehearsal catalog signed with a throwaway key.'
+          }
+          ./scripts/sign-update-catalog.ps1 -ReleaseDirectory release-staging -Version $version
+      - name: Verify the published set including the signed catalog
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version | Where-Object { $_ }
+          ./scripts/stage-release.ps1 -InputDirectory release-staging -OutputDirectory release-staging -Version $version -VerifyOnly
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-packages
@@ -834,6 +857,7 @@ jobs:
           }
           $notes += '- macOS Apple Silicon: [Setup.pkg](' + $base + '/BydloDesktop-osx-arm64-Setup.pkg).'
           $notes += @('', '`*-full.nupkg` и `releases.<RID>.json` — служебные файлы полного обновления; скачивать вручную не нужно.',
+            '`releases-catalog.json` — подписанный каталог обновлений; приложение проверяет его подпись до загрузки пакета.',
             ('Для проверки скачайте [SHA256SUMS.txt](' + $base + '/SHA256SUMS.txt); проверяйте суммы в одной папке с пакетами.'))
           Add-Content .tmp/release-notes.md ($notes -join "`n")
       - name: Attest every final release asset including checksums
