@@ -112,7 +112,13 @@ public sealed class WindowsCrossPlatformTests
         await engine.StartAsync(new() { Settings = new(), WorkDirectory = TestDirs.New("windows-openvpn"),
             Secrets = new() { Values = { [Keys.RawConfig] = "client\ndev tun\nremote server.example 1194" } } });
         var spec = Assert.Single(runner.Started);
-        Assert.Contains("--service", spec.Arguments);
+        var arguments = spec.Arguments.ToList();
+        var serviceIndex = arguments.IndexOf("--service");
+        Assert.True(serviceIndex >= 0);
+        // --service <event> 0: the trailing 0 is OpenVPN's documented "no service" exit mode.
+        Assert.Equal(events.Name, arguments[serviceIndex + 1]);
+        Assert.Equal("0", arguments[serviceIndex + 2]);
+        Assert.StartsWith(@"Local\BYDLO-OpenVPN-", events.Name, StringComparison.Ordinal);
         Assert.Equal(events.Name, spec.WindowsExitEventName);
         Assert.Contains("ovpn-dco", spec.Arguments);
         Assert.DoesNotContain("--disable-dco", spec.Arguments);
