@@ -191,16 +191,16 @@ public sealed partial class ProjectNoticeClient(Func<HttpMessageHandler>? handle
 }
 
 /// <summary>
-/// Startup policy: same opt-in as automatic update checks, never while the network is blocked
-/// (Mock Mode, development lock). A notice the user dismissed stays hidden until its id changes.
-/// Failures show nothing; startup continues.
+/// Startup policy: notification content needs its own consent (issue #438), never runs while the
+/// network is blocked (Mock Mode, development lock). A notice the user dismissed stays hidden until
+/// its id changes. Failures show nothing; startup continues.
 /// </summary>
 public sealed class ProjectNoticeChecker(ProjectNoticeClient client, TimeProvider? timeProvider = null)
 {
     public async Task<ProjectNotice?> CheckAsync(AppSettings settings, string currentVersion,
         bool networkBlocked, CancellationToken ct = default)
     {
-        if (!settings.CheckForUpdates || networkBlocked)
+        if (!FeatureConsent.From(settings).Allows(OptionalFeature.Notifications) || networkBlocked)
         {
             return null;
         }

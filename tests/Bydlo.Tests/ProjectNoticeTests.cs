@@ -111,7 +111,7 @@ public sealed class ProjectNoticeTests
             requests++;
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Notice) };
         });
-        var settings = new AppSettings();
+        var settings = new AppSettings { ConsentNotifications = true };
         Assert.Equal("v0.3-soon", (await checker.CheckAsync(settings, "0.2.0", false))?.Id);
         settings.DismissedNoticeId = "v0.3-soon";
         Assert.Null(await checker.CheckAsync(settings, "0.2.0", false));
@@ -127,16 +127,16 @@ public sealed class ProjectNoticeTests
     {
         var checker = new ProjectNoticeChecker(new ProjectNoticeClient(() =>
             throw new Xunit.Sdk.XunitException("HTTP must not be created")));
-        Assert.Null(await checker.CheckAsync(new AppSettings { CheckForUpdates = enabled }, "0.2.0", blocked));
+        Assert.Null(await checker.CheckAsync(new AppSettings { ConsentNotifications = enabled }, "0.2.0", blocked));
     }
 
     [Fact]
     public async Task Offline_or_missing_file_shows_nothing()
     {
         Assert.Null(await Checker(() => throw new HttpRequestException("Offline"))
-            .CheckAsync(new AppSettings(), "0.2.0", false));
+            .CheckAsync(new AppSettings { ConsentNotifications = true }, "0.2.0", false));
         Assert.Null(await Checker(() => new HttpResponseMessage(HttpStatusCode.NotFound))
-            .CheckAsync(new AppSettings(), "0.2.0", false));
+            .CheckAsync(new AppSettings { ConsentNotifications = true }, "0.2.0", false));
     }
 
     private static ProjectNoticeChecker Checker(Func<HttpResponseMessage> send) =>

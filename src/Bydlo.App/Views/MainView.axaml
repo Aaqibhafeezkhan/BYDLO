@@ -3,6 +3,7 @@
              xmlns:c="using:Bydlo.App.Controls"
              xmlns:vm="using:Bydlo.App.ViewModels"
              xmlns:l="using:Bydlo.App.Services"
+             xmlns:gh="using:Bydlo.Core.Diagnostics"
              xmlns:v="using:Bydlo.App.Views"
              x:Class="Bydlo.App.Views.MainView"
              x:DataType="vm:MainViewModel"
@@ -243,6 +244,40 @@
             <Image Source="{StaticResource BrandLogo}" Width="42" Height="42" HorizontalAlignment="Left" />
             <TextBlock Classes="display" Text="{l:T onboarding.title}" TextWrapping="Wrap" />
             <TextBlock Classes="muted" Text="{l:T onboarding.text}" TextWrapping="Wrap" />
+            <!-- Three independent, initially unchecked consents (issue #438). Nothing is pre-selected. -->
+            <Border Classes="tile">
+              <StackPanel Spacing="10">
+                <TextBlock Classes="caps" Text="{l:T onboarding.consent.title}" />
+                <TextBlock Classes="faint" Text="{l:T onboarding.consent.text}" TextWrapping="Wrap" />
+                <CheckBox IsChecked="{Binding ConsentAutomaticUpdates}" AutomationProperties.Name="{l:T onboarding.consent.updates}">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{l:T onboarding.consent.updates}" TextWrapping="Wrap" />
+                    <TextBlock Classes="faint" Text="{l:T onboarding.consent.updates.hint}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </CheckBox>
+                <CheckBox IsChecked="{Binding ConsentNotifications}" AutomationProperties.Name="{l:T onboarding.consent.notifications}">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{l:T onboarding.consent.notifications}" TextWrapping="Wrap" />
+                    <TextBlock Classes="faint" Text="{l:T onboarding.consent.notifications.hint}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </CheckBox>
+                <CheckBox IsChecked="{Binding ConsentThemes}" AutomationProperties.Name="{l:T onboarding.consent.themes}">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{l:T onboarding.consent.themes}" TextWrapping="Wrap" />
+                    <TextBlock Classes="faint" Text="{l:T onboarding.consent.themes.hint}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </CheckBox>
+                <TextBlock Classes="caps" Text="{l:T onboarding.consent.sources}" />
+                <WrapPanel>
+                  <Button Classes="text-action" Content="{l:T onboarding.consent.source.releases}" Margin="0,0,14,0"
+                          Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static gh:GitHubSources.Releases}" />
+                  <Button Classes="text-action" Content="{l:T onboarding.consent.source.notice}" Margin="0,0,14,0"
+                          Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static gh:GitHubSources.Notice}" />
+                  <Button Classes="text-action" Content="{l:T onboarding.consent.source.themes}"
+                          Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static gh:GitHubSources.ThemeGallery}" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
             <WrapPanel HorizontalAlignment="Left">
               <Button Classes="primary" Content="{l:T onboarding.start}" Command="{Binding StartOnboardingImportCommand}" Margin="0,0,8,8" />
               <Button Classes="quiet" Content="{l:T onboarding.skip}" Command="{Binding FinishOnboardingCommand}" Margin="0,0,0,8" />

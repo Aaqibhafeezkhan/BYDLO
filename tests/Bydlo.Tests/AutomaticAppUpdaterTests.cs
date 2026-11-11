@@ -22,7 +22,7 @@ public class AutomaticAppUpdaterTests
     public async Task Disabled_or_mock_never_constructs_backend(bool enabled, bool blocked)
     {
         var policy = new AutomaticAppUpdater(() => throw new InvalidOperationException("No I/O allowed"));
-        var settings = new AppSettings { AutoUpdateApp = enabled };
+        var settings = new AppSettings { AutoUpdateApp = enabled, ConsentAutomaticUpdates = enabled };
         Assert.False(await policy.DownloadIfDueAsync(settings, blocked));
         policy.ApplyOnExit(settings, blocked);
         Assert.Null(settings.LastAutomaticUpdateCheck);
@@ -33,7 +33,7 @@ public class AutomaticAppUpdaterTests
     {
         var backend = new FakeBackend();
         var policy = new AutomaticAppUpdater(() => backend);
-        var settings = new AppSettings { AutoUpdateApp = true, LastProfileId = Guid.NewGuid(), SubscriptionAutoUpdate = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true, LastProfileId = Guid.NewGuid(), SubscriptionAutoUpdate = true };
         var original = settings.LastProfileId;
         Assert.True(await policy.DownloadIfDueAsync(settings, false));
         Assert.Equal(0, backend.Applied);
@@ -59,7 +59,7 @@ public class AutomaticAppUpdaterTests
     public async Task Turning_off_during_download_prevents_installation()
     {
         var backend = new FakeBackend();
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         backend.Download = () => { settings.AutoUpdateApp = false; return Task.FromResult(true); };
         var policy = new AutomaticAppUpdater(() => backend);
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
@@ -74,7 +74,7 @@ public class AutomaticAppUpdaterTests
         var clock = new FakeClock(DateTimeOffset.UtcNow);
         var backend = new FakeBackend { Download = () => throw new IOException("offline") };
         var policy = new AutomaticAppUpdater(() => backend, clock);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         await Assert.ThrowsAsync<IOException>(() => policy.DownloadIfDueAsync(settings, false));
         Assert.Null(settings.LastAutomaticUpdateCheck);
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
@@ -92,7 +92,7 @@ public class AutomaticAppUpdaterTests
         var clock = new FakeClock(DateTimeOffset.UtcNow);
         var backend = new FakeBackend { Download = () => Task.FromResult(false) };
         var policy = new AutomaticAppUpdater(() => backend, clock);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
         Assert.Null(settings.LastAutomaticUpdateCheck);
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
@@ -114,7 +114,7 @@ public class AutomaticAppUpdaterTests
     {
         var backend = new FakeBackend { Download = () => throw new OperationCanceledException() };
         var policy = new AutomaticAppUpdater(() => backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => policy.DownloadIfDueAsync(settings, false));
         Assert.Null(settings.LastAutomaticUpdateCheck);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => policy.DownloadIfDueAsync(settings, false));
@@ -128,7 +128,7 @@ public class AutomaticAppUpdaterTests
     {
         var backend = new FakeBackend();
         var policy = new AutomaticAppUpdater(() => backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         Assert.True(await policy.DownloadIfDueAsync(settings, false));
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
         Assert.Equal(1, backend.Downloads);
@@ -142,7 +142,7 @@ public class AutomaticAppUpdaterTests
         var backend = new FakeBackend();
         var policy = new AutomaticAppUpdater(() => backend);
         Assert.False(await policy.DownloadNowAsync(new AppSettings { AutoUpdateApp = false }, false));
-        Assert.False(await policy.DownloadNowAsync(new AppSettings { AutoUpdateApp = true }, blocked: true));
+        Assert.False(await policy.DownloadNowAsync(new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true }, blocked: true));
         Assert.Equal(0, backend.Downloads);
     }
 
@@ -151,7 +151,7 @@ public class AutomaticAppUpdaterTests
     {
         var backend = new FakeBackend();
         var policy = new AutomaticAppUpdater(() => backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         var progress = new Progress<int>();
         Assert.True(await policy.DownloadIfDueAsync(settings, false, progress));
         Assert.Same(progress, backend.Progress);
@@ -170,7 +170,7 @@ public class AutomaticAppUpdaterTests
     {
         var backend = new FakeBackend { IsInstalled = false };
         var policy = new AutomaticAppUpdater(() => backend);
-        var settings = new AppSettings { AutoUpdateApp = true };
+        var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
         Assert.False(await policy.DownloadIfDueAsync(settings, false));
         policy.ApplyOnExit(settings, false);
         Assert.Equal(0, backend.Downloads);

@@ -58,7 +58,7 @@ public sealed class ContributorsTests
             requests++;
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Response) };
         }));
-        var settings = new AppSettings();
+        var settings = new AppSettings { ConsentAutomaticUpdates = true };
         Assert.Equal(2, (await refresher.RefreshAsync(settings, false)).Count);
         settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
         Assert.Equal(["bob", "alice"], (await refresher.RefreshAsync(settings, false)).Select(c => c.Login));
@@ -73,7 +73,7 @@ public sealed class ContributorsTests
         var refresher = new ContributorsRefresher(new GitHubContributorsClient(() =>
             throw new Xunit.Sdk.XunitException("HTTP must not be created")));
         var cached = new Contributor("bob", 1);
-        var settings = new AppSettings { CheckForUpdates = enabled, Contributors = [cached] };
+        var settings = new AppSettings { ConsentAutomaticUpdates = enabled, Contributors = [cached] };
         Assert.Equal([cached], await refresher.RefreshAsync(settings, blocked));
         Assert.Null(settings.LastContributorsCheck);
     }
@@ -90,7 +90,7 @@ public sealed class ContributorsTests
                 : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("[]") };
         }));
         var cached = new Contributor("bob", 1);
-        var settings = new AppSettings { Contributors = [cached] };
+        var settings = new AppSettings { ConsentAutomaticUpdates = true, Contributors = [cached] };
         Assert.Equal([cached], await refresher.RefreshAsync(settings, false));
         Assert.Equal([cached], await refresher.RefreshAsync(settings, false));
         Assert.Equal(1, requests);
@@ -104,7 +104,7 @@ public sealed class ContributorsTests
     {
         var refresher = new ContributorsRefresher(Client(() => new HttpResponseMessage(HttpStatusCode.Forbidden)));
         var cached = new Contributor("bob", 1);
-        var settings = new AppSettings { Contributors = [cached] };
+        var settings = new AppSettings { ConsentAutomaticUpdates = true, Contributors = [cached] };
         Assert.Equal([cached], await refresher.RefreshAsync(settings, false));
         Assert.NotNull(settings.LastContributorsCheck);
     }

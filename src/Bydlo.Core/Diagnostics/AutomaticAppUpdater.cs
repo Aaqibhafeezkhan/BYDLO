@@ -47,7 +47,7 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
     public async Task<bool> DownloadIfDueAsync(AppSettings settings, bool blocked,
         IProgress<int>? progress = null, CancellationToken ct = default)
     {
-        if (!settings.AutoUpdateApp || blocked || _busy) { return false; }
+        if (!AllowsUpdates(settings) || blocked || _busy) { return false; }
         var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
         if (settings.LastAutomaticUpdateCheck is { } last && now - last < TimeSpan.FromHours(24)) { return false; }
         // An empty check only rate-limits re-polling of the feed; a release published soon after is picked up within the hour.
@@ -59,9 +59,16 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
     public Task<bool> DownloadNowAsync(AppSettings settings, bool blocked,
         IProgress<int>? progress = null, CancellationToken ct = default)
     {
-        if (!settings.AutoUpdateApp || blocked || _busy) { return Task.FromResult(false); }
+        if (!AllowsUpdates(settings) || blocked || _busy) { return Task.FromResult(false); }
         return DownloadAsync(settings, progress, ct);
     }
+
+    /// <summary>
+    /// The packaged update needs both the explicit GitHub consent and the download opt-in (issue #438).
+    /// Revoking either one stops future downloads and blocks a package that is already staged.
+    /// </summary>
+    private static bool AllowsUpdates(AppSettings settings) =>
+        settings.AutoUpdateApp && FeatureConsent.From(settings).Allows(OptionalFeature.AutomaticUpdates);
 
     private async Task<bool> DownloadAsync(AppSettings settings, IProgress<int>? progress, CancellationToken ct)
     {
@@ -92,7 +99,7 @@ public sealed class AutomaticAppUpdater(Func<IAppUpdateBackend> createBackend, T
 
     public void ApplyOnExit(AppSettings settings, bool blocked)
     {
-        if (!settings.AutoUpdateApp || blocked || !_ready || _busy) { return; }
+        if (!AllowsUpdates(settings) || blocked || !_ready || _busy) { return; }
         _backend!.ApplyOnExit();
         _ready = false;
     }

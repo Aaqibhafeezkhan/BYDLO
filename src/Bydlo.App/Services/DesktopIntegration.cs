@@ -208,7 +208,9 @@ public sealed class DesktopIntegration : IDisposable
     {
         if (_disposed || _exiting) { return; }
         var key = _notifications.Update(session);
-        if (key is null || !_shell.Services.Settings.ShowNotifications || NetworkSafetyGuard.IsLocked) { return; }
+        // Desktop notifications need their own consent (issue #438); the OS may still ask separately.
+        if (key is null || !_shell.Services.Settings.ShowNotifications ||
+            !_shell.Services.Settings.ConsentNotifications || NetworkSafetyGuard.IsLocked) { return; }
         var name = session.Key switch
         {
             ConnectionManager.ZapretKey => "Zapret", ConnectionManager.TgWsProxyKey => "TgWsProxy", _ => "BYDLO",
