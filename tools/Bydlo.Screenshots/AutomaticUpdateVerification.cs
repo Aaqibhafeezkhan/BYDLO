@@ -37,6 +37,12 @@ internal static class AutomaticUpdateVerification
             var toggle = view.FindControl<ToggleSwitch>("AutoUpdateToggle")!;
             if (string.IsNullOrWhiteSpace(AutomationProperties.GetName(toggle))) { throw new InvalidOperationException("Missing accessible update label"); }
             if (!toggle.IsEffectivelyVisible || toggle.Bounds.Width <= 0) { throw new InvalidOperationException("Update toggle is hidden"); }
+            // Issue #438: without the GitHub update consent the opt-in cannot be switched on.
+            shell.Settings.ConsentAutomaticUpdates = false;
+            Pump();
+            if (toggle.IsEffectivelyEnabled) { throw new InvalidOperationException("Update opt-in must wait for the GitHub consent"); }
+            shell.Settings.ConsentAutomaticUpdates = true;
+            Pump();
             shell.Settings.AutoUpdateApp = false;
             toggle.Focus();
             window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
