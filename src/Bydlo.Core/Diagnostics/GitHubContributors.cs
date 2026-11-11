@@ -90,14 +90,16 @@ public sealed partial class GitHubContributorsClient(Func<HttpMessageHandler>? h
 }
 
 /// <summary>
-/// Refresh policy for the cached contributor list: only with automatic update checks on, never while the
-/// network is blocked (Mock Mode, development lock), at most once per 24 hours. Failures keep the cache.
+/// Refresh policy for the cached contributor list: only with the automatic-updates consent on, never
+/// while the network is blocked (Mock Mode, development lock), at most once per 24 hours. Failures
+/// keep the cache.
 /// </summary>
 public sealed class ContributorsRefresher(GitHubContributorsClient client, TimeProvider? timeProvider = null)
 {
     public async Task<IReadOnlyList<Contributor>> RefreshAsync(AppSettings settings, bool networkBlocked, CancellationToken ct = default)
     {
-        if (!settings.CheckForUpdates || networkBlocked)
+        if (!FeatureConsent.From(settings).Allows(OptionalFeature.AutomaticUpdates) ||
+            !settings.CheckForUpdates || networkBlocked)
         {
             return settings.Contributors;
         }

@@ -104,6 +104,11 @@ public static class BackupArchive
         settings.ConnectOnStartup = current.ConnectOnStartup;
         settings.MockMode = current.MockMode;
         settings.OnboardingCompleted = current.OnboardingCompleted;
+        // GitHub consents are decisions about this device; a backup never grants network access (issue #438).
+        settings.ConsentAutomaticUpdates = current.ConsentAutomaticUpdates;
+        settings.ConsentNotifications = current.ConsentNotifications;
+        settings.ConsentThemes = current.ConsentThemes;
+        settings.ConsentsInitialized = current.ConsentsInitialized;
         // Custom theme files live next to the data directory and are not part of the backup.
         settings.CustomThemeId = current.CustomThemeId;
         settings.MigrateLegacyTheme();

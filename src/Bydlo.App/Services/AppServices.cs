@@ -151,6 +151,7 @@ public sealed class AppServices
             s.Settings.Language = "auto";
             s.Settings.Theme = ThemePreference.System;
         }
+        s.Settings.MigrateConsents(firstRun);
 
         await s.Profiles.LoadAsync().ConfigureAwait(false);
         if (!s.IsMock && !NetworkSafetyGuard.IsLocked && s.Privileges.IsElevated && s.AmneziaNetwork.HasPendingRecovery)

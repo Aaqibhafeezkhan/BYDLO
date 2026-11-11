@@ -269,6 +269,11 @@ public sealed partial class SettingsViewModel
         CustomThemesBusy = true;
         try
         {
+            if (!FeatureConsent.From(Services.Settings).Allows(OptionalFeature.Themes))
+            {
+                Shell.ShowToast(L["theme.custom.consent"], isError: true);
+                return;
+            }
             if (Services.IsMock || Bydlo.Core.Security.NetworkSafetyGuard.IsLocked)
             {
                 Shell.ShowToast(L["theme.custom.locked"], isError: true);
@@ -299,6 +304,11 @@ public sealed partial class SettingsViewModel
         CustomThemesBusy = true;
         try
         {
+            if (!FeatureConsent.From(Services.Settings).Allows(OptionalFeature.Themes))
+            {
+                Shell.ShowToast(L["theme.custom.consent"], isError: true);
+                return;
+            }
             if (Services.IsMock || Bydlo.Core.Security.NetworkSafetyGuard.IsLocked)
             {
                 Shell.ShowToast(L["theme.custom.locked"], isError: true);

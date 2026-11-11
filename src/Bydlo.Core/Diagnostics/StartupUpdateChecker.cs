@@ -12,7 +12,8 @@ public sealed class StartupUpdateChecker(GitHubUpdateClient client, TimeProvider
         {
             settings.PendingUpdate = null;
         }
-        if (!settings.CheckForUpdates || networkBlocked)
+        if (!FeatureConsent.From(settings).Allows(OptionalFeature.AutomaticUpdates) ||
+            !settings.CheckForUpdates || networkBlocked)
         {
             return null;
         }

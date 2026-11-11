@@ -75,6 +75,9 @@ public sealed partial class SettingsViewModel : PageViewModel
         _subscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         _checkForUpdates = s.CheckForUpdates;
         _autoUpdateApp = s.AutoUpdateApp;
+        _consentAutomaticUpdates = s.ConsentAutomaticUpdates;
+        _consentNotifications = s.ConsentNotifications;
+        _consentThemes = s.ConsentThemes;
         _runElevatedOnStartup = s.RunElevatedOnStartup;
     }
 
@@ -111,6 +114,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         SubscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         CheckForUpdates = s.CheckForUpdates;
         AutoUpdateApp = s.AutoUpdateApp;
+        RefreshConsents();
         OnPropertyChanged(nameof(LanSysProxyConflict));
         RefreshCustomThemes();
     }
