@@ -38,6 +38,14 @@ public interface IManagedProcess : IAsyncDisposable
 
     event EventHandler<int>? Exited;
 
+    /// <summary>
+    /// Starts raising <see cref="OutputLine"/> and <see cref="Exited"/>. Until then early output
+    /// stays queued (in the OS pipe for real processes) and an early exit is reported on this call,
+    /// so a consumer that subscribes first never misses a one-shot ready line (issue #468).
+    /// Idempotent; nothing is delivered twice.
+    /// </summary>
+    void BeginEventDelivery();
+
     /// <summary>Stops the process tree. Waits up to <paramref name="timeout"/> before killing.</summary>
     Task StopAsync(TimeSpan timeout, CancellationToken ct = default);
 }
@@ -45,6 +53,7 @@ public interface IManagedProcess : IAsyncDisposable
 /// <summary>Abstraction over process creation so engines can be tested without spawning anything.</summary>
 public interface IProcessRunner
 {
+    /// <summary>Starts the process; subscribe to its events, then call <see cref="IManagedProcess.BeginEventDelivery"/>.</summary>
     IManagedProcess Start(ProcessSpec spec);
 
     /// <summary>Runs a short-lived helper (e.g. <c>sing-box check</c>) and returns exit code + output.</summary>
