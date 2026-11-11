@@ -90,6 +90,9 @@ public sealed class DesktopIntegration : IDisposable
         catch (Exception ex)
         {
             _shell.Services.Log.Error("app", "Shutdown failed: " + ex.Message);
+            // A half-stopped session must never be replaced by a new package (issue #413).
+            _shell.Services.AutomaticUpdates.Defer();
+            _shell.Settings.RefreshUpdateState();
             _exiting = false;
             ShowWindow();
             _shell.ShowToast(Loc.Instance["tray.exit.error"], isError: true);
@@ -97,8 +100,12 @@ public sealed class DesktopIntegration : IDisposable
         }
         try
         {
-            _shell.Services.AutomaticUpdates.ApplyOnExit(_shell.Services.Settings,
+            var result = _shell.Services.AutomaticUpdates.ApplyOnExit(_shell.Services.Settings,
                 _shell.Services.IsMock || NetworkSafetyGuard.IsLocked);
+            if (result == Bydlo.Core.Diagnostics.AppUpdateApplyResult.Deferred)
+            {
+                _shell.Services.Log.Info("update", "Update installation deferred to the next exit.");
+            }
         }
         catch (Exception ex)
         {

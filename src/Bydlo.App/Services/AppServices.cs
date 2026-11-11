@@ -57,7 +57,11 @@ public sealed class AppServices
         Subscriptions = new SubscriptionClient(Http, Importer);
         Zapret = new ZapretEngine(Runner, LogRedactor.Shared, Locator, Privileges, ZapretFirewall);
         ZapretUpdater = new ZapretUpdater(Installer, PlatformInfo.Current);
-        AutomaticUpdates = new(() => new PackagedAppUpdater(Paths.DataDirectory, Http));
+        AutomaticUpdates = new(() => new PackagedAppUpdater(Paths.DataDirectory, Http))
+        {
+            // Package markers decide who owns updates; a writable path alone never enables the built-in updater.
+            InstallKind = AppInstallLocator.CreateDefault().Detect(AppContext.BaseDirectory, Environment.ProcessPath),
+        };
     }
 
     public string[] Args { get; }

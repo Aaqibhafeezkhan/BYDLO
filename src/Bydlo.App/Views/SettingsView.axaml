@@ -210,7 +210,7 @@
           <TextBlock x:Name="LicenseNotices" Classes="faint" Text="{l:T about.licenses}" TextWrapping="Wrap" />
           <Border Classes="tile">
             <StackPanel Spacing="8">
-              <Grid ColumnDefinitions="*,Auto">
+              <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding SupportsAutomaticUpdates}">
                 <StackPanel Margin="0,0,18,0">
                   <TextBlock Text="{l:T settings.update.auto}" FontWeight="Medium" TextWrapping="Wrap" />
                   <TextBlock Classes="faint" Text="{l:T settings.update.auto.hint}" TextWrapping="Wrap" IsVisible="{Binding IsAutoUpdateAvailable}" />
@@ -219,12 +219,15 @@
                 <ToggleSwitch x:Name="AutoUpdateToggle" Grid.Column="1" AutomationProperties.Name="{l:T settings.update.auto}"
                               IsChecked="{Binding AutoUpdateApp}" IsEnabled="{Binding ConsentAutomaticUpdates}" />
               </Grid>
+              <TextBlock x:Name="UpdateGuidance" Text="{Binding UpdateGuidanceText}" TextWrapping="Wrap"
+                         IsVisible="{Binding HasUpdateGuidance}" />
               <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" />
               <TextBlock Classes="faint" Text="{Binding UpdateDetail}" TextWrapping="Wrap" />
               <ProgressBar IsVisible="{Binding IsDownloadingUpdate}" Minimum="0" Maximum="100" Value="{Binding UpdateProgress}" />
               <WrapPanel>
                 <Button Classes="ghost" Content="{l:T settings.update.check}" Command="{Binding CheckUpdatesCommand}" Margin="0,0,8,0" IsEnabled="{Binding CanCheckUpdates}" />
-                <Button Classes="primary" Content="{l:T settings.update.download}" Command="{Binding DownloadUpdateCommand}" Margin="0,0,8,0" IsEnabled="{Binding CanDownloadUpdate}" />
+                <Button Classes="primary" Content="{l:T settings.update.download}" Command="{Binding DownloadUpdateCommand}" Margin="0,0,8,0"
+                        IsEnabled="{Binding CanDownloadUpdate}" IsVisible="{Binding SupportsAutomaticUpdates}" />
                 <Button Classes="ghost" Content="{l:T settings.update.open}" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding UpdateUrl}" IsVisible="{Binding HasUpdateUrl}" />
               </WrapPanel>
             </StackPanel>

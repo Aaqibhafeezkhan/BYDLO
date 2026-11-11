@@ -6,7 +6,8 @@ param(
     [Parameter(Mandatory)][string]$ReleaseDirectory,
     [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
     [string]$Channel = 'stable',
-    [string]$KeyId = 'bydlo-update-2026-01',
+    # Defaults to UpdateTrustRoots.CurrentKeyId; then the key must match CurrentPublicKeySpki.
+    [string]$KeyId,
     [string]$PrivateKeyPem = $env:BYDLO_UPDATE_SIGNING_KEY,
     # A year: clients on an older version must still reach the latest release when no new one ships for a while.
     [int]$ValidDays = 365,
@@ -21,6 +22,15 @@ if ([string]::IsNullOrWhiteSpace($PrivateKeyPem)) {
 if ($PrivateKeyPem -notmatch '-----BEGIN') {
     try { $PrivateKeyPem = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($PrivateKeyPem)) }
     catch { throw 'BYDLO_UPDATE_SIGNING_KEY is neither a PEM key nor base64-encoded PEM.' }
+}
+# Without -KeyId the release signs as the compiled-in current key, so a stale secret after a
+# rotation fails here instead of shipping a catalog every client rejects.
+$expectedSpki = $null
+if (-not $PSBoundParameters.ContainsKey('KeyId')) {
+    $roots = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../src/Bydlo.Core/Updates/UpdateTrustRoots.cs') -Raw
+    $KeyId = [regex]::Match($roots, 'CurrentKeyId\s*=\s*"([^"]+)"').Groups[1].Value
+    $expectedSpki = [regex]::Match($roots, 'CurrentPublicKeySpki\s*=\s*"([^"]+)"').Groups[1].Value
+    if (!$KeyId -or !$expectedSpki) { throw 'Cannot read CurrentKeyId / CurrentPublicKeySpki from UpdateTrustRoots.cs.' }
 }
 $rids = @('win-x64','win-arm64','linux-x64','linux-arm64','osx-arm64')
 $directory = (Resolve-Path -LiteralPath $ReleaseDirectory).Path
@@ -68,6 +78,9 @@ $ecdsa = [Security.Cryptography.ECDsa]::Create()
 try {
     # Accepts PKCS#8 ("PRIVATE KEY") and SEC1 ("EC PRIVATE KEY") PEM.
     $ecdsa.ImportFromPem($PrivateKeyPem)
+    if ($expectedSpki -and [Convert]::ToBase64String($ecdsa.ExportSubjectPublicKeyInfo()) -cne $expectedSpki) {
+        throw "BYDLO_UPDATE_SIGNING_KEY does not match UpdateTrustRoots.CurrentPublicKeySpki ($KeyId): clients would reject this catalog."
+    }
     # ECDSA P-256 / SHA-256, IEEE P1363 (r||s) — the format Bydlo.Core.Updates expects.
     $signature = $ecdsa.SignData($bytes, [Security.Cryptography.HashAlgorithmName]::SHA256)
 } finally { $ecdsa.Dispose() }

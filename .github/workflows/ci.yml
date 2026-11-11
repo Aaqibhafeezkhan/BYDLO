@@ -798,8 +798,11 @@ jobs:
             $key = [Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve]::CreateFromFriendlyName('nistP256'))
             try { $env:BYDLO_UPDATE_SIGNING_KEY = $key.ExportPkcs8PrivateKeyPem() } finally { $key.Dispose() }
             Write-Host '::warning::BYDLO_UPDATE_SIGNING_KEY is not set; rehearsal catalog signed with a throwaway key.'
+            ./scripts/sign-update-catalog.ps1 -ReleaseDirectory release-staging -Version $version -KeyId 'rehearsal-throwaway'
+          } else {
+            # No -KeyId: sign as UpdateTrustRoots.CurrentKeyId and refuse a secret that does not match it.
+            ./scripts/sign-update-catalog.ps1 -ReleaseDirectory release-staging -Version $version
           }
-          ./scripts/sign-update-catalog.ps1 -ReleaseDirectory release-staging -Version $version
       - name: Verify the published set including the signed catalog
         shell: pwsh
         run: |

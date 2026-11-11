@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Bydlo.App.ViewModels;
 
-/// <summary>BYDLO and engine update checks via GitHub Releases (issue #19, visibility in #456).</summary>
+/// <summary>BYDLO and engine update checks via GitHub Releases (issue #19, unified states in #413).</summary>
 public sealed partial class SettingsViewModel
 {
     [ObservableProperty]
@@ -19,8 +19,11 @@ public sealed partial class SettingsViewModel
     partial void OnAutoUpdateAppChanged(bool value)
     {
         Services.Settings.AutoUpdateApp = value;
+        // A downloaded package waits while the switch is off and is never applied behind the user's back.
+        Services.AutomaticUpdates.SetOptIn(value);
         if (!value) { _automaticUpdateCheck?.Cancel(); }
         OnPropertyChanged(nameof(CanDownloadUpdate));
+        OnPropertyChanged(nameof(UpdateStatus));
         Persist();
     }
 
@@ -36,14 +39,42 @@ public sealed partial class SettingsViewModel
     [ObservableProperty]
     private int _updateProgress;
 
-    [ObservableProperty]
-    private string _updateStatus = "";
+    /// <summary>Result of the last release or engine check; the packaged update state wins when it is further along.</summary>
+    private string _updateCheckStatus = "";
 
-    /// <summary>Secondary line: last check time, live progress or why updates are unavailable.</summary>
+    // Why the signed catalog refused the last update (issue #411); shown instead of the generic error.
+    private string? _updateFailureStatus;
+
+    /// <summary>
+    /// Single status line. The packaged update state is authoritative, so a release notification can never
+    /// replace "downloaded, installs on exit" with "new version available" (issue #413).
+    /// </summary>
+    public string UpdateStatus => Services.AutomaticUpdates.State switch
+    {
+        AppUpdateState.Downloading => L["settings.update.downloading"],
+        AppUpdateState.Ready => L["settings.update.ready"],
+        AppUpdateState.Deferred => L["settings.update.deferred"],
+        AppUpdateState.Failed => _updateFailureStatus ?? L["settings.update.error"],
+        AppUpdateState.Available when Services.AutomaticUpdates.AvailableVersion is { } version =>
+            Loc.T("settings.update.available", version),
+        _ => _updateCheckStatus,
+    };
+
+    /// <summary>Secondary line: last check time or live progress.</summary>
     [ObservableProperty]
     private string _updateDetail = "";
 
-    /// <summary>False for archives, portable layouts and Mock Mode; the opt-in switch must say so.</summary>
+    /// <summary>Manual update instructions for a copy the built-in updater does not own.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdateGuidance))]
+    private string _updateGuidanceText = "";
+
+    public bool HasUpdateGuidance => UpdateGuidanceText.Length > 0;
+
+    /// <summary>True only for a Velopack install: the built-in updater can own this copy.</summary>
+    public bool SupportsAutomaticUpdates => Services.AutomaticUpdates.Owner == AppUpdateOwner.Velopack;
+
+    /// <summary>False for archives, portable layouts, package-manager installs and Mock Mode.</summary>
     [ObservableProperty]
     private bool _isAutoUpdateAvailable = true;
 
@@ -76,12 +107,31 @@ public sealed partial class SettingsViewModel
         Persist();
     }
 
-    /// <summary>Refreshes availability and the last-check line; safe to call on every startup.</summary>
+    /// <summary>Refreshes availability, the manual guidance and the last-check line; safe to call on every startup.</summary>
     public void RefreshUpdateState()
     {
-        IsAutoUpdateAvailable = !Services.IsMock && !NetworkSafetyGuard.IsLocked &&
-            Services.AutomaticUpdates.IsAvailable();
+        var blocked = Services.IsMock || NetworkSafetyGuard.IsLocked;
+        OnPropertyChanged(nameof(SupportsAutomaticUpdates));
+        IsAutoUpdateAvailable = SupportsAutomaticUpdates && !blocked && Services.AutomaticUpdates.IsAvailable();
+        UpdateGuidanceText = SupportsAutomaticUpdates
+            ? (blocked ? L["settings.update.auto.unavailable"] : "")
+            : L[UpdateGuidance.KeyFor(Services.AutomaticUpdates.InstallKind)];
         RefreshUpdateDetail();
+        OnPropertyChanged(nameof(UpdateStatus));
+    }
+
+    private void SetUpdateFailureStatus(string value)
+    {
+        _updateCheckStatus = value;
+        _updateFailureStatus = value;
+        OnPropertyChanged(nameof(UpdateStatus));
+    }
+
+    private void SetUpdateCheckStatus(string value)
+    {
+        _updateCheckStatus = value;
+        _updateFailureStatus = null;
+        OnPropertyChanged(nameof(UpdateStatus));
     }
 
     private void RefreshUpdateDetail()
@@ -93,7 +143,7 @@ public sealed partial class SettingsViewModel
         }
         if (!IsAutoUpdateAvailable)
         {
-            UpdateDetail = L["settings.update.detail.unavailable"];
+            UpdateDetail = "";
             return;
         }
         var last = Services.Settings.LastAutomaticUpdateCheck ?? Services.Settings.LastUpdateCheck;
@@ -121,7 +171,7 @@ public sealed partial class SettingsViewModel
             }
             IsCheckingUpdates = true;
             UpdateUrl = null;
-            UpdateStatus = L["settings.update.checking"];
+            SetUpdateCheckStatus(L["settings.update.checking"]);
             try
             {
                 var client = new GitHubUpdateClient();
@@ -130,14 +180,16 @@ public sealed partial class SettingsViewModel
                 await Services.SaveSettingsAsync();
                 if (release is null)
                 {
-                    UpdateStatus = await CheckEnginesAsync(client);
+                    Services.AutomaticUpdates.MarkAvailable(null);
+                    SetUpdateCheckStatus(await CheckEnginesAsync(client));
                 }
                 else
                 {
                     UpdateUrl = string.IsNullOrWhiteSpace(release.HtmlUrl)
                         ? "https://github.com/endercodezz/BYDLO/releases"
                         : release.HtmlUrl;
-                    UpdateStatus = Loc.T("settings.update.available", release.Tag);
+                    Services.AutomaticUpdates.MarkAvailable(release.Tag);
+                    SetUpdateCheckStatus(Loc.T("settings.update.available", release.Tag));
                     Services.Settings.PendingUpdate = release;
                     await Services.SaveSettingsAsync();
                     Shell.ShowReleaseNotification(release);
@@ -145,7 +197,7 @@ public sealed partial class SettingsViewModel
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
-                UpdateStatus = L["settings.update.error"];
+                SetUpdateCheckStatus(L["settings.update.error"]);
             }
             finally
             {
@@ -171,7 +223,7 @@ public sealed partial class SettingsViewModel
             }
             if (!IsAutoUpdateAvailable)
             {
-                throw new InvalidOperationException(L["settings.update.detail.unavailable"]);
+                throw new InvalidOperationException(L["settings.update.auto.unavailable"]);
             }
             if (!ConsentAutomaticUpdates)
             {
@@ -179,7 +231,7 @@ public sealed partial class SettingsViewModel
             }
             IsDownloadingUpdate = true;
             UpdateProgress = 0;
-            UpdateStatus = L["settings.update.downloading"];
+            SetUpdateCheckStatus(L["settings.update.downloading"]);
             UpdateDetail = Loc.T("settings.update.detail.progress", 0);
             using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Services.ShutdownToken);
             _automaticUpdateCheck = cancellation;
@@ -192,18 +244,18 @@ public sealed partial class SettingsViewModel
                 });
                 var ready = await Services.AutomaticUpdates.DownloadNowAsync(
                     Services.Settings, false, progress, cancellation.Token);
-                UpdateStatus = ready ? L["settings.update.ready"] : L["settings.update.uptodate"];
+                SetUpdateCheckStatus(ready ? L["settings.update.ready"] : L["settings.update.uptodate"]);
                 await Services.SaveSettingsAsync();
             }
             catch (UpdateTrustException ex)
             {
                 // The signed catalog refused this update: nothing was installed and the working version stays.
-                UpdateStatus = L[UpdateTrustMessages.Key(ex.Failure)];
+                SetUpdateFailureStatus(L[UpdateTrustMessages.Key(ex.Failure)]);
                 Services.Log.Warn("update", $"Update refused: {ex.Failure}.");
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
             {
-                UpdateStatus = L["settings.update.error"];
+                SetUpdateCheckStatus(L["settings.update.error"]);
             }
             finally
             {
@@ -262,25 +314,27 @@ public sealed partial class SettingsViewModel
             if (await Services.AutomaticUpdates.DownloadIfDueAsync(Services.Settings,
                     Services.IsMock || NetworkSafetyGuard.IsLocked, progress, automaticCancellation.Token))
             {
-                UpdateStatus = L["settings.update.ready"];
+                SetUpdateCheckStatus(L["settings.update.ready"]);
             }
             if (!Services.Settings.AutoUpdateApp || automaticCancellation.IsCancellationRequested) { return; }
             var release = await new StartupUpdateChecker(new GitHubUpdateClient()).CheckAsync(
                 Services.Settings, Version, Services.IsMock || NetworkSafetyGuard.IsLocked, automaticCancellation.Token);
             await Services.SaveSettingsAsync();
+            // The notification only records the version; a downloaded package keeps its ready state.
+            Services.AutomaticUpdates.MarkAvailable(release?.Tag);
             if (release is not null)
             {
                 UpdateUrl = string.IsNullOrWhiteSpace(release.HtmlUrl)
                     ? "https://github.com/endercodezz/BYDLO/releases"
                     : release.HtmlUrl;
-                UpdateStatus = Loc.T("settings.update.available", release.Tag);
+                SetUpdateCheckStatus(Loc.T("settings.update.available", release.Tag));
                 Shell.ShowReleaseNotification(release);
             }
         }
         catch (UpdateTrustException ex)
         {
             // A scheduled download that fails verification must say so instead of looking like a network error.
-            UpdateStatus = L[UpdateTrustMessages.Key(ex.Failure)];
+            SetUpdateFailureStatus(L[UpdateTrustMessages.Key(ex.Failure)]);
             Services.Log.Warn("update", $"Update refused: {ex.Failure}.");
         }
         catch (Exception ex)

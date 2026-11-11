@@ -10,6 +10,7 @@
 | `skills/add-engine/SKILL.md` | skill | Checklist for adding a protocol / engine adapter. |
 | `skills/dependency-audit/SKILL.md` | skill | Read-only audit of dependencies and upstream engines; manual invocation only (`/dependency-audit`). |
 | `skills/frontend-design/SKILL.md` | skill | Anthropic frontend-design 1.1.1. Design direction, typography, accessibility and visual critique for Avalonia views. Apache-2.0 terms are included beside the skill. |
+| `skills/update-key-rotation/SKILL.md` | skill | Rotate or revoke the update-catalog signing key (trust roots, secret swap, release order). |
 | `skills/avalonia-desktop-ux/SKILL.md` | skill | BYDLO workflow for desktop UX, Avalonia accessibility, reduced motion and visual verification using the existing Mock Mode harness. |
 
 Claude Code discovers project skills in `.claude/skills/`; they need no entry in the hook settings.

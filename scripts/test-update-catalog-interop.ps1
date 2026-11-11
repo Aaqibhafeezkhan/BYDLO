@@ -24,6 +24,12 @@ try {
 } finally { $key.Dispose() }
 & "$PSScriptRoot/sign-update-catalog.ps1" -ReleaseDirectory $fixture -Version $version -KeyId 'interop-test' -PrivateKeyPem $pem
 [IO.File]::WriteAllText((Join-Path $fixture 'public-key.txt'), $spki)
+# Without -KeyId the script must refuse a key that is not the compiled-in current key.
+$refused = $false
+try { & "$PSScriptRoot/sign-update-catalog.ps1" -ReleaseDirectory $fixture -Version $version -PrivateKeyPem $pem 2>$null }
+catch { $refused = $_.Exception.Message -like '*does not match UpdateTrustRoots.CurrentPublicKeySpki*' }
+if (!$refused) { throw 'sign-update-catalog.ps1 signed with a key that UpdateTrustRoots does not trust.' }
+# The refused run must not have replaced the catalog signed with the explicit interop key.
 $env:BYDLO_UPDATE_CATALOG_INTEROP_DIR = $fixture
 try {
     dotnet test (Join-Path $root 'tests/Bydlo.Tests') -c $Configuration --no-build --filter 'FullyQualifiedName~UpdateCatalogInteropTests'

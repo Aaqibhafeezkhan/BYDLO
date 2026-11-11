@@ -72,7 +72,7 @@ public sealed class FirstRunConsentTests
             .CheckAsync(settings, "0.1.0", networkBlocked: false);
         await new ContributorsRefresher(new GitHubContributorsClient(() => new CountingHandler(() => contributorRequests++)))
             .RefreshAsync(settings, networkBlocked: false);
-        await new AutomaticAppUpdater(() => backend).DownloadIfDueAsync(settings, blocked: false);
+        await new AutomaticAppUpdater(() => backend) { InstallKind = AppInstallKind.Velopack }.DownloadIfDueAsync(settings, blocked: false);
 
         Assert.Equal(updates ? 1 : 0, updateRequests);
         Assert.Equal(notifications ? 1 : 0, noticeRequests);
@@ -149,7 +149,7 @@ public sealed class FirstRunConsentTests
     {
         var backend = new FakeBackend();
         var settings = new AppSettings { AutoUpdateApp = true, ConsentAutomaticUpdates = true };
-        var updater = new AutomaticAppUpdater(() => backend);
+        var updater = new AutomaticAppUpdater(() => backend) { InstallKind = AppInstallKind.Velopack };
         Assert.True(await updater.DownloadIfDueAsync(settings, blocked: false));
 
         settings.ConsentAutomaticUpdates = false;

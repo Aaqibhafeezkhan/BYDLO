@@ -114,6 +114,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         SubscriptionUpdateIntervalHours = s.SubscriptionUpdateIntervalHours;
         CheckForUpdates = s.CheckForUpdates;
         AutoUpdateApp = s.AutoUpdateApp;
+        RefreshUpdateState();
         RefreshConsents();
         OnPropertyChanged(nameof(LanSysProxyConflict));
         RefreshCustomThemes();
@@ -418,6 +419,8 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         Services.Settings.Language = value;
         Loc.Instance.SetLanguage(value);
+        // The manual update guidance is a resolved string: re-resolve it in the new language.
+        RefreshUpdateState();
         Persist();
     }
 
