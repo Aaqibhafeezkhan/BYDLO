@@ -68,7 +68,7 @@ let
         f: f.hasExt "go" || f.name == "go.mod" || f.name == "go.sum"
       ) ../tools/amneziawg;
     };
-    vendorHash = "sha256-8sn5dMGaEd4+aog4hJBxQQt5hNCzbqQFMH70TgrNUd4=";
+    vendorHash = "sha256-aX+urfamTADFR0p9IvOQD6sEyqtQxsxU9ibkOZkCANE=";
     env.CGO_ENABLED = 0;
     ldflags = [
       "-s"
